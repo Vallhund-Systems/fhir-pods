@@ -154,13 +154,40 @@ Two sharpenings from inspecting the real AU Core v2.0.0 profiles:
   market — a materially better "AU-ready" story than round-tripping every code to
   a paid tx server.
 
-> **⚠ TODO — lock down before any redistribution claim.** The exact **NCTS
-> vendor / content-distribution licence tier** — whether a vendor may *embed and
-> redistribute* SNOMED CT-AU content, or each deploying org must self-register —
-> is being confirmed by a research pass. Until confirmed, the safe design stands:
-> **do not bundle SNOMED CT-AU content; seam to NCTS/Ontoserver.** Fixed codes as
-> structural constants are fine; shipping SNOMED release content / expansions is
-> the gated thing.
+**The NCTS licence — resolved (2026-09-15).** The binding instrument is the
+**Australian National Terminology Licence Agreement (ANTLA, DH-2400:2016)**, and
+it settles the crux: there is **no separate "distributor" tier**. The single
+national licence — taken by any SNOMED Affiliate who registers with NCTS —
+*already* grants the right to **bundle SNOMED CT-AU + AMT into a product and
+sub-license end users** (ANTLA cl. 2.1.3 / 2.1.5), and SNOMED CT-AU use in
+Australia is **free** (cl. 7.1). So bundling is *permitted*, not prohibited — the
+question is whether we want the obligations.
+
+**Decision for fhir-pods: default to the seam; the library ships no SNOMED
+content.** Becoming an Affiliate drags in real, ongoing obligations —
+attribution notice on all media (cl. 8.3.1), version/date stamping (8.3.2), a
+maintained **sub-licence register** (8.7), a 30-day release-update cadence (6.2),
+namespace ID for extensions (3.1), ADHA notification for non-AU use (9.1.1), and
+MLDS fees for non-Member deployments. Too heavy to bake into a globally
+distributed library. So SNOMED CT-AU/AMT expansions + code validation resolve at
+runtime against a **licensed NCTS/Ontoserver endpoint the deployer holds** —
+which, for AU, is free to run. (Bundling stays *available* as a deliberate
+Affiliate-route option if a product later wants fully-offline SNOMED.)
+
+**Bundle-safe worldwide, no SNOMED dependency:** CC0 base-FHIR value sets, LOINC
+(with notice + version stamp), UCUM (with notice), and **fixed SNOMED codes as
+structural constants (`system` + `code`)** — a reference, not redistribution.
+**Generator rule (for the fixed-code work):** emit a fixed SNOMED coding's
+`system` + `code` only — **never its display string**; the code is a reference,
+the display is licensed content.
+
+**Two items need a written NCTS/ADHA ruling before any public "AU-ready"
+redistribution claim:** (1) whether shipping a fixed SCTID — and especially its
+display — inside a conformance resource is treated as licence-free reference
+(universal FHIR practice says the code is fine and the display is the risky part,
+but it's not black-letter); (2) whether one ANTLA held by the library could serve
+as the sub-licence chain for many AU deployers. Primary text: ANTLA DH-2400:2016
+(healthterminologies.gov.au).
 
 ---
 
