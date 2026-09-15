@@ -3,9 +3,10 @@
 
 Runs our validator and the HL7 reference validator (`validator_cli.jar` — the
 ecosystem's oracle; "correct" means bug-for-bug agreement with it) over the
-corpus and compares verdicts. The oracle needs Java 11+; our side runs without
-it, so on a machine without Java this still checks us against the expected
-verdicts and reports that the oracle was skipped.
+corpus and compares verdicts, then flagged elements. The oracle runs once for
+the whole corpus (one JVM; it emits a Bundle of OperationOutcomes, each tagged
+with its source file). It needs Java 11+ — set JAVA_HOME (or JAVA); our side
+runs without it.
 
     python3 conformance/run.py
 """
@@ -22,11 +23,11 @@ CORPUS = os.path.join(HERE, "corpus")
 JAR = os.path.join(HERE, "validator_cli.jar")
 JAR_URL = "https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar"
 IG = "hl7.fhir.au.core#2.0.0"
+FILE_EXT = "operationoutcome-file"
 
 
 def java_bin():
-    """The JVM to run the oracle with: $JAVA (an explicit binary), else
-    $JAVA_HOME/bin/java, else `java` on PATH."""
+    """The JVM: $JAVA (an explicit binary), else $JAVA_HOME/bin/java, else PATH."""
     if os.environ.get("JAVA"):
         return os.environ["JAVA"]
     home = os.environ.get("JAVA_HOME")
@@ -47,9 +48,9 @@ def jvm_starts():
 
 
 def error_paths(outcome):
-    """The element paths of error/fatal issues, normalized so ours and the
-    oracle's are comparable: strip `[n]` indices, `:slice` labels, and rewrite
-    `.ofType(T)` (the oracle's choice syntax) to our `[x]`."""
+    """Element paths of error/fatal issues, normalized so ours and the oracle's
+    are comparable: strip `[n]` indices and `:slice` labels, rewrite the
+    oracle's `.ofType(T)` choice syntax to `[x]`."""
     paths = set()
     for i in outcome.get("issue", []):
         if i.get("severity") not in ("error", "fatal"):
@@ -62,8 +63,17 @@ def error_paths(outcome):
     return paths
 
 
+def summarize(outcome):
+    bad = [i for i in outcome.get("issue", []) if i.get("severity") in ("error", "fatal")]
+    detail = [
+        f"{i.get('severity')}: {(i.get('details') or {}).get('text') or i.get('diagnostics')} @ {i.get('expression') or i.get('location')}"
+        for i in bad
+    ]
+    return ("invalid" if bad else "valid"), detail, error_paths(outcome)
+
+
 def ours(probe, path):
-    """Our verdict, and our OperationOutcome's error paths (apples to apples)."""
+    """Our verdict and our OperationOutcome's error paths (apples to apples)."""
     r = subprocess.run([probe, "--outcome", path], capture_output=True, text=True)
     try:
         o = json.loads(r.stdout)
@@ -72,28 +82,33 @@ def ours(probe, path):
     return ("valid" if r.returncode == 0 else "invalid"), error_paths(o)
 
 
-def oracle(path, profile):
-    """Run the reference validator with terminology disabled (-tx n/a), the
-    same offline posture as our engine; error/fatal issues => invalid."""
-    out = path[:-5] + ".oracle.json"
+def oracle_batch(paths):
+    """One JVM for the whole corpus, terminology disabled (-tx n/a) — our same
+    offline posture. Returns {file basename: (verdict, detail, error_paths)}."""
+    out = os.path.join(CORPUS, "_oracle.bundle.json")
     subprocess.run(
-        [JAVA, "-jar", JAR, path, "-version", "4.0", "-ig", IG, "-profile", profile, "-tx", "n/a", "-output", out],
+        [JAVA, "-jar", JAR, *paths, "-version", "4.0", "-ig", IG, "-tx", "n/a", "-output", out],
         capture_output=True, text=True,
     )
+    results = {}
     try:
-        o = json.load(open(out))
+        b = json.load(open(out))
     except (OSError, ValueError):
-        return "error", ["oracle produced no OperationOutcome"], set()
-    bad = [i for i in o.get("issue", []) if i.get("severity") in ("error", "fatal")]
-    detail = [
-        f"{i.get('severity')}: {(i.get('details') or {}).get('text') or i.get('diagnostics')} @ {i.get('expression') or i.get('location')}"
-        for i in bad
-    ]
-    return ("invalid" if bad else "valid"), detail, error_paths(o)
+        return results
+    if b.get("resourceType") == "Bundle":
+        entries = [e.get("resource", {}) for e in b.get("entry", [])]
+    else:
+        entries = [b]
+    for o in entries:
+        src = next((x.get("valueString") for x in o.get("extension", []) if x.get("url", "").endswith(FILE_EXT)), None)
+        key = os.path.basename(src) if src else (os.path.basename(paths[0]) if len(paths) == 1 else None)
+        if key:
+            results[key] = summarize(o)
+    return results
 
 
 def main():
-    subprocess.check_call([sys.executable, os.path.join(HERE, "make_corpus.py")], stdout=subprocess.DEVNULL)
+    subprocess.check_call([sys.executable, os.path.join(HERE, "make_corpus.py")])
     subprocess.check_call(["cargo", "build", "-q", "-p", "fhir-pods-core", "--example", "probe"], cwd=ROOT)
     probe = os.path.join(ROOT, "target", "debug", "examples", "probe")
 
@@ -108,32 +123,32 @@ def main():
         )
 
     manifest = json.load(open(os.path.join(CORPUS, "manifest.json")))
-    print(f"{'fixture':<28} {'expect':<8} {'ours':<8} {'oracle':<8} status")
+    paths = [os.path.join(CORPUS, c["file"]) for c in manifest]
+    oracle = oracle_batch(paths) if have_java else {}
+
+    print(f"{'fixture':<44} {'expect':<8} {'ours':<8} {'oracle':<8} status")
     failures = 0
     oracle_errors = 0
-    for c in manifest:
-        path = os.path.join(CORPUS, c["file"])
+    for c, path in zip(manifest, paths):
         expect = "valid" if c["expect"] else "invalid"
         ov, opaths = ours(probe, path)
-        rv, detail, rpaths = oracle(path, c["profile"]) if have_java else ("-", [], set())
+        rv, detail, rpaths = oracle.get(c["file"], ("error", ["no OperationOutcome for this file"], set())) if have_java else ("-", [], set())
         status = "ok"
         if ov != expect:
             status = "OURS!=EXPECT"
         if have_java and rv == "error":
-            # An oracle that produced nothing is an infrastructure failure,
-            # not a verdict disagreement — report it, don't score it.
             status = "ORACLE-ERR"
             oracle_errors += 1
         elif have_java and ov != rv:
             status = "OURS!=ORACLE"
         if status in ("OURS!=EXPECT", "OURS!=ORACLE"):
             failures += 1
-        print(f"{c['file']:<28} {expect:<8} {ov:<8} {rv:<8} {status}")
+        print(f"{c['file']:<44} {expect:<8} {ov:<8} {rv:<8} {status}")
         if status != "ok":
-            for d in detail:
+            for d in detail[:6]:
                 print(f"    oracle: {d}")
-        # Issue-level view (informational, not scored): when both agree the
-        # resource is invalid, do we flag the same elements the oracle does?
+            if len(detail) > 6:
+                print(f"    oracle: … {len(detail) - 6} more")
         if have_java and status == "ok" and rv == "invalid" and opaths != rpaths:
             print(f"    issue paths differ (info)  ours: {sorted(opaths)}  oracle: {sorted(rpaths)}")
 
@@ -141,7 +156,7 @@ def main():
     tail = "" if have_java else " (ours vs expectation only; run with Java for the oracle)"
     print(f"\n{n - failures}/{n} agree{tail}")
     if oracle_errors:
-        print(f"{oracle_errors} fixture(s) got no OperationOutcome from the oracle (see the .oracle.json files)")
+        print(f"{oracle_errors} fixture(s) got no OperationOutcome from the oracle")
     sys.exit(1 if failures else 0)
 
 

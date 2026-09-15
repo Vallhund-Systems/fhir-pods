@@ -4,7 +4,9 @@ Cargo.lock
 *.wasm
 *.xcframework/
 conformance/validator_cli.jar
-conformance/corpus/*.oracle.json
+# derived at run time from the pinned AU Core package (carries SNOMED displays)
+conformance/corpus/
+conformance/package/
 __pycache__/
 pods/expo/ios/Frameworks/
 pkg/

@@ -282,7 +282,28 @@ treat `$validate.profile` `uri`→`canonical` + R5's `usageContext` as additive.
   slices as FHIRPath (`value.ofType(Quantity)`). The wire layer now follows
   both — `wire::expression` — while the ergonomic `Issue.path` keeps the
   precise labelled location. After that: same verdicts *and* same flagged
-  elements on all 9. Next widening: more profiles in the corpus.
+  elements on all 9.
+
+  **Third pass, widened corpus (2026-09-15): 79/79.** The corpus is now derived
+  from the pinned package's own **64 publisher-validated example instances**
+  (every one of the 25 profiles, fetched into a gitignored cache so the
+  examples' SNOMED display terms never enter the repo) plus 15 deliberately
+  broken instances, validated in **one oracle JVM** (a `Bundle` of
+  `OperationOutcome`s tagged by source file). Two disagreements surfaced and
+  were both real:
+  1. **A general engine bug — `_name` primitives.** FHIR JSON represents a
+     primitive carrying only extensions as its `_name` sibling with no value
+     (`"_birthDate": {"extension": […]}`). That element *is present* and
+     satisfies `min`; we only looked at the value key, so we rejected a valid
+     patient. Fixed in the document adapter (`json::children` resolves through
+     `_name` when the value key is absent), so it holds for every primitive in
+     every profile.
+  2. **Bundled value sets.** `Observation.value.code` on body weight is
+     required-bound to `ucum-bodyweight`; we warned instead of erroring. The four
+     vitals UCUM sets are now bundled, concept lists taken verbatim from
+     `hl7.fhir.r4.core#4.0.1`. Follow-up: **generate** bundled base-FHIR value
+     sets from the `r4.core` package rather than hand-listing them.
+  After both: same verdicts *and* same flagged elements on all 79.
 - **Inferno** (ONC g10) and **Touchstone** are **API-behavior** harnesses
   (SMART launch, Bulk Data, search, US Core over the wire) — relevant only if we
   later ship a *server* surface, not for the embeddable validator. Note them,

@@ -324,14 +324,26 @@ pub mod json {
     }
 
     /// Push the children of `node` matching `seg` (expanding arrays).
+    ///
+    /// FHIR JSON represents a primitive that carries only extensions (no value)
+    /// as its `_name` sibling alone — `"_birthDate": {"extension": […]}` with no
+    /// `birthDate`. That element **is present** (it satisfies `min`), so when the
+    /// value key is absent we resolve through `_name`, which also makes its
+    /// `.extension` reachable. When both are present they describe one element,
+    /// so only the value key is counted.
     pub fn children<'v, 'a>(node: &'v Value<'a>, seg: &str, out: &mut Vec<&'v Value<'a>>) {
         match node {
             Value::Object(members) => {
+                let before = out.len();
                 for (k, v) in members {
                     if key_matches(k, seg) {
-                        match v {
-                            Value::Array(items) => out.extend(items.iter()),
-                            other => out.push(other),
+                        push_expanded(v, out);
+                    }
+                }
+                if out.len() == before && !seg.ends_with("[x]") {
+                    for (k, v) in members {
+                        if k.strip_prefix('_') == Some(seg) {
+                            push_expanded(v, out);
                         }
                     }
                 }
@@ -342,6 +354,13 @@ pub mod json {
                 }
             }
             _ => {}
+        }
+    }
+
+    fn push_expanded<'v, 'a>(v: &'v Value<'a>, out: &mut Vec<&'v Value<'a>>) {
+        match v {
+            Value::Array(items) => out.extend(items.iter()),
+            other => out.push(other),
         }
     }
 
@@ -819,6 +838,16 @@ pub mod value_sets {
             "http://hl7.org/fhir/ValueSet/quantity-comparator" => {
                 Some(matches!(code, "<" | "<=" | ">=" | ">"))
             }
+            // The vital-signs UCUM unit sets, concept lists taken verbatim from
+            // hl7.fhir.r4.core#4.0.1 (CC0). UCUM is freely embeddable.
+            "http://hl7.org/fhir/ValueSet/ucum-vitals-common" => Some(matches!(
+                code,
+                "%" | "cm" | "[in_i]" | "kg" | "g" | "[lb_av]" | "Cel" | "[degF]" | "mm[Hg]" | "/min"
+                    | "kg/m2" | "m2"
+            )),
+            "http://hl7.org/fhir/ValueSet/ucum-bodyweight" => Some(matches!(code, "kg" | "[lb_av]" | "g")),
+            "http://hl7.org/fhir/ValueSet/ucum-bodylength" => Some(matches!(code, "cm" | "[in_i]")),
+            "http://hl7.org/fhir/ValueSet/ucum-bodytemp" => Some(matches!(code, "Cel" | "[degF]")),
             _ => None,
         }
     }
@@ -1085,6 +1114,17 @@ mod tests {
         let r = probe_str(&PATIENT_OK.replace("\"male\"", "\"banana\""));
         assert!(r.contains("not in the bound value set"), "{r}");
         assert!(r.contains("\"code\":\"code-invalid\""), "{r}");
+    }
+
+    #[test]
+    fn primitive_with_only_extension_sibling_counts_as_present() {
+        // FHIR JSON: a primitive carrying only extensions is `_birthDate` with no `birthDate`.
+        let r = probe_str(&PATIENT_OK.replace(
+            "\"birthDate\":\"1970-01-01\"",
+            "\"_birthDate\":{\"extension\":[{\"url\":\"http://hl7.org/fhir/StructureDefinition/data-absent-reason\",\"valueCode\":\"unknown\"}]}",
+        ));
+        assert!(r.contains("\"valid\":true"), "{r}");
+        assert!(!r.contains("birthDate is required"), "{r}");
     }
 
     #[test]
