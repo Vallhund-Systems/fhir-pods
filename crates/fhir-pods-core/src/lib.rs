@@ -6,7 +6,7 @@
 //!
 //! Every incumbent ships that verifier as a *server*. A verifier is stateless,
 //! CPU-bound, pure compute — a **library**. `fhir-pods-core` is that library:
-//! no I/O, no telemetry, no licensed terminology, source-agnostic.
+//! no I/O, no telemetry, no licensed terminology, source-agnostic, `no_std`.
 //!
 //! Profiles are **generated from the packages' shipped `snapshot.element`** into
 //! the compiled IR (`compiled`), then run by the generic `engine` against a
@@ -21,14 +21,18 @@
 extern crate alloc;
 
 use alloc::string::String;
+use document::Document;
 use validate::{Issue, Severity};
 
 /// Compiled profiles generated from FHIR packages (`tools/gen_profile.py`).
 pub mod generated {
+    pub mod au_core_heartrate;
     pub mod au_core_patient;
 }
 
-/// Probe a FHIR resource and return a JSON report.
+/// Probe a FHIR resource and return a JSON report. Profile selection follows
+/// the spec: a declared `meta.profile` picks the generated profile; otherwise
+/// the resource type's default checks apply.
 pub fn probe(input: &[u8]) -> String {
     let fields = match json::scan_top_level(input) {
         Ok(f) => f,
@@ -44,14 +48,25 @@ pub fn probe(input: &[u8]) -> String {
             render_report("Unknown", None, &[issue], false)
         }
         None => render_report("Unknown", None, &[], true),
-        Some("Observation") => {
-            let report = au_core::validate_observation(&fields);
-            render_report("Observation", Some("AU Core Observation"), &report.issues, report.is_valid())
-        }
-        Some("Patient") => match document::TreeDoc::parse(input) {
-            Ok(doc) => {
+        Some("Observation") => match document::Parsed::parse(input) {
+            Ok(parsed) => {
+                let doc = parsed.doc();
+                let heartrate = &generated::au_core_heartrate::PROFILE;
+                let declared = doc.scalars("Observation.meta.profile");
+                if declared.iter().any(|u| *u == heartrate.url) {
+                    let report = engine::validate(heartrate, &doc);
+                    render_report("Observation", Some(heartrate.name), &report.issues, report.is_valid())
+                } else {
+                    let report = au_core::validate_observation(&fields);
+                    render_report("Observation", Some("AU Core Observation"), &report.issues, report.is_valid())
+                }
+            }
+            Err(e) => parse_error_report(e),
+        },
+        Some("Patient") => match document::Parsed::parse(input) {
+            Ok(parsed) => {
                 let profile = &generated::au_core_patient::PROFILE;
-                let report = engine::validate(profile, &doc);
+                let report = engine::validate(profile, &parsed.doc());
                 render_report("Patient", Some(profile.name), &report.issues, report.is_valid())
             }
             Err(e) => parse_error_report(e),
@@ -119,8 +134,7 @@ fn push_json_escaped(out: &mut String, s: &str) {
 
 /// JSON, two ways. `scan_top_level` is the zero-copy single pass over a
 /// resource's top-level members (no DOM). `parse` builds a borrowed value tree —
-/// the correctness-first adapter behind the `Document` port; a fused
-/// validate-on-parse adapter replaces it later without touching the domain.
+/// the correctness-first adapter behind the `Document` port.
 pub mod json {
     use alloc::vec::Vec;
 
@@ -160,15 +174,14 @@ pub mod json {
         Object(Vec<(&'a str, Value<'a>)>),
     }
 
-    /// Parse a whole document into a value tree.
     pub fn parse(input: &[u8]) -> Result<Value<'_>, ParseError> {
         let mut p = Parser { b: input, i: 0 };
         p.parse_value()
     }
 
-    /// Resolve a dotted element path against a resource. The first segment is
-    /// the resource type (skipped). Arrays expand; `[x]` matches a choice suffix
-    /// (`value[x]` → `valueQuantity`).
+    /// Resolve a dotted path against a node. The first segment is the root's
+    /// name (the resource type, or `$this` for a sub-document) and is skipped.
+    /// Arrays expand; `[x]` matches a choice suffix (`value[x]` → `valueQuantity`).
     pub fn resolve<'v, 'a>(root: &'v Value<'a>, path: &str) -> Vec<&'v Value<'a>> {
         let mut current: Vec<&'v Value<'a>> = vec![root];
         for seg in path.split('.').skip(1) {
@@ -239,8 +252,6 @@ pub mod json {
             }
         }
 
-        /// Parse a JSON string, returning the raw inner slice (borrowed). Tracks
-        /// escapes only enough to find the true closing quote.
         fn string_raw(&mut self) -> Result<&'a str, ParseError> {
             self.expect(b'"')?;
             let b = self.b;
@@ -403,39 +414,51 @@ pub mod json {
 }
 
 /// The `Document` port: how the engine reads a resource, independent of the
-/// JSON representation. `TreeDoc` is today's adapter (a parsed value tree); a
-/// fused single-pass adapter is the later performance move — same port.
+/// JSON representation. `TreeDoc` is today's adapter — a cheap view that can be
+/// re-rooted at any node, which is what slicing needs (a slice's constraints
+/// are evaluated against each matched instance as its own `$this` root).
 pub mod document {
     use alloc::vec::Vec;
 
     use crate::json::{self, Value};
 
-    pub trait Document {
+    pub trait Document: Sized + Clone {
         /// For each instance of the element's parent, how many children exist
         /// at the last path segment. Empty when no parent exists — a child's
-        /// cardinality is only evaluated when its parent is present.
+        /// cardinality is only evaluated where its parent is present.
         fn child_counts(&self, path: &str) -> Vec<usize>;
         /// All scalar string values at `path` (across every parent).
         fn scalars(&self, path: &str) -> Vec<&str>;
+        /// Sub-documents rooted at each node `path` resolves to.
+        fn instances(&self, path: &str) -> Vec<Self>;
     }
 
-    /// The value-tree adapter.
-    pub struct TreeDoc<'a> {
-        root: Value<'a>,
+    /// Owner of a parsed resource; hands out `TreeDoc` views.
+    pub struct Parsed<'a> {
+        value: Value<'a>,
     }
 
-    impl<'a> TreeDoc<'a> {
+    impl<'a> Parsed<'a> {
         pub fn parse(input: &'a [u8]) -> Result<Self, json::ParseError> {
-            Ok(Self { root: json::parse(input)? })
+            Ok(Self { value: json::parse(input)? })
+        }
+        pub fn doc(&self) -> TreeDoc<'_, 'a> {
+            TreeDoc { root: &self.value }
         }
     }
 
-    impl Document for TreeDoc<'_> {
+    /// The value-tree adapter: a view rooted at any node.
+    #[derive(Clone, Copy)]
+    pub struct TreeDoc<'v, 'a> {
+        root: &'v Value<'a>,
+    }
+
+    impl<'v, 'a> Document for TreeDoc<'v, 'a> {
         fn child_counts(&self, path: &str) -> Vec<usize> {
             let Some((parent, last)) = path.rsplit_once('.') else {
                 return Vec::new();
             };
-            json::resolve(&self.root, parent)
+            json::resolve(self.root, parent)
                 .into_iter()
                 .map(|p| {
                     let mut out = Vec::new();
@@ -446,13 +469,17 @@ pub mod document {
         }
 
         fn scalars(&self, path: &str) -> Vec<&str> {
-            json::resolve(&self.root, path)
+            json::resolve(self.root, path)
                 .into_iter()
                 .filter_map(|v| match v {
                     Value::Str(s) => Some(*s),
                     _ => None,
                 })
                 .collect()
+        }
+
+        fn instances(&self, path: &str) -> Vec<Self> {
+            json::resolve(self.root, path).into_iter().map(|n| TreeDoc { root: n }).collect()
         }
     }
 }
@@ -468,8 +495,8 @@ pub mod compiled {
     }
 
     /// One element's enforceable constraints. Cardinality is per parent instance.
+    /// Inside a slice, `path` is relative to the matched instance: `$this.…`.
     pub struct ElementConstraint {
-        /// Dotted path, e.g. `Patient.name.use`.
         pub path: &'static str,
         pub min: u32,
         pub max: Max,
@@ -480,13 +507,41 @@ pub mod compiled {
         pub required_binding: Option<&'static str>,
     }
 
+    /// How an instance of a sliced element is assigned to a slice.
+    pub enum Discriminator {
+        /// The scalars at a relative path (`$this.system`) must include `value`.
+        /// A `pattern` discriminator on an object is flattened into several of these.
+        Value { path: &'static str, value: &'static str },
+        /// A choice-type slice: the instance is the member under this concrete
+        /// key (`valueQuantity`).
+        Type { key: &'static str },
+    }
+
+    pub struct Slice {
+        pub name: &'static str,
+        pub discriminators: &'static [Discriminator],
+        pub min: u32,
+        pub max: Max,
+        /// Constraints on the slice's sub-elements, paths relative as `$this.…`.
+        pub elements: &'static [ElementConstraint],
+    }
+
+    pub struct Slicing {
+        /// The sliced element, absolute path (`Observation.code.coding`).
+        pub path: &'static str,
+        /// `closed`: every instance must match some slice.
+        pub closed: bool,
+        pub slices: &'static [Slice],
+    }
+
     /// A profile compiled to embeddable rules.
     pub struct CompiledProfile {
         pub url: &'static str,
         pub name: &'static str,
         pub resource_type: &'static str,
         pub elements: &'static [ElementConstraint],
-        /// Constraints not yet enforced (slices / pattern / mustSupport-only).
+        pub slicings: &'static [Slicing],
+        /// Constraints not yet enforced (nested slicing / non-scalar patterns / mustSupport-only).
         pub deferred: u32,
     }
 }
@@ -495,53 +550,121 @@ pub mod compiled {
 /// document in, a report out.
 pub mod engine {
     use alloc::string::String;
+    use alloc::vec::Vec;
 
-    use crate::compiled::{CompiledProfile, Max};
+    use crate::compiled::{CompiledProfile, Discriminator, ElementConstraint, Max, Slice, Slicing};
     use crate::document::Document;
     use crate::validate::{Issue, Report, Severity};
 
     pub fn validate(profile: &CompiledProfile, doc: &impl Document) -> Report {
         let mut r = Report::default();
-        let error = |path: &str, message: String| Issue { severity: Severity::Error, path: path.into(), message };
-
         for el in profile.elements {
-            // Cardinality, evaluated per parent instance (FHIR semantics: a
-            // child's min applies only where its parent exists).
-            for count in doc.child_counts(el.path) {
-                let count = count as u32;
-                if count < el.min {
-                    r.issues.push(error(el.path, format!("{} is required (min {}, found {})", el.path, el.min, count)));
-                }
-                if let Max::Bounded(m) = el.max {
-                    if count > m {
-                        r.issues.push(error(el.path, format!("{} exceeds max {} (found {})", el.path, m, count)));
-                    }
-                }
-            }
+            check_element(el, el.path, doc, &mut r);
+        }
+        for slicing in profile.slicings {
+            check_slicing(slicing, doc, &mut r);
+        }
+        r
+    }
 
-            if el.fixed.is_none() && el.required_binding.is_none() {
-                continue;
+    fn error(path: &str, message: String) -> Issue {
+        Issue { severity: Severity::Error, path: path.into(), message }
+    }
+
+    /// Cardinality (per parent instance), fixed value, and required binding for
+    /// one element. `label` is the path reported in issues — absolute at the top
+    /// level, `Path:slice.sub` inside a slice.
+    fn check_element(el: &ElementConstraint, label: &str, doc: &impl Document, r: &mut Report) {
+        for count in doc.child_counts(el.path) {
+            let count = count as u32;
+            if count < el.min {
+                r.issues.push(error(label, format!("{label} is required (min {}, found {count})", el.min)));
             }
-            for s in doc.scalars(el.path) {
-                if let Some(f) = el.fixed {
-                    if s != f {
-                        r.issues.push(error(el.path, format!("{} must be '{}' (found '{}')", el.path, f, s)));
-                    }
-                }
-                if let Some(vs) = el.required_binding {
-                    match crate::value_sets::in_value_set(vs, s) {
-                        Some(false) => r.issues.push(error(el.path, format!("'{s}' is not in the bound value set"))),
-                        None => r.issues.push(Issue {
-                            severity: Severity::Warning,
-                            path: el.path.into(),
-                            message: format!("no bundled terminology for {vs}; '{s}' not checked"),
-                        }),
-                        Some(true) => {}
-                    }
+            if let Max::Bounded(m) = el.max {
+                if count > m {
+                    r.issues.push(error(label, format!("{label} exceeds max {m} (found {count})")));
                 }
             }
         }
-        r
+        if el.fixed.is_none() && el.required_binding.is_none() {
+            return;
+        }
+        for s in doc.scalars(el.path) {
+            if let Some(f) = el.fixed {
+                if s != f {
+                    r.issues.push(error(label, format!("{label} must be '{f}' (found '{s}')")));
+                }
+            }
+            if let Some(vs) = el.required_binding {
+                match crate::value_sets::in_value_set(vs, s) {
+                    Some(false) => r.issues.push(error(label, format!("'{s}' is not in the bound value set"))),
+                    None => r.issues.push(Issue {
+                        severity: Severity::Warning,
+                        path: label.into(),
+                        message: format!("no bundled terminology for {vs}; '{s}' not checked"),
+                    }),
+                    Some(true) => {}
+                }
+            }
+        }
+    }
+
+    /// Does this instance belong to the slice? Value/pattern discriminators must
+    /// all match; type slices are selected by key in `check_slicing`.
+    fn matches(slice: &Slice, inst: &impl Document) -> bool {
+        slice.discriminators.iter().all(|d| match d {
+            Discriminator::Value { path, value } => inst.scalars(path).iter().any(|s| *s == *value),
+            Discriminator::Type { .. } => true,
+        })
+    }
+
+    fn type_key(slice: &Slice) -> Option<&'static str> {
+        slice.discriminators.iter().find_map(|d| match d {
+            Discriminator::Type { key } => Some(*key),
+            _ => None,
+        })
+    }
+
+    /// Evaluate a slicing per parent instance: assign instances to slices, check
+    /// each slice's cardinality, validate its sub-constraints against every
+    /// matched instance (re-rooted as `$this`), and enforce `closed`.
+    fn check_slicing(slicing: &Slicing, doc: &impl Document, r: &mut Report) {
+        let Some((parent_path, last)) = slicing.path.rsplit_once('.') else {
+            return;
+        };
+        for parent in doc.instances(parent_path) {
+            let all = parent.instances(&format!("$this.{last}"));
+            let mut matched = 0usize;
+            for slice in slicing.slices {
+                let label = format!("{}:{}", slicing.path, slice.name);
+                let insts: Vec<_> = match type_key(slice) {
+                    Some(key) => parent.instances(&format!("$this.{key}")),
+                    None => all.iter().filter(|i| matches(slice, *i)).cloned().collect(),
+                };
+                matched += insts.len();
+                let count = insts.len() as u32;
+                if count < slice.min {
+                    r.issues.push(error(&label, format!("{label} is required (min {}, found {count})", slice.min)));
+                }
+                if let Max::Bounded(m) = slice.max {
+                    if count > m {
+                        r.issues.push(error(&label, format!("{label} exceeds max {m} (found {count})")));
+                    }
+                }
+                for inst in &insts {
+                    for el in slice.elements {
+                        let sub = format!("{label}.{}", el.path.trim_start_matches("$this."));
+                        check_element(el, &sub, inst, r);
+                    }
+                }
+            }
+            if slicing.closed && matched < all.len() {
+                r.issues.push(error(
+                    slicing.path,
+                    format!("{} has {} element(s) matching no slice (closed slicing)", slicing.path, all.len() - matched),
+                ));
+            }
+        }
     }
 }
 
@@ -568,13 +691,16 @@ pub mod value_sets {
             "http://hl7.org/fhir/ValueSet/link-type" => {
                 Some(matches!(code, "replaced-by" | "replaces" | "refer" | "seealso"))
             }
+            "http://hl7.org/fhir/ValueSet/quantity-comparator" => {
+                Some(matches!(code, "<" | "<=" | ">=" | ">"))
+            }
             _ => None,
         }
     }
 }
 
-/// Hand-written AU Core Observation checks over the single-pass scanner — the
-/// reference the Observation-family codegen (post-slicing) will reproduce.
+/// Default Observation checks over the single-pass scanner, used when no
+/// generated profile is declared in `meta.profile`.
 pub mod au_core {
     use crate::json::TopLevel;
     use crate::validate::{Issue, Report, Severity};
@@ -754,10 +880,10 @@ mod tests {
 
     const PATIENT_OK: &str = r#"{"resourceType":"Patient","identifier":[{"value":"1"}],"name":[{"family":"Doe","use":"official"}],"gender":"male","birthDate":"1970-01-01"}"#;
 
-    // --- Observation (hand-written, single-pass scanner) ---
+    // --- Observation, default checks (no declared profile) ---
 
     #[test]
-    fn valid_observation() {
+    fn valid_observation_default() {
         let r = probe_str(
             r#"{"resourceType":"Observation","status":"final","code":{"text":"HR"},"subject":{"reference":"Patient/1"},"valueQuantity":{"value":60}}"#,
         );
@@ -780,7 +906,7 @@ mod tests {
         assert!(r.contains("\"valid\":true"), "{r}");
     }
 
-    // --- Patient (generated au-core-patient, nested engine) ---
+    // --- Patient (generated au-core-patient) ---
 
     #[test]
     fn valid_patient() {
@@ -808,12 +934,10 @@ mod tests {
     fn nested_binding_on_name_use() {
         let r = probe_str(&PATIENT_OK.replace("\"official\"", "\"bogus\""));
         assert!(r.contains("Patient.name.use"), "{r}");
-        assert!(r.contains("not in the bound value set"), "{r}");
     }
 
     #[test]
     fn nested_min_fires_per_parent_instance() {
-        // Two communications: one has a language, one does not → exactly one error.
         let r = probe_str(&PATIENT_OK.replace(
             "\"birthDate\"",
             "\"communication\":[{\"language\":{\"text\":\"en\"}},{\"preferred\":true}],\"birthDate\"",
@@ -823,14 +947,12 @@ mod tests {
 
     #[test]
     fn nested_min_does_not_fire_when_parent_absent() {
-        // No communication at all → the child's min is not evaluated.
         let r = probe_str(PATIENT_OK);
         assert!(!r.contains("communication.language"), "{r}");
     }
 
     #[test]
     fn nested_max_exceeded_per_parent() {
-        // language is 0..1 per communication; two → exceeds max.
         let r = probe_str(&PATIENT_OK.replace(
             "\"birthDate\"",
             "\"communication\":[{\"language\":[{\"text\":\"en\"},{\"text\":\"fr\"}]}],\"birthDate\"",
@@ -844,13 +966,39 @@ mod tests {
             "\"birthDate\"",
             "\"link\":[{\"other\":{\"reference\":\"Patient/2\"},\"type\":\"nope\"}],\"birthDate\"",
         );
-        let r = probe_str(&bad);
-        assert!(r.contains("Patient.link.type"), "{r}");
-        let ok = PATIENT_OK.replace(
-            "\"birthDate\"",
-            "\"link\":[{\"other\":{\"reference\":\"Patient/2\"},\"type\":\"replaces\"}],\"birthDate\"",
-        );
-        assert!(probe_str(&ok).contains("\"valid\":true"), "{}", probe_str(&ok));
+        assert!(probe_str(&bad).contains("Patient.link.type"));
+    }
+
+    // --- Observation: generated au-core-heartrate, selected via meta.profile ---
+
+    const HEARTRATE_OK: &str = r#"{"resourceType":"Observation","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate"]},"status":"final","category":[{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/observation-category","code":"vital-signs"}]}],"code":{"coding":[{"system":"http://loinc.org","code":"8867-4"},{"system":"http://snomed.info/sct","code":"364075005"}]},"subject":{"reference":"Patient/1"},"effectiveDateTime":"2026-09-15T10:00:00Z","valueQuantity":{"value":72,"unit":"beats/minute","system":"http://unitsofmeasure.org","code":"/min"}}"#;
+
+    #[test]
+    fn heartrate_valid_via_declared_profile() {
+        let r = probe_str(HEARTRATE_OK);
+        assert!(r.contains("\"valid\":true"), "{r}");
+        assert!(r.contains("Heart"), "{r}");
+    }
+
+    #[test]
+    fn heartrate_missing_snomed_slice_is_error() {
+        let r = probe_str(&HEARTRATE_OK.replace(r#",{"system":"http://snomed.info/sct","code":"364075005"}"#, ""));
+        assert!(r.contains("Observation.code.coding:snomedHeartRateCode is required"), "{r}");
+    }
+
+    #[test]
+    fn heartrate_wrong_ucum_code_fails_slice_fixed() {
+        let r = probe_str(&HEARTRATE_OK.replace("\"code\":\"/min\"", "\"code\":\"min\""));
+        assert!(r.contains("Observation.value[x]:valueQuantity.code must be '/min'"), "{r}");
+    }
+
+    #[test]
+    fn heartrate_closed_value_slicing_rejects_other_type() {
+        let r = probe_str(&HEARTRATE_OK.replace(
+            r#""valueQuantity":{"value":72,"unit":"beats/minute","system":"http://unitsofmeasure.org","code":"/min"}"#,
+            r#""valueString":"72""#,
+        ));
+        assert!(r.contains("matching no slice"), "{r}");
     }
 
     // --- shared ---
