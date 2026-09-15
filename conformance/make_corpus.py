@@ -27,7 +27,15 @@ HEARTRATE = {
 PATIENT = {
     "resourceType": "Patient",
     "meta": {"profile": [PT]},
-    "identifier": [{"system": "http://example.org/mrn", "value": "12345"}],
+    # A realistic AU medical record number. The reference validator rejects
+    # example.org URLs by policy and requires an AU Core identifier to conform
+    # to one of the AU Base identifier profiles — an MRN needs type + assigner.
+    "identifier": [{
+        "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "MR"}], "text": "Medical Record Number"},
+        "system": "urn:oid:1.2.36.146.595.217.0.1",
+        "value": "12345",
+        "assigner": {"display": "Royal Example Hospital"},
+    }],
     "name": [{"family": "Doe", "given": ["Jane"], "use": "official"}],
     "gender": "female",
     "birthDate": "1970-01-01",

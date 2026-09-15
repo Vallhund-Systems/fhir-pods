@@ -253,6 +253,24 @@ treat `$validate.profile` `uri`→`canonical` + R5's `usageContext` as additive.
 - **Differential-test against `validator_cli.jar`** — the oracle. "Passing" for
   the *library* = our `OperationOutcome` matches its `OperationOutcome` on a
   corpus of AU Core instances (valid + deliberately broken).
+
+  **First oracle run (2026-09-15): 9/9 verdict agreement** (`conformance/run.py`,
+  JDK 17, `-tx n/a`) — heart-rate including every slicing case (missing SNOMED
+  slice, wrong UCUM code, closed-slicing rejection of `valueString`, missing
+  mandatory) and patient including the nested `name.use` binding. The one
+  transient miss was a *fixture* defect: the reference validator **rejects
+  `example.org` URLs by policy**, so a "valid" patient with an example MRN system
+  failed — fixed by using a realistic AU MRN (type `MR` + OID system + assigner).
+  Two real backlog items surfaced:
+  1. **`type.profile` choice conformance.** AU Core `Patient.identifier` must
+     conform to *one of* the AU Base identifier profiles (`au-ihi`, `au-medicare`,
+     `au-medicalrecordnumber`, …, or plain `Identifier`). We don't model
+     "conforms to at least one of these profiles" yet — it needs the
+     `hl7.fhir.au.base` datatype profiles generated plus one engine rule.
+  2. **The example-URL policy.** A best-practice check, not spec — decide whether
+     to mirror it behind a policy flag for full bug-for-bug parity.
+  Next widening: issue-level (not just verdict-level) diffing once the
+  `OperationOutcome` wire layer lands, and more profiles in the corpus.
 - **Inferno** (ONC g10) and **Touchstone** are **API-behavior** harnesses
   (SMART launch, Bulk Data, search, US Core over the wire) — relevant only if we
   later ship a *server* surface, not for the embeddable validator. Note them,

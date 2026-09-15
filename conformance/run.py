@@ -23,6 +23,28 @@ JAR_URL = "https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/downloa
 IG = "hl7.fhir.au.core#2.0.0"
 
 
+def java_bin():
+    """The JVM to run the oracle with: $JAVA (an explicit binary), else
+    $JAVA_HOME/bin/java, else `java` on PATH."""
+    if os.environ.get("JAVA"):
+        return os.environ["JAVA"]
+    home = os.environ.get("JAVA_HOME")
+    if home:
+        return os.path.join(home, "bin", "java")
+    return "java"
+
+
+JAVA = java_bin()
+
+
+def jvm_starts():
+    """A real JVM has to start — macOS's /usr/bin/java stub exists but has no runtime."""
+    try:
+        return subprocess.run([JAVA, "-version"], capture_output=True).returncode == 0
+    except OSError:
+        return False
+
+
 def ours(probe, path):
     r = subprocess.run([probe, path], capture_output=True, text=True)
     return "valid" if r.returncode == 0 else "invalid"
@@ -33,7 +55,7 @@ def oracle(path, profile):
     same offline posture as our engine; error/fatal issues => invalid."""
     out = path[:-5] + ".oracle.json"
     subprocess.run(
-        ["java", "-jar", JAR, path, "-version", "4.0", "-ig", IG, "-profile", profile, "-tx", "n/a", "-output", out],
+        [JAVA, "-jar", JAR, path, "-version", "4.0", "-ig", IG, "-profile", profile, "-tx", "n/a", "-output", out],
         capture_output=True, text=True,
     )
     try:
@@ -53,14 +75,15 @@ def main():
     subprocess.check_call(["cargo", "build", "-q", "-p", "fhir-pods-core", "--example", "probe"], cwd=ROOT)
     probe = os.path.join(ROOT, "target", "debug", "examples", "probe")
 
-    # macOS ships a /usr/bin/java stub that exists but has no runtime, so
-    # `which` is not enough — the JVM has to actually start.
-    have_java = subprocess.run(["java", "-version"], capture_output=True).returncode == 0
+    have_java = jvm_starts()
     if have_java and not os.path.exists(JAR):
         print("==> fetching validator_cli.jar")
         urllib.request.urlretrieve(JAR_URL, JAR)
     if not have_java:
-        print("!! Java not found: the oracle (validator_cli.jar) needs Java 11+. Running OUR side only.\n")
+        print(
+            "!! No JVM: the oracle (validator_cli.jar) needs Java 11+ — set JAVA_HOME (or JAVA) to a JDK. "
+            "Running OUR side only.\n"
+        )
 
     manifest = json.load(open(os.path.join(CORPUS, "manifest.json")))
     print(f"{'fixture':<28} {'expect':<8} {'ours':<8} {'oracle':<8} status")
