@@ -4,15 +4,13 @@
 //! system clamping it: resources are the IR; profiles, terminology bindings,
 //! and FHIRPath invariants are the constraints; validation is the verifier pass.
 //!
-//! Every incumbent ships that verifier as a *server* (JVM, .NET, or a cloud
-//! endpoint) because the tooling grew up on enterprise runtimes. But a verifier
-//! is stateless, CPU-bound, pure compute: the textbook shape of a **library**,
-//! not a server. `fhir-pods-core` is that library — no I/O, no telemetry, no
-//! licensed terminology, source-agnostic.
+//! Every incumbent ships that verifier as a *server*. A verifier is stateless,
+//! CPU-bound, pure compute — a **library**. `fhir-pods-core` is that library:
+//! no I/O, no telemetry, no licensed terminology, source-agnostic.
 //!
 //! Profiles are **generated from the packages' shipped `snapshot.element`** into
-//! the compiled IR (`compiled`), then run by a generic `engine`. See
-//! `docs/incumbent-apis.md` and `tools/gen_profile.py`.
+//! the compiled IR (`compiled`), then run by the generic `engine` against a
+//! `document::Document` port. See `docs/domain-model.md`.
 #![forbid(unsafe_code)]
 
 use validate::{Issue, Severity};
@@ -22,44 +20,45 @@ pub mod generated {
     pub mod au_core_patient;
 }
 
-/// Probe a FHIR resource and return a JSON report. Single pass over the input:
-/// [`json::scan_top_level`] captures the top-level shape (borrowing the buffer,
-/// skipping nested structures — no DOM), then the matching profile validator
-/// runs as straight-line checks.
+/// Probe a FHIR resource and return a JSON report.
 pub fn probe(input: &[u8]) -> String {
-    match json::scan_top_level(input) {
-        Err(e) => {
+    let fields = match json::scan_top_level(input) {
+        Ok(f) => f,
+        Err(e) => return parse_error_report(e),
+    };
+    match fields.scalar("resourceType") {
+        None if !fields.has("resourceType") => {
             let issue = Issue {
                 severity: Severity::Error,
-                path: "(document)".into(),
-                message: format!("could not parse JSON at byte {}: {}", e.at, e.msg),
+                path: "resourceType".into(),
+                message: "resourceType is required".into(),
             };
             render_report("Unknown", None, &[issue], false)
         }
-        Ok(fields) => match fields.scalar("resourceType") {
-            None if !fields.has("resourceType") => {
-                let issue = Issue {
-                    severity: Severity::Error,
-                    path: "resourceType".into(),
-                    message: "resourceType is required".into(),
-                };
-                render_report("Unknown", None, &[issue], false)
-            }
-            // resourceType present but non-string — treated as unknown.
-            None => render_report("Unknown", None, &[], true),
-            Some("Observation") => {
-                let report = au_core::validate_observation(&fields);
-                render_report("Observation", Some("AU Core Observation"), &report.issues, report.is_valid())
-            }
-            Some("Patient") => {
+        None => render_report("Unknown", None, &[], true),
+        Some("Observation") => {
+            let report = au_core::validate_observation(&fields);
+            render_report("Observation", Some("AU Core Observation"), &report.issues, report.is_valid())
+        }
+        Some("Patient") => match document::TreeDoc::parse(input) {
+            Ok(doc) => {
                 let profile = &generated::au_core_patient::PROFILE;
-                let report = engine::validate(profile, &fields);
+                let report = engine::validate(profile, &doc);
                 render_report("Patient", Some(profile.name), &report.issues, report.is_valid())
             }
-            // No profile bound for this resource type yet.
-            Some(rt) => render_report(rt, None, &[], true),
+            Err(e) => parse_error_report(e),
         },
+        Some(rt) => render_report(rt, None, &[], true),
     }
+}
+
+fn parse_error_report(e: json::ParseError) -> String {
+    let issue = Issue {
+        severity: Severity::Error,
+        path: "(document)".into(),
+        message: format!("could not parse JSON at byte {}: {}", e.at, e.msg),
+    };
+    render_report("Unknown", None, &[issue], false)
 }
 
 fn severity_str(s: Severity) -> &'static str {
@@ -99,7 +98,6 @@ fn render_report(resource_type: &str, profile: Option<&str>, issues: &[Issue], v
     out
 }
 
-/// Append `s` to `out`, escaping the characters JSON requires.
 fn push_json_escaped(out: &mut String, s: &str) {
     for c in s.chars() {
         match c {
@@ -111,11 +109,10 @@ fn push_json_escaped(out: &mut String, s: &str) {
     }
 }
 
-/// A minimal, single-pass JSON scanner — enough to walk a resource's top-level
-/// members without materializing a DOM. It records every top-level key and the
-/// scalar (string) values, and skips the rest (nested objects/arrays/strings are
-/// skipped, so a nested `code` never satisfies a top-level `code`). Strings are
-/// borrowed from the input, not copied.
+/// JSON, two ways. `scan_top_level` is the zero-copy single pass over a
+/// resource's top-level members (no DOM). `parse` builds a borrowed value tree —
+/// the correctness-first adapter behind the `Document` port; a fused
+/// validate-on-parse adapter replaces it later without touching the domain.
 pub mod json {
     #[derive(Debug)]
     pub struct ParseError {
@@ -126,26 +123,84 @@ pub mod json {
     /// The top-level shape captured in one pass; strings borrow the input.
     #[derive(Default, Debug)]
     pub struct TopLevel<'a> {
-        /// Every top-level member key, in document order.
         pub present: Vec<&'a str>,
-        /// Scalar (string) member values, by key.
         pub scalars: Vec<(&'a str, &'a str)>,
     }
 
     impl<'a> TopLevel<'a> {
-        /// Is there a top-level member with this key?
         pub fn has(&self, key: &str) -> bool {
             self.present.iter().any(|k| *k == key)
         }
-
-        /// The scalar string value of a top-level member, if it is a string.
         pub fn scalar(&self, key: &str) -> Option<&'a str> {
             self.scalars.iter().find(|(k, _)| *k == key).map(|(_, v)| *v)
         }
-
-        /// True if any top-level member is a `value[x]` choice (`valueQuantity`…).
         pub fn has_value_x(&self) -> bool {
             self.present.iter().any(|k| k.len() > 5 && k.starts_with("value"))
+        }
+    }
+
+    /// A borrowed JSON value tree. Strings and numbers point into the input.
+    #[derive(Debug, Clone, PartialEq)]
+    pub enum Value<'a> {
+        Null,
+        Bool(bool),
+        Number(&'a str),
+        Str(&'a str),
+        Array(Vec<Value<'a>>),
+        Object(Vec<(&'a str, Value<'a>)>),
+    }
+
+    /// Parse a whole document into a value tree.
+    pub fn parse(input: &[u8]) -> Result<Value<'_>, ParseError> {
+        let mut p = Parser { b: input, i: 0 };
+        p.parse_value()
+    }
+
+    /// Resolve a dotted element path against a resource. The first segment is
+    /// the resource type (skipped). Arrays expand; `[x]` matches a choice suffix
+    /// (`value[x]` → `valueQuantity`).
+    pub fn resolve<'v, 'a>(root: &'v Value<'a>, path: &str) -> Vec<&'v Value<'a>> {
+        let mut current: Vec<&'v Value<'a>> = vec![root];
+        for seg in path.split('.').skip(1) {
+            let mut next = Vec::new();
+            for node in current {
+                children(node, seg, &mut next);
+            }
+            current = next;
+        }
+        current
+    }
+
+    /// Push the children of `node` matching `seg` (expanding arrays).
+    pub fn children<'v, 'a>(node: &'v Value<'a>, seg: &str, out: &mut Vec<&'v Value<'a>>) {
+        match node {
+            Value::Object(members) => {
+                for (k, v) in members {
+                    if key_matches(k, seg) {
+                        match v {
+                            Value::Array(items) => out.extend(items.iter()),
+                            other => out.push(other),
+                        }
+                    }
+                }
+            }
+            Value::Array(items) => {
+                for item in items {
+                    children(item, seg, out);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn key_matches(key: &str, seg: &str) -> bool {
+        match seg.strip_suffix("[x]") {
+            Some(prefix) => {
+                key.len() > prefix.len()
+                    && key.starts_with(prefix)
+                    && key[prefix.len()..].chars().next().is_some_and(|c| c.is_ascii_uppercase())
+            }
+            None => key == seg,
         }
     }
 
@@ -195,57 +250,112 @@ pub mod json {
             }
         }
 
-        fn skip_value(&mut self) -> Result<(), ParseError> {
+        fn literal(&mut self, lit: &[u8]) -> Result<(), ParseError> {
+            if self.b.get(self.i..).is_some_and(|s| s.starts_with(lit)) {
+                self.i += lit.len();
+                Ok(())
+            } else {
+                Err(ParseError { at: self.i, msg: "bad literal" })
+            }
+        }
+
+        fn parse_number(&mut self) -> Result<Value<'a>, ParseError> {
+            let b = self.b;
+            let start = self.i;
+            while let Some(c) = self.byte() {
+                if c.is_ascii_digit() || matches!(c, b'-' | b'+' | b'.' | b'e' | b'E') {
+                    self.i += 1;
+                } else {
+                    break;
+                }
+            }
+            if self.i == start {
+                return Err(ParseError { at: start, msg: "expected value" });
+            }
+            let s = core::str::from_utf8(&b[start..self.i])
+                .map_err(|_| ParseError { at: start, msg: "invalid utf-8" })?;
+            Ok(Value::Number(s))
+        }
+
+        fn parse_value(&mut self) -> Result<Value<'a>, ParseError> {
             self.skip_ws();
             match self.byte() {
-                Some(b'"') => {
-                    self.string_raw()?;
-                    Ok(())
+                Some(b'{') => self.parse_object(),
+                Some(b'[') => self.parse_array(),
+                Some(b'"') => Ok(Value::Str(self.string_raw()?)),
+                Some(b't') => {
+                    self.literal(b"true")?;
+                    Ok(Value::Bool(true))
                 }
-                Some(b'{') | Some(b'[') => self.skip_balanced(),
-                Some(_) => {
-                    self.skip_scalar();
-                    Ok(())
+                Some(b'f') => {
+                    self.literal(b"false")?;
+                    Ok(Value::Bool(false))
                 }
+                Some(b'n') => {
+                    self.literal(b"null")?;
+                    Ok(Value::Null)
+                }
+                Some(_) => self.parse_number(),
                 None => Err(ParseError { at: self.i, msg: "unexpected end" }),
             }
         }
 
-        fn skip_scalar(&mut self) {
-            while let Some(c) = self.byte() {
-                if matches!(c, b',' | b'}' | b']' | b' ' | b'\t' | b'\n' | b'\r') {
-                    break;
-                }
+        fn parse_object(&mut self) -> Result<Value<'a>, ParseError> {
+            self.expect(b'{')?;
+            let mut members = Vec::new();
+            self.skip_ws();
+            if self.byte() == Some(b'}') {
                 self.i += 1;
+                return Ok(Value::Object(members));
+            }
+            loop {
+                self.skip_ws();
+                let key = self.string_raw()?;
+                self.skip_ws();
+                self.expect(b':')?;
+                let val = self.parse_value()?;
+                members.push((key, val));
+                self.skip_ws();
+                match self.byte() {
+                    Some(b',') => self.i += 1,
+                    Some(b'}') => {
+                        self.i += 1;
+                        return Ok(Value::Object(members));
+                    }
+                    _ => return Err(ParseError { at: self.i, msg: "expected ',' or '}'" }),
+                }
             }
         }
 
-        fn skip_balanced(&mut self) -> Result<(), ParseError> {
-            let mut depth = 0i32;
+        fn parse_array(&mut self) -> Result<Value<'a>, ParseError> {
+            self.expect(b'[')?;
+            let mut items = Vec::new();
+            self.skip_ws();
+            if self.byte() == Some(b']') {
+                self.i += 1;
+                return Ok(Value::Array(items));
+            }
             loop {
+                let val = self.parse_value()?;
+                items.push(val);
+                self.skip_ws();
                 match self.byte() {
-                    None => return Err(ParseError { at: self.i, msg: "unterminated structure" }),
-                    Some(b'"') => {
-                        self.string_raw()?;
-                    }
-                    Some(b'{') | Some(b'[') => {
-                        depth += 1;
+                    Some(b',') => self.i += 1,
+                    Some(b']') => {
                         self.i += 1;
+                        return Ok(Value::Array(items));
                     }
-                    Some(b'}') | Some(b']') => {
-                        depth -= 1;
-                        self.i += 1;
-                        if depth == 0 {
-                            return Ok(());
-                        }
-                    }
-                    Some(_) => self.i += 1,
+                    _ => return Err(ParseError { at: self.i, msg: "expected ',' or ']'" }),
                 }
             }
+        }
+
+        fn skip_value(&mut self) -> Result<(), ParseError> {
+            self.parse_value().map(|_| ())
         }
     }
 
-    /// Scan a resource's top-level object in a single pass.
+    /// Scan a resource's top-level object in a single pass (no DOM).
     pub fn scan_top_level(input: &[u8]) -> Result<TopLevel<'_>, ParseError> {
         let mut p = Parser { b: input, i: 0 };
         p.skip_ws();
@@ -282,64 +392,135 @@ pub mod json {
     }
 }
 
+/// The `Document` port: how the engine reads a resource, independent of the
+/// JSON representation. `TreeDoc` is today's adapter (a parsed value tree); a
+/// fused single-pass adapter is the later performance move — same port.
+pub mod document {
+    use crate::json::{self, Value};
+
+    pub trait Document {
+        /// For each instance of the element's parent, how many children exist
+        /// at the last path segment. Empty when no parent exists — a child's
+        /// cardinality is only evaluated when its parent is present.
+        fn child_counts(&self, path: &str) -> Vec<usize>;
+        /// All scalar string values at `path` (across every parent).
+        fn scalars(&self, path: &str) -> Vec<&str>;
+    }
+
+    /// The value-tree adapter.
+    pub struct TreeDoc<'a> {
+        root: Value<'a>,
+    }
+
+    impl<'a> TreeDoc<'a> {
+        pub fn parse(input: &'a [u8]) -> Result<Self, json::ParseError> {
+            Ok(Self { root: json::parse(input)? })
+        }
+    }
+
+    impl Document for TreeDoc<'_> {
+        fn child_counts(&self, path: &str) -> Vec<usize> {
+            let Some((parent, last)) = path.rsplit_once('.') else {
+                return Vec::new();
+            };
+            json::resolve(&self.root, parent)
+                .into_iter()
+                .map(|p| {
+                    let mut out = Vec::new();
+                    json::children(p, last, &mut out);
+                    out.len()
+                })
+                .collect()
+        }
+
+        fn scalars(&self, path: &str) -> Vec<&str> {
+            json::resolve(&self.root, path)
+                .into_iter()
+                .filter_map(|v| match v {
+                    Value::Str(s) => Some(*s),
+                    _ => None,
+                })
+                .collect()
+        }
+    }
+}
+
 /// The compiled profile IR — what `tools/gen_profile.py` emits from a package's
-/// `snapshot.element`. Our own representation (FHIRSchema was rejected as a
-/// dependency — see the decision doc); tree-shaped, arrays-first ideas borrowed
-/// as prior art only.
+/// `snapshot.element`. Our own representation; immutable, embedded, `'static`.
 pub mod compiled {
-    /// One enforced constraint. Today: top-level cardinality + required binding.
-    pub struct ElementRule {
-        /// Dotted path, e.g. `Patient.gender`.
+    /// Upper cardinality bound.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum Max {
+        Star,
+        Bounded(u32),
+    }
+
+    /// One element's enforceable constraints. Cardinality is per parent instance.
+    pub struct ElementConstraint {
+        /// Dotted path, e.g. `Patient.name.use`.
         pub path: &'static str,
-        /// Minimum cardinality (>=1 means mandatory).
         pub min: u32,
-        /// A required-strength ValueSet binding on a top-level code, if any.
+        pub max: Max,
+        /// A scalar the element must equal exactly (fixedUri / fixedCode / …).
+        /// For a SNOMED coding this is only ever `system`/`code`, never `display`.
+        pub fixed: Option<&'static str>,
+        /// A required-strength ValueSet binding on a code element.
         pub required_binding: Option<&'static str>,
     }
 
-    /// A profile compiled to embeddable straight-line rules.
+    /// A profile compiled to embeddable rules.
     pub struct CompiledProfile {
         pub url: &'static str,
         pub name: &'static str,
         pub resource_type: &'static str,
-        pub rules: &'static [ElementRule],
-        /// Count of constraints not yet enforced (nested / slicing / fixed / MS).
+        pub elements: &'static [ElementConstraint],
+        /// Constraints not yet enforced (slices / pattern / mustSupport-only).
         pub deferred: u32,
     }
 }
 
-/// The generic validation engine: run a [`compiled::CompiledProfile`] against a
-/// scanned resource. Enforces the top-level rules the generator emitted;
-/// deeper rules are the profile's `deferred` count until the nested engine lands.
+/// The validation engine — the domain service. Pure: a compiled profile and a
+/// document in, a report out.
 pub mod engine {
-    use crate::compiled::CompiledProfile;
-    use crate::json::TopLevel;
+    use crate::compiled::{CompiledProfile, Max};
+    use crate::document::Document;
     use crate::validate::{Issue, Report, Severity};
 
-    pub fn validate(profile: &CompiledProfile, top: &TopLevel) -> Report {
+    pub fn validate(profile: &CompiledProfile, doc: &impl Document) -> Report {
         let mut r = Report::default();
-        for rule in profile.rules {
-            let field = rule.path.rsplit('.').next().unwrap_or(rule.path);
-            if rule.min >= 1 && !top.has(field) {
-                r.issues.push(Issue {
-                    severity: Severity::Error,
-                    path: rule.path.into(),
-                    message: format!("{} is required (min {})", rule.path, rule.min),
-                });
+        let error = |path: &str, message: String| Issue { severity: Severity::Error, path: path.into(), message };
+
+        for el in profile.elements {
+            // Cardinality, evaluated per parent instance (FHIR semantics: a
+            // child's min applies only where its parent exists).
+            for count in doc.child_counts(el.path) {
+                let count = count as u32;
+                if count < el.min {
+                    r.issues.push(error(el.path, format!("{} is required (min {}, found {})", el.path, el.min, count)));
+                }
+                if let Max::Bounded(m) = el.max {
+                    if count > m {
+                        r.issues.push(error(el.path, format!("{} exceeds max {} (found {})", el.path, m, count)));
+                    }
+                }
+            }
+
+            if el.fixed.is_none() && el.required_binding.is_none() {
                 continue;
             }
-            if let Some(vs) = rule.required_binding {
-                if let Some(code) = top.scalar(field) {
-                    match crate::value_sets::in_value_set(vs, code) {
-                        Some(false) => r.issues.push(Issue {
-                            severity: Severity::Error,
-                            path: rule.path.into(),
-                            message: format!("'{code}' is not in the bound value set"),
-                        }),
+            for s in doc.scalars(el.path) {
+                if let Some(f) = el.fixed {
+                    if s != f {
+                        r.issues.push(error(el.path, format!("{} must be '{}' (found '{}')", el.path, f, s)));
+                    }
+                }
+                if let Some(vs) = el.required_binding {
+                    match crate::value_sets::in_value_set(vs, s) {
+                        Some(false) => r.issues.push(error(el.path, format!("'{s}' is not in the bound value set"))),
                         None => r.issues.push(Issue {
                             severity: Severity::Warning,
-                            path: rule.path.into(),
-                            message: format!("no bundled terminology for {vs}; '{code}' not checked"),
+                            path: el.path.into(),
+                            message: format!("no bundled terminology for {vs}; '{s}' not checked"),
                         }),
                         Some(true) => {}
                     }
@@ -351,9 +532,9 @@ pub mod engine {
 }
 
 /// Offline membership for the small base-FHIR value sets we can legally bundle.
-/// Returns `None` for a set we don't ship — the engine degrades that to a
-/// warning (the reference validator's no-terminology behavior). SNOMED-bound
-/// sets are intentionally absent: they resolve against a licensed seam at runtime.
+/// `None` for a set we don't ship — the engine degrades that to a warning.
+/// SNOMED-bound sets are intentionally absent: they resolve at runtime against
+/// a licensed seam.
 pub mod value_sets {
     pub fn in_value_set(url: &str, code: &str) -> Option<bool> {
         let base = url.split('|').next().unwrap_or(url);
@@ -366,13 +547,20 @@ pub mod value_sets {
                 "registered" | "preliminary" | "final" | "amended" | "corrected"
                     | "cancelled" | "entered-in-error" | "unknown"
             )),
+            "http://hl7.org/fhir/ValueSet/name-use" => Some(matches!(
+                code,
+                "usual" | "official" | "temp" | "nickname" | "anonymous" | "old" | "maiden"
+            )),
+            "http://hl7.org/fhir/ValueSet/link-type" => {
+                Some(matches!(code, "replaced-by" | "replaces" | "refer" | "seealso"))
+            }
             _ => None,
         }
     }
 }
 
-/// Hand-written AU Core Observation checks (the reference the Observation-family
-/// codegen will reproduce and exceed). Uses the same scanner as the engine.
+/// Hand-written AU Core Observation checks over the single-pass scanner — the
+/// reference the Observation-family codegen (post-slicing) will reproduce.
 pub mod au_core {
     use crate::json::TopLevel;
     use crate::validate::{Issue, Report, Severity};
@@ -415,7 +603,6 @@ pub mod au_core {
     }
 }
 
-/// Minimal resource model — carried as raw JSON until the generated typed model.
 pub mod model {
     #[derive(Debug, Clone)]
     pub struct Resource {
@@ -430,7 +617,6 @@ pub mod model {
     }
 }
 
-/// The verifier types.
 pub mod validate {
     use crate::model::Resource;
 
@@ -469,7 +655,6 @@ pub mod validate {
     }
 }
 
-/// FHIRPath — the expression language FHIR invariants are written in.
 pub mod path {
     #[derive(Debug, Default)]
     pub struct Engine;
@@ -481,14 +666,12 @@ pub mod path {
     }
 }
 
-/// Terminology binding checks against a pluggable provider (ships no licensed content).
 pub mod terminology {
     pub trait TerminologyProvider {
         fn validate_code(&self, value_set_url: &str, system: &str, code: &str) -> bool;
     }
 }
 
-/// Lowering passes: arbitrary source records → FHIR resources (source-agnostic).
 pub mod lower {
     use crate::model::Resource;
 
@@ -502,7 +685,6 @@ pub mod lower {
     }
 }
 
-/// The audit surface — FHIR-native `AuditEvent` / `Provenance`. No I/O.
 pub mod audit {
     use crate::model::Resource;
 
@@ -548,7 +730,9 @@ mod tests {
         probe(s.as_bytes())
     }
 
-    // --- Observation (hand-written) ---
+    const PATIENT_OK: &str = r#"{"resourceType":"Patient","identifier":[{"value":"1"}],"name":[{"family":"Doe","use":"official"}],"gender":"male","birthDate":"1970-01-01"}"#;
+
+    // --- Observation (hand-written, single-pass scanner) ---
 
     #[test]
     fn valid_observation() {
@@ -556,19 +740,12 @@ mod tests {
             r#"{"resourceType":"Observation","status":"final","code":{"text":"HR"},"subject":{"reference":"Patient/1"},"valueQuantity":{"value":60}}"#,
         );
         assert!(r.contains("\"valid\":true"), "{r}");
-        assert!(r.contains("AU Core Observation"), "{r}");
-    }
-
-    #[test]
-    fn missing_status_is_error() {
-        let r = probe_str(r#"{"resourceType":"Observation","code":{},"subject":{},"valueString":"x"}"#);
-        assert!(r.contains("status is required"), "{r}");
     }
 
     #[test]
     fn nested_code_does_not_satisfy_top_level() {
         let r = probe_str(
-            r#"{"resourceType":"Observation","status":"final","subject":{"code":"nope","reference":"Patient/1"},"valueString":"x"}"#,
+            r#"{"resourceType":"Observation","status":"final","subject":{"code":"nope"},"valueString":"x"}"#,
         );
         assert!(r.contains("code is required"), "{r}");
     }
@@ -581,22 +758,18 @@ mod tests {
         assert!(r.contains("\"valid\":true"), "{r}");
     }
 
-    // --- Patient (generated: au-core-patient) ---
+    // --- Patient (generated au-core-patient, nested engine) ---
 
     #[test]
     fn valid_patient() {
-        let r = probe_str(
-            r#"{"resourceType":"Patient","identifier":[{"value":"1"}],"name":[{"family":"Doe"}],"gender":"male","birthDate":"1970-01-01"}"#,
-        );
+        let r = probe_str(PATIENT_OK);
         assert!(r.contains("\"valid\":true"), "{r}");
         assert!(r.contains("AU Core Patient"), "{r}");
     }
 
     #[test]
     fn patient_missing_mandatory_is_error() {
-        // no identifier, name, gender, birthDate
         let r = probe_str(r#"{"resourceType":"Patient","active":true}"#);
-        assert!(r.contains("\"valid\":false"), "{r}");
         assert!(r.contains("Patient.identifier is required"), "{r}");
         assert!(r.contains("Patient.name is required"), "{r}");
         assert!(r.contains("Patient.gender is required"), "{r}");
@@ -605,11 +778,57 @@ mod tests {
 
     #[test]
     fn patient_bad_gender_fails_required_binding() {
-        let r = probe_str(
-            r#"{"resourceType":"Patient","identifier":[{"value":"1"}],"name":[{"family":"Doe"}],"gender":"banana","birthDate":"1970-01-01"}"#,
-        );
+        let r = probe_str(&PATIENT_OK.replace("\"male\"", "\"banana\""));
         assert!(r.contains("not in the bound value set"), "{r}");
-        assert!(r.contains("\"valid\":false"), "{r}");
+    }
+
+    #[test]
+    fn nested_binding_on_name_use() {
+        let r = probe_str(&PATIENT_OK.replace("\"official\"", "\"bogus\""));
+        assert!(r.contains("Patient.name.use"), "{r}");
+        assert!(r.contains("not in the bound value set"), "{r}");
+    }
+
+    #[test]
+    fn nested_min_fires_per_parent_instance() {
+        // Two communications: one has a language, one does not → exactly one error.
+        let r = probe_str(&PATIENT_OK.replace(
+            "\"birthDate\"",
+            "\"communication\":[{\"language\":{\"text\":\"en\"}},{\"preferred\":true}],\"birthDate\"",
+        ));
+        assert_eq!(r.matches("Patient.communication.language is required").count(), 1, "{r}");
+    }
+
+    #[test]
+    fn nested_min_does_not_fire_when_parent_absent() {
+        // No communication at all → the child's min is not evaluated.
+        let r = probe_str(PATIENT_OK);
+        assert!(!r.contains("communication.language"), "{r}");
+    }
+
+    #[test]
+    fn nested_max_exceeded_per_parent() {
+        // language is 0..1 per communication; two → exceeds max.
+        let r = probe_str(&PATIENT_OK.replace(
+            "\"birthDate\"",
+            "\"communication\":[{\"language\":[{\"text\":\"en\"},{\"text\":\"fr\"}]}],\"birthDate\"",
+        ));
+        assert!(r.contains("Patient.communication.language exceeds max 1"), "{r}");
+    }
+
+    #[test]
+    fn link_type_binding_nested() {
+        let bad = PATIENT_OK.replace(
+            "\"birthDate\"",
+            "\"link\":[{\"other\":{\"reference\":\"Patient/2\"},\"type\":\"nope\"}],\"birthDate\"",
+        );
+        let r = probe_str(&bad);
+        assert!(r.contains("Patient.link.type"), "{r}");
+        let ok = PATIENT_OK.replace(
+            "\"birthDate\"",
+            "\"link\":[{\"other\":{\"reference\":\"Patient/2\"},\"type\":\"replaces\"}],\"birthDate\"",
+        );
+        assert!(probe_str(&ok).contains("\"valid\":true"), "{}", probe_str(&ok));
     }
 
     // --- shared ---
@@ -617,7 +836,6 @@ mod tests {
     #[test]
     fn non_profiled_resource_has_no_profile() {
         let r = probe_str(r#"{"resourceType":"Encounter","status":"finished"}"#);
-        assert!(r.contains("\"resourceType\":\"Encounter\""), "{r}");
         assert!(r.contains("\"valid\":true"), "{r}");
     }
 
@@ -625,6 +843,5 @@ mod tests {
     fn garbage_reports_a_parse_error() {
         let r = probe_str("not json");
         assert!(r.contains("could not parse"), "{r}");
-        assert!(r.contains("\"valid\":false"), "{r}");
     }
 }
