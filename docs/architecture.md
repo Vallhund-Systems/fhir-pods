@@ -157,6 +157,34 @@ The two conflicts that kill "traces alone":
 `AuditEvent`), *correlated* with OTel traces by id, with OTel as the collection
 plumbing — yes, and that is the elegant answer.
 
+## Performance — almost free, shaped right
+
+Structural validation should be effectively free, and that is a design
+constraint, not a hope. A FHIR resource is a few KB; validating it against a
+*compiled* profile is straight-line branch code over an in-memory buffer. The
+target envelope:
+
+- **Single pass, validate-on-parse.** Never materialize a DOM and walk it
+  twice — validate while parsing (SAX-style / a validating parser). One pass.
+- **No allocation in the hot path.** Borrow the input; emit issues into a small
+  reusable buffer. Steady state is zero heap churn.
+- **Compiled verifier.** Constraints are generated straight-line code (see
+  codegen above), not a runtime tree-walk over StructureDefinition JSON.
+- **Footprint in the noise.** Tens-of-KB binary, KB working set — a rounding
+  error beside an on-device model's hundreds of MB.
+
+Two places "free" quietly ends, designed against from the start:
+
+1. **The FFI boundary.** Copy the JSON in and the report out twice and the copy
+   dominates for large payloads. Keep it JSI zero-copy; **batch on the native
+   side** rather than crossing the bridge per resource.
+2. **Terminology.** Membership of a code in a large ValueSet is the one
+   non-trivial lookup. **Compile ValueSets into perfect-hash / FST tables at
+   build time** so the check stays O(1); never ship an interpreted set scan.
+
+Net: structural validation free, boundary zero-copy, terminology compiled. The
+end-to-end skeleton exists so these can be *measured*, not asserted.
+
 ## Non-goals
 
 - Not an enterprise FHIR server. The datacenter is the incumbents' fortified

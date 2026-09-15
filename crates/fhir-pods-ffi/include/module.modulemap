@@ -1,0 +1,4 @@
+module FhirPodsFFI {
+    header "fhir_pods.h"
+    export *
+}

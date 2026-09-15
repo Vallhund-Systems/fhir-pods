@@ -2,6 +2,8 @@
 Cargo.lock
 **/*.rs.bk
 *.wasm
+*.xcframework/
+pods/expo/ios/Frameworks/
 pkg/
 node_modules/
 dist/

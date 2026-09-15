@@ -5,7 +5,7 @@
 resolver = "2"
 members = [
     "crates/fhir-pods-core",
-    "crates/fhir-pods-wasm",
+    "crates/fhir-pods-ffi",
 ]
 
 # Size-first release profile — for the WASM target, the payload is the product.

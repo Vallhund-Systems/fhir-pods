@@ -20,6 +20,44 @@
 //! rather than interpreted at runtime.
 #![forbid(unsafe_code)]
 
+/// End-to-end skeleton entrypoint. Identifies the resource and returns a JSON
+/// report. This is a **placeholder** for the real verifier: a naive
+/// `resourceType` scan (no JSON parser yet) that exists so the whole pod
+/// pipeline — Rust → C ABI → native module → JS — can be exercised and profiled
+/// before the validator lands. Designed to stay in the "almost free" envelope:
+/// single pass over the input, borrows it, allocates only the small report.
+pub fn probe(input: &[u8]) -> String {
+    let text = core::str::from_utf8(input).unwrap_or("");
+    let resource_type = extract_resource_type(text).unwrap_or("Unknown");
+    let mut out = String::with_capacity(96 + resource_type.len());
+    out.push_str("{\"resourceType\":\"");
+    push_json_escaped(&mut out, resource_type);
+    out.push_str("\",\"pod\":\"fhir-pods\",\"stage\":\"skeleton\",\"issues\":[]}");
+    out
+}
+
+/// Naive `resourceType` extraction — placeholder until the parser lands.
+fn extract_resource_type(text: &str) -> Option<&str> {
+    let key = "\"resourceType\"";
+    let after_key = &text[text.find(key)? + key.len()..];
+    let after_colon = &after_key[after_key.find(':')? + 1..];
+    let after_open = &after_colon[after_colon.find('"')? + 1..];
+    let close = after_open.find('"')?;
+    Some(&after_open[..close])
+}
+
+/// Append `s` to `out`, escaping the characters JSON requires.
+fn push_json_escaped(out: &mut String, s: &str) {
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            c if (c as u32) < 0x20 => out.push(' '),
+            c => out.push(c),
+        }
+    }
+}
+
 /// Minimal resource model. Commit-zero placeholder: a resource is carried as its
 /// raw JSON until the generated typed model + parsing land (see the architecture
 /// doc — the typed resources are code-generated from the FHIR StructureDefinitions).

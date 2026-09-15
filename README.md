@@ -49,8 +49,10 @@ audit-surface stance are in [`docs/architecture.md`](docs/architecture.md).
 ## Layout
 
 - `crates/fhir-pods-core` — the Rust verifier + lowering core (zero deps, no `unsafe`).
-- `crates/fhir-pods-wasm` — the lean C-ABI WASM boundary (JSON in, report out).
-- `docs/architecture.md` — the design.
+- `crates/fhir-pods-ffi` — the one lean C ABI, compiled per target (wasm32 / native staticlib).
+- `pods/expo` — the expo pod: the core as an Expo native module (iOS skeleton).
+- `scripts/` — native build (iOS XCFramework; Android `cargo-ndk` next).
+- `docs/architecture.md` — the design, delivery model, audit surface, and perf budget.
 
 ## License
 
