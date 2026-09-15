@@ -3,6 +3,9 @@ Cargo.lock
 **/*.rs.bk
 *.wasm
 *.xcframework/
+conformance/validator_cli.jar
+conformance/corpus/*.oracle.json
+__pycache__/
 pods/expo/ios/Frameworks/
 pkg/
 node_modules/
