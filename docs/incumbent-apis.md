@@ -136,6 +136,32 @@ pub trait TerminologyProvider {  // already stubbed in core
 This is also a *feature* vs the incumbents: everyone else punts on offline
 terminology; we bundle the two we legally can and make the third a clean seam.
 
+### AU specifics + the fixed-code refinement (2026-09-15)
+
+Two sharpenings from inspecting the real AU Core v2.0.0 profiles:
+
+- **Fixed codes need no licence.** Much of AU Core's SNOMED usage is *fixed
+  codes*, not ValueSet bindings — e.g. `au-core-heartrate` fixes
+  `Observation.code.coding.code` to SNOMED `364075005`. A fixed value is an
+  **exact-match structural check**, not a set-membership query, so it needs no
+  terminology server and no SNOMED licence. Only extensible/required **ValueSet
+  bindings** hit the seam — and many of those are small base-FHIR value sets
+  (`observation-status`, `administrative-gender`) we bundle, or LOINC-based.
+- **In Australia the SNOMED seam is free to operate.** AU is a SNOMED
+  International Member; SNOMED CT-AU + AMT are distributed free to registered AU
+  users via **NCTS / CSIRO Ontoserver** (public sandbox tx at
+  `tx.dev.hl7.org.au/fhir`). So the licensed seam costs nothing to run for the AU
+  market — a materially better "AU-ready" story than round-tripping every code to
+  a paid tx server.
+
+> **⚠ TODO — lock down before any redistribution claim.** The exact **NCTS
+> vendor / content-distribution licence tier** — whether a vendor may *embed and
+> redistribute* SNOMED CT-AU content, or each deploying org must self-register —
+> is being confirmed by a research pass. Until confirmed, the safe design stands:
+> **do not bundle SNOMED CT-AU content; seam to NCTS/Ontoserver.** Fixed codes as
+> structural constants are fine; shipping SNOMED release content / expansions is
+> the gated thing.
+
 ---
 
 ## 5. Two open decisions
@@ -155,13 +181,20 @@ graph). Two ways to feed `build.rs`:
   `fhir-schema-codegen` precedent. (fhir-schema.github.io/fhir-schema · Aidbox
   ships it as their fast engine.)
 
-**Recommendation: (b) — convert packages → FHIRSchema at build time, codegen from
-that**, keeping the *source of truth* as the published FHIR packages. FHIRSchema
-is literally "pre-compiled FHIR for validation," which is our whole thesis; it's
-the one place to improve *structurally*, not just ergonomically. Risk to weigh:
-FHIRSchema is younger than raw StructureDefinitions and we must still prove
-bug-for-bug agreement with the reference validator — so FHIRSchema is an internal
-IR, never an excuse to diverge from spec.
+**Resolved (2026-09-15): (a), sharpened — no FHIRSchema dependency.** Diligence
+on FHIRSchema found a **single-vendor (Health Samurai), pre-1.0, non-HL7** project:
+no frozen/versioned spec (zero tags), the canonical spec repo **dormant ~18 months**
+(last commit "start algo draft"), **only Aidbox** as a named production user, and
+the "independent" ports written by the same contributor circle. That fails the
+"is the format stable enough to build on" bar. And it turns out we don't need it:
+the **published packages already ship computed `snapshot.element`** (verified on
+AU Core v2.0.0 — profiles carry 86–90 elements `from snapshot`), so option (a) is
+**not** the feared snapshot-merge implementation — it's **codegen straight from the
+shipped snapshot into our own small IR**. We borrow FHIRSchema's good design ideas
+(tree-shaped, arrays-first) as *prior art* and depend on none of its tooling.
+Source of truth = the HL7 / AU Core packages; oracle = `validator_cli.jar`.
+(Snapshot generation is deferred to the "only if a future package ships
+differential-only" case.)
 
 ### 5b. FHIR version — R4 first
 
