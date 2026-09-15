@@ -1,0 +1,115 @@
+# Domain model
+
+The nested engine is where the design has to be right, so this is the DDD pass
+before the grind: the ubiquitous language, the bounded contexts, the value
+objects, and the one seam that matters (document access). We use the FHIR spec's
+own words throughout — inventing vocabulary in a domain that already has a
+precise one is how validators drift from the spec.
+
+## Ubiquitous language
+
+Straight from FHIR — these are the type names in the code:
+
+| Term | Meaning |
+|---|---|
+| **Resource** | a FHIR instance being validated |
+| **Profile** | a StructureDefinition — a constraint set over a base resource |
+| **Element** | a constrained node, addressed by a dotted **path** (`Observation.value[x].unit`) |
+| **Cardinality** | `min`..`max` (`max` is a bound or `*`) |
+| **Binding** | a coded element's tie to a **ValueSet**, with a **strength** (`required`/`extensible`/`preferred`/`example`) |
+| **Slice** / **Discriminator** | a partition of a repeating element, selected by a discriminator (`value`/`pattern`/`type`/`profile`/`exists` at a sub-path) |
+| **Fixed** / **Pattern** | a value the element must equal exactly / match as a subset |
+| **Invariant** | a FHIRPath constraint (`obs-6`…) with a severity |
+| **Coding** | `system` + `code` (+ `display`) |
+| **Issue** | one finding: `severity` + `code` (IssueType) + `expression` (FHIRPath) |
+| **Report** / **OperationOutcome** | our finding collection / its spec wire form |
+| **TerminologyProvider** | the seam that answers "is this code in that ValueSet" |
+
+## Bounded contexts
+
+Four, with clean boundaries:
+
+1. **Compilation** (build-time) — a StructureDefinition `snapshot` → a
+   `CompiledProfile`. Owned by `tools/gen_profile.py`. Language: snapshot,
+   element, canonical, differential.
+2. **Validation** (runtime) — `CompiledProfile` × `Document` → `Report`. Owned by
+   `engine`. Language: rule, walk, cardinality, issue.
+3. **Terminology** — (`system`, `code`, `ValueSet`) → membership. The seam. Owned
+   by `terminology` + the bundled `value_sets`. Language: binding, expansion,
+   provider.
+4. **Interop / wire** — `Report` ↔ `OperationOutcome`; the `$validate` contract.
+   The anti-corruption layer: spec shapes live here and nowhere else.
+
+The **shared kernel** between Compilation and Validation is the **`CompiledProfile`
+IR** — an immutable value object, generated once, embedded in the binary. It is
+the published language the two contexts agree on.
+
+## This domain is functional, not aggregate-centric
+
+Honest DDD: a validator has **no entities** — nothing with identity and a
+lifecycle. A `Resource` is transient input; a `CompiledProfile` is immutable
+reference data; an `Issue` is a value. Forcing aggregate roots here would be
+cargo-cult. Good DDD for *this* domain is: **precise ubiquitous language + rich
+value objects + clean bounded contexts + dependency inversion** — not ceremony.
+The "aggregate" is just the pure function `validate(profile, document) -> report`.
+
+## Value objects (the Validation context)
+
+```
+Cardinality { min: u32, max: Max }        Max = Bounded(u32) | Star
+Binding     { strength: Strength, value_set: &str }
+Fixed       (a scalar/coding the element must equal)
+Slice       { name, discriminator: Discriminator, cardinality, constraints }
+Discriminator { kind: Value|Pattern|Type|Profile|Exists, path }
+ElementConstraint { path, cardinality, types, fixed, binding, slices }
+CompiledProfile   { url, name, resource_type, elements: [ElementConstraint], deferred }
+Issue, Report     (already exist)
+```
+
+All immutable, all `Send + Sync`, all `'static` in generated profiles.
+
+## The seam that matters: document access is *infrastructure*
+
+The engine does not know how the JSON is represented. It validates against a
+**`Document` port**:
+
+```
+trait Document {
+    fn count(&self, path: &str) -> usize;         // occurrences of an element (arrays expand, [x] resolves)
+    fn scalars(&self, path: &str) -> Vec<&str>;   // scalar values at a path (for fixed / binding)
+}
+```
+
+Today's **adapter** parses the resource into a value tree and walks it. A future
+adapter **fuses parse + validation into a single pass** — the "almost free"
+performance thesis — and the domain never changes, because it only ever saw the
+port. This is the dependency inversion that keeps validate-on-parse a swappable
+infrastructure decision rather than a domain constraint. Correctness first
+(tree-walk), the single-pass fusion later, behind the same port.
+
+## The domain service: the walk
+
+```
+engine::validate(profile: &CompiledProfile, doc: &impl Document) -> Report
+```
+
+Per `ElementConstraint`: resolve its path (handling `[x]` choice + arrays),
+check **cardinality**, then **fixed** / **binding**, then recurse into **slices**
+(each slice re-checks its constrained sub-set). Pure, deterministic, no I/O.
+Terminology binding calls out to the `TerminologyProvider` / bundled sets;
+unknown sets degrade to a warning (spec behavior), SNOMED expansions are never
+bundled (see the licence decision).
+
+## Licence rule, encoded in the model
+
+A `Fixed` on a SNOMED `Coding` carries **`system` + `code` only — never
+`display`** (the code is a licence-free reference; the display is licensed
+content). The generator enforces this when it emits `Fixed` values.
+
+## Grind order
+
+1. **Document context** — the value-tree parser + the path navigator behind the port.
+2. **Nested engine** — cardinality + fixed + binding on nested paths (unlocks most of `au-core-heartrate`: fixed UCUM unit/system, nested value cardinality).
+3. **Slicing** — discriminators + per-slice constraints (the last piece of `au-core-heartrate`: the LOINC/SNOMED code slices).
+4. **Generator** — emit the richer `ElementConstraint` tree (with the display-drop rule) from `snapshot.element`.
+5. **Conformance** — differential-test the whole thing against `validator_cli.jar`.
