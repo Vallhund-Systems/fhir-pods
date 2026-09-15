@@ -335,6 +335,20 @@ treat `$validate.profile` `uri`→`canonical` + R5's `usageContext` as additive.
   and the `subject → Device` guard agrees (both valid). The two remaining
   disagreements are exactly the two FHIRPath-invariant probes (`vs-2`, the IHI
   Luhn) — the next build is the FHIRPath core.
+
+  **Sixth pass, FHIRPath core (2026-09-15): 82/83.** `constraint[]` is now in
+  the IR (`ProfileInvariant`, one per non-sliced element incl. the root;
+  `ele-1`/`ext-1` excluded as JSON-shape rules), evaluated with each instance
+  of its element as `$this` by a deliberately small FHIRPath core — navigation
+  with a choice-type fallback, `exists`/`empty`/`not`/`count`/`first`/
+  `hasValue`/`where`, `and`/`or`/`xor`/`implies`, `=`/`!=`, literals — with the
+  spec's three-valued logic (empty is unknown; only a definite `false` fails).
+  Anything outside the core fails to parse or evaluates `Unsupported` and the
+  invariant is **skipped, never guessed**. The `vs-2` probe flipped to
+  agreement, and — the real test — the invariants the core *did* evaluate
+  produced **no false positives on the 64 valid examples**. The one remaining
+  disagreement is the IHI Luhn: it needs string/arithmetic FHIRPath *and* the
+  `type.profile` choice into `au.base` — the next build.
 - **Inferno** (ONC g10) and **Touchstone** are **API-behavior** harnesses
   (SMART launch, Bulk Data, search, US Core over the wire) — relevant only if we
   later ship a *server* surface, not for the embeddable validator. Note them,

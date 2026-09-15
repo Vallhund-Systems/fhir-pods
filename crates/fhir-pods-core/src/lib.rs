@@ -578,6 +578,10 @@ pub mod document {
         fn scalars(&self, path: &str) -> Vec<&str>;
         /// Sub-documents rooted at each node `path` resolves to.
         fn instances(&self, path: &str) -> Vec<Self>;
+        /// This node's scalar value as text, if it is a scalar.
+        fn as_scalar(&self) -> Option<&str>;
+        /// This node's value if it is a JSON boolean.
+        fn as_bool(&self) -> Option<bool>;
     }
 
     /// Owner of a parsed resource; hands out `TreeDoc` views.
@@ -627,6 +631,21 @@ pub mod document {
 
         fn instances(&self, path: &str) -> Vec<Self> {
             json::resolve(self.root, path).into_iter().map(|n| TreeDoc { root: n }).collect()
+        }
+
+        fn as_scalar(&self) -> Option<&str> {
+            match self.root {
+                Value::Str(s) | Value::Number(s) => Some(*s),
+                Value::Bool(b) => Some(if *b { "true" } else { "false" }),
+                _ => None,
+            }
+        }
+
+        fn as_bool(&self) -> Option<bool> {
+            match self.root {
+                Value::Bool(b) => Some(*b),
+                _ => None,
+            }
         }
     }
 }
@@ -680,6 +699,23 @@ pub mod compiled {
         pub slices: &'static [Slice],
     }
 
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum InvariantSeverity {
+        Error,
+        Warning,
+    }
+
+    /// A FHIRPath invariant (`ElementDefinition.constraint`), evaluated with each
+    /// instance of `path` as `$this`. Expressions outside the supported core are
+    /// skipped at runtime — never guessed.
+    pub struct ProfileInvariant {
+        pub path: &'static str,
+        pub key: &'static str,
+        pub severity: InvariantSeverity,
+        pub human: &'static str,
+        pub expression: &'static str,
+    }
+
     /// A profile compiled to embeddable rules.
     pub struct CompiledProfile {
         pub url: &'static str,
@@ -687,6 +723,7 @@ pub mod compiled {
         pub resource_type: &'static str,
         pub elements: &'static [ElementConstraint],
         pub slicings: &'static [Slicing],
+        pub invariants: &'static [ProfileInvariant],
         /// Constraints not yet enforced (nested slicing / non-scalar patterns / mustSupport-only).
         pub deferred: u32,
     }
@@ -697,8 +734,9 @@ pub mod compiled {
 pub mod engine {
     use alloc::vec::Vec;
 
-    use crate::compiled::{CompiledProfile, Discriminator, ElementConstraint, Max, Slice, Slicing};
+    use crate::compiled::{CompiledProfile, Discriminator, ElementConstraint, InvariantSeverity, Max, Slice, Slicing};
     use crate::document::Document;
+    use crate::path::{self, Verdict};
     use crate::validate::{IssueType, Report, Severity};
 
     pub fn validate(profile: &CompiledProfile, doc: &impl Document) -> Report {
@@ -708,6 +746,19 @@ pub mod engine {
         }
         for slicing in profile.slicings {
             check_slicing(slicing, doc, &mut r);
+        }
+        for inv in profile.invariants {
+            // Outside the supported FHIRPath core: skipped, never guessed.
+            let Ok(expr) = path::parse(inv.expression) else { continue };
+            for ctx in doc.instances(inv.path) {
+                if path::check(&expr, &ctx) == Verdict::Fail {
+                    let severity = match inv.severity {
+                        InvariantSeverity::Error => Severity::Error,
+                        InvariantSeverity::Warning => Severity::Warning,
+                    };
+                    r.push(severity, IssueType::Invariant, inv.path, format!("{}: {}", inv.key, inv.human));
+                }
+            }
         }
         r
     }
@@ -984,13 +1035,443 @@ pub mod validate {
     }
 }
 
+/// FHIRPath — the expression language FHIR invariants are written in. A
+/// deliberately small, honest core: navigation (with a choice-type fallback so
+/// `value` finds `valueQuantity`), `exists` / `empty` / `not` / `count` /
+/// `first` / `hasValue` / `where`, `and` / `or` / `xor` / `implies`, `=` / `!=`,
+/// string / integer / boolean literals, `$this`. Anything else fails to parse
+/// or evaluates as [`Unsupported`] and the invariant is skipped — never
+/// guessed. Three-valued logic per the spec: an empty result is "unknown", and
+/// an invariant fails only on a definite `false`.
 pub mod path {
-    #[derive(Debug, Default)]
-    pub struct Engine;
+    use alloc::{boxed::Box, string::String, vec::Vec};
 
-    impl Engine {
-        pub fn new() -> Self {
-            Self
+    use crate::document::Document;
+
+    #[derive(Debug, Clone, PartialEq)]
+    pub enum Lit {
+        Str(String),
+        Int(i64),
+        Bool(bool),
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum Op {
+        And,
+        Or,
+        Xor,
+        Implies,
+        Eq,
+        Ne,
+    }
+
+    #[derive(Debug, Clone, PartialEq)]
+    pub enum Expr {
+        This,
+        Lit(Lit),
+        /// `base.name` — navigation.
+        Nav(Box<Expr>, String),
+        /// `base.name(args)` — a function call.
+        Call(Box<Expr>, String, Vec<Expr>),
+        Bin(Box<Expr>, Op, Box<Expr>),
+    }
+
+    /// Syntax or semantics outside the supported core.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct Unsupported;
+
+    #[derive(Debug, Clone, PartialEq)]
+    enum Tok {
+        Ident(String),
+        Str(String),
+        Int(i64),
+        LParen,
+        RParen,
+        Dot,
+        Comma,
+        Eq,
+        Ne,
+        /// Anything we don't support (`<`, `+`, `%`, …) — makes the parse fail.
+        Other,
+    }
+
+    fn tokenize(src: &str) -> Result<Vec<Tok>, Unsupported> {
+        let b = src.as_bytes();
+        let mut i = 0;
+        let mut out = Vec::new();
+        while i < b.len() {
+            let c = b[i];
+            match c {
+                b' ' | b'\t' | b'\n' | b'\r' => i += 1,
+                b'(' => {
+                    out.push(Tok::LParen);
+                    i += 1;
+                }
+                b')' => {
+                    out.push(Tok::RParen);
+                    i += 1;
+                }
+                b'.' => {
+                    out.push(Tok::Dot);
+                    i += 1;
+                }
+                b',' => {
+                    out.push(Tok::Comma);
+                    i += 1;
+                }
+                b'=' => {
+                    out.push(Tok::Eq);
+                    i += 1;
+                }
+                b'!' if b.get(i + 1) == Some(&b'=') => {
+                    out.push(Tok::Ne);
+                    i += 2;
+                }
+                b'\'' => {
+                    let start = i + 1;
+                    let mut j = start;
+                    while j < b.len() && b[j] != b'\'' {
+                        if b[j] == b'\\' {
+                            j += 1;
+                        }
+                        j += 1;
+                    }
+                    if j >= b.len() {
+                        return Err(Unsupported);
+                    }
+                    let s = core::str::from_utf8(&b[start..j]).map_err(|_| Unsupported)?;
+                    out.push(Tok::Str(s.replace("\\'", "'")));
+                    i = j + 1;
+                }
+                b'0'..=b'9' => {
+                    let start = i;
+                    while i < b.len() && b[i].is_ascii_digit() {
+                        i += 1;
+                    }
+                    if i < b.len() && b[i] == b'.' && b.get(i + 1).is_some_and(|d| d.is_ascii_digit()) {
+                        return Err(Unsupported); // decimals: not in the core
+                    }
+                    let n = core::str::from_utf8(&b[start..i])
+                        .ok()
+                        .and_then(|s| s.parse::<i64>().ok())
+                        .ok_or(Unsupported)?;
+                    out.push(Tok::Int(n));
+                }
+                b'$' | b'a'..=b'z' | b'A'..=b'Z' | b'_' => {
+                    let start = i;
+                    i += 1;
+                    while i < b.len() && (b[i].is_ascii_alphanumeric() || b[i] == b'_') {
+                        i += 1;
+                    }
+                    let s = core::str::from_utf8(&b[start..i]).map_err(|_| Unsupported)?;
+                    out.push(Tok::Ident(s.into()));
+                }
+                _ => {
+                    out.push(Tok::Other);
+                    i += 1;
+                }
+            }
+        }
+        Ok(out)
+    }
+
+    struct P {
+        toks: Vec<Tok>,
+        i: usize,
+    }
+
+    impl P {
+        fn peek(&self) -> Option<&Tok> {
+            self.toks.get(self.i)
+        }
+
+        fn next(&mut self) -> Option<Tok> {
+            let t = self.toks.get(self.i).cloned();
+            self.i += 1;
+            t
+        }
+
+        fn eat_kw(&mut self, kw: &str) -> bool {
+            if matches!(self.peek(), Some(Tok::Ident(s)) if s == kw) {
+                self.i += 1;
+                true
+            } else {
+                false
+            }
+        }
+
+        fn expect(&mut self, t: Tok) -> Result<(), Unsupported> {
+            if self.next() == Some(t) {
+                Ok(())
+            } else {
+                Err(Unsupported)
+            }
+        }
+
+        fn args(&mut self) -> Result<Vec<Expr>, Unsupported> {
+            self.expect(Tok::LParen)?;
+            let mut args = Vec::new();
+            if !matches!(self.peek(), Some(Tok::RParen)) {
+                loop {
+                    args.push(self.implies()?);
+                    if matches!(self.peek(), Some(Tok::Comma)) {
+                        self.i += 1;
+                    } else {
+                        break;
+                    }
+                }
+            }
+            self.expect(Tok::RParen)?;
+            Ok(args)
+        }
+
+        // Precedence, low to high: implies < or/xor < and < =/!= < path/call.
+        fn implies(&mut self) -> Result<Expr, Unsupported> {
+            let l = self.or()?;
+            if self.eat_kw("implies") {
+                let r = self.implies()?;
+                return Ok(Expr::Bin(Box::new(l), Op::Implies, Box::new(r)));
+            }
+            Ok(l)
+        }
+
+        fn or(&mut self) -> Result<Expr, Unsupported> {
+            let mut l = self.and()?;
+            loop {
+                let op = if self.eat_kw("or") {
+                    Op::Or
+                } else if self.eat_kw("xor") {
+                    Op::Xor
+                } else {
+                    return Ok(l);
+                };
+                let r = self.and()?;
+                l = Expr::Bin(Box::new(l), op, Box::new(r));
+            }
+        }
+
+        fn and(&mut self) -> Result<Expr, Unsupported> {
+            let mut l = self.eq()?;
+            while self.eat_kw("and") {
+                let r = self.eq()?;
+                l = Expr::Bin(Box::new(l), Op::And, Box::new(r));
+            }
+            Ok(l)
+        }
+
+        fn eq(&mut self) -> Result<Expr, Unsupported> {
+            let l = self.postfix()?;
+            let op = match self.peek() {
+                Some(Tok::Eq) => Op::Eq,
+                Some(Tok::Ne) => Op::Ne,
+                _ => return Ok(l),
+            };
+            self.i += 1;
+            let r = self.postfix()?;
+            Ok(Expr::Bin(Box::new(l), op, Box::new(r)))
+        }
+
+        fn postfix(&mut self) -> Result<Expr, Unsupported> {
+            let mut e = self.primary()?;
+            while matches!(self.peek(), Some(Tok::Dot)) {
+                self.i += 1;
+                let Some(Tok::Ident(name)) = self.next() else {
+                    return Err(Unsupported);
+                };
+                e = if matches!(self.peek(), Some(Tok::LParen)) {
+                    Expr::Call(Box::new(e), name, self.args()?)
+                } else {
+                    Expr::Nav(Box::new(e), name)
+                };
+            }
+            Ok(e)
+        }
+
+        fn primary(&mut self) -> Result<Expr, Unsupported> {
+            match self.next() {
+                Some(Tok::Str(s)) => Ok(Expr::Lit(Lit::Str(s))),
+                Some(Tok::Int(n)) => Ok(Expr::Lit(Lit::Int(n))),
+                Some(Tok::LParen) => {
+                    let e = self.implies()?;
+                    self.expect(Tok::RParen)?;
+                    Ok(e)
+                }
+                Some(Tok::Ident(s)) => match s.as_str() {
+                    "true" => Ok(Expr::Lit(Lit::Bool(true))),
+                    "false" => Ok(Expr::Lit(Lit::Bool(false))),
+                    "$this" => Ok(Expr::This),
+                    // A bare identifier navigates from `$this`; a bare call applies to it.
+                    _ if matches!(self.peek(), Some(Tok::LParen)) => {
+                        Ok(Expr::Call(Box::new(Expr::This), s, self.args()?))
+                    }
+                    _ => Ok(Expr::Nav(Box::new(Expr::This), s)),
+                },
+                _ => Err(Unsupported),
+            }
+        }
+    }
+
+    /// Parse an expression, or `Unsupported` if it uses anything outside the core.
+    pub fn parse(src: &str) -> Result<Expr, Unsupported> {
+        let toks = tokenize(src)?;
+        let mut p = P { toks, i: 0 };
+        let e = p.implies()?;
+        if p.i != p.toks.len() {
+            return Err(Unsupported);
+        }
+        Ok(e)
+    }
+
+    /// One item of a FHIRPath collection.
+    #[derive(Clone)]
+    pub enum Item<D> {
+        Node(D),
+        Str(String),
+        Int(i64),
+        Bool(bool),
+    }
+
+    fn scalar_of<D: Document>(it: &Item<D>) -> Option<String> {
+        match it {
+            Item::Node(d) => d.as_scalar().map(String::from),
+            Item::Str(s) => Some(s.clone()),
+            Item::Int(n) => Some(format!("{n}")),
+            Item::Bool(b) => Some(String::from(if *b { "true" } else { "false" })),
+        }
+    }
+
+    /// A collection in boolean context: empty is unknown; a lone boolean is
+    /// itself; anything else present is true.
+    fn truth<D: Document>(c: &[Item<D>]) -> Option<bool> {
+        match c {
+            [] => None,
+            [Item::Bool(b)] => Some(*b),
+            [Item::Node(d)] => Some(d.as_bool().unwrap_or(true)),
+            _ => Some(true),
+        }
+    }
+
+    fn filter<D: Document>(coll: &[Item<D>], cond: &Expr) -> Result<Vec<Item<D>>, Unsupported> {
+        let mut out = Vec::new();
+        for it in coll {
+            let Item::Node(d) = it else {
+                return Err(Unsupported);
+            };
+            if truth(&eval(cond, d)?) == Some(true) {
+                out.push(Item::Node(d.clone()));
+            }
+        }
+        Ok(out)
+    }
+
+    fn logic(op: Op, a: Option<bool>, b: Option<bool>) -> Option<bool> {
+        match op {
+            Op::And => match (a, b) {
+                (Some(false), _) | (_, Some(false)) => Some(false),
+                (Some(true), Some(true)) => Some(true),
+                _ => None,
+            },
+            Op::Or => match (a, b) {
+                (Some(true), _) | (_, Some(true)) => Some(true),
+                (Some(false), Some(false)) => Some(false),
+                _ => None,
+            },
+            Op::Xor => match (a, b) {
+                (Some(x), Some(y)) => Some(x != y),
+                _ => None,
+            },
+            Op::Implies => match (a, b) {
+                (Some(false), _) => Some(true),
+                (Some(true), y) => y,
+                (None, Some(true)) => Some(true),
+                (None, _) => None,
+            },
+            Op::Eq | Op::Ne => None,
+        }
+    }
+
+    fn eval<D: Document>(e: &Expr, ctx: &D) -> Result<Vec<Item<D>>, Unsupported> {
+        Ok(match e {
+            Expr::This => vec![Item::Node(ctx.clone())],
+            Expr::Lit(Lit::Str(s)) => vec![Item::Str(s.clone())],
+            Expr::Lit(Lit::Int(n)) => vec![Item::Int(*n)],
+            Expr::Lit(Lit::Bool(b)) => vec![Item::Bool(*b)],
+            Expr::Nav(base, name) => {
+                let mut out = Vec::new();
+                for it in eval(base, ctx)? {
+                    let Item::Node(d) = it else {
+                        return Err(Unsupported);
+                    };
+                    let mut found = d.instances(&format!("$this.{name}"));
+                    if found.is_empty() {
+                        // Choice type: `value` reaches `valueQuantity`.
+                        found = d.instances(&format!("$this.{name}[x]"));
+                    }
+                    out.extend(found.into_iter().map(Item::Node));
+                }
+                out
+            }
+            Expr::Call(base, name, args) => {
+                let coll = eval(base, ctx)?;
+                match (name.as_str(), args.len()) {
+                    ("exists", 0) => vec![Item::Bool(!coll.is_empty())],
+                    ("exists", 1) => vec![Item::Bool(!filter(&coll, &args[0])?.is_empty())],
+                    ("empty", 0) => vec![Item::Bool(coll.is_empty())],
+                    ("not", 0) => match truth(&coll) {
+                        Some(b) => vec![Item::Bool(!b)],
+                        None => vec![],
+                    },
+                    ("count", 0) => vec![Item::Int(coll.len() as i64)],
+                    ("first", 0) => coll.into_iter().take(1).collect(),
+                    ("hasValue", 0) => vec![Item::Bool(coll.iter().any(|it| scalar_of(it).is_some()))],
+                    ("where", 1) => filter(&coll, &args[0])?,
+                    _ => return Err(Unsupported),
+                }
+            }
+            Expr::Bin(l, op @ (Op::Eq | Op::Ne), r) => {
+                let (a, b) = (eval(l, ctx)?, eval(r, ctx)?);
+                if a.is_empty() || b.is_empty() {
+                    return Ok(vec![]);
+                }
+                if a.len() != 1 || b.len() != 1 {
+                    return Err(Unsupported);
+                }
+                match (scalar_of(&a[0]), scalar_of(&b[0])) {
+                    (Some(x), Some(y)) => vec![Item::Bool(if *op == Op::Eq { x == y } else { x != y })],
+                    _ => return Err(Unsupported),
+                }
+            }
+            Expr::Bin(l, op, r) => {
+                let a = truth(&eval(l, ctx)?);
+                let b = truth(&eval(r, ctx)?);
+                match logic(*op, a, b) {
+                    Some(v) => vec![Item::Bool(v)],
+                    None => vec![],
+                }
+            }
+        })
+    }
+
+    /// The outcome of evaluating an invariant.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum Verdict {
+        Pass,
+        Fail,
+        Unsupported,
+    }
+
+    /// Evaluate an invariant with `ctx` as `$this`. Empty is unknown and passes;
+    /// only a definite `false` fails.
+    pub fn check<D: Document>(expr: &Expr, ctx: &D) -> Verdict {
+        match eval(expr, ctx) {
+            Err(Unsupported) => Verdict::Unsupported,
+            Ok(coll) => {
+                if truth(&coll) == Some(false) {
+                    Verdict::Fail
+                } else {
+                    Verdict::Pass
+                }
+            }
         }
     }
 }
@@ -1222,6 +1703,51 @@ mod tests {
     fn bloodpressure_component_wrong_unit_fails_slice_fixed() {
         let r = probe_str(&BP_OK.replacen("\"code\":\"mm[Hg]\"", "\"code\":\"mmHg\"", 1));
         assert!(r.contains("Observation.component:SystolicBP.value[x].code must be 'mm[Hg]'"), "{r}");
+    }
+
+    // --- FHIRPath core + invariants ---
+
+    #[test]
+    fn fhirpath_vs2_semantics() {
+        use super::document::Parsed;
+        use super::path::{check, parse, Verdict};
+        let vs2 = parse("(component.empty() and hasMember.empty()) implies (value.exists() or dataAbsentReason.exists())").unwrap();
+        let has_value = Parsed::parse(br#"{"resourceType":"Observation","valueQuantity":{"value":1}}"#).unwrap();
+        assert_eq!(check(&vs2, &has_value.doc()), Verdict::Pass);
+        let has_component = Parsed::parse(br#"{"resourceType":"Observation","component":[{"code":{}}]}"#).unwrap();
+        assert_eq!(check(&vs2, &has_component.doc()), Verdict::Pass);
+        let bare = Parsed::parse(br#"{"resourceType":"Observation","status":"final"}"#).unwrap();
+        assert_eq!(check(&vs2, &bare.doc()), Verdict::Fail);
+    }
+
+    #[test]
+    fn fhirpath_where_and_equality() {
+        use super::document::Parsed;
+        use super::path::{check, parse, Verdict};
+        let e = parse("coding.where(system = 'http://loinc.org').exists()").unwrap();
+        let ok = Parsed::parse(br#"{"coding":[{"system":"http://snomed.info/sct"},{"system":"http://loinc.org"}]}"#).unwrap();
+        assert_eq!(check(&e, &ok.doc()), Verdict::Pass);
+        let no = Parsed::parse(br#"{"coding":[{"system":"http://snomed.info/sct"}]}"#).unwrap();
+        assert_eq!(check(&e, &no.doc()), Verdict::Fail);
+    }
+
+    #[test]
+    fn fhirpath_unsupported_is_skipped_not_guessed() {
+        use super::path::parse;
+        // per-1: comparison operators are outside the core
+        assert!(parse("start.hasValue().not() or end.hasValue().not() or (start <= end)").is_err());
+        // obs-7: %resource and intersect() are outside the core
+        assert!(parse("value.empty() or component.code.where(coding.intersect(%resource.code.coding).exists()).empty()").is_err());
+    }
+
+    #[test]
+    fn heartrate_missing_value_and_dar_fails_vs2() {
+        let r = probe_str(&HEARTRATE_OK.replace(
+            r#","valueQuantity":{"value":72,"unit":"beats/minute","system":"http://unitsofmeasure.org","code":"/min"}"#,
+            "",
+        ));
+        assert!(r.contains("vs-2"), "{r}");
+        assert!(r.contains("\"valid\":false"), "{r}");
     }
 
     // --- wire: OperationOutcome ---
