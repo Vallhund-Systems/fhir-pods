@@ -304,6 +304,27 @@ treat `$validate.profile` `uri`→`canonical` + R5's `usageContext` as additive.
      `hl7.fhir.r4.core#4.0.1`. Follow-up: **generate** bundled base-FHIR value
      sets from the `r4.core` package rather than hand-listing them.
   After both: same verdicts *and* same flagged elements on all 79.
+
+  **Fourth pass, feature probes (2026-09-15): 79/83 — by design.** Four
+  mutations each aimed at a feature we defer; the oracle named the rule:
+  1. BP with a wrong diastolic code → `Slice 'Observation.component:DiastolicBP'
+     … required, but not found`. Not nested slicing: the component slices are
+     one level deep and were deferred because their discriminator is a
+     **`patternCodeableConcept` (object pattern)**; the generator flattens only
+     scalar fixed values. A **generator-only** change — and it also unlocks the
+     MedicationRequest/Statement deferrals (same shape).
+  2. No value and no dataAbsentReason → `vs-2` — **FHIRPath invariants**;
+     `constraint[]` is not in the IR. A minimal FHIRPath core (`exists` /
+     `empty` / `and` / `or` / `implies` / navigation) covers this class.
+  3. An IHI failing Luhn → `inv-ihi-value-2` (from `au-ihi`) — FHIRPath with
+     string/arithmetic **plus the `type.profile` choice** into the `au.base`
+     profiles. The largest piece.
+  4. `subject` referencing a Device → the oracle says **valid**: it does not
+     enforce reference target type offline. The probe's expectation was wrong,
+     not the engine — flipped to *expect valid* as a guard against
+     over-enforcing what the reference doesn't.
+  **Build order, by evidence: object patterns → FHIRPath core → `type.profile`
+  + `au.base`.**
 - **Inferno** (ONC g10) and **Touchstone** are **API-behavior** harnesses
   (SMART launch, Bulk Data, search, US Core over the wire) — relevant only if we
   later ship a *server* surface, not for the embeddable validator. Note them,

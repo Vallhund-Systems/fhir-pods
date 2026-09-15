@@ -134,13 +134,54 @@ def drop_medication(d):
         d.pop(k)
 
 
+# --- probes: each aimed at one feature the engine still defers ---
+
+def wrong_diastolic_code(d):
+    """Keep both components but corrupt the diastolic LOINC code — the
+    `component min 2` cardinality still holds, so only nested component
+    slicing can catch this."""
+    for c in d.get("component", []):
+        for x in (c.get("code") or {}).get("coding", []):
+            if x.get("code") == "8462-4":
+                x["code"] = "8462-9"
+
+
+def add_bad_luhn_ihi(d):
+    """Append an IHI whose check digit fails Luhn — the au-ihi profile's
+    FHIRPath invariant (inv-ihi-value-2)."""
+    d.setdefault("identifier", []).append({
+        "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "NI"}]},
+        "system": "http://ns.electronichealth.net.au/id/hi/ihi/1.0",
+        "value": "8003608833357362",
+    })
+
+
+def drop_value_keep_no_dar(d):
+    """No value[x] and no dataAbsentReason — the vitals `vs-2` invariant."""
+    for k in [k for k in d if k.startswith("value")]:
+        d.pop(k)
+    d.pop("dataAbsentReason", None)
+
+
+def subject_wrong_type(d):
+    """subject referencing a Device. The reference validator does NOT enforce
+    reference target type offline (it reported this valid), so this fixture
+    expects VALID — a guard against us over-enforcing what the oracle doesn't."""
+    d["subject"] = {"reference": "Device/1"}
+
+
+# (example file, fixture name, mutation, expected verdict)
 MUTATIONS = [
-    ("Observation-bloodpressure-1.json", "bloodpressure-missing-diastolic", drop_diastolic),
-    ("Observation-bodyweight-1.json", "bodyweight-bad-unit-code", bad_weight_unit),
-    ("Condition-uti.json", "condition-missing-code", drop("code")),
-    ("AllergyIntolerance-penicillin.json", "allergy-missing-code", drop("code")),
-    ("Encounter-telehealth.json", "encounter-missing-class", drop("class")),
-    ("MedicationRequest-simvastatin.json", "medicationrequest-missing-medication", drop_medication),
+    ("Observation-bloodpressure-1.json", "bloodpressure-wrong-diastolic-code", wrong_diastolic_code, False),
+    ("Patient-ronny-irvine.json", "patient-ihi-bad-luhn", add_bad_luhn_ihi, False),
+    ("Observation-heartrate-1.json", "heartrate-no-value-no-dar", drop_value_keep_no_dar, False),
+    ("Observation-heartrate-1.json", "heartrate-subject-wrong-type", subject_wrong_type, True),
+    ("Observation-bloodpressure-1.json", "bloodpressure-missing-diastolic", drop_diastolic, False),
+    ("Observation-bodyweight-1.json", "bodyweight-bad-unit-code", bad_weight_unit, False),
+    ("Condition-uti.json", "condition-missing-code", drop("code"), False),
+    ("AllergyIntolerance-penicillin.json", "allergy-missing-code", drop("code"), False),
+    ("Encounter-telehealth.json", "encounter-missing-class", drop("class"), False),
+    ("MedicationRequest-simvastatin.json", "medicationrequest-missing-medication", drop_medication, False),
 ]
 
 
@@ -170,12 +211,12 @@ def main():
         examples[os.path.basename(path)] = d
         emit("example-" + os.path.basename(path)[:-5], d, profile, True)
 
-    for src, name, fn in MUTATIONS:
+    for src, name, fn, expect in MUTATIONS:
         base = examples.get(src)
         if base is None:
             print(f"!! no example {src}", file=sys.stderr)
             continue
-        emit(name, mutate(base, fn), au_profile(base), False)
+        emit(name, mutate(base, fn), au_profile(base), expect)
 
     with open(os.path.join(CORPUS, "manifest.json"), "w") as fh:
         json.dump(manifest, fh, indent=2)
