@@ -1,0 +1,13 @@
+[package]
+name = "fhir-pods-core"
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+description = "Embeddable FHIR verifier + lowering core. No I/O, no server, no licensed terminology."
+publish = false
+
+[dependencies]
+# Intentionally zero external dependencies at commit zero. The typed resource
+# model + validators are code-generated from the FHIR StructureDefinitions
+# (build.rs), and a JSON parser lands with the model — added deliberately, not
+# by default.

@@ -1,0 +1,17 @@
+# fhir-pods — an embeddable FHIR verifier.
+# Library, not a server: the verifier runs wherever the data is.
+
+[workspace]
+resolver = "2"
+members = [
+    "crates/fhir-pods-core",
+    "crates/fhir-pods-wasm",
+]
+
+# Size-first release profile — for the WASM target, the payload is the product.
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
