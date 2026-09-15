@@ -11,8 +11,16 @@
 //! Profiles are **generated from the packages' shipped `snapshot.element`** into
 //! the compiled IR (`compiled`), then run by the generic `engine` against a
 //! `document::Document` port. See `docs/domain-model.md`.
+#![cfg_attr(not(test), no_std)]
 #![forbid(unsafe_code)]
 
+// `no_std` + `alloc`: the core allocates (the value tree, the issue list) but
+// never touches the OS — no I/O, no threads, no clock. The compiler enforces
+// the thesis: a `std::fs` call here is a build error, not a code-review catch.
+#[macro_use]
+extern crate alloc;
+
+use alloc::string::String;
 use validate::{Issue, Severity};
 
 /// Compiled profiles generated from FHIR packages (`tools/gen_profile.py`).
@@ -114,6 +122,8 @@ fn push_json_escaped(out: &mut String, s: &str) {
 /// the correctness-first adapter behind the `Document` port; a fused
 /// validate-on-parse adapter replaces it later without touching the domain.
 pub mod json {
+    use alloc::vec::Vec;
+
     #[derive(Debug)]
     pub struct ParseError {
         pub at: usize,
@@ -396,6 +406,8 @@ pub mod json {
 /// JSON representation. `TreeDoc` is today's adapter (a parsed value tree); a
 /// fused single-pass adapter is the later performance move — same port.
 pub mod document {
+    use alloc::vec::Vec;
+
     use crate::json::{self, Value};
 
     pub trait Document {
@@ -482,6 +494,8 @@ pub mod compiled {
 /// The validation engine — the domain service. Pure: a compiled profile and a
 /// document in, a report out.
 pub mod engine {
+    use alloc::string::String;
+
     use crate::compiled::{CompiledProfile, Max};
     use crate::document::Document;
     use crate::validate::{Issue, Report, Severity};
@@ -604,6 +618,8 @@ pub mod au_core {
 }
 
 pub mod model {
+    use alloc::string::String;
+
     #[derive(Debug, Clone)]
     pub struct Resource {
         pub resource_type: String,
@@ -618,6 +634,8 @@ pub mod model {
 }
 
 pub mod validate {
+    use alloc::{string::String, vec::Vec};
+
     use crate::model::Resource;
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -673,6 +691,8 @@ pub mod terminology {
 }
 
 pub mod lower {
+    use alloc::string::String;
+
     use crate::model::Resource;
 
     #[derive(Debug, Clone)]
@@ -686,6 +706,8 @@ pub mod lower {
 }
 
 pub mod audit {
+    use alloc::string::String;
+
     use crate::model::Resource;
 
     #[derive(Debug, Clone, Copy)]
