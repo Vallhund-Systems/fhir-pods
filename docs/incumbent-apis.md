@@ -308,11 +308,16 @@ treat `$validate.profile` `uri`→`canonical` + R5's `usageContext` as additive.
   **Fourth pass, feature probes (2026-09-15): 79/83 — by design.** Four
   mutations each aimed at a feature we defer; the oracle named the rule:
   1. BP with a wrong diastolic code → `Slice 'Observation.component:DiastolicBP'
-     … required, but not found`. Not nested slicing: the component slices are
-     one level deep and were deferred because their discriminator is a
-     **`patternCodeableConcept` (object pattern)**; the generator flattens only
-     scalar fixed values. A **generator-only** change — and it also unlocks the
-     MedicationRequest/Statement deferrals (same shape).
+     … required, but not found`. Diagnosed on inspection — the first guess
+     (object patterns) was wrong: the component slices are `value`-discriminated
+     on `code.coding.code` / `.system` (scalar paths), but the *values* live
+     inside a **nested** slice (`component:SystolicBP.code.coding:SBPCode.code`),
+     which the generator discarded. **Fixed, generator-only:** discriminator
+     values now resolve through nested slice labels. The MedicationRequest /
+     Statement deferrals are *not* this: they are genuinely nested (`coding`
+     sliced by `pattern $this` inside the type-slice) plus `supportingInformation`
+     discriminated by `profile resolve()` — reference resolution, which nothing
+     can do offline.
   2. No value and no dataAbsentReason → `vs-2` — **FHIRPath invariants**;
      `constraint[]` is not in the IR. A minimal FHIRPath core (`exists` /
      `empty` / `and` / `or` / `implies` / navigation) covers this class.
@@ -323,8 +328,13 @@ treat `$validate.profile` `uri`→`canonical` + R5's `usageContext` as additive.
      enforce reference target type offline. The probe's expectation was wrong,
      not the engine — flipped to *expect valid* as a guard against
      over-enforcing what the reference doesn't.
-  **Build order, by evidence: object patterns → FHIRPath core → `type.profile`
-  + `au.base`.**
+  **Build order, by evidence: nested-label discriminators (done) → FHIRPath core
+  → `type.profile` + `au.base`.**
+
+  **Fifth pass (2026-09-15): 81/83.** The BP probe now agrees with the oracle,
+  and the `subject → Device` guard agrees (both valid). The two remaining
+  disagreements are exactly the two FHIRPath-invariant probes (`vs-2`, the IHI
+  Luhn) — the next build is the FHIRPath core.
 - **Inferno** (ONC g10) and **Touchstone** are **API-behavior** harnesses
   (SMART launch, Bulk Data, search, US Core over the wire) — relevant only if we
   later ship a *server* surface, not for the embeddable validator. Note them,

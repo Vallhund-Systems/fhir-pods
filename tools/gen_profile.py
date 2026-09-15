@@ -102,7 +102,18 @@ def build(sd):
         if ":" in eid:
             head, tail = eid.split(":", 1)
             if ":" in tail:                                  # nested slicing
+                # Not enforced yet — but a nested slice's scalar fixed values are
+                # what an OUTER slice's `value` discriminator resolves to. BP:
+                # component:SystolicBP is discriminated by code.coding.code,
+                # whose value lives in component:SystolicBP.code.coding:SBPCode
+                # .code. Record them keyed by the label-stripped relative path.
                 deferred += 1
+                name = tail.split(".", 1)[0].split(":", 1)[0]
+                sg = slicings.setdefault(head, {"closed": False, "disc": [], "slices": {}})
+                sl = sg["slices"].setdefault(name, {"min": 0, "max": None, "type": None, "profile": None, "subs": {}})
+                fixed = scalar_fixed(e)
+                if fixed is not None and path.startswith(head + "."):
+                    sl.setdefault("deep", {}).setdefault(path[len(head) + 1:], []).append(fixed)
                 continue
             sg = slicings.setdefault(head, {"closed": False, "disc": [], "slices": {}})
             if "." not in tail:                              # the slice element itself
@@ -151,6 +162,12 @@ def build(sd):
                 elif dtype in ("value", "pattern"):
                     sub = sl["subs"].get(dpath)
                     val = sub["fixed"] if sub else None
+                    if val is None:
+                        # Fall through to a value fixed inside a nested slice
+                        # (first in snapshot order — the canonical coding).
+                        deep = sl.get("deep", {}).get(dpath)
+                        if deep:
+                            val = deep[0]
                     if val is None and dpath == "url" and sl["profile"]:
                         val = sl["profile"]
                     if val is None:

@@ -1198,6 +1198,32 @@ mod tests {
         assert!(r.contains("matching no slice"), "{r}");
     }
 
+    // --- Observation: generated au-core-bloodpressure — component slices whose
+    //     discriminator values live inside nested slices ---
+
+    const BP_OK: &str = r#"{"resourceType":"Observation","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-bloodpressure"]},"status":"final","category":[{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/observation-category","code":"vital-signs"}]}],"code":{"coding":[{"system":"http://loinc.org","code":"85354-9"},{"system":"http://snomed.info/sct","code":"75367002"}]},"subject":{"reference":"Patient/1"},"effectiveDateTime":"2026-09-15T10:00:00Z","component":[{"code":{"coding":[{"system":"http://loinc.org","code":"8480-6"},{"system":"http://snomed.info/sct","code":"271649006"}]},"valueQuantity":{"value":120,"unit":"mmHg","system":"http://unitsofmeasure.org","code":"mm[Hg]"}},{"code":{"coding":[{"system":"http://loinc.org","code":"8462-4"},{"system":"http://snomed.info/sct","code":"271650006"}]},"valueQuantity":{"value":80,"unit":"mmHg","system":"http://unitsofmeasure.org","code":"mm[Hg]"}}]}"#;
+
+    #[test]
+    fn bloodpressure_valid_with_component_slices() {
+        let r = probe_str(BP_OK);
+        assert!(r.contains("\"valid\":true"), "{r}");
+        assert!(r.contains("Blood Pressure"), "{r}");
+    }
+
+    #[test]
+    fn bloodpressure_wrong_diastolic_code_fails_component_slice() {
+        // Two components remain, so `component min 2` still holds — only the
+        // slice discriminator (resolved through a nested slice) can catch it.
+        let r = probe_str(&BP_OK.replace("\"code\":\"8462-4\"", "\"code\":\"8462-9\""));
+        assert!(r.contains("Observation.component:DiastolicBP is required"), "{r}");
+    }
+
+    #[test]
+    fn bloodpressure_component_wrong_unit_fails_slice_fixed() {
+        let r = probe_str(&BP_OK.replacen("\"code\":\"mm[Hg]\"", "\"code\":\"mmHg\"", 1));
+        assert!(r.contains("Observation.component:SystolicBP.value[x].code must be 'mm[Hg]'"), "{r}");
+    }
+
     // --- wire: OperationOutcome ---
 
     #[test]
