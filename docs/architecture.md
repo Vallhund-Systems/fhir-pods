@@ -56,6 +56,42 @@ Australian FHIR profiles) is the first target, validated against the published
 suites (**Inferno**, **Touchstone**). Do not chase HAPI's full surface — the win
 is form factor + correctness on a narrow, real profile, not breadth.
 
+## Delivery — pods (one core, bindings per target)
+
+The core is target-general; each *pod* is a thin binding over the same lean
+C ABI. "Runs wherever the data is" is delivered by the right binding per target,
+not one artifact everywhere:
+
+| Target | Pod | Mechanism |
+|---|---|---|
+| Browser / edge / server | **wasm pod** | C ABI → `wasm32` → tiny JS wrapper |
+| iOS / Android (Expo app) | **expo pod** | C ABI → native staticlib (iOS XCFramework `.a` / Android `.so`) → Expo Modules API module |
+
+The phone target is **native, not WASM.** Hermes has no WASM runtime, so running
+the verifier as WASM inside React Native means a WebView or a bundled interpreter
+— slow and heavy, the opposite of the point. On device you compile the *same
+core* to a native staticlib and bridge it:
+
+- **iOS:** build an **XCFramework** (arm64 device + sim) from the staticlib and
+  vendor it in a **CocoaPods pod** — hence the name. A Swift wrapper calls the C
+  header; the **Expo Modules API** handles autolinking + the config plugin.
+- **Android:** build `.so` per ABI with `cargo-ndk` into `jniLibs`; a Kotlin
+  wrapper calls the C ABI.
+- **JS surface:** a synchronous **JSI** call — validate a JSON string, get a
+  report, no bridge serialization. Start on the Expo Modules API; **Nitro
+  Modules / hand-written JSI** is the zero-copy upgrade if marshaling ever shows
+  up in a profile.
+
+The C ABI already in `fhir-pods-wasm` is the shared FFI surface — the native pod
+compiles it to a staticlib instead of `wasm32`. (Worth generalizing the crate
+name `fhir-pods-wasm` → `fhir-pods-ffi` once the native target lands.)
+
+**Boundary (the wall):** the expo pod is a **standalone Expo module any app can
+install** — published or vendored as a release artifact, never source-linked into
+a host app's tree. A consumer depends on it the way it would any third-party
+native module; the pod never imports the host, and the host never imports pod
+source. Same separation as a vendored SDK release.
+
 ## WASM boundary (`fhir-pods-wasm`)
 
 A **lean C ABI**, not wasm-bindgen: host passes a UTF-8 JSON resource as
