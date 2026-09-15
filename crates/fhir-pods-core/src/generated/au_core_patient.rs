@@ -3,7 +3,7 @@
 //! Coverage: 39 element constraint(s) + 15 slice(s) enforced; 9 deferred
 //! (nested slicing / undiscriminable slices / object patterns / mustSupport-only).
 
-use crate::compiled::{CompiledProfile, Discriminator, ElementConstraint, Max, Slice, Slicing};
+use crate::compiled::{CompiledProfile, ElementConstraint, Max, Discriminator, Slice, Slicing};
 
 pub static PROFILE: CompiledProfile = CompiledProfile {
     url: "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",

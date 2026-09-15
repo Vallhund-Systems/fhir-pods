@@ -24,11 +24,9 @@ use alloc::string::String;
 use document::Document;
 use validate::{Issue, Severity};
 
-/// Compiled profiles generated from FHIR packages (`tools/gen_profile.py`).
-pub mod generated {
-    pub mod au_core_heartrate;
-    pub mod au_core_patient;
-}
+/// Compiled profiles generated from FHIR packages (`tools/gen_all.py`), with a
+/// `REGISTRY` keyed by canonical URL.
+pub mod generated;
 
 /// Probe a FHIR resource and return a JSON report. Profile selection follows
 /// the spec: a declared `meta.profile` picks the generated profile; otherwise
@@ -48,30 +46,34 @@ pub fn probe(input: &[u8]) -> String {
             render_report("Unknown", None, &[issue], false)
         }
         None => render_report("Unknown", None, &[], true),
-        Some("Observation") => match document::Parsed::parse(input) {
+        Some(rt) => match document::Parsed::parse(input) {
             Ok(parsed) => {
                 let doc = parsed.doc();
-                let heartrate = &generated::au_core_heartrate::PROFILE;
-                let declared = doc.scalars("Observation.meta.profile");
-                if declared.iter().any(|u| *u == heartrate.url) {
-                    let report = engine::validate(heartrate, &doc);
-                    render_report("Observation", Some(heartrate.name), &report.issues, report.is_valid())
-                } else {
-                    let report = au_core::validate_observation(&fields);
-                    render_report("Observation", Some("AU Core Observation"), &report.issues, report.is_valid())
+                // A declared meta.profile selects the generated profile (spec behavior).
+                let declared = doc.scalars("$this.meta.profile");
+                let selected = generated::REGISTRY
+                    .iter()
+                    .find(|p| p.resource_type == rt && declared.iter().any(|u| *u == p.url))
+                    .copied();
+                // Resource-type defaults when nothing is declared.
+                let default = match rt {
+                    "Patient" => Some(&generated::au_core_patient::PROFILE),
+                    _ => None,
+                };
+                match selected.or(default) {
+                    Some(profile) => {
+                        let report = engine::validate(profile, &doc);
+                        render_report(rt, Some(profile.name), &report.issues, report.is_valid())
+                    }
+                    None if rt == "Observation" => {
+                        let report = au_core::validate_observation(&fields);
+                        render_report(rt, Some("AU Core Observation"), &report.issues, report.is_valid())
+                    }
+                    None => render_report(rt, None, &[], true),
                 }
             }
             Err(e) => parse_error_report(e),
         },
-        Some("Patient") => match document::Parsed::parse(input) {
-            Ok(parsed) => {
-                let profile = &generated::au_core_patient::PROFILE;
-                let report = engine::validate(profile, &parsed.doc());
-                render_report("Patient", Some(profile.name), &report.issues, report.is_valid())
-            }
-            Err(e) => parse_error_report(e),
-        },
-        Some(rt) => render_report(rt, None, &[], true),
     }
 }
 
