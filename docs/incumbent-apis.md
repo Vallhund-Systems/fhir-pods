@@ -99,6 +99,11 @@ So our current `Issue{severity, path, message}` grows by: `Fatal` severity, a
 required `code: IssueType`, and optional `message_id`/`line`/`col`. Small,
 mechanical — not a redesign. That's what "conform on the wire" costs.
 
+**Implemented (2026-09-15):** `validate_bytes() -> Validation` (typed, never
+throws) and `to_operation_outcome()` (the spec resource) — with `Fatal` and the
+required `code`. `message_id` / `line` / `col` are deferred (the tree adapter
+carries no source positions yet).
+
 ---
 
 ## 4. Terminology architecture (forced by licensing)
@@ -269,8 +274,15 @@ treat `$validate.profile` `uri`→`canonical` + R5's `usageContext` as additive.
      `hl7.fhir.au.base` datatype profiles generated plus one engine rule.
   2. **The example-URL policy.** A best-practice check, not spec — decide whether
      to mirror it behind a policy flag for full bug-for-bug parity.
-  Next widening: issue-level (not just verdict-level) diffing once the
-  `OperationOutcome` wire layer lands, and more profiles in the corpus.
+  **Second pass, with the wire layer (2026-09-15): issue-level parity, 9/9.**
+  Diffing our `OperationOutcome.expression`s against the oracle's (normalized)
+  first showed one convention gap, not a defect: the reference validator
+  **locates a missing element at its parent** (`Patient.gender` missing →
+  `Patient`; a missing slice → the sliced element's parent), and writes choice
+  slices as FHIRPath (`value.ofType(Quantity)`). The wire layer now follows
+  both — `wire::expression` — while the ergonomic `Issue.path` keeps the
+  precise labelled location. After that: same verdicts *and* same flagged
+  elements on all 9. Next widening: more profiles in the corpus.
 - **Inferno** (ONC g10) and **Touchstone** are **API-behavior** harnesses
   (SMART launch, Bulk Data, search, US Core over the wire) — relevant only if we
   later ship a *server* surface, not for the embeddable validator. Note them,

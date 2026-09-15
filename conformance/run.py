@@ -11,6 +11,7 @@ verdicts and reports that the oracle was skipped.
 """
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.request
@@ -45,9 +46,30 @@ def jvm_starts():
         return False
 
 
+def error_paths(outcome):
+    """The element paths of error/fatal issues, normalized so ours and the
+    oracle's are comparable: strip `[n]` indices, `:slice` labels, and rewrite
+    `.ofType(T)` (the oracle's choice syntax) to our `[x]`."""
+    paths = set()
+    for i in outcome.get("issue", []):
+        if i.get("severity") not in ("error", "fatal"):
+            continue
+        for e in i.get("expression") or i.get("location") or []:
+            e = re.sub(r"\.ofType\([^)]*\)", "[x]", e)
+            e = re.sub(r"\[\d+\]", "", e)
+            e = re.sub(r":[^.\[\]]+", "", e)
+            paths.add(e)
+    return paths
+
+
 def ours(probe, path):
-    r = subprocess.run([probe, path], capture_output=True, text=True)
-    return "valid" if r.returncode == 0 else "invalid"
+    """Our verdict, and our OperationOutcome's error paths (apples to apples)."""
+    r = subprocess.run([probe, "--outcome", path], capture_output=True, text=True)
+    try:
+        o = json.loads(r.stdout)
+    except ValueError:
+        o = {}
+    return ("valid" if r.returncode == 0 else "invalid"), error_paths(o)
 
 
 def oracle(path, profile):
@@ -61,13 +83,13 @@ def oracle(path, profile):
     try:
         o = json.load(open(out))
     except (OSError, ValueError):
-        return "error", ["oracle produced no OperationOutcome"]
+        return "error", ["oracle produced no OperationOutcome"], set()
     bad = [i for i in o.get("issue", []) if i.get("severity") in ("error", "fatal")]
     detail = [
         f"{i.get('severity')}: {(i.get('details') or {}).get('text') or i.get('diagnostics')} @ {i.get('expression') or i.get('location')}"
         for i in bad
     ]
-    return ("invalid" if bad else "valid"), detail
+    return ("invalid" if bad else "valid"), detail, error_paths(o)
 
 
 def main():
@@ -92,8 +114,8 @@ def main():
     for c in manifest:
         path = os.path.join(CORPUS, c["file"])
         expect = "valid" if c["expect"] else "invalid"
-        ov = ours(probe, path)
-        rv, detail = oracle(path, c["profile"]) if have_java else ("-", [])
+        ov, opaths = ours(probe, path)
+        rv, detail, rpaths = oracle(path, c["profile"]) if have_java else ("-", [], set())
         status = "ok"
         if ov != expect:
             status = "OURS!=EXPECT"
@@ -110,6 +132,10 @@ def main():
         if status != "ok":
             for d in detail:
                 print(f"    oracle: {d}")
+        # Issue-level view (informational, not scored): when both agree the
+        # resource is invalid, do we flag the same elements the oracle does?
+        if have_java and status == "ok" and rv == "invalid" and opaths != rpaths:
+            print(f"    issue paths differ (info)  ours: {sorted(opaths)}  oracle: {sorted(rpaths)}")
 
     n = len(manifest)
     tail = "" if have_java else " (ours vs expectation only; run with Java for the oracle)"

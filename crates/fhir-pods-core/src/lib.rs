@@ -8,7 +8,14 @@
 //! CPU-bound, pure compute — a **library**. `fhir-pods-core` is that library:
 //! no I/O, no telemetry, no licensed terminology, source-agnostic, `no_std`.
 //!
-//! Profiles are **generated from the packages' shipped `snapshot.element`** into
+//! Two layers, per the API decision (see `docs/incumbent-apis.md`):
+//! * **ergonomic** — [`validate_bytes`] returns a typed [`Validation`] with a
+//!   complete issue list; it never throws to signal validation state.
+//! * **wire** — [`Validation::to_operation_outcome`] emits the spec's
+//!   `OperationOutcome` at the boundary, so anything downstream sees a
+//!   standard FHIR validator.
+//!
+//! Profiles are generated from the packages' shipped `snapshot.element` into
 //! the compiled IR (`compiled`), then run by the generic `engine` against a
 //! `document::Document` port. See `docs/domain-model.md`.
 #![cfg_attr(not(test), no_std)]
@@ -22,30 +29,47 @@ extern crate alloc;
 
 use alloc::string::String;
 use document::Document;
-use validate::{Issue, Severity};
+use validate::{IssueType, Report, Severity};
 
 /// Compiled profiles generated from FHIR packages (`tools/gen_all.py`), with a
 /// `REGISTRY` keyed by canonical URL.
 pub mod generated;
 
-/// Probe a FHIR resource and return a JSON report. Profile selection follows
-/// the spec: a declared `meta.profile` picks the generated profile; otherwise
-/// the resource type's default checks apply.
-pub fn probe(input: &[u8]) -> String {
+/// The ergonomic result: what was validated, against which profile, and every
+/// finding. Never a thrown error — validation state is data.
+pub struct Validation {
+    pub resource_type: String,
+    /// The profile that was applied, if any (its human title).
+    pub profile: Option<&'static str>,
+    pub report: Report,
+}
+
+impl Validation {
+    pub fn is_valid(&self) -> bool {
+        self.report.is_valid()
+    }
+
+    /// The spec resource — a FHIR `OperationOutcome` — for the wire.
+    pub fn to_operation_outcome(&self) -> String {
+        wire::operation_outcome(&self.report)
+    }
+}
+
+/// Validate a resource. Profile selection follows the spec: a declared
+/// `meta.profile` picks the generated profile; otherwise the resource type's
+/// default applies.
+pub fn validate_bytes(input: &[u8]) -> Validation {
     let fields = match json::scan_top_level(input) {
         Ok(f) => f,
-        Err(e) => return parse_error_report(e),
+        Err(e) => return parse_failure(e),
     };
     match fields.scalar("resourceType") {
         None if !fields.has("resourceType") => {
-            let issue = Issue {
-                severity: Severity::Error,
-                path: "resourceType".into(),
-                message: "resourceType is required".into(),
-            };
-            render_report("Unknown", None, &[issue], false)
+            let mut report = Report::default();
+            report.push(Severity::Error, IssueType::Structure, "resourceType", "resourceType is required".into());
+            Validation { resource_type: "Unknown".into(), profile: None, report }
         }
-        None => render_report("Unknown", None, &[], true),
+        None => Validation { resource_type: "Unknown".into(), profile: None, report: Report::default() },
         Some(rt) => match document::Parsed::parse(input) {
             Ok(parsed) => {
                 let doc = parsed.doc();
@@ -61,75 +85,178 @@ pub fn probe(input: &[u8]) -> String {
                     _ => None,
                 };
                 match selected.or(default) {
-                    Some(profile) => {
-                        let report = engine::validate(profile, &doc);
-                        render_report(rt, Some(profile.name), &report.issues, report.is_valid())
-                    }
-                    None if rt == "Observation" => {
-                        let report = au_core::validate_observation(&fields);
-                        render_report(rt, Some("AU Core Observation"), &report.issues, report.is_valid())
-                    }
-                    None => render_report(rt, None, &[], true),
+                    Some(profile) => Validation {
+                        resource_type: rt.into(),
+                        profile: Some(profile.name),
+                        report: engine::validate(profile, &doc),
+                    },
+                    None if rt == "Observation" => Validation {
+                        resource_type: rt.into(),
+                        profile: Some("AU Core Observation"),
+                        report: au_core::validate_observation(&fields),
+                    },
+                    None => Validation { resource_type: rt.into(), profile: None, report: Report::default() },
                 }
             }
-            Err(e) => parse_error_report(e),
+            Err(e) => parse_failure(e),
         },
     }
 }
 
-fn parse_error_report(e: json::ParseError) -> String {
-    let issue = Issue {
-        severity: Severity::Error,
-        path: "(document)".into(),
-        message: format!("could not parse JSON at byte {}: {}", e.at, e.msg),
-    };
-    render_report("Unknown", None, &[issue], false)
+/// The pods' JSON report — the ergonomic shape, stable for the FFI.
+pub fn probe(input: &[u8]) -> String {
+    wire::report(&validate_bytes(input))
 }
 
-fn severity_str(s: Severity) -> &'static str {
-    match s {
-        Severity::Error => "error",
-        Severity::Warning => "warning",
-        Severity::Information => "information",
-    }
+fn parse_failure(e: json::ParseError) -> Validation {
+    let mut report = Report::default();
+    report.push(
+        Severity::Fatal,
+        IssueType::Structure,
+        "(document)",
+        format!("could not parse JSON at byte {}: {}", e.at, e.msg),
+    );
+    Validation { resource_type: "Unknown".into(), profile: None, report }
 }
 
-fn render_report(resource_type: &str, profile: Option<&str>, issues: &[Issue], valid: bool) -> String {
-    let mut out = String::with_capacity(128);
-    out.push_str("{\"resourceType\":\"");
-    push_json_escaped(&mut out, resource_type);
-    out.push('"');
-    if let Some(p) = profile {
-        out.push_str(",\"profile\":\"");
-        push_json_escaped(&mut out, p);
-        out.push('"');
-    }
-    out.push_str(",\"valid\":");
-    out.push_str(if valid { "true" } else { "false" });
-    out.push_str(",\"issues\":[");
-    for (i, issue) in issues.iter().enumerate() {
-        if i > 0 {
-            out.push(',');
+/// The interop / wire context — the anti-corruption layer. Spec shapes live
+/// here and nowhere else: the `OperationOutcome` resource, and the pods' own
+/// JSON report.
+pub mod wire {
+    use alloc::string::String;
+
+    use crate::validate::{IssueType, Report, Severity};
+    use crate::Validation;
+
+    /// `OperationOutcome.issue.severity`.
+    pub fn severity_str(s: Severity) -> &'static str {
+        match s {
+            Severity::Fatal => "fatal",
+            Severity::Error => "error",
+            Severity::Warning => "warning",
+            Severity::Information => "information",
         }
-        out.push_str("{\"severity\":\"");
-        out.push_str(severity_str(issue.severity));
-        out.push_str("\",\"path\":\"");
-        push_json_escaped(&mut out, &issue.path);
-        out.push_str("\",\"message\":\"");
-        push_json_escaped(&mut out, &issue.message);
-        out.push_str("\"}");
     }
-    out.push_str("]}");
-    out
-}
 
-fn push_json_escaped(out: &mut String, s: &str) {
-    for c in s.chars() {
+    /// `OperationOutcome.issue.code` — the IssueType vocabulary.
+    pub fn issue_type_str(c: IssueType) -> &'static str {
         match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            c if (c as u32) < 0x20 => out.push(' '),
-            c => out.push(c),
+            IssueType::Structure => "structure",
+            IssueType::Required => "required",
+            IssueType::Value => "value",
+            IssueType::Invariant => "invariant",
+            IssueType::CodeInvalid => "code-invalid",
+            IssueType::NotSupported => "not-supported",
+            IssueType::BusinessRule => "business-rule",
+            IssueType::Informational => "informational",
+        }
+    }
+
+    /// The spec resource. `issue` is 1..*: a clean result carries the
+    /// conventional single informational issue.
+    pub fn operation_outcome(r: &Report) -> String {
+        let mut out = String::with_capacity(160);
+        out.push_str("{\"resourceType\":\"OperationOutcome\",\"issue\":[");
+        if r.issues.is_empty() {
+            out.push_str(
+                "{\"severity\":\"information\",\"code\":\"informational\",\"details\":{\"text\":\"Validation successful\"}}",
+            );
+        }
+        for (i, issue) in r.issues.iter().enumerate() {
+            if i > 0 {
+                out.push(',');
+            }
+            out.push_str("{\"severity\":\"");
+            out.push_str(severity_str(issue.severity));
+            out.push_str("\",\"code\":\"");
+            out.push_str(issue_type_str(issue.code));
+            out.push_str("\",\"details\":{\"text\":\"");
+            escape(&mut out, &issue.message);
+            out.push_str("\"},\"expression\":[\"");
+            escape(&mut out, &expression(&issue.path, issue.code));
+            out.push_str("\"]}");
+        }
+        out.push_str("]}");
+        out
+    }
+
+    /// `OperationOutcome.issue.expression` — the location as the reference
+    /// validator reports it, so issue-level diffs are apples to apples:
+    /// * a **missing** element (`Required`) is located at its **parent** — there
+    ///   is no node to point at (`Patient.gender` missing → `Patient`);
+    /// * our slice labels become FHIRPath: `value[x]:valueQuantity` →
+    ///   `value.ofType(Quantity)`, and a plain `:slice` label is dropped.
+    /// The ergonomic `Issue.path` keeps the precise, labelled location.
+    pub fn expression(path: &str, code: IssueType) -> String {
+        let located = if code == IssueType::Required {
+            path.rsplit_once('.').map_or(path, |(parent, _)| parent)
+        } else {
+            path
+        };
+        let mut out = String::with_capacity(located.len());
+        for (i, seg) in located.split('.').enumerate() {
+            if i > 0 {
+                out.push('.');
+            }
+            match seg.split_once(':') {
+                Some((name, key)) => match name.strip_suffix("[x]") {
+                    Some(base) => {
+                        out.push_str(base);
+                        if let Some(ty) = key.strip_prefix(base) {
+                            out.push_str(".ofType(");
+                            out.push_str(ty);
+                            out.push(')');
+                        }
+                    }
+                    None => out.push_str(name),
+                },
+                None => out.push_str(seg),
+            }
+        }
+        out
+    }
+
+    /// The pods' JSON report: resource type, applied profile, verdict, issues.
+    pub fn report(v: &Validation) -> String {
+        let mut out = String::with_capacity(160);
+        out.push_str("{\"resourceType\":\"");
+        escape(&mut out, &v.resource_type);
+        out.push('"');
+        if let Some(p) = v.profile {
+            out.push_str(",\"profile\":\"");
+            escape(&mut out, p);
+            out.push('"');
+        }
+        out.push_str(",\"valid\":");
+        out.push_str(if v.is_valid() { "true" } else { "false" });
+        out.push_str(",\"issues\":[");
+        for (i, issue) in v.report.issues.iter().enumerate() {
+            if i > 0 {
+                out.push(',');
+            }
+            out.push_str("{\"severity\":\"");
+            out.push_str(severity_str(issue.severity));
+            out.push_str("\",\"code\":\"");
+            out.push_str(issue_type_str(issue.code));
+            out.push_str("\",\"path\":\"");
+            escape(&mut out, &issue.path);
+            out.push_str("\",\"message\":\"");
+            escape(&mut out, &issue.message);
+            out.push_str("\"}");
+        }
+        out.push_str("]}");
+        out
+    }
+
+    /// Append `s` to `out`, escaping the characters JSON requires.
+    pub(crate) fn escape(out: &mut String, s: &str) {
+        for c in s.chars() {
+            match c {
+                '"' => out.push_str("\\\""),
+                '\\' => out.push_str("\\\\"),
+                c if (c as u32) < 0x20 => out.push(' '),
+                c => out.push(c),
+            }
         }
     }
 }
@@ -417,8 +544,7 @@ pub mod json {
 
 /// The `Document` port: how the engine reads a resource, independent of the
 /// JSON representation. `TreeDoc` is today's adapter — a cheap view that can be
-/// re-rooted at any node, which is what slicing needs (a slice's constraints
-/// are evaluated against each matched instance as its own `$this` root).
+/// re-rooted at any node, which is what slicing needs.
 pub mod document {
     use alloc::vec::Vec;
 
@@ -512,7 +638,6 @@ pub mod compiled {
     /// How an instance of a sliced element is assigned to a slice.
     pub enum Discriminator {
         /// The scalars at a relative path (`$this.system`) must include `value`.
-        /// A `pattern` discriminator on an object is flattened into several of these.
         Value { path: &'static str, value: &'static str },
         /// A choice-type slice: the instance is the member under this concrete
         /// key (`valueQuantity`).
@@ -551,12 +676,11 @@ pub mod compiled {
 /// The validation engine — the domain service. Pure: a compiled profile and a
 /// document in, a report out.
 pub mod engine {
-    use alloc::string::String;
     use alloc::vec::Vec;
 
     use crate::compiled::{CompiledProfile, Discriminator, ElementConstraint, Max, Slice, Slicing};
     use crate::document::Document;
-    use crate::validate::{Issue, Report, Severity};
+    use crate::validate::{IssueType, Report, Severity};
 
     pub fn validate(profile: &CompiledProfile, doc: &impl Document) -> Report {
         let mut r = Report::default();
@@ -569,10 +693,6 @@ pub mod engine {
         r
     }
 
-    fn error(path: &str, message: String) -> Issue {
-        Issue { severity: Severity::Error, path: path.into(), message }
-    }
-
     /// Cardinality (per parent instance), fixed value, and required binding for
     /// one element. `label` is the path reported in issues — absolute at the top
     /// level, `Path:slice.sub` inside a slice.
@@ -580,11 +700,11 @@ pub mod engine {
         for count in doc.child_counts(el.path) {
             let count = count as u32;
             if count < el.min {
-                r.issues.push(error(label, format!("{label} is required (min {}, found {count})", el.min)));
+                r.push(Severity::Error, IssueType::Required, label, format!("{label} is required (min {}, found {count})", el.min));
             }
             if let Max::Bounded(m) = el.max {
                 if count > m {
-                    r.issues.push(error(label, format!("{label} exceeds max {m} (found {count})")));
+                    r.push(Severity::Error, IssueType::Structure, label, format!("{label} exceeds max {m} (found {count})"));
                 }
             }
         }
@@ -594,17 +714,18 @@ pub mod engine {
         for s in doc.scalars(el.path) {
             if let Some(f) = el.fixed {
                 if s != f {
-                    r.issues.push(error(label, format!("{label} must be '{f}' (found '{s}')")));
+                    r.push(Severity::Error, IssueType::Value, label, format!("{label} must be '{f}' (found '{s}')"));
                 }
             }
             if let Some(vs) = el.required_binding {
                 match crate::value_sets::in_value_set(vs, s) {
-                    Some(false) => r.issues.push(error(label, format!("'{s}' is not in the bound value set"))),
-                    None => r.issues.push(Issue {
-                        severity: Severity::Warning,
-                        path: label.into(),
-                        message: format!("no bundled terminology for {vs}; '{s}' not checked"),
-                    }),
+                    Some(false) => r.push(Severity::Error, IssueType::CodeInvalid, label, format!("'{s}' is not in the bound value set")),
+                    None => r.push(
+                        Severity::Warning,
+                        IssueType::NotSupported,
+                        label,
+                        format!("no bundled terminology for {vs}; '{s}' not checked"),
+                    ),
                     Some(true) => {}
                 }
             }
@@ -646,11 +767,11 @@ pub mod engine {
                 matched += insts.len();
                 let count = insts.len() as u32;
                 if count < slice.min {
-                    r.issues.push(error(&label, format!("{label} is required (min {}, found {count})", slice.min)));
+                    r.push(Severity::Error, IssueType::Required, &label, format!("{label} is required (min {}, found {count})", slice.min));
                 }
                 if let Max::Bounded(m) = slice.max {
                     if count > m {
-                        r.issues.push(error(&label, format!("{label} exceeds max {m} (found {count})")));
+                        r.push(Severity::Error, IssueType::Structure, &label, format!("{label} exceeds max {m} (found {count})"));
                     }
                 }
                 for inst in &insts {
@@ -661,10 +782,12 @@ pub mod engine {
                 }
             }
             if slicing.closed && matched < all.len() {
-                r.issues.push(error(
+                r.push(
+                    Severity::Error,
+                    IssueType::Structure,
                     slicing.path,
                     format!("{} has {} element(s) matching no slice (closed slicing)", slicing.path, all.len() - matched),
-                ));
+                );
             }
         }
     }
@@ -705,7 +828,7 @@ pub mod value_sets {
 /// generated profile is declared in `meta.profile`.
 pub mod au_core {
     use crate::json::TopLevel;
-    use crate::validate::{Issue, Report, Severity};
+    use crate::validate::{IssueType, Report, Severity};
 
     pub fn is_observation_status(code: &str) -> bool {
         crate::value_sets::in_value_set("http://hl7.org/fhir/ValueSet/observation-status", code)
@@ -714,32 +837,29 @@ pub mod au_core {
 
     pub fn validate_observation(fields: &TopLevel) -> Report {
         let mut r = Report::default();
-        let error = |path: &str, message: &str| Issue {
-            severity: Severity::Error,
-            path: path.into(),
-            message: message.into(),
-        };
         match fields.scalar("status") {
-            None => r.issues.push(error("Observation.status", "status is required (1..1)")),
-            Some(s) if !is_observation_status(s) => r.issues.push(Issue {
-                severity: Severity::Error,
-                path: "Observation.status".into(),
-                message: format!("status '{s}' is not in the observation-status value set"),
-            }),
+            None => r.push(Severity::Error, IssueType::Required, "Observation.status", "status is required (1..1)".into()),
+            Some(s) if !is_observation_status(s) => r.push(
+                Severity::Error,
+                IssueType::CodeInvalid,
+                "Observation.status",
+                format!("status '{s}' is not in the observation-status value set"),
+            ),
             Some(_) => {}
         }
         if !fields.has("code") {
-            r.issues.push(error("Observation.code", "code is required (1..1)"));
+            r.push(Severity::Error, IssueType::Required, "Observation.code", "code is required (1..1)".into());
         }
         if !fields.has("subject") {
-            r.issues.push(error("Observation.subject", "subject is required (1..1)"));
+            r.push(Severity::Error, IssueType::Required, "Observation.subject", "subject is required (1..1)".into());
         }
         if !fields.has_value_x() && !fields.has("dataAbsentReason") {
-            r.issues.push(Issue {
-                severity: Severity::Warning,
-                path: "Observation".into(),
-                message: "neither value[x] nor dataAbsentReason is present".into(),
-            });
+            r.push(
+                Severity::Warning,
+                IssueType::Invariant,
+                "Observation",
+                "neither value[x] nor dataAbsentReason is present".into(),
+            );
         }
         r
     }
@@ -761,21 +881,45 @@ pub mod model {
     }
 }
 
+/// The verifier types — the finding vocabulary, aligned to `OperationOutcome`.
 pub mod validate {
     use alloc::{string::String, vec::Vec};
 
     use crate::model::Resource;
 
+    /// `OperationOutcome.issue.severity`.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum Severity {
+        Fatal,
         Error,
         Warning,
         Information,
     }
 
+    /// `OperationOutcome.issue.code` — the IssueType vocabulary (the subset we emit).
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum IssueType {
+        /// Structural problem: parse failure, cardinality exceeded, closed slicing.
+        Structure,
+        /// A required element is missing.
+        Required,
+        /// An element value is invalid (e.g. does not match a fixed value).
+        Value,
+        /// A FHIRPath invariant failed.
+        Invariant,
+        /// A code is not in the bound value set.
+        CodeInvalid,
+        /// A check that could not be performed (e.g. no terminology for a set).
+        NotSupported,
+        BusinessRule,
+        Informational,
+    }
+
     #[derive(Debug, Clone)]
     pub struct Issue {
         pub severity: Severity,
+        pub code: IssueType,
+        /// FHIRPath-style location — `OperationOutcome.issue.expression`.
         pub path: String,
         pub message: String,
     }
@@ -786,8 +930,18 @@ pub mod validate {
     }
 
     impl Report {
+        /// Conformant iff there are no `Fatal` or `Error` issues.
         pub fn is_valid(&self) -> bool {
-            !self.issues.iter().any(|i| i.severity == Severity::Error)
+            !self.issues.iter().any(|i| matches!(i.severity, Severity::Fatal | Severity::Error))
+        }
+
+        /// The spec resource — a FHIR `OperationOutcome`.
+        pub fn to_operation_outcome(&self) -> String {
+            crate::wire::operation_outcome(self)
+        }
+
+        pub(crate) fn push(&mut self, severity: Severity, code: IssueType, path: &str, message: String) {
+            self.issues.push(Issue { severity, code, path: path.into(), message });
         }
     }
 
@@ -874,7 +1028,7 @@ pub mod audit {
 
 #[cfg(test)]
 mod tests {
-    use super::probe;
+    use super::{probe, validate_bytes};
 
     fn probe_str(s: &str) -> String {
         probe(s.as_bytes())
@@ -930,6 +1084,7 @@ mod tests {
     fn patient_bad_gender_fails_required_binding() {
         let r = probe_str(&PATIENT_OK.replace("\"male\"", "\"banana\""));
         assert!(r.contains("not in the bound value set"), "{r}");
+        assert!(r.contains("\"code\":\"code-invalid\""), "{r}");
     }
 
     #[test]
@@ -1001,6 +1156,55 @@ mod tests {
             r#""valueString":"72""#,
         ));
         assert!(r.contains("matching no slice"), "{r}");
+    }
+
+    // --- wire: OperationOutcome ---
+
+    #[test]
+    fn operation_outcome_is_spec_shaped() {
+        let v = validate_bytes(br#"{"resourceType":"Patient","active":true}"#);
+        let o = v.to_operation_outcome();
+        assert!(o.starts_with("{\"resourceType\":\"OperationOutcome\",\"issue\":["), "{o}");
+        assert!(o.contains("\"severity\":\"error\",\"code\":\"required\""), "{o}");
+        // A missing element is located at its parent, as the reference validator does.
+        assert!(o.contains("\"expression\":[\"Patient\"]"), "{o}");
+    }
+
+    #[test]
+    fn operation_outcome_success_carries_one_informational_issue() {
+        let v = validate_bytes(PATIENT_OK.as_bytes());
+        assert!(v.is_valid());
+        let o = v.to_operation_outcome();
+        assert!(o.contains("\"severity\":\"information\",\"code\":\"informational\""), "{o}");
+    }
+
+    #[test]
+    fn parse_failure_is_fatal() {
+        let v = validate_bytes(b"not json");
+        assert!(!v.is_valid());
+        assert!(v.to_operation_outcome().contains("\"severity\":\"fatal\",\"code\":\"structure\""));
+    }
+
+    #[test]
+    fn wire_expression_locates_missing_element_at_parent() {
+        use super::validate::IssueType;
+        use super::wire::expression;
+        assert_eq!(expression("Patient.gender", IssueType::Required), "Patient");
+        assert_eq!(expression("Observation.code.coding:snomedHeartRateCode", IssueType::Required), "Observation.code");
+    }
+
+    #[test]
+    fn wire_expression_rewrites_slice_labels_to_fhirpath() {
+        use super::validate::IssueType;
+        use super::wire::expression;
+        assert_eq!(
+            expression("Observation.value[x]:valueQuantity.code", IssueType::Value),
+            "Observation.value.ofType(Quantity).code"
+        );
+        assert_eq!(
+            expression("Observation.category:VSCat.coding.system", IssueType::Value),
+            "Observation.category.coding.system"
+        );
     }
 
     // --- shared ---
