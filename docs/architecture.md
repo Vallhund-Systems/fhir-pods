@@ -82,9 +82,11 @@ core* to a native staticlib and bridge it:
   Modules / hand-written JSI** is the zero-copy upgrade if marshaling ever shows
   up in a profile.
 
-The C ABI already in `fhir-pods-wasm` is the shared FFI surface — the native pod
-compiles it to a staticlib instead of `wasm32`. (Worth generalizing the crate
-name `fhir-pods-wasm` → `fhir-pods-ffi` once the native target lands.)
+The C ABI in `fhir-pods-ffi` is the shared FFI surface — the native pod
+compiles it to a staticlib instead of `wasm32`. Two entrypoints, the two API
+layers: `fhir_pods_validate` (the ergonomic report) and
+`fhir_pods_operation_outcome` (the spec wire form). Both pods make exactly
+these two calls; the ABI never changes per target.
 
 **Boundary (the wall):** the expo pod is a **standalone Expo module any app can
 install** — published or vendored as a release artifact, never source-linked into
@@ -92,7 +94,7 @@ a host app's tree. A consumer depends on it the way it would any third-party
 native module; the pod never imports the host, and the host never imports pod
 source. Same separation as a vendored SDK release.
 
-## WASM boundary (`fhir-pods-wasm`)
+## The C ABI (`fhir-pods-ffi`)
 
 A **lean C ABI**, not wasm-bindgen: host passes a UTF-8 JSON resource as
 `(ptr, len)`; the pod returns a JSON report as `(ptr, len)`; memory is managed

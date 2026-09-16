@@ -57,8 +57,9 @@ dependencies, `no_std`, fuzzed. Design and decisions:
 
 - `crates/fhir-pods-core` — the Rust verifier + lowering core (zero deps, no `unsafe`).
 - `crates/fhir-pods-ffi` — the one lean C ABI, compiled per target (wasm32 / native staticlib).
-- `pods/expo` — the expo pod: the core as an Expo native module (iOS skeleton).
-- `scripts/` — native build (iOS XCFramework; Android `cargo-ndk` next).
+- `pods/wasm` — the wasm pod: a ~170 KB `.wasm` (49 KB gzipped) + a zero-dependency JS wrapper.
+- `pods/expo` — the expo pod: the core as an Expo native module (iOS XCFramework; Android next).
+- `scripts/` — `build-wasm.sh`, `build-ios-xcframework.sh`, `smoke-c.sh`, `check-no-std.sh`.
 - `docs/architecture.md` — the design, delivery model, audit surface, and perf budget.
 
 ## Testing
@@ -68,6 +69,8 @@ cargo test -p fhir-pods-core                 # unit tests + the seeded fuzz harn
 FUZZ_ITERS=1000000 FUZZ_SEED=42 cargo test -p fhir-pods-core --test fuzz   # longer / different seed
 ./scripts/check-no-std.sh                    # bare-metal build: nothing in the core touches std
 python3 conformance/run.py                   # differential test against the HL7 reference validator
+./scripts/smoke-c.sh                         # the C ABI, driven from C against the host staticlib
+./scripts/build-wasm.sh && (cd pods/wasm && npm test)   # the wasm pod, end to end through the JS wrapper
 ```
 
 Two fuzz layers. The **seeded harness** (`crates/fhir-pods-core/tests/fuzz.rs`)

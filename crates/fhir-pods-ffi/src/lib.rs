@@ -1,13 +1,17 @@
 //! # fhir-pods-ffi
 //!
-//! The one C ABI for `fhir-pods`, compiled per target: `wasm32` for the web/edge
+//! The one C ABI for `fhir-pods`, compiled per target: `wasm32` for the wasm
 //! pod, a native staticlib for the expo pod. Deliberately a **lean C ABI** (no
 //! wasm-bindgen, no UniFFI runtime) — the boundary is: pass a UTF-8 JSON
-//! resource as `(ptr, len)`, get a length-prefixed JSON report back.
+//! resource as `(ptr, len)`, get a length-prefixed JSON document back.
+//!
+//! Two entrypoints, the two layers of the API:
+//! - [`fhir_pods_validate`] — the ergonomic report (`valid`, `profile`, `issues[]`).
+//! - [`fhir_pods_operation_outcome`] — the spec resource, for the wire.
 //!
 //! ## Memory contract
 //! - Buffers returned to the host are `[u32 little-endian length][UTF-8 bytes…]`.
-//! - The host frees any buffer (its own input, or a returned report) with
+//! - The host frees any buffer (its own input, or a returned document) with
 //!   [`pod_free`], passing the buffer's full byte length.
 //! - Alloc/free use boxed-slice semantics so the freed length always matches the
 //!   allocated length exactly (sound across the FFI boundary).
@@ -15,7 +19,11 @@
 //! `unsafe` is confined to this shim; `fhir-pods-core` forbids it.
 #![allow(clippy::missing_safety_doc)]
 
-use fhir_pods_core::probe;
+use fhir_pods_core::{validate_bytes, wire};
+
+/// Bump when the exported surface or the memory contract changes; the
+/// wrappers refuse a mismatched module.
+pub const ABI_VERSION: u32 = 1;
 
 /// Allocate `len` bytes for the host to fill, then pass back via an entrypoint.
 #[no_mangle]
@@ -35,18 +43,36 @@ pub unsafe extern "C" fn pod_free(ptr: *mut u8, len: usize) {
 /// ABI version, so a host can refuse a mismatched module.
 #[no_mangle]
 pub extern "C" fn fhir_pods_abi_version() -> u32 {
-    0
+    ABI_VERSION
 }
 
-/// Probe a FHIR resource. Input: UTF-8 JSON at `(ptr, len)`. Returns a freshly
-/// allocated `[u32 le length][UTF-8 report…]` buffer — read the prefix, copy the
-/// report, then `pod_free(ret, 4 + length)`. Returns null only if allocation of
-/// the empty case is impossible (it is not; null is reserved for future errors).
+/// Validate a FHIR resource; returns the pods' report
+/// (`{"resourceType","profile","valid","issues":[…]}`).
+///
+/// Input: UTF-8 JSON at `(ptr, len)`. Returns a freshly allocated
+/// `[u32 le length][UTF-8 JSON…]` buffer — read the prefix, copy the document,
+/// then `pod_free(ret, 4 + length)`. Never null: a parse failure is a `fatal`
+/// issue in the report, not an error at the boundary.
 #[no_mangle]
-pub unsafe extern "C" fn fhir_pods_probe(ptr: *const u8, len: usize) -> *mut u8 {
-    let input: &[u8] = if ptr.is_null() { &[] } else { std::slice::from_raw_parts(ptr, len) };
-    let report = probe(input);
-    pack(report.as_bytes())
+pub unsafe extern "C" fn fhir_pods_validate(ptr: *const u8, len: usize) -> *mut u8 {
+    let v = validate_bytes(input(ptr, len));
+    pack(wire::report(&v).as_bytes())
+}
+
+/// Validate a FHIR resource; returns a FHIR `OperationOutcome` resource — the
+/// `$validate` wire form. Same memory contract as [`fhir_pods_validate`].
+#[no_mangle]
+pub unsafe extern "C" fn fhir_pods_operation_outcome(ptr: *const u8, len: usize) -> *mut u8 {
+    let v = validate_bytes(input(ptr, len));
+    pack(v.to_operation_outcome().as_bytes())
+}
+
+unsafe fn input<'a>(ptr: *const u8, len: usize) -> &'a [u8] {
+    if ptr.is_null() {
+        &[]
+    } else {
+        std::slice::from_raw_parts(ptr, len)
+    }
 }
 
 /// Length-prefix `bytes` into a boxed slice and hand ownership to the caller.
@@ -55,4 +81,45 @@ fn pack(bytes: &[u8]) -> *mut u8 {
     v.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
     v.extend_from_slice(bytes);
     Box::into_raw(v.into_boxed_slice()) as *mut u8
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Round-trip through the C ABI exactly as a host would.
+    unsafe fn call(f: unsafe extern "C" fn(*const u8, usize) -> *mut u8, json: &str) -> String {
+        let inp = pod_alloc(json.len());
+        std::ptr::copy_nonoverlapping(json.as_ptr(), inp, json.len());
+        let ret = f(inp, json.len());
+        pod_free(inp, json.len());
+        let len = u32::from_le_bytes(*(ret as *const [u8; 4])) as usize;
+        let out = String::from_utf8(std::slice::from_raw_parts(ret.add(4), len).to_vec()).unwrap();
+        pod_free(ret, 4 + len);
+        out
+    }
+
+    #[test]
+    fn both_entrypoints_round_trip() {
+        unsafe {
+            let r = call(fhir_pods_validate, r#"{"resourceType":"Patient","active":true}"#);
+            assert!(r.contains("\"valid\":false"), "{r}");
+            assert!(r.contains("Patient.identifier is required"), "{r}");
+            let o = call(fhir_pods_operation_outcome, r#"{"resourceType":"Patient","active":true}"#);
+            assert!(o.starts_with("{\"resourceType\":\"OperationOutcome\""), "{o}");
+            let bad = call(fhir_pods_validate, "not json");
+            assert!(bad.contains("\"severity\":\"fatal\""), "{bad}");
+            assert!(call(fhir_pods_validate, "").contains("fatal"));
+            assert_eq!(fhir_pods_abi_version(), ABI_VERSION);
+        }
+    }
+
+    #[test]
+    fn null_input_is_empty_input() {
+        unsafe {
+            let ret = fhir_pods_validate(std::ptr::null(), 0);
+            let len = u32::from_le_bytes(*(ret as *const [u8; 4])) as usize;
+            pod_free(ret, 4 + len);
+        }
+    }
 }

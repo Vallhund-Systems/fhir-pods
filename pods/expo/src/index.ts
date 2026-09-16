@@ -5,22 +5,52 @@ export function abiVersion(): number {
   return FhirPodsExpoModule.abiVersion();
 }
 
-/**
- * The report returned by {@link probe}. Skeleton shape — the `issues` array is
- * where conformance findings will land once the validator is implemented.
- */
-export interface ProbeReport {
+export type Severity = "fatal" | "error" | "warning" | "information";
+
+/** One finding, in the pods' ergonomic shape. */
+export interface Issue {
+  severity: Severity;
+  /** FHIR IssueType code (`required`, `value`, `invariant`, `structure`, `code-invalid`, …). */
+  code: string;
+  /** The element the finding is about, as a dotted path (`Observation.value[x]:valueQuantity.code`). */
+  path: string;
+  message: string;
+}
+
+/** The ergonomic report. Never thrown — validation state is data. */
+export interface Validation {
   resourceType: string;
-  pod: "fhir-pods";
-  stage: string;
-  issues: unknown[];
+  /** Human title of the profile applied, when one was. */
+  profile?: string;
+  /** No `fatal` or `error` issues. */
+  valid: boolean;
+  issues: Issue[];
+}
+
+/** A FHIR `OperationOutcome` — the `$validate` wire form. */
+export interface OperationOutcome {
+  resourceType: "OperationOutcome";
+  issue: OperationOutcomeIssue[];
+}
+
+export interface OperationOutcomeIssue {
+  severity: Severity;
+  code: string;
+  details?: { text: string };
+  /** FHIRPath expression(s) locating the finding. */
+  expression?: string[];
 }
 
 /**
- * Probe a FHIR resource (a JSON string). Skeleton pass: identifies the resource
- * and returns a {@link ProbeReport}. Synchronous — the native side is a
- * sub-millisecond C call, no bridge round-trip.
+ * Validate a FHIR resource (a JSON string): the ergonomic report. Synchronous —
+ * the native side is a sub-millisecond C call, no bridge round-trip. Never
+ * throws for bad input: unparseable JSON is a `fatal` issue in the report.
  */
-export function probe(json: string): ProbeReport {
-  return JSON.parse(FhirPodsExpoModule.probe(json)) as ProbeReport;
+export function validate(json: string): Validation {
+  return JSON.parse(FhirPodsExpoModule.validate(json)) as Validation;
+}
+
+/** Validate a FHIR resource: the spec `OperationOutcome`, for the wire. */
+export function operationOutcome(json: string): OperationOutcome {
+  return JSON.parse(FhirPodsExpoModule.operationOutcome(json)) as OperationOutcome;
 }
