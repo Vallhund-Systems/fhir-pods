@@ -12,7 +12,7 @@ JS  ──validate(json)──►  hand-written wrapper  ──C ABI──►  R
 No wasm-bindgen, no glue runtime: the wrapper is ~40 lines over `pod_alloc` /
 `pod_free` and the two entrypoints. The `.wasm` carries the 156 compiled
 AU Core + US Core profiles (and the AU Base / US Core datatypes they inherit),
-the bundled value sets and the FHIRPath engine — ~260 KB, 66 KB gzipped.
+the bundled value sets and the FHIRPath engine — ~300 KB, 73 KB gzipped.
 
 ## Build
 

@@ -16,8 +16,10 @@ export interface Issue {
 /** The ergonomic report. Never thrown — validation state is data. */
 export interface Validation {
   resourceType: string;
-  /** Human title of the profile applied, when one was. */
+  /** Human title of the profile applied, when one was (the first, when several). */
   profile?: string;
+  /** Every profile applied, when a resource declares more than one. */
+  profiles?: string[];
   /** No `fatal` or `error` issues. */
   valid: boolean;
   issues: Issue[];

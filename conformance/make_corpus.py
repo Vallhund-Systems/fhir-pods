@@ -239,8 +239,16 @@ def drop_value_and_dar(d):
     d.pop("dataAbsentReason", None)
 
 
+def add_au_profile(d):
+    """Declare a second profile (AU Core Patient) alongside US Core Patient:
+    the validator must check both. Expected valid — the example satisfies AU
+    Core too; the oracle decides."""
+    d["meta"]["profile"].append(PT)
+
+
 # (example file glob, fixture name, mutation, expected verdict)
 US_MUTATIONS = [
+    ("Patient-example.json", "us-patient-two-profiles", add_au_profile, True),
     ("Patient-example.json", "us-patient-missing-name", drop("name"), False),
     ("Patient-example.json", "us-patient-bad-gender", lambda d: d.update(gender="banana"), False),
     ("Patient-example.json", "us-patient-race-missing-text", drop_race_text, False),

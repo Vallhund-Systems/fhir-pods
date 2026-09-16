@@ -40,8 +40,12 @@ pub mod generated;
 /// finding. Never a thrown error — validation state is data.
 pub struct Validation {
     pub resource_type: String,
-    /// The profile that was applied, if any (its human title).
+    /// The profile that was applied, if any (its human title; the first when
+    /// several were).
     pub profile: Option<&'static str>,
+    /// Every profile applied — a resource may declare more than one, and
+    /// must conform to all of them.
+    pub profiles: Vec<&'static str>,
     pub report: Report,
 }
 
@@ -73,24 +77,40 @@ pub fn validate_bytes_with(input: &[u8], tx: &dyn terminology::TerminologyProvid
         None if !fields.has("resourceType") => {
             let mut report = Report::default();
             report.push(Severity::Error, IssueType::Structure, "resourceType", "resourceType is required".into());
-            Validation { resource_type: "Unknown".into(), profile: None, report }
+            Validation { resource_type: "Unknown".into(), profile: None, profiles: Vec::new(), report }
         }
-        None => Validation { resource_type: "Unknown".into(), profile: None, report: Report::default() },
+        None => Validation { resource_type: "Unknown".into(), profile: None, profiles: Vec::new(), report: Report::default() },
         Some(rt) => match document::Parsed::parse(input) {
             Ok(parsed) => {
                 let doc = parsed.doc();
-                match select_profile(rt, &doc) {
-                    Some(profile) => Validation {
-                        resource_type: rt.into(),
-                        profile: Some(profile.name),
-                        report: engine::validate_with(profile, &doc, tx),
-                    },
-                    None if rt == "Observation" => Validation {
-                        resource_type: rt.into(),
-                        profile: Some("AU Core Observation"),
-                        report: au_core::validate_observation(&fields),
-                    },
-                    None => Validation { resource_type: rt.into(), profile: None, report: Report::default() },
+                let profiles = select_profiles(rt, &doc);
+                if profiles.is_empty() {
+                    return if rt == "Observation" {
+                        Validation {
+                            resource_type: rt.into(),
+                            profile: Some("AU Core Observation"),
+                            profiles: vec!["AU Core Observation"],
+                            report: au_core::validate_observation(&fields),
+                        }
+                    } else {
+                        Validation { resource_type: rt.into(), profile: None, profiles: Vec::new(), report: Report::default() }
+                    };
+                }
+                // Conform to every declared profile; a finding two profiles
+                // share is reported once.
+                let mut report = Report::default();
+                for profile in &profiles {
+                    for issue in engine::validate_with(profile, &doc, tx).issues {
+                        if !report.issues.contains(&issue) {
+                            report.issues.push(issue);
+                        }
+                    }
+                }
+                Validation {
+                    resource_type: rt.into(),
+                    profile: Some(profiles[0].name),
+                    profiles: profiles.iter().map(|p| p.name).collect(),
+                    report,
                 }
             }
             Err(e) => parse_failure(e),
@@ -98,20 +118,25 @@ pub fn validate_bytes_with(input: &[u8], tx: &dyn terminology::TerminologyProvid
     }
 }
 
-/// Profile selection, as the spec has it: a declared `meta.profile` picks the
-/// compiled profile; otherwise the resource type's default, if any.
-fn select_profile(resource_type: &str, doc: &impl Document) -> Option<&'static CompiledProfile> {
-    let declared = doc.scalars("$this.meta.profile");
-    let selected = generated::REGISTRY
+/// Profile selection, as the spec has it: every declared `meta.profile` we
+/// have compiled applies (in declaration order); when none is declared, the
+/// resource type's default, if any.
+fn select_profiles(resource_type: &str, doc: &impl Document) -> Vec<&'static CompiledProfile> {
+    let mut out: Vec<&'static CompiledProfile> = doc
+        .scalars("$this.meta.profile")
         .iter()
-        .find(|p| p.resource_type == resource_type && declared.iter().any(|u| *u == p.url))
-        .copied();
-    // Resource-type defaults when nothing is declared.
-    let default = match resource_type {
-        "Patient" => Some(&generated::au_core_patient::PROFILE),
-        _ => None,
-    };
-    selected.or(default)
+        .filter_map(|url| generated::REGISTRY.iter().find(|p| p.resource_type == resource_type && p.url == *url).copied())
+        .collect();
+    out.dedup_by_key(|p| p.url);
+    if out.is_empty() {
+        if let Some(default) = match resource_type {
+            "Patient" => Some(&generated::au_core_patient::PROFILE),
+            _ => None,
+        } {
+            out.push(default);
+        }
+    }
+    out
 }
 
 /// The pods' JSON report — the ergonomic shape, stable for the FFI.
@@ -128,10 +153,15 @@ pub fn must_support_gaps(input: &[u8]) -> Vec<&'static str> {
     let Some(rt) = fields.scalar("resourceType") else { return Vec::new() };
     let Ok(parsed) = document::Parsed::parse(input) else { return Vec::new() };
     let doc = parsed.doc();
-    match select_profile(rt, &doc) {
-        Some(profile) => engine::must_support_gaps(profile, &doc),
-        None => Vec::new(),
+    let mut gaps = Vec::new();
+    for profile in select_profiles(rt, &doc) {
+        for g in engine::must_support_gaps(profile, &doc) {
+            if !gaps.contains(&g) {
+                gaps.push(g);
+            }
+        }
     }
+    gaps
 }
 
 fn parse_failure(e: json::ParseError) -> Validation {
@@ -142,7 +172,7 @@ fn parse_failure(e: json::ParseError) -> Validation {
         "(document)",
         format!("could not parse JSON at byte {}: {}", e.at, e.msg),
     );
-    Validation { resource_type: "Unknown".into(), profile: None, report }
+    Validation { resource_type: "Unknown".into(), profile: None, profiles: Vec::new(), report }
 }
 
 /// The interop / wire context — the anti-corruption layer. Spec shapes live
@@ -252,6 +282,18 @@ pub mod wire {
             out.push_str(",\"profile\":\"");
             escape(&mut out, p);
             out.push('"');
+        }
+        if v.profiles.len() > 1 {
+            out.push_str(",\"profiles\":[");
+            for (i, p) in v.profiles.iter().enumerate() {
+                if i > 0 {
+                    out.push(',');
+                }
+                out.push('"');
+                escape(&mut out, p);
+                out.push('"');
+            }
+            out.push(']');
         }
         out.push_str(",\"valid\":");
         out.push_str(if v.is_valid() { "true" } else { "false" });
@@ -621,6 +663,9 @@ pub mod document {
         fn as_scalar(&self) -> Option<&str>;
         /// This node's value if it is a JSON boolean.
         fn as_bool(&self) -> Option<bool>;
+        /// Structural equality with another node (FHIRPath `=` on complex
+        /// types, `intersect`).
+        fn same(&self, other: &Self) -> bool;
     }
 
     /// Owner of a parsed resource; hands out `TreeDoc` views.
@@ -685,6 +730,10 @@ pub mod document {
                 Value::Bool(b) => Some(*b),
                 _ => None,
             }
+        }
+
+        fn same(&self, other: &Self) -> bool {
+            self.root == other.root
         }
     }
 }
@@ -773,6 +822,10 @@ pub mod compiled {
         pub severity: InvariantSeverity,
         pub human: &'static str,
         pub expression: &'static str,
+        /// The element's FHIR type code(s): what `$this is dateTime` resolves
+        /// against, and for a choice (`effective[x]`) the concrete keys to
+        /// evaluate — each instance knows its own type.
+        pub types: &'static [&'static str],
     }
 
     /// A profile compiled to embeddable rules.
@@ -798,8 +851,11 @@ pub mod compiled {
 pub mod engine {
     use alloc::vec::Vec;
 
+    use alloc::string::String;
+
     use crate::compiled::{
-        BindingKind, CompiledProfile, Discriminator, ElementConstraint, InvariantSeverity, Max, Slice, Slicing,
+        BindingKind, CompiledProfile, Discriminator, ElementConstraint, InvariantSeverity, Max, ProfileInvariant, Slice,
+        Slicing,
     };
     use crate::document::Document;
     use crate::path::{self, Verdict};
@@ -817,13 +873,13 @@ pub mod engine {
 
     /// Validate with a host terminology provider answering the bindings the
     /// bundled sets can't (see [`crate::terminology::Chain`]).
-    pub fn validate_with(profile: &CompiledProfile, doc: &impl Document, tx: &dyn TerminologyProvider) -> Report {
-        validate_at(profile, doc, tx, 0)
+    pub fn validate_with<D: Document>(profile: &CompiledProfile, doc: &D, tx: &dyn TerminologyProvider) -> Report {
+        validate_at(profile, doc, doc, tx, 0)
     }
 
     /// Must-support elements that are absent where their parent is present.
     /// A child under an absent parent is not a gap — the parent is.
-    pub fn must_support_gaps(profile: &CompiledProfile, doc: &impl Document) -> Vec<&'static str> {
+    pub fn must_support_gaps<D: Document>(profile: &CompiledProfile, doc: &D) -> Vec<&'static str> {
         profile
             .must_support
             .iter()
@@ -832,19 +888,22 @@ pub mod engine {
             .collect()
     }
 
-    fn validate_at(profile: &CompiledProfile, doc: &impl Document, tx: &dyn TerminologyProvider, depth: usize) -> Report {
+    /// `root` is the resource being validated (`%resource`) — the same node
+    /// as `doc` at the top level, and still the resource when `doc` is a
+    /// slice instance being checked against an inherited profile.
+    fn validate_at<D: Document>(profile: &CompiledProfile, doc: &D, root: &D, tx: &dyn TerminologyProvider, depth: usize) -> Report {
         let mut r = Report::default();
         for el in profile.elements {
             check_element(el, el.path, doc, tx, &mut r);
         }
         for slicing in profile.slicings {
-            check_slicing(slicing, doc, tx, &mut r, depth);
+            check_slicing(slicing, doc, root, tx, &mut r, depth);
         }
         for inv in profile.invariants {
             // Outside the supported FHIRPath core: skipped, never guessed.
             let Ok(expr) = path::parse(inv.expression) else { continue };
-            for ctx in doc.instances(inv.path) {
-                if path::check(&expr, &ctx) == Verdict::Fail {
+            for (ctx, this_type) in invariant_contexts(inv, doc) {
+                if path::check_with(&expr, &ctx, this_type, Some(root)) == Verdict::Fail {
                     let severity = match inv.severity {
                         InvariantSeverity::Error => Severity::Error,
                         InvariantSeverity::Warning => Severity::Warning,
@@ -854,6 +913,26 @@ pub mod engine {
             }
         }
         r
+    }
+
+    /// The instances an invariant applies to, each with its FHIR type. A
+    /// choice element (`effective[x]`) is enumerated per concrete key
+    /// (`effectiveDateTime`, `effectivePeriod`, …) so `$this is dateTime`
+    /// answers per instance.
+    fn invariant_contexts<'a, D: Document>(inv: &'a ProfileInvariant, doc: &D) -> Vec<(D, Option<&'a str>)> {
+        match inv.path.strip_suffix("[x]") {
+            Some(base) if !inv.types.is_empty() => inv
+                .types
+                .iter()
+                .flat_map(|t| {
+                    let mut key = String::from(base);
+                    key.push_str(&t[..1].to_ascii_uppercase());
+                    key.push_str(&t[1..]);
+                    doc.instances(&key).into_iter().map(move |d| (d, Some(*t)))
+                })
+                .collect(),
+            _ => doc.instances(inv.path).into_iter().map(|d| (d, inv.types.first().copied())).collect(),
+        }
     }
 
     /// Cardinality (per parent instance), fixed value, and required binding for
@@ -959,7 +1038,7 @@ pub mod engine {
     /// Evaluate a slicing per parent instance: assign instances to slices, check
     /// each slice's cardinality, validate its sub-constraints against every
     /// matched instance (re-rooted as `$this`), and enforce `closed`.
-    fn check_slicing(slicing: &Slicing, doc: &impl Document, tx: &dyn TerminologyProvider, r: &mut Report, depth: usize) {
+    fn check_slicing<D: Document>(slicing: &Slicing, doc: &D, root: &D, tx: &dyn TerminologyProvider, r: &mut Report, depth: usize) {
         let Some((parent_path, last)) = slicing.path.rsplit_once('.') else {
             return;
         };
@@ -992,7 +1071,7 @@ pub mod engine {
                     // and the profile's own element paths resolve against it.
                     if let Some(url) = slice.profile.filter(|_| depth < MAX_INHERIT) {
                         if let Some(profile) = crate::generated::REGISTRY.iter().find(|p| p.url == url) {
-                            for issue in validate_at(profile, inst, tx, depth + 1).issues {
+                            for issue in validate_at(profile, inst, root, tx, depth + 1).issues {
                                 let rel = issue
                                     .path
                                     .strip_prefix(profile.resource_type)
@@ -1149,7 +1228,7 @@ pub mod validate {
         Informational,
     }
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Issue {
         pub severity: Severity,
         pub code: IssueType,
@@ -1232,12 +1311,19 @@ pub mod path {
     #[derive(Debug, Clone, PartialEq)]
     pub enum Expr {
         This,
+        /// An environment variable: `%resource`.
+        Var(String),
         Lit(Lit),
         /// `base.name` — navigation.
         Nav(Box<Expr>, String),
         /// `base.name(args)` — a function call.
         Call(Box<Expr>, String, Vec<Expr>),
         Bin(Box<Expr>, Op, Box<Expr>),
+        /// `e is Type` — a type test (only `$this`'s type is known: the
+        /// invariant's element type, from the profile).
+        Is(Box<Expr>, String),
+        /// `e as Type` — `e` if it is of the type, else empty.
+        As(Box<Expr>, String),
     }
 
     /// Syntax or semantics outside the supported core.
@@ -1247,6 +1333,8 @@ pub mod path {
     #[derive(Debug, Clone, PartialEq)]
     enum Tok {
         Ident(String),
+        /// `%name` — an environment variable.
+        Var(String),
         Str(String),
         Int(i64),
         LParen,
@@ -1373,6 +1461,19 @@ pub mod path {
                     let s = core::str::from_utf8(&b[start..i]).map_err(|_| Unsupported)?;
                     out.push(Tok::Ident(s.into()));
                 }
+                b'%' => {
+                    let start = i + 1;
+                    let mut j = start;
+                    while j < b.len() && (b[j].is_ascii_alphanumeric() || b[j] == b'_') {
+                        j += 1;
+                    }
+                    if j == start {
+                        return Err(Unsupported); // `%'quoted'` variables: not in the core
+                    }
+                    let s = core::str::from_utf8(&b[start..j]).map_err(|_| Unsupported)?;
+                    out.push(Tok::Var(s.into()));
+                    i = j;
+                }
                 _ => {
                     out.push(Tok::Other);
                     i += 1;
@@ -1497,7 +1598,7 @@ pub mod path {
         }
 
         fn cmp(&mut self) -> Result<Expr, Unsupported> {
-            let l = self.add()?;
+            let l = self.type_expr()?;
             let op = match self.peek() {
                 Some(Tok::Lt) => Op::Lt,
                 Some(Tok::Le) => Op::Le,
@@ -1506,8 +1607,36 @@ pub mod path {
                 _ => return Ok(l),
             };
             self.i += 1;
-            let r = self.add()?;
+            let r = self.type_expr()?;
             Ok(Expr::Bin(Box::new(l), op, Box::new(r)))
+        }
+
+        // `e is Type` / `e as Type` — binds tighter than comparison, looser
+        // than arithmetic (the spec's table).
+        fn type_expr(&mut self) -> Result<Expr, Unsupported> {
+            let e = self.add()?;
+            if self.eat_kw("is") {
+                return Ok(Expr::Is(Box::new(e), self.type_specifier()?));
+            }
+            if self.eat_kw("as") {
+                return Ok(Expr::As(Box::new(e), self.type_specifier()?));
+            }
+            Ok(e)
+        }
+
+        /// `dateTime`, `FHIR.dateTime`, `System.String` — the last segment names the type.
+        fn type_specifier(&mut self) -> Result<String, Unsupported> {
+            let Some(Tok::Ident(mut t)) = self.next() else {
+                return Err(Unsupported);
+            };
+            while matches!(self.peek(), Some(Tok::Dot)) {
+                self.i += 1;
+                let Some(Tok::Ident(seg)) = self.next() else {
+                    return Err(Unsupported);
+                };
+                t = seg;
+            }
+            Ok(t)
         }
 
         fn add(&mut self) -> Result<Expr, Unsupported> {
@@ -1582,6 +1711,7 @@ pub mod path {
             match self.next() {
                 Some(Tok::Str(s)) => Ok(Expr::Lit(Lit::Str(s))),
                 Some(Tok::Int(n)) => Ok(Expr::Lit(Lit::Int(n))),
+                Some(Tok::Var(v)) => Ok(Expr::Var(v)),
                 Some(Tok::LParen) => {
                     let e = self.implies()?;
                     self.expect(Tok::RParen)?;
@@ -1642,15 +1772,47 @@ pub mod path {
         }
     }
 
+    /// What an expression is evaluated in besides `$this`: the type of the
+    /// invariant's element (for `is`/`as` on `$this`) and the resource root
+    /// (`%resource`). Inside `where`/`select`/…, `$this` is an arbitrary item
+    /// whose type is unknown, so `is`/`as` there are unsupported.
+    pub struct Env<'e, D> {
+        pub this_type: Option<&'e str>,
+        pub root: Option<&'e Item<D>>,
+    }
+
+    impl<'e, D> Env<'e, D> {
+        fn inner(&self) -> Env<'e, D> {
+            Env { this_type: None, root: self.root }
+        }
+    }
+
     /// `where(cond)`: each item becomes `$this` for its own test.
-    fn filter<D: Document>(coll: &[Item<D>], cond: &Expr) -> Result<Vec<Item<D>>, Unsupported> {
+    fn filter<D: Document>(coll: &[Item<D>], cond: &Expr, env: &Env<'_, D>) -> Result<Vec<Item<D>>, Unsupported> {
+        let inner = env.inner();
         let mut out = Vec::new();
         for it in coll {
-            if truth(&eval(cond, it)?) == Some(true) {
+            if truth(&eval(cond, it, &inner)?) == Some(true) {
                 out.push(it.clone());
             }
         }
         Ok(out)
+    }
+
+    /// FHIRPath equality between items: scalars by value, nodes structurally.
+    fn items_equal<D: Document>(a: &Item<D>, b: &Item<D>) -> bool {
+        match (a, b) {
+            (Item::Node(x), Item::Node(y)) => x.same(y),
+            (Item::Node(_), _) | (_, Item::Node(_)) => scalar_of(a).is_some() && scalar_of(a) == scalar_of(b),
+            _ => scalar_of(a) == scalar_of(b),
+        }
+    }
+
+    /// `dateTime` matches `dateTime` / `FHIR.dateTime`; case-insensitive on the
+    /// last segment, as FHIRPath type specifiers are written both ways.
+    fn type_matches(this_type: &str, spec: &str) -> bool {
+        let last = |t: &str| t.rsplit('.').next().unwrap_or(t).to_ascii_lowercase();
+        last(this_type) == last(spec)
     }
 
     /// A collection that must be empty or a single item; more is unsupported
@@ -1776,15 +1938,29 @@ pub mod path {
 
     /// Evaluate with `ctx` as `$this` — a node, or a scalar item when inside
     /// `select`/`where` over scalars (the Luhn invariants iterate digits).
-    fn eval<D: Document>(e: &Expr, ctx: &Item<D>) -> Result<Vec<Item<D>>, Unsupported> {
+    fn eval<D: Document>(e: &Expr, ctx: &Item<D>, env: &Env<'_, D>) -> Result<Vec<Item<D>>, Unsupported> {
         Ok(match e {
             Expr::This => vec![ctx.clone()],
+            Expr::Var(name) => match (name.as_str(), env.root) {
+                ("resource", Some(root)) => vec![root.clone()],
+                _ => return Err(Unsupported),
+            },
+            Expr::Is(operand, ty) => match (&**operand, env.this_type) {
+                (Expr::This, Some(this_type)) => vec![Item::Bool(type_matches(this_type, ty))],
+                _ => return Err(Unsupported),
+            },
+            Expr::As(operand, ty) => match (&**operand, env.this_type) {
+                (Expr::This, Some(this_type)) => {
+                    if type_matches(this_type, ty) { vec![ctx.clone()] } else { vec![] }
+                }
+                _ => return Err(Unsupported),
+            },
             Expr::Lit(Lit::Str(s)) => vec![Item::Str(s.clone())],
             Expr::Lit(Lit::Int(n)) => vec![Item::Int(*n)],
             Expr::Lit(Lit::Bool(b)) => vec![Item::Bool(*b)],
             Expr::Nav(base, name) => {
                 let mut out = Vec::new();
-                for it in eval(base, ctx)? {
+                for it in eval(base, ctx, env)? {
                     let Item::Node(d) = it else {
                         return Err(Unsupported);
                     };
@@ -1798,10 +1974,10 @@ pub mod path {
                 out
             }
             Expr::Call(base, name, args) => {
-                let coll = eval(base, ctx)?;
+                let coll = eval(base, ctx, env)?;
                 match (name.as_str(), args.len()) {
                     ("exists", 0) => vec![Item::Bool(!coll.is_empty())],
-                    ("exists", 1) => vec![Item::Bool(!filter(&coll, &args[0])?.is_empty())],
+                    ("exists", 1) => vec![Item::Bool(!filter(&coll, &args[0], env)?.is_empty())],
                     ("empty", 0) => vec![Item::Bool(coll.is_empty())],
                     ("not", 0) => match truth(&coll) {
                         Some(b) => vec![Item::Bool(!b)],
@@ -1810,25 +1986,32 @@ pub mod path {
                     ("count", 0) => vec![Item::Int(coll.len() as i64)],
                     ("first", 0) => coll.into_iter().take(1).collect(),
                     ("hasValue", 0) => vec![Item::Bool(coll.iter().any(|it| scalar_of(it).is_some()))],
-                    ("where", 1) => filter(&coll, &args[0])?,
+                    ("where", 1) => filter(&coll, &args[0], env)?,
                     ("last", 0) => coll.into_iter().last().into_iter().collect(),
                     ("select", 1) => {
+                        let inner = env.inner();
                         let mut out = Vec::new();
                         for it in &coll {
-                            out.extend(eval(&args[0], it)?);
+                            out.extend(eval(&args[0], it, &inner)?);
                         }
                         out
                     }
                     ("all", 1) => {
+                        let inner = env.inner();
                         let mut all = true;
                         for it in &coll {
-                            all &= truth(&eval(&args[0], it)?) == Some(true);
+                            all &= truth(&eval(&args[0], it, &inner)?) == Some(true);
                         }
                         vec![Item::Bool(all)]
                     }
+                    // `intersect(other)`: the items also in `other` (FHIRPath equality).
+                    ("intersect", 1) => {
+                        let other = eval(&args[0], ctx, env)?;
+                        coll.into_iter().filter(|a| other.iter().any(|b| items_equal(a, b))).collect()
+                    }
                     // `extension(url)` — the extensions of each node with that URL.
                     ("extension", 1) => {
-                        let url = match single(&eval(&args[0], ctx)?)? {
+                        let url = match single(&eval(&args[0], ctx, env)?)? {
                             Some(u) => text_of(u)?,
                             None => return Ok(vec![]),
                         };
@@ -1851,9 +2034,10 @@ pub mod path {
                         let Some(this) = single(&coll)? else {
                             return Ok(vec![]);
                         };
-                        match truth(&eval(&args[0], this)?) {
-                            Some(true) => eval(&args[1], this)?,
-                            _ if args.len() == 3 => eval(&args[2], this)?,
+                        let inner = env.inner();
+                        match truth(&eval(&args[0], this, &inner)?) {
+                            Some(true) => eval(&args[1], this, &inner)?,
+                            _ if args.len() == 3 => eval(&args[2], this, &inner)?,
                             _ => vec![],
                         }
                     }
@@ -1872,7 +2056,7 @@ pub mod path {
                     ("startsWith", 1) => match single(&coll)? {
                         Some(it) => {
                             let s = text_of(it)?;
-                            match single(&eval(&args[0], ctx)?)? {
+                            match single(&eval(&args[0], ctx, env)?)? {
                                 Some(p) => vec![Item::Bool(s.starts_with(text_of(p)?.as_str()))],
                                 None => vec![],
                             }
@@ -1882,11 +2066,11 @@ pub mod path {
                     ("substring", 1 | 2) => match single(&coll)? {
                         Some(it) => {
                             let s = text_of(it)?;
-                            let Some(start) = single(&eval(&args[0], ctx)?)?.map(int_of).transpose()? else {
+                            let Some(start) = single(&eval(&args[0], ctx, env)?)?.map(int_of).transpose()? else {
                                 return Ok(vec![]);
                             };
                             let len = match args.get(1) {
-                                Some(a) => match single(&eval(a, ctx)?)? {
+                                Some(a) => match single(&eval(a, ctx, env)?)? {
                                     Some(n) => Some(int_of(n)?),
                                     None => return Ok(vec![]),
                                 },
@@ -1900,7 +2084,7 @@ pub mod path {
                 }
             }
             Expr::Bin(l, op @ (Op::Add | Op::Sub | Op::Mul | Op::Div | Op::Mod), r) => {
-                let (a, b) = (eval(l, ctx)?, eval(r, ctx)?);
+                let (a, b) = (eval(l, ctx, env)?, eval(r, ctx, env)?);
                 let (Some(a), Some(b)) = (single(&a)?, single(&b)?) else {
                     return Ok(vec![]);
                 };
@@ -1914,14 +2098,14 @@ pub mod path {
                 }
             }
             Expr::Bin(l, op @ (Op::Lt | Op::Le | Op::Gt | Op::Ge), r) => {
-                let (a, b) = (eval(l, ctx)?, eval(r, ctx)?);
+                let (a, b) = (eval(l, ctx, env)?, eval(r, ctx, env)?);
                 let (Some(a), Some(b)) = (single(&a)?, single(&b)?) else {
                     return Ok(vec![]);
                 };
                 vec![Item::Bool(compare(*op, a, b)?)]
             }
             Expr::Bin(l, op @ (Op::Eq | Op::Ne), r) => {
-                let (a, b) = (eval(l, ctx)?, eval(r, ctx)?);
+                let (a, b) = (eval(l, ctx, env)?, eval(r, ctx, env)?);
                 if a.is_empty() || b.is_empty() {
                     return Ok(vec![]);
                 }
@@ -1934,8 +2118,8 @@ pub mod path {
                 }
             }
             Expr::Bin(l, op, r) => {
-                let a = truth(&eval(l, ctx)?);
-                let b = truth(&eval(r, ctx)?);
+                let a = truth(&eval(l, ctx, env)?);
+                let b = truth(&eval(r, ctx, env)?);
                 match logic(*op, a, b) {
                     Some(v) => vec![Item::Bool(v)],
                     None => vec![],
@@ -1955,7 +2139,15 @@ pub mod path {
     /// Evaluate an invariant with `ctx` as `$this`. Empty is unknown and passes;
     /// only a definite `false` fails.
     pub fn check<D: Document>(expr: &Expr, ctx: &D) -> Verdict {
-        match eval(expr, &Item::Node(ctx.clone())) {
+        check_with(expr, ctx, None, None)
+    }
+
+    /// [`check`] with the element's FHIR type (for `$this is …`) and the
+    /// resource root (for `%resource`).
+    pub fn check_with<D: Document>(expr: &Expr, ctx: &D, this_type: Option<&str>, root: Option<&D>) -> Verdict {
+        let root_item = root.map(|r| Item::Node(r.clone()));
+        let env = Env { this_type, root: root_item.as_ref() };
+        match eval(expr, &Item::Node(ctx.clone()), &env) {
             Err(Unsupported) => Verdict::Unsupported,
             Ok(coll) => {
                 if truth(&coll) == Some(false) {
@@ -2291,10 +2483,9 @@ mod tests {
     #[test]
     fn fhirpath_unsupported_is_skipped_not_guessed() {
         use super::path::parse;
-        // obs-7: %resource and intersect() are outside the core
-        assert!(parse("value.empty() or component.code.where(coding.intersect(%resource.code.coding).exists()).empty()").is_err());
-        // type tests, union, decimal division, regex: outside the core
-        assert!(parse("$this is dateTime implies $this.toString().length() >= 10").is_err());
+        // dom-3: descendants(), union, `in`, as(): outside the core
+        assert!(parse("contained.where(('#'+id in (%resource.descendants().reference | %resource.descendants().as(canonical))).not()).empty()").is_err());
+        // union, decimal division, regex: outside the core
         assert!(parse("a | b").is_err());
         assert!(parse("1 / 2").is_err());
         assert!(parse("1.5 < 2").is_err());
@@ -2454,6 +2645,84 @@ mod tests {
         assert!(!ok.contains("clinicalStatus"), "{ok}");
         let bad = wire::report(&validate_bytes_with(cond("bogus").as_bytes(), &Only("active")));
         assert!(bad.contains("Condition.clinicalStatus") && bad.contains("not in the bound value set"), "{bad}");
+    }
+
+    // --- FHIRPath tier three: type tests, %resource, intersect ---
+
+    #[test]
+    fn fhirpath_type_tests_use_the_elements_declared_type() {
+        use super::document::Parsed;
+        use super::path::{check, check_with, parse, Verdict};
+        let e = parse("$this is dateTime implies $this.toString().length() >= 10").unwrap();
+        let d = Parsed::parse(br#""2026-09""#).unwrap();
+        // the element's type comes from the profile, never from the value's shape
+        assert_eq!(check_with(&e, &d.doc(), Some("dateTime"), None), Verdict::Fail);
+        assert_eq!(check_with(&e, &d.doc(), Some("Period"), None), Verdict::Pass);
+        assert_eq!(check_with(&e, &d.doc(), Some("FHIR.dateTime"), None), Verdict::Fail);
+        // unknown type: skipped, not guessed
+        assert_eq!(check(&e, &d.doc()), Verdict::Unsupported);
+        // vs-1: `as` yields $this or empty
+        let vs1 = parse("($this as dateTime).toString().length() >= 8").unwrap();
+        assert_eq!(check_with(&vs1, &d.doc(), Some("dateTime"), None), Verdict::Fail);
+        assert_eq!(check_with(&vs1, &d.doc(), Some("Period"), None), Verdict::Pass); // empty >= 8 is empty → passes
+        // `is` on anything but $this: unsupported
+        let other = parse("value is Quantity").unwrap();
+        assert_eq!(check_with(&other, &d.doc(), Some("Observation"), None), Verdict::Unsupported);
+    }
+
+    #[test]
+    fn fhirpath_resource_variable_and_intersect() {
+        use super::document::Parsed;
+        use super::path::{check, check_with, parse, Verdict};
+        // obs-7: a component must not repeat the observation's own code
+        let obs7 = parse("value.empty() or component.code.where(coding.intersect(%resource.code.coding).exists()).empty()").unwrap();
+        let mk = |comp_code: &str| {
+            format!(
+                r#"{{"resourceType":"Observation","code":{{"coding":[{{"system":"http://loinc.org","code":"85354-9"}}]}},"valueQuantity":{{"value":1}},"component":[{{"code":{{"coding":[{{"system":"http://loinc.org","code":"{comp_code}"}}]}}}}]}}"#
+            )
+        };
+        let (ok_src, dup_src) = (mk("8480-6"), mk("85354-9"));
+        let ok = Parsed::parse(ok_src.as_bytes()).unwrap();
+        assert_eq!(check_with(&obs7, &ok.doc(), Some("Observation"), Some(&ok.doc())), Verdict::Pass);
+        let dup = Parsed::parse(dup_src.as_bytes()).unwrap();
+        assert_eq!(check_with(&obs7, &dup.doc(), Some("Observation"), Some(&dup.doc())), Verdict::Fail);
+        // without a root, %resource is unsupported (skipped)
+        assert_eq!(check(&obs7, &dup.doc()), Verdict::Unsupported);
+        // intersect on scalars
+        let d = Parsed::parse(br#"{"a":["x","y"],"b":["y","z"]}"#).unwrap();
+        assert_eq!(check(&parse("a.intersect(b) = 'y'").unwrap(), &d.doc()), Verdict::Pass);
+        assert_eq!(check(&parse("a.intersect(c).empty()").unwrap(), &d.doc()), Verdict::Pass);
+    }
+
+    #[test]
+    fn obs7_fires_through_the_engine_on_a_profiled_observation() {
+        // A valued observation with a component repeating its own code:
+        // obs-7 (an Observation base invariant, reached via %resource).
+        let dup = HEARTRATE_OK.replace(
+            "\"effectiveDateTime\"",
+            "\"component\":[{\"code\":{\"coding\":[{\"system\":\"http://loinc.org\",\"code\":\"8867-4\"}]},\"valueString\":\"x\"}],\"effectiveDateTime\"",
+        );
+        let r = probe_str(&dup);
+        assert!(r.contains("obs-7"), "{r}");
+        assert!(!probe_str(HEARTRATE_OK).contains("obs-7"));
+    }
+
+    // --- several declared profiles ---
+
+    #[test]
+    fn every_declared_profile_applies() {
+        let both = PATIENT_OK.replace(
+            "\"resourceType\":\"Patient\",",
+            "\"resourceType\":\"Patient\",\"meta\":{\"profile\":[\"http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient\",\"http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient\"]},",
+        );
+        let r = probe_str(&both);
+        assert!(r.contains("\"profile\":\"US Core Patient Profile\""), "{r}");
+        assert!(r.contains("\"profiles\":[\"US Core Patient Profile\",\"AU Core Patient\"]"), "{r}");
+        // an AU-only finding shows up alongside the US ones
+        let gender_bad = probe_str(&both.replace("\"male\"", "\"banana\""));
+        assert_eq!(gender_bad.matches("is not in the bound value set").count(), 1, "shared finding reported once: {gender_bad}");
+        let single = probe_str(PATIENT_OK);
+        assert!(!single.contains("\"profiles\""), "{single}");
     }
 
     // --- must-support (information, not conformance) ---

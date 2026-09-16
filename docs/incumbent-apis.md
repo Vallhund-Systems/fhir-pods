@@ -453,6 +453,23 @@ treat `$validate.profile` `uri`→`canonical` + R5's `usageContext` as additive.
   it is the client-side completeness check (what US Core / AU Core certify a
   *sender* on), reachable from Rust and `probe --must-support`. Promote to the
   ABI when a host wants it.
+- **Pass 13 — finishing the scope table (2026-09-15).** (1) *Every declared
+  profile applies*: a resource declaring several compiled profiles is
+  validated against all of them, shared findings reported once, `profiles`
+  in the report; a two-profile probe (US Core Patient + AU Core Patient)
+  agrees with the oracle. (2) *FHIRPath tier three*: `$this is T` / `$this
+  as T` resolve against the invariant element's FHIR type carried in the IR
+  (`ProfileInvariant.types`), with choice elements (`effective[x]`)
+  enumerated per concrete key so each instance knows its type — never
+  inferred from the value's shape; `%resource` (the root threaded through
+  the engine, still the resource inside inherited datatype profiles);
+  `intersect` with structural node equality. This turns on `vs-1`,
+  `au-core-obs-02` and `obs-7` (verified: a valued Observation whose
+  component repeats its own code now fails obs-7). **81 of 83** distinct
+  invariant expressions parse; the two left are `dom-3` (needs
+  `descendants`/union/`in`/`as()`) and the QuestionnaireResponse
+  `repeat`/`isDistinct` check. Oracle **272/272**, the single informational
+  path difference unchanged; 500k fuzz iterations clean; 42 unit tests.
 - **Inferno** (ONC g10) and **Touchstone** are **API-behavior** harnesses
   (SMART launch, Bulk Data, search, US Core over the wire) — relevant only if we
   later ship a *server* surface, not for the embeddable validator. Note them,

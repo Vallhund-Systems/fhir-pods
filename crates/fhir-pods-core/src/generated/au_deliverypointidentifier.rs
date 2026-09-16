@@ -22,7 +22,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     slicings: &[
     ],
     invariants: &[
-        ProfileInvariant { path: "Identifier", key: "inv-dpid-0", severity: InvariantSeverity::Error, human: "DPID shall be 8 digits", expression: "value.matches('^([0-9]{8})$')" },
+        ProfileInvariant { path: "Identifier", key: "inv-dpid-0", severity: InvariantSeverity::Error, human: "DPID shall be 8 digits", expression: "value.matches('^([0-9]{8})$')", types: &[] },
     ],
     must_support: &[
     ],

@@ -29,7 +29,7 @@ informational), by family:
 | **Terminology without a server** | ~700 | "Unable to validate code … running without terminology services", "ValueSet … not found", "Could not confirm … extensible value set", "CodeSystem … doesn't provide any codes" | We bundle a small set of base-FHIR value sets (gender, status codes, vitals UCUM, …) and check `required` bindings against those; everything else is a `warning: no bundled terminology for <vs>`. The `TerminologyProvider` seam is where a host plugs NCTS / VSAC / a local cache in. SNOMED is never bundled (licence). |
 | **Display-name checking** | 1 error-level in a probe | "Wrong Display Name 'Laboratory' for …#vital-signs" | Not done — needs code-system content we don't ship (and for SNOMED, cannot). The one surviving `issue paths differ` is this. |
 | **Best-practice recommendations** | 82 + 12 | "all observations should have a performer" (`obs-…` best practice), `dom-6` narrative | `dom-6` we evaluate as a warning (it is an ordinary invariant). The performer recommendation is validator policy, not a profile constraint; not emitted. |
-| **Multiple matching profiles** | 32 | A resource declares two profiles the validator could apply | We apply the first registry match. Multi-profile validation is a known gap. |
+| **Multiple matching profiles** | 32 | The validator had to pick among candidate profiles (its own warning) | A resource that declares several profiles is validated against **every** one we have compiled (findings shared by two profiles are reported once; the report carries `profiles`). The oracle's warning here is about its own choice among *implicit* candidates, not declared ones. |
 | **Deprecation / advisories** | 5 + 2 | Deprecated extensions and concepts, "UCUM annotations like {T-Score} can be misleading" | Advisory, not conformance; not emitted. |
 | **Reference target types** | (none in corpus) | `subject` must reference a Patient | The reference validator does **not** enforce this offline either (`heartrate-subject-wrong-type` expects *valid* as a guard). Not enforced. |
 | **Attachment fetching** | 1 | "Attachment content cannot be checked … error accessing <url>" | Never: a library does no I/O. |
@@ -47,10 +47,15 @@ the 271/271.
 
 ## What we skip, never guess
 
-- FHIRPath outside the supported core: `is`/`as` type tests, `%resource`,
-  `descendants()`, `intersect`, `matches` (regex), `memberOf`, `ofType`.
-  4 of the 57 distinct invariant expressions in the registry do not parse;
-  a further few parse but evaluate `Unsupported`. All are skipped.
+- FHIRPath outside the supported core: `descendants()`, union `|`, `in`,
+  `as(type)` as a function, `repeat`, `isDistinct`, `matches` (regex),
+  `memberOf`, `ofType`. 2 of the 83 distinct invariant expressions in the
+  registry do not parse (`dom-3` contained-reference integrity and the
+  QuestionnaireResponse `repeat(answer|item)` linkId check); a further few
+  parse but evaluate `Unsupported`. All are skipped. Type tests (`$this is
+  dateTime`, `$this as dateTime`) resolve against the element's type *from
+  the profile* — never from the value's shape — and are unsupported on
+  anything but `$this`.
 - Slices whose discriminator cannot be resolved from the profile (e.g.
   AU Core's `identifier:dva`, whose `type` pattern lives nowhere). Deferred.
 - Bindings to value sets we do not bundle. Warned, not failed.

@@ -155,7 +155,11 @@ def invariants_of(sd):
             if not key or not expr or key in STRUCTURAL_INVARIANTS or (path, key) in seen:
                 continue
             seen.add((path, key))
-            out.append((path, key, c.get("severity", "error"), c.get("human", ""), expr))
+            # The element's type code(s): what `$this is dateTime` / `$this as
+            # dateTime` resolve against, and — for a choice `[x]` — which
+            # concrete keys the engine enumerates.
+            types = [t.get("code") for t in e.get("type", []) if t.get("code")]
+            out.append((path, key, c.get("severity", "error"), c.get("human", ""), expr, types))
     return out
 
 
@@ -380,11 +384,12 @@ def emit(sd, provenance, load=None):
             out.append("            ] },")
         out.append("        ] },")
     out += ["    ],", "    invariants: &["]
-    for path, key, severity, human, expr in invariants:
+    for path, key, severity, human, expr, types in invariants:
         sev = "InvariantSeverity::Error" if severity == "error" else "InvariantSeverity::Warning"
+        tys = ", ".join(rs(t) for t in types)
         out.append(
             f"        ProfileInvariant {{ path: {rs(path)}, key: {rs(key)}, severity: {sev}, "
-            f"human: {rs(human)}, expression: {rs(expr)} }},"
+            f"human: {rs(human)}, expression: {rs(expr)}, types: &[{tys}] }},"
         )
     out += ["    ],", "    must_support: &["]
     for path in must_support_of(sd):
