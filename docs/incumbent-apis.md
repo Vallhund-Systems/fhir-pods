@@ -400,9 +400,12 @@ treat `$validate.profile` `uri`→`canonical` + R5's `usageContext` as additive.
   files through it, ~30k validations/s in Node (33 µs). **expo pod:** packed
   and installed as a vendored tarball into a fresh Expo SDK 57 app —
   autolinks, builds, answers on an iPhone 17 simulator at ~22k validations/s
-  (45 µs incl. `JSON.parse`). The "almost free" thesis is now a measured
-  number on both delivery targets, not a hope. Android (`cargo-ndk` + Kotlin
-  over the same two calls) is the remaining pod.
+  (45 µs incl. `JSON.parse`), and on a Pixel 8 (Android 15) emulator at
+  ~19.6k (51 µs) through a Kotlin wrapper over an Android-only JNI shim in the
+  same crate (`ByteArray` in/out; the `.so` is ~560 KB stripped, 16 KB
+  page-aligned, built with plain cargo + the NDK clang — no `cargo-ndk`). The
+  "almost free" thesis is now a measured number on all three delivery
+  targets, not a hope.
 - **Inferno** (ONC g10) and **Touchstone** are **API-behavior** harnesses
   (SMART launch, Bulk Data, search, US Core over the wire) — relevant only if we
   later ship a *server* surface, not for the embeddable validator. Note them,

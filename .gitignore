@@ -18,3 +18,5 @@ pkg/
 node_modules/
 dist/
 .DS_Store
+pods/expo/android/src/main/jniLibs/
+pods/expo/android/build/

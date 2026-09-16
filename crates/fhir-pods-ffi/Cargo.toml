@@ -12,3 +12,8 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
 fhir-pods-core = { path = "../fhir-pods-core" }
+
+# Android only: the JNI shim the Kotlin wrapper calls. Every other target
+# (wasm32, iOS, host) stays dependency-free.
+[target.'cfg(target_os = "android")'.dependencies]
+jni = { version = "0.21", default-features = false }

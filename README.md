@@ -58,8 +58,8 @@ dependencies, `no_std`, fuzzed. Design and decisions:
 - `crates/fhir-pods-core` — the Rust verifier + lowering core (zero deps, no `unsafe`).
 - `crates/fhir-pods-ffi` — the one lean C ABI, compiled per target (wasm32 / native staticlib).
 - `pods/wasm` — the wasm pod: a ~170 KB `.wasm` (49 KB gzipped) + a zero-dependency JS wrapper.
-- `pods/expo` — the expo pod: the core as an Expo native module (iOS XCFramework; Android next).
-- `scripts/` — `build-wasm.sh`, `build-ios-xcframework.sh`, `smoke-c.sh`, `check-no-std.sh`.
+- `pods/expo` — the expo pod: the core as an Expo native module (iOS XCFramework + Android jniLibs).
+- `scripts/` — `build-wasm.sh`, `build-ios-xcframework.sh`, `build-android-jnilibs.sh`, `smoke-c.sh`, `check-no-std.sh`.
 - `docs/architecture.md` — the design, delivery model, audit surface, and perf budget.
 
 ## Testing

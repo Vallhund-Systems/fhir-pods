@@ -83,6 +83,56 @@ fn pack(bytes: &[u8]) -> *mut u8 {
     Box::into_raw(v.into_boxed_slice()) as *mut u8
 }
 
+/// Android: the JVM cannot call a C ABI directly, so the expo pod's Kotlin
+/// wrapper reaches the same two entrypoints through this JNI shim. Bytes in,
+/// bytes out (`ByteArray`), so no modified-UTF-8 surprises; the JVM owns both
+/// arrays, so there is no `pod_alloc`/`pod_free` dance across JNI.
+/// Symbol names bind to `expo.modules.fhirpods.FhirPodsNative`.
+#[cfg(target_os = "android")]
+mod android {
+    use jni::objects::{JByteArray, JObject};
+    use jni::sys::{jbyteArray, jint};
+    use jni::JNIEnv;
+
+    use fhir_pods_core::{validate_bytes, wire};
+
+    fn bytes_in(env: &mut JNIEnv, arr: &JByteArray) -> Vec<u8> {
+        env.convert_byte_array(arr).unwrap_or_default()
+    }
+
+    fn bytes_out(env: &mut JNIEnv, s: &str) -> jbyteArray {
+        match env.byte_array_from_slice(s.as_bytes()) {
+            Ok(arr) => arr.into_raw(),
+            Err(_) => std::ptr::null_mut(),
+        }
+    }
+
+    #[no_mangle]
+    pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_abiVersion(_env: JNIEnv, _this: JObject) -> jint {
+        super::ABI_VERSION as jint
+    }
+
+    #[no_mangle]
+    pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_validate<'l>(
+        mut env: JNIEnv<'l>,
+        _this: JObject<'l>,
+        json: JByteArray<'l>,
+    ) -> jbyteArray {
+        let v = validate_bytes(&bytes_in(&mut env, &json));
+        bytes_out(&mut env, &wire::report(&v))
+    }
+
+    #[no_mangle]
+    pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_operationOutcome<'l>(
+        mut env: JNIEnv<'l>,
+        _this: JObject<'l>,
+        json: JByteArray<'l>,
+    ) -> jbyteArray {
+        let v = validate_bytes(&bytes_in(&mut env, &json));
+        bytes_out(&mut env, &v.to_operation_outcome())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

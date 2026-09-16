@@ -75,8 +75,10 @@ core* to a native staticlib and bridge it:
 - **iOS:** build an **XCFramework** (arm64 device + sim) from the staticlib and
   vendor it in a **CocoaPods pod** — hence the name. A Swift wrapper calls the C
   header; the **Expo Modules API** handles autolinking + the config plugin.
-- **Android:** build `.so` per ABI with `cargo-ndk` into `jniLibs`; a Kotlin
-  wrapper calls the C ABI.
+- **Android:** build `.so` per ABI into `jniLibs` (plain cargo pointed at the
+  NDK clang; `cargo-ndk` optional); a Kotlin wrapper reaches the same two
+  entrypoints through a small Android-only JNI shim in the FFI crate (the JVM
+  can't call a C ABI directly).
 - **JS surface:** a synchronous **JSI** call — validate a JSON string, get a
   report, no bridge serialization. Start on the Expo Modules API; **Nitro
   Modules / hand-written JSI** is the zero-copy upgrade if marshaling ever shows
