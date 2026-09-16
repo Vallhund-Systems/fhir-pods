@@ -120,7 +120,13 @@ def swap_value_to_string(d):
     d["valueString"] = "72"
 
 
+UNPROFILED_OBSERVATION = {
+    "resourceType": "Observation", "status": "final", "code": {"text": "x"}, "valueString": "y",
+}
+
 HAND_WRITTEN = [
+    # No declared profile: the base resource applies (which we do not compile) — valid, and no profile claimed.
+    ("observation-unprofiled", None, True, UNPROFILED_OBSERVATION),
     ("heartrate-valid", HR, True, HEARTRATE),
     ("heartrate-missing-snomed", HR, False, mutate(HEARTRATE, lambda d: d["code"]["coding"].pop(1))),
     ("heartrate-bad-ucum-code", HR, False, mutate(HEARTRATE, lambda d: d["valueQuantity"].update(code="min"))),
@@ -178,6 +184,18 @@ def add_bad_luhn_ihi(d):
         "system": "http://ns.electronichealth.net.au/id/hi/ihi/1.0",
         "value": "8003608833357362",
     })
+
+
+def split_type_codings(d):
+    """An MRN whose `type` carries TWO codings — v2-0203 MR, and a local code
+    NI under a different system. Matched by ONE coding, this is not the IHI
+    slice (the pattern is one coding carrying both v2-0203 and NI); matched
+    leaf-by-leaf it wrongly would be, and au-ihi's system + Luhn would fire.
+    Expected valid."""
+    for ident in d.get("identifier", []):
+        for c in (ident.get("type") or {}).get("coding", []):
+            if c.get("code") == "MR":
+                ident["type"]["coding"].append({"system": "http://example.org/local", "code": "NI"})
 
 
 def short_ihi(d):
@@ -267,6 +285,35 @@ def add_au_profile(d):
     d["meta"]["profile"].append(PT)
 
 
+def escaped_slashes(d):
+    """Legal JSON, PHP-style: every `/` in the coding systems written as `\\/`
+    in the *document text* (see TEXT_MUTATIONS — a value-level edit would
+    insert literal backslashes, which is a different, invalid resource).
+    Byte-for-byte comparison of undecoded strings would miss the fixed
+    systems and the slice discriminators. Expected valid."""
+
+
+# Fixtures whose mutation is to the JSON text itself, applied after the
+# resource is serialised: name -> text -> text.
+TEXT_MUTATIONS = {
+    "heartrate-escaped-slashes": lambda t: t.replace("http://loinc.org", "http:\\/\\/loinc.org").replace("http://snomed.info/sct", "http:\\/\\/snomed.info\\/sct"),
+}
+
+
+def versioned_profile(d):
+    """`meta.profile` with a `|version` suffix — the canonical form. Expected
+    valid: the profile must still be recognised (not fall through)."""
+    d["meta"]["profile"] = [p + "|6.1.0" for p in d["meta"]["profile"]]
+
+
+def same_instant_different_forms(d):
+    """mdd-1: whenHandedOver >= whenPrepared — the same instant written with
+    milliseconds and `Z` vs `+00:00`. Expected valid: a temporal comparison,
+    not a string one."""
+    d["whenPrepared"] = "2020-01-01T10:00:00+00:00"
+    d["whenHandedOver"] = "2020-01-01T10:00:00.000Z"
+
+
 def orphan_contained(d):
     """Point the medication reference away from the contained Medication, so
     the contained resource is referenced by nothing — dom-3 (needs typed
@@ -277,6 +324,8 @@ def orphan_contained(d):
 # (example file glob, fixture name, mutation, expected verdict)
 US_MUTATIONS = [
     ("MedicationRequest-medicationrequest-contained-oral-axid.json", "us-medreq-orphan-contained", orphan_contained, False),
+    ("Patient-example.json", "us-patient-versioned-profile", versioned_profile, True),
+    ("MedicationDispense-*.json", "us-meddispense-same-instant", same_instant_different_forms, True),
     ("Patient-example.json", "us-patient-two-profiles", add_au_profile, True),
     ("Patient-example.json", "us-patient-missing-name", drop("name"), False),
     ("Patient-example.json", "us-patient-bad-gender", lambda d: d.update(gender="banana"), False),
@@ -302,6 +351,8 @@ MUTATIONS = [
     ("Patient-ronny-irvine.json", "patient-ihi-bad-luhn", add_bad_luhn_ihi, False),
     ("Patient-ronny-irvine.json", "patient-ihi-wrong-system", wrong_system_ihi, False),
     ("Patient-ronny-irvine.json", "patient-ihi-15-digits", short_ihi, False),
+    ("Patient-ronny-irvine.json", "patient-split-type-codings", split_type_codings, True),
+    ("Observation-heartrate-1.json", "heartrate-escaped-slashes", escaped_slashes, True),
     ("Observation-heartrate-1.json", "heartrate-no-value-no-dar", drop_value_keep_no_dar, False),
     ("Observation-heartrate-1.json", "heartrate-subject-wrong-type", subject_wrong_type, True),
     ("Observation-bloodpressure-1.json", "bloodpressure-missing-diastolic", drop_diastolic, False),
@@ -321,9 +372,11 @@ def main():
 
     def emit(name, resource, profile, expect, ig):
         fname = f"{name}.json"
+        text = json.dumps(resource, indent=2) + "\n"
+        if name in TEXT_MUTATIONS:
+            text = TEXT_MUTATIONS[name](text)
         with open(os.path.join(CORPUS, fname), "w") as fh:
-            json.dump(resource, fh, indent=2)
-            fh.write("\n")
+            fh.write(text)
         manifest.append({"file": fname, "profile": profile, "expect": expect, "ig": ig})
 
     for pkg_id, pkg_ver, cache_dir in DEPS:

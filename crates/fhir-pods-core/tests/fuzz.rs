@@ -387,7 +387,6 @@ fn seeded_fuzz_never_panics() {
 fn hostile_nesting_is_an_error_not_a_crash() {
     let deep = "[".repeat(100_000);
     assert!(json::parse(deep.as_bytes()).is_err());
-    assert!(json::scan_top_level(format!("{{\"a\":{deep}").as_bytes()).is_err());
     assert!(path::parse(&"(".repeat(100_000)).is_err());
     assert!(path::parse(&"where(".repeat(100_000)).is_err());
     // …and through the public entrypoint: a fatal parse issue, not an abort.

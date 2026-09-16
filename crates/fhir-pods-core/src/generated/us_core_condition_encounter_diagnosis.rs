@@ -43,8 +43,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ] },
         Slicing { path: "Condition.category", closed: false, slices: &[
             Slice { name: "us-core", min: 1, max: Max::Bounded(1), profile: None, discriminators: &[
-                Discriminator::Value { path: "$this.coding.system", value: "http://terminology.hl7.org/CodeSystem/condition-category" },
-                Discriminator::Value { path: "$this.coding.code", value: "encounter-diagnosis" },
+                Discriminator::Pattern { path: "$this.coding", pairs: &[("system", "http://terminology.hl7.org/CodeSystem/condition-category"), ("code", "encounter-diagnosis")] },
             ], elements: &[
             ] },
         ] },

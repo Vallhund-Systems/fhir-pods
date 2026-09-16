@@ -44,32 +44,32 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     slicings: &[
         Slicing { path: "Coverage.identifier", closed: false, slices: &[
             Slice { name: "memberid", min: 0, max: Max::Bounded(1), profile: None, discriminators: &[
-                Discriminator::Value { path: "$this.type.coding.system", value: "http://terminology.hl7.org/CodeSystem/v2-0203" },
-                Discriminator::Value { path: "$this.type.coding.code", value: "MB" },
+                Discriminator::Pattern { path: "$this.type.coding", pairs: &[("system", "http://terminology.hl7.org/CodeSystem/v2-0203"), ("code", "MB")] },
             ], elements: &[
                 ElementConstraint { path: "$this.assigner", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.system", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
+                ElementConstraint { path: "$this.type", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/identifier-use|4.0.1", kind: BindingKind::Code }) },
                 ElementConstraint { path: "$this.value", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
             ] },
         ] },
         Slicing { path: "Coverage.class", closed: false, slices: &[
             Slice { name: "group", min: 0, max: Max::Bounded(1), profile: None, discriminators: &[
-                Discriminator::Value { path: "$this.type.coding.system", value: "http://terminology.hl7.org/CodeSystem/coverage-class" },
-                Discriminator::Value { path: "$this.type.coding.code", value: "group" },
+                Discriminator::Pattern { path: "$this.type.coding", pairs: &[("system", "http://terminology.hl7.org/CodeSystem/coverage-class"), ("code", "group")] },
             ], elements: &[
                 ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.name", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
+                ElementConstraint { path: "$this.type", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.value", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
             ] },
             Slice { name: "plan", min: 0, max: Max::Bounded(1), profile: None, discriminators: &[
-                Discriminator::Value { path: "$this.type.coding.system", value: "http://terminology.hl7.org/CodeSystem/coverage-class" },
-                Discriminator::Value { path: "$this.type.coding.code", value: "plan" },
+                Discriminator::Pattern { path: "$this.type.coding", pairs: &[("system", "http://terminology.hl7.org/CodeSystem/coverage-class"), ("code", "plan")] },
             ], elements: &[
                 ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.name", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
+                ElementConstraint { path: "$this.type", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.value", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
             ] },
         ] },

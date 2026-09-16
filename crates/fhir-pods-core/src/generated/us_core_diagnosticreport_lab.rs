@@ -32,8 +32,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     slicings: &[
         Slicing { path: "DiagnosticReport.category", closed: false, slices: &[
             Slice { name: "LaboratorySlice", min: 1, max: Max::Bounded(1), profile: None, discriminators: &[
-                Discriminator::Value { path: "$this.coding.system", value: "http://terminology.hl7.org/CodeSystem/v2-0074" },
-                Discriminator::Value { path: "$this.coding.code", value: "LAB" },
+                Discriminator::Pattern { path: "$this.coding", pairs: &[("system", "http://terminology.hl7.org/CodeSystem/v2-0074"), ("code", "LAB")] },
             ], elements: &[
             ] },
         ] },

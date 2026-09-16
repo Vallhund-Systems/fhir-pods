@@ -44,8 +44,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     slicings: &[
         Slicing { path: "PractitionerRole.identifier", closed: false, slices: &[
             Slice { name: "medicareProvider", min: 0, max: Max::Bounded(1), profile: Some("http://hl7.org.au/fhir/StructureDefinition/au-medicareprovidernumber"), discriminators: &[
-                Discriminator::Value { path: "$this.type.coding.system", value: "http://terminology.hl7.org.au/CodeSystem/v2-0203" },
-                Discriminator::Value { path: "$this.type.coding.code", value: "UPIN" },
+                Discriminator::Pattern { path: "$this.type.coding", pairs: &[("system", "http://terminology.hl7.org.au/CodeSystem/v2-0203"), ("code", "UPIN")] },
             ], elements: &[
             ] },
         ] },

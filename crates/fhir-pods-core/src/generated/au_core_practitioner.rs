@@ -48,8 +48,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ] },
         Slicing { path: "Practitioner.identifier", closed: false, slices: &[
             Slice { name: "hpii", min: 0, max: Max::Bounded(1), profile: Some("http://hl7.org.au/fhir/StructureDefinition/au-hpii"), discriminators: &[
-                Discriminator::Value { path: "$this.type.coding.system", value: "http://terminology.hl7.org/CodeSystem/v2-0203" },
-                Discriminator::Value { path: "$this.type.coding.code", value: "NPI" },
+                Discriminator::Pattern { path: "$this.type.coding", pairs: &[("system", "http://terminology.hl7.org/CodeSystem/v2-0203"), ("code", "NPI")] },
             ], elements: &[
             ] },
         ] },

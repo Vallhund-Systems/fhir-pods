@@ -48,8 +48,8 @@ Rust-shaped. (See [`docs/architecture.md`](docs/architecture.md).)
   (as information), and a FHIRPath engine with typed traversal and a
   linear-time `matches()` that evaluates every invariant in the registry
   except `htmlChecks()` and `resolve()` — skipped, never guessed.
-- **Agreement with the HL7 reference validator: 289/289** corpus instances
-  (the three IGs' own 253 published examples + 36 broken ones). What that
+- **Agreement with the HL7 reference validator: 294/294** corpus instances
+  (the three IGs' own 253 published examples + 41 probes). What that
   covers and excludes: [`docs/scope.md`](docs/scope.md).
 - **Terminology** beyond the bundled base sets arrives through a
   host-provided seam (`TerminologyProvider`), never as shipped content.
@@ -66,7 +66,8 @@ how it got here: [`docs/history.md`](docs/history.md).
 
 - Browser / edge / Node: [`pods/wasm`](pods/wasm/README.md) — `instantiate(bytes)` → `validate(json)`.
 - iOS / Android (Expo): [`pods/expo`](pods/expo/README.md) — `validate(json)`, native terminology provider.
-- Rust: `fhir_pods_core::validate_bytes(&[u8]) -> Validation`; the C ABI is `crates/fhir-pods-ffi/include/fhir_pods.h`.
+- Rust: `let v = fhir_pods_core::Validator::new(); v.validate(bytes) -> Validation` (the free
+  `validate_bytes` re-parses invariants per call); the C ABI is `crates/fhir-pods-ffi/include/fhir_pods.h`.
 
 ## Layout
 

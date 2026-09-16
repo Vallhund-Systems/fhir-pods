@@ -369,10 +369,10 @@ mod tests {
     #[test]
     fn both_entrypoints_round_trip() {
         unsafe {
-            let r = call(fhir_pods_validate, r#"{"resourceType":"Patient","active":true}"#);
+            let r = call(fhir_pods_validate, r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},"active":true}"#);
             assert!(r.contains("\"valid\":false"), "{r}");
             assert!(r.contains("Patient.identifier is required"), "{r}");
-            let o = call(fhir_pods_operation_outcome, r#"{"resourceType":"Patient","active":true}"#);
+            let o = call(fhir_pods_operation_outcome, r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},"active":true}"#);
             assert!(o.starts_with("{\"resourceType\":\"OperationOutcome\""), "{o}");
             let bad = call(fhir_pods_validate, "not json");
             assert!(bad.contains("\"severity\":\"fatal\""), "{bad}");
@@ -409,7 +409,7 @@ mod tests {
             log.0.push(format!("{} {} {}", s(vs, vsl), s(sys, sysl), s(code, cl)));
             log.1
         }
-        let json = r#"{"resourceType":"Patient","identifier":[{"system":"http://h.example.org/mrn","value":"1"}],"name":[{"family":"D"}],"gender":"male","birthDate":"1970-01-01","telecom":[{"system":"phone","value":"1"}]}"#;
+        let json = r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},"identifier":[{"system":"http://h.example.org/mrn","value":"1"}],"name":[{"family":"D"}],"gender":"male","birthDate":"1970-01-01","telecom":[{"system":"phone","value":"1"}]}"#;
         unsafe {
             let mut log = Log(Vec::new(), 0);
             let r = unpack(fhir_pods_validate_tx(json.as_ptr(), json.len(), Some(cb), &mut log as *mut Log as *mut c_void));

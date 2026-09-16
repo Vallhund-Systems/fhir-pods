@@ -1,6 +1,6 @@
 # Scope — what "agrees with the reference validator" means
 
-`conformance/run.py` reports **289/289 agree** across AU Core 2.0.0, US Core
+`conformance/run.py` reports **294/294 agree** across AU Core 2.0.0, US Core
 6.1.0 and IPA 1.1.0. This note says precisely what that claim covers and what it deliberately
 does not, so nobody reads more into it than it says.
 
@@ -34,6 +34,7 @@ informational), by family:
 | **Multiple matching profiles** | 32 | The validator had to pick among candidate profiles (its own warning) | A resource that declares several profiles is validated against **every** one we have compiled (findings shared by two profiles are reported once; the report carries `profiles`). The oracle's warning here is about its own choice among *implicit* candidates, not declared ones. |
 | **Deprecation / advisories** | 5 + 2 | Deprecated extensions and concepts, "UCUM annotations like {T-Score} can be misleading" | Advisory, not conformance; not emitted. |
 | **Reference target types** | (none in corpus) | `subject` must reference a Patient | The reference validator does **not** enforce this offline either (`heartrate-subject-wrong-type` expects *valid* as a guard). Not enforced. |
+| **Default profiles** | — | An undeclared profile means the base resource | Same: no profile claimed, nothing checked. A jurisdiction default is opt-in (`Validator::with_default_profile`). |
 | **Attachment fetching** | 1 | "Attachment content cannot be checked … error accessing <url>" | Never: a library does no I/O. |
 | **must-support** | 0 | Validators do not check must-support | Not an error by spec. Exposed separately: `must_support_gaps(resource)` (and `probe --must-support`) lists the selected profile's must-support elements the resource leaves empty where their parent is present — what a client certifying against the IG must populate when it has the data. Never in the validation report. |
 
@@ -45,7 +46,7 @@ pattern / type discriminators, closed slicing, nested-slice discriminator
 resolution, slice → profile inheritance for `Identifier` and complex
 `Extension` types), and FHIRPath invariants with typed traversal. Every
 error-level finding either side raised on the corpus is in this set — that is
-the 289/289.
+the 294/294.
 
 ## What we skip, never guess
 

@@ -39,19 +39,19 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     slicings: &[
         Slicing { path: "Provenance.agent", closed: false, slices: &[
             Slice { name: "ProvenanceAuthor", min: 0, max: Max::Star, profile: None, discriminators: &[
-                Discriminator::Value { path: "$this.type.coding.system", value: "http://terminology.hl7.org/CodeSystem/provenance-participant-type" },
-                Discriminator::Value { path: "$this.type.coding.code", value: "author" },
+                Discriminator::Pattern { path: "$this.type.coding", pairs: &[("system", "http://terminology.hl7.org/CodeSystem/provenance-participant-type"), ("code", "author")] },
             ], elements: &[
                 ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.onBehalfOf", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
+                ElementConstraint { path: "$this.type", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.who", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
             ] },
             Slice { name: "ProvenanceTransmitter", min: 0, max: Max::Star, profile: None, discriminators: &[
-                Discriminator::Value { path: "$this.type.coding.system", value: "http://hl7.org/fhir/us/core/CodeSystem/us-core-provenance-participant-type" },
-                Discriminator::Value { path: "$this.type.coding.code", value: "transmitter" },
+                Discriminator::Pattern { path: "$this.type.coding", pairs: &[("system", "http://hl7.org/fhir/us/core/CodeSystem/us-core-provenance-participant-type"), ("code", "transmitter")] },
             ], elements: &[
                 ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.onBehalfOf", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
+                ElementConstraint { path: "$this.type", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.who", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
             ] },
         ] },

@@ -91,7 +91,10 @@ pub mod typing {
     /// Bundle.entry.resource) — the caller resolves it from the node.
     pub fn child(ctx: &'static str, key: &str) -> Option<Child> {
         match key {
-            "id" => return Some(Child { ctx: "string", ty: if ctx.contains('.') || known_type(ctx).is_none() { "string" } else { "id" } }),
+            "id" => {
+                let ty = if ctx.contains('.') || crate::typemap::RESOURCES.binary_search(&ctx).is_err() { "string" } else { "id" };
+                return Some(Child { ctx: ty, ty });
+            }
             "extension" | "modifierExtension" => return Some(Child { ctx: "Extension", ty: "Extension" }),
             k if k.starts_with('_') => return Some(Child { ctx: "Element", ty: "Element" }),
             _ => {}
@@ -195,22 +198,19 @@ fn validate_bytes_impl(input: &[u8], tx: &dyn terminology::TerminologyProvider, 
             report.push(Severity::Error, IssueType::Structure, "resourceType", "resourceType is required".into());
             return Validation { resource_type: "Unknown".into(), profile: None, profiles: Vec::new(), report };
         }
-        Some(json::Value::Str(s)) => *s,
-        Some(_) => return Validation { resource_type: "Unknown".into(), profile: None, profiles: Vec::new(), report: Report::default() },
+        Some(json::Value::Str(s)) => s.as_ref(),
+        Some(_) => {
+            let mut report = Report::default();
+            report.push(Severity::Error, IssueType::Structure, "resourceType", "resourceType must be a string".into());
+            return Validation { resource_type: "Unknown".into(), profile: None, profiles: Vec::new(), report };
+        }
     };
-    let profiles = select_profiles(rt, &doc);
+    // No declared profile we have compiled (and no default configured on the
+    // validator): the spec says the base resource applies, and we compile no
+    // base resources — so there is nothing to check and nothing to claim.
+    let profiles = select_profiles(rt, &doc, cache.map(|v| v.defaults.as_slice()).unwrap_or(&[]));
     if profiles.is_empty() {
-        return if rt == "Observation" {
-            let fields = match json::scan_top_level(input) { Ok(f) => f, Err(e) => return parse_failure(e) };
-            Validation {
-                resource_type: rt.into(),
-                profile: Some("AU Core Observation"),
-                profiles: vec!["AU Core Observation"],
-                report: au_core::validate_observation(&fields),
-            }
-        } else {
-            Validation { resource_type: rt.into(), profile: None, profiles: Vec::new(), report: Report::default() }
-        };
+        return Validation { resource_type: rt.into(), profile: None, profiles: Vec::new(), report: Report::default() };
     }
     let mut report = Report::default();
     for profile in &profiles {
@@ -230,22 +230,25 @@ fn validate_bytes_impl(input: &[u8], tx: &dyn terminology::TerminologyProvider, 
 }
 
 /// Profile selection, as the spec has it: every declared `meta.profile` we
-/// have compiled applies (in declaration order); when none is declared, the
-/// resource type's default, if any.
-fn select_profiles(resource_type: &str, doc: &impl Document) -> Vec<&'static CompiledProfile> {
+/// have compiled applies (in declaration order; a `|version` suffix is
+/// accepted — the registry pins one version per IG); when none is declared,
+/// the validator's configured default for the resource type, if any.
+fn select_profiles(
+    resource_type: &str,
+    doc: &impl Document,
+    defaults: &[(&'static str, &'static CompiledProfile)],
+) -> Vec<&'static CompiledProfile> {
     let mut out: Vec<&'static CompiledProfile> = doc
         .scalars("$this.meta.profile")
         .iter()
-        .filter_map(|url| generated::REGISTRY.iter().find(|p| p.resource_type == resource_type && p.url == *url).copied())
+        .filter_map(|url| {
+            let url = url.split('|').next().unwrap_or(url);
+            generated::REGISTRY.iter().find(|p| p.resource_type == resource_type && p.url == url).copied()
+        })
         .collect();
     out.dedup_by_key(|p| p.url);
     if out.is_empty() {
-        if let Some(default) = match resource_type {
-            "Patient" => Some(&generated::au_core_patient::PROFILE),
-            _ => None,
-        } {
-            out.push(default);
-        }
+        out.extend(defaults.iter().filter(|(rt, _)| *rt == resource_type).map(|(_, p)| *p));
     }
     out
 }
@@ -260,12 +263,11 @@ pub fn probe(input: &[u8]) -> String {
 /// must-support — but what a client certifying against the IG must populate
 /// when it has the data. Empty for unparseable input or no applicable profile.
 pub fn must_support_gaps(input: &[u8]) -> Vec<&'static str> {
-    let Ok(fields) = json::scan_top_level(input) else { return Vec::new() };
-    let Some(rt) = fields.scalar("resourceType") else { return Vec::new() };
     let Ok(parsed) = document::Parsed::parse(input) else { return Vec::new() };
+    let Some(json::Value::Str(rt)) = parsed.top_member("resourceType") else { return Vec::new() };
     let doc = parsed.doc();
     let mut gaps = Vec::new();
-    for profile in select_profiles(rt, &doc) {
+    for profile in select_profiles(rt, &doc, &[]) {
         for g in engine::must_support_gaps(profile, &doc) {
             if !gaps.contains(&g) {
                 gaps.push(g);
@@ -445,11 +447,10 @@ pub mod wire {
     }
 }
 
-/// JSON, two ways. `scan_top_level` is the zero-copy single pass over a
-/// resource's top-level members (no DOM). `parse` builds a borrowed value tree —
-/// the correctness-first adapter behind the `Document` port.
+/// JSON: `parse` builds a borrowed value tree (strings decoded only when they
+/// carry escapes) — the correctness-first adapter behind the `Document` port.
 pub mod json {
-    use alloc::vec::Vec;
+    use alloc::{borrow::Cow, string::String, vec::Vec};
 
     #[derive(Debug)]
     pub struct ParseError {
@@ -457,39 +458,28 @@ pub mod json {
         pub msg: &'static str,
     }
 
-    /// The top-level shape captured in one pass; strings borrow the input.
-    #[derive(Default, Debug)]
-    pub struct TopLevel<'a> {
-        pub present: Vec<&'a str>,
-        pub scalars: Vec<(&'a str, &'a str)>,
-    }
-
-    impl<'a> TopLevel<'a> {
-        pub fn has(&self, key: &str) -> bool {
-            self.present.iter().any(|k| *k == key)
-        }
-        pub fn scalar(&self, key: &str) -> Option<&'a str> {
-            self.scalars.iter().find(|(k, _)| *k == key).map(|(_, v)| *v)
-        }
-        pub fn has_value_x(&self) -> bool {
-            self.present.iter().any(|k| k.len() > 5 && k.starts_with("value"))
-        }
-    }
-
-    /// A borrowed JSON value tree. Strings and numbers point into the input.
+    /// A borrowed JSON value tree. Numbers point into the input; strings do
+    /// too unless they carry escapes, in which case they are decoded into an
+    /// owned copy (`Cow`).
     #[derive(Debug, Clone, PartialEq)]
     pub enum Value<'a> {
         Null,
         Bool(bool),
         Number(&'a str),
-        Str(&'a str),
+        Str(Cow<'a, str>),
         Array(Vec<Value<'a>>),
-        Object(Vec<(&'a str, Value<'a>)>),
+        Object(Vec<(Cow<'a, str>, Value<'a>)>),
     }
 
+    /// Parse one JSON document: a value with nothing but whitespace after it.
     pub fn parse(input: &[u8]) -> Result<Value<'_>, ParseError> {
         let mut p = Parser { b: input, i: 0, depth: 0 };
-        p.parse_value()
+        let v = p.parse_value()?;
+        p.skip_ws();
+        if p.i != input.len() {
+            return Err(ParseError { at: p.i, msg: "trailing characters after the document" });
+        }
+        Ok(v)
     }
 
     /// Resolve a dotted path against a node. The first segment is the root's
@@ -532,15 +522,20 @@ pub mod json {
                     }
                     None => {
                         for (k, v) in members {
-                            if *k == seg {
+                            if k.as_ref() == seg {
                                 found = true;
                                 expand(v, f);
                             }
                         }
                         if !found {
+                            // the `_name` form alone: its array's `null`s are placeholders, not elements
                             for (k, v) in members {
                                 if k.strip_prefix('_') == Some(seg) {
-                                    expand(v, f);
+                                    expand(v, &mut |x| {
+                                        if !matches!(x, Value::Null) {
+                                            f(x)
+                                        }
+                                    });
                                 }
                             }
                         }
@@ -600,23 +595,88 @@ pub mod json {
             }
         }
 
-        fn string_raw(&mut self) -> Result<&'a str, ParseError> {
+        /// A JSON string. Borrowed when it has no escapes; otherwise decoded
+        /// (`\"`, `\\`, `\/`, `\b \f \n \r \t`, `\uXXXX` with surrogate
+        /// pairs) into an owned copy. A lone surrogate becomes U+FFFD.
+        fn string(&mut self) -> Result<Cow<'a, str>, ParseError> {
             self.expect(b'"')?;
             let b = self.b;
             let start = self.i;
+            let mut owned: Option<String> = None;
+            let mut run = start;
             loop {
                 match b.get(self.i).copied() {
                     None => return Err(ParseError { at: self.i, msg: "unterminated string" }),
-                    Some(b'\\') => self.i += 2,
                     Some(b'"') => {
-                        let s = core::str::from_utf8(&b[start..self.i])
-                            .map_err(|_| ParseError { at: start, msg: "invalid utf-8" })?;
+                        let tail = core::str::from_utf8(&b[run..self.i])
+                            .map_err(|_| ParseError { at: run, msg: "invalid utf-8" })?;
                         self.i += 1;
-                        return Ok(s);
+                        return Ok(match owned {
+                            None => Cow::Borrowed(tail),
+                            Some(mut o) => {
+                                o.push_str(tail);
+                                Cow::Owned(o)
+                            }
+                        });
+                    }
+                    Some(b'\\') => {
+                        let o = owned.get_or_insert_with(String::new);
+                        o.push_str(
+                            core::str::from_utf8(&b[run..self.i]).map_err(|_| ParseError { at: run, msg: "invalid utf-8" })?,
+                        );
+                        let at = self.i;
+                        let esc = b.get(self.i + 1).copied().ok_or(ParseError { at, msg: "unterminated string" })?;
+                        self.i += 2;
+                        match esc {
+                            b'"' => o.push('"'),
+                            b'\\' => o.push('\\'),
+                            b'/' => o.push('/'),
+                            b'b' => o.push('\u{8}'),
+                            b'f' => o.push('\u{c}'),
+                            b'n' => o.push('\n'),
+                            b'r' => o.push('\r'),
+                            b't' => o.push('\t'),
+                            b'u' => {
+                                let hi = self.hex4().ok_or(ParseError { at, msg: "bad \\u escape" })?;
+                                let c = if (0xD800..0xDC00).contains(&hi) {
+                                    // a high surrogate: needs a \uDC00–\uDFFF partner
+                                    if b.get(self.i..self.i + 2) == Some(b"\\u") {
+                                        let save = self.i;
+                                        self.i += 2;
+                                        match self.hex4() {
+                                            Some(lo) if (0xDC00..0xE000).contains(&lo) => {
+                                                char::from_u32(0x10000 + ((hi - 0xD800) << 10) + (lo - 0xDC00))
+                                            }
+                                            _ => {
+                                                self.i = save;
+                                                None
+                                            }
+                                        }
+                                    } else {
+                                        None
+                                    }
+                                } else {
+                                    char::from_u32(hi)
+                                };
+                                o.push(c.unwrap_or('\u{FFFD}'));
+                            }
+                            _ => return Err(ParseError { at, msg: "bad escape" }),
+                        }
+                        run = self.i;
                     }
                     Some(_) => self.i += 1,
                 }
             }
+        }
+
+        fn hex4(&mut self) -> Option<u32> {
+            let s = self.b.get(self.i..self.i + 4)?;
+            let mut v = 0u32;
+            for &c in s {
+                v = v * 16 + (c as char).to_digit(16)?;
+            }
+            self.i += 4;
+            Some(v)
         }
 
         fn literal(&mut self, lit: &[u8]) -> Result<(), ParseError> {
@@ -658,7 +718,7 @@ pub mod json {
                     self.depth -= 1;
                     r
                 }
-                Some(b'"') => Ok(Value::Str(self.string_raw()?)),
+                Some(b'"') => Ok(Value::Str(self.string()?)),
                 Some(b't') => {
                     self.literal(b"true")?;
                     Ok(Value::Bool(true))
@@ -686,7 +746,7 @@ pub mod json {
             }
             loop {
                 self.skip_ws();
-                let key = self.string_raw()?;
+                let key = self.string()?;
                 self.skip_ws();
                 self.expect(b':')?;
                 let val = self.parse_value()?;
@@ -726,46 +786,8 @@ pub mod json {
             }
         }
 
-        fn skip_value(&mut self) -> Result<(), ParseError> {
-            self.parse_value().map(|_| ())
-        }
     }
 
-    /// Scan a resource's top-level object in a single pass (no DOM).
-    pub fn scan_top_level(input: &[u8]) -> Result<TopLevel<'_>, ParseError> {
-        let mut p = Parser { b: input, i: 0, depth: 0 };
-        p.skip_ws();
-        p.expect(b'{')?;
-        let mut out = TopLevel::default();
-        p.skip_ws();
-        if p.byte() == Some(b'}') {
-            return Ok(out);
-        }
-        loop {
-            p.skip_ws();
-            let key = p.string_raw()?;
-            p.skip_ws();
-            p.expect(b':')?;
-            out.present.push(key);
-            p.skip_ws();
-            if p.byte() == Some(b'"') {
-                let v = p.string_raw()?;
-                out.scalars.push((key, v));
-            } else {
-                p.skip_value()?;
-            }
-            p.skip_ws();
-            match p.byte() {
-                Some(b',') => {
-                    p.i += 1;
-                    continue;
-                }
-                Some(b'}') => break,
-                _ => return Err(ParseError { at: p.i, msg: "expected ',' or '}'" }),
-            }
-        }
-        Ok(out)
-    }
 }
 
 /// The `Document` port: how the engine reads a resource, independent of the
@@ -794,6 +816,8 @@ pub mod document {
         }
         /// This node's scalar value as text, if it is a scalar.
         fn as_scalar(&self) -> Option<&str>;
+        /// This node's value if it is a JSON number (its literal text).
+        fn as_number(&self) -> Option<&str>;
         /// This node's value if it is a JSON boolean.
         fn as_bool(&self) -> Option<bool>;
         /// Structural equality with another node (FHIRPath `=` on complex
@@ -823,7 +847,7 @@ pub mod document {
         /// A top-level member by key (the JSON type tag lives here).
         pub fn top_member(&self, key: &str) -> Option<&Value<'a>> {
             match &self.value {
-                Value::Object(kvs) => kvs.iter().find(|(k, _)| *k == key).map(|(_, v)| v),
+                Value::Object(kvs) => kvs.iter().find(|(k, _)| k.as_ref() == key).map(|(_, v)| v),
                 _ => None,
             }
         }
@@ -833,7 +857,7 @@ pub mod document {
     /// element-type table knows it.
     fn resource_ctx(v: &Value<'_>) -> Option<&'static str> {
         match v {
-            Value::Object(kvs) => kvs.iter().find(|(k, _)| *k == "resourceType").and_then(|(_, v)| match v {
+            Value::Object(kvs) => kvs.iter().find(|(k, _)| k.as_ref() == "resourceType").and_then(|(_, v)| match v {
                 Value::Str(s) => crate::typing::known_type(s),
                 _ => None,
             }),
@@ -876,7 +900,7 @@ pub mod document {
             let mut out = Vec::new();
             json::resolve_each(self.root, path, &mut |v| {
                 if let Value::Str(s) = v {
-                    out.push(*s)
+                    out.push(s.as_ref())
                 }
             });
             out
@@ -919,7 +943,8 @@ pub mod document {
 
         fn as_scalar(&self) -> Option<&str> {
             match self.root {
-                Value::Str(s) | Value::Number(s) => Some(*s),
+                Value::Str(s) => Some(s.as_ref()),
+                Value::Number(s) => Some(*s),
                 Value::Bool(b) => Some(if *b { "true" } else { "false" }),
                 _ => None,
             }
@@ -928,6 +953,13 @@ pub mod document {
         fn as_bool(&self) -> Option<bool> {
             match self.root {
                 Value::Bool(b) => Some(*b),
+                _ => None,
+            }
+        }
+
+        fn as_number(&self) -> Option<&str> {
+            match self.root {
+                Value::Number(s) => Some(*s),
                 _ => None,
             }
         }
@@ -945,7 +977,7 @@ pub mod document {
             };
             match self.root {
                 // `resourceType` is the JSON type tag, not an element
-                Value::Object(kvs) => kvs.iter().filter(|(k, _)| *k != "resourceType").for_each(|(k, v)| push(k, v)),
+                Value::Object(kvs) => kvs.iter().filter(|(k, _)| k.as_ref() != "resourceType").for_each(|(k, v)| push(k, v)),
                 Value::Array(xs) => xs.iter().for_each(|v| push("", v)),
                 _ => {}
             }
@@ -1018,6 +1050,10 @@ pub mod compiled {
     pub enum Discriminator {
         /// The scalars at a relative path (`$this.system`) must include `value`.
         Value { path: &'static str, value: &'static str },
+        /// Some ONE instance at `path` (`$this.type.coding`) must carry every
+        /// pair — a `pattern` on a repeating element means "contains an
+        /// element matching this", not one match per leaf.
+        Pattern { path: &'static str, pairs: &'static [(&'static str, &'static str)] },
         /// A choice-type slice: the instance is the member under this concrete
         /// key (`valueQuantity`).
         Type { key: &'static str },
@@ -1092,6 +1128,10 @@ pub struct Validator {
     /// shares expression strings, so this is small and the lookup is a binary
     /// search on an integer.
     invariants: Vec<(usize, Option<path::Expr>)>,
+    /// Profiles applied to resources that declare none, per resource type —
+    /// a jurisdiction's "this is what a Patient means here". Empty by default:
+    /// the spec's behaviour, and the reference validator's.
+    defaults: Vec<(&'static str, &'static CompiledProfile)>,
 }
 
 impl Default for Validator {
@@ -1110,7 +1150,17 @@ impl Validator {
         }
         keys.sort_unstable_by_key(|k| k.0);
         keys.dedup_by_key(|k| k.0);
-        Self { invariants: keys.into_iter().map(|(k, e)| (k, path::parse(e).ok())).collect() }
+        Self { invariants: keys.into_iter().map(|(k, e)| (k, path::parse(e).ok())).collect(), defaults: Vec::new() }
+    }
+
+    /// Apply `url`'s profile to every `resource_type` resource that declares
+    /// no profile of its own (e.g. AU Core Patient for a bare `Patient`).
+    /// Unknown URLs are ignored: nothing is ever guessed.
+    pub fn with_default_profile(mut self, url: &str) -> Self {
+        if let Some(p) = generated::REGISTRY.iter().find(|p| p.url == url) {
+            self.defaults.push((p.resource_type, p));
+        }
+        self
     }
 
     /// The parsed expression, or `None` when it is outside the supported
@@ -1133,9 +1183,20 @@ impl Validator {
         validate_bytes_impl(input, tx, Some(self))
     }
 
-    /// [`must_support_gaps`].
+    /// [`must_support_gaps`], honouring this validator's default profiles.
     pub fn must_support_gaps(&self, input: &[u8]) -> Vec<&'static str> {
-        crate::must_support_gaps(input)
+        let Ok(parsed) = document::Parsed::parse(input) else { return Vec::new() };
+        let Some(json::Value::Str(rt)) = parsed.top_member("resourceType") else { return Vec::new() };
+        let doc = parsed.doc();
+        let mut gaps = Vec::new();
+        for profile in select_profiles(rt, &doc, &self.defaults) {
+            for g in engine::must_support_gaps(profile, &doc) {
+                if !gaps.contains(&g) {
+                    gaps.push(g);
+                }
+            }
+        }
+        gaps
     }
 }
 
@@ -1328,6 +1389,16 @@ pub mod engine {
     fn matches(slice: &Slice, inst: &impl Document) -> bool {
         slice.discriminators.iter().all(|d| match d {
             Discriminator::Value { path, value } => inst.scalars(path).iter().any(|s| *s == *value),
+            Discriminator::Pattern { path, pairs } => inst.instances(path).iter().any(|n| {
+                pairs.iter().all(|(rel, value)| {
+                    let mut p = String::from("$this");
+                    if !rel.is_empty() {
+                        p.push('.');
+                        p.push_str(rel);
+                    }
+                    n.scalars(&p).iter().any(|s| *s == *value)
+                })
+            }),
             Discriminator::Type { .. } => true,
         })
     }
@@ -1446,46 +1517,6 @@ pub mod value_sets {
     }
 }
 
-/// Default Observation checks over the single-pass scanner, used when no
-/// generated profile is declared in `meta.profile`.
-pub mod au_core {
-    use crate::json::TopLevel;
-    use crate::validate::{IssueType, Report, Severity};
-
-    pub fn is_observation_status(code: &str) -> bool {
-        crate::value_sets::in_value_set("http://hl7.org/fhir/ValueSet/observation-status", code)
-            .unwrap_or(false)
-    }
-
-    pub fn validate_observation(fields: &TopLevel) -> Report {
-        let mut r = Report::default();
-        match fields.scalar("status") {
-            None => r.push(Severity::Error, IssueType::Required, "Observation.status", "status is required (1..1)".into()),
-            Some(s) if !is_observation_status(s) => r.push(
-                Severity::Error,
-                IssueType::CodeInvalid,
-                "Observation.status",
-                format!("status '{s}' is not in the observation-status value set"),
-            ),
-            Some(_) => {}
-        }
-        if !fields.has("code") {
-            r.push(Severity::Error, IssueType::Required, "Observation.code", "code is required (1..1)".into());
-        }
-        if !fields.has("subject") {
-            r.push(Severity::Error, IssueType::Required, "Observation.subject", "subject is required (1..1)".into());
-        }
-        if !fields.has_value_x() && !fields.has("dataAbsentReason") {
-            r.push(
-                Severity::Warning,
-                IssueType::Invariant,
-                "Observation",
-                "neither value[x] nor dataAbsentReason is present".into(),
-            );
-        }
-        r
-    }
-}
 
 pub mod model {
     use alloc::string::String;
@@ -1589,6 +1620,7 @@ pub mod path {
     use alloc::{boxed::Box, string::String, vec::Vec};
 
     use crate::document::Document;
+    use crate::temporal;
 
     #[derive(Debug, Clone, PartialEq)]
     pub enum Lit {
@@ -1742,19 +1774,49 @@ pub mod path {
                     i = j + 1;
                 }
                 b'\'' => {
-                    let start = i + 1;
-                    let mut j = start;
-                    while j < b.len() && b[j] != b'\'' {
-                        if b[j] == b'\\' {
-                            j += 1;
+                    // FHIRPath string escapes: \' \" \` \\ \/ \f \n \r \t \uXXXX
+                    let mut j = i + 1;
+                    let mut out_s = String::new();
+                    loop {
+                        let Some(&c) = b.get(j) else { return Err(Unsupported) };
+                        match c {
+                            b'\'' => break,
+                            b'\\' => {
+                                let Some(&e) = b.get(j + 1) else { return Err(Unsupported) };
+                                j += 2;
+                                match e {
+                                    b'\'' | b'"' | b'`' | b'\\' | b'/' => out_s.push(e as char),
+                                    b'f' => out_s.push('\u{c}'),
+                                    b'n' => out_s.push('\n'),
+                                    b'r' => out_s.push('\r'),
+                                    b't' => out_s.push('\t'),
+                                    b'u' => {
+                                        let hex = b.get(j..j + 4).ok_or(Unsupported)?;
+                                        let mut v = 0u32;
+                                        for &h in hex {
+                                            v = v * 16 + (h as char).to_digit(16).ok_or(Unsupported)?;
+                                        }
+                                        out_s.push(char::from_u32(v).ok_or(Unsupported)?);
+                                        j += 4;
+                                    }
+                                    _ => return Err(Unsupported),
+                                }
+                            }
+                            _ => {
+                                // copy one UTF-8 scalar
+                                let len = match c {
+                                    0x00..=0x7F => 1,
+                                    0xC0..=0xDF => 2,
+                                    0xE0..=0xEF => 3,
+                                    _ => 4,
+                                };
+                                let s = core::str::from_utf8(b.get(j..j + len).ok_or(Unsupported)?).map_err(|_| Unsupported)?;
+                                out_s.push_str(s);
+                                j += len;
+                            }
                         }
-                        j += 1;
                     }
-                    if j >= b.len() {
-                        return Err(Unsupported);
-                    }
-                    let s = core::str::from_utf8(&b[start..j]).map_err(|_| Unsupported)?;
-                    out.push(Tok::Str(s.replace("\\'", "'")));
+                    out.push(Tok::Str(out_s));
                     i = j + 1;
                 }
                 b'0'..=b'9' => {
@@ -1778,6 +1840,9 @@ pub mod path {
                         i += 1;
                     }
                     let s = core::str::from_utf8(&b[start..i]).map_err(|_| Unsupported)?;
+                    if s.starts_with('$') && s != "$this" {
+                        return Err(Unsupported); // $index / $total: not in the core
+                    }
                     out.push(Tok::Ident(s.into()));
                 }
                 b'%' => {
@@ -1872,10 +1937,10 @@ pub mod path {
         }
 
         fn implies_inner(&mut self) -> Result<Expr, Unsupported> {
-            let l = self.or()?;
-            if self.eat_kw("implies") {
-                let r = self.implies()?;
-                return Ok(Expr::Bin(Box::new(l), Op::Implies, Box::new(r)));
+            let mut l = self.or()?;
+            while self.eat_kw("implies") {
+                let r = self.or()?;
+                l = Expr::Bin(Box::new(l), Op::Implies, Box::new(r));
             }
             Ok(l)
         }
@@ -2096,36 +2161,6 @@ pub mod path {
         Bool(bool),
     }
 
-    /// Compare two items' scalar text without allocating.
-    fn scalar_eq<D: Document>(a: &Item<D>, b: &Item<D>) -> Option<bool> {
-        let mut buf_a = [0u8; 24];
-        let mut buf_b = [0u8; 24];
-        let sa = scalar_str(a, &mut buf_a)?;
-        let sb = scalar_str(b, &mut buf_b)?;
-        Some(sa == sb)
-    }
-    fn scalar_str<'i, D: Document>(it: &'i Item<D>, buf: &'i mut [u8; 24]) -> Option<&'i str> {
-        match it {
-            Item::Node(d) => d.as_scalar(),
-            Item::Str(s) => Some(s.as_str()),
-            Item::Bool(b) => Some(if *b { "true" } else { "false" }),
-            Item::Int(n) => {
-                // itoa into the caller's buffer
-                let mut n2 = *n;
-                let neg = n2 < 0;
-                let mut i = buf.len();
-                loop {
-                    i -= 1;
-                    buf[i] = b'0' + (n2 % 10).unsigned_abs() as u8;
-                    n2 /= 10;
-                    if n2 == 0 { break; }
-                }
-                if neg { i -= 1; buf[i] = b'-'; }
-                core::str::from_utf8(&buf[i..]).ok()
-            }
-        }
-    }
-
     fn scalar_of<D: Document>(it: &Item<D>) -> Option<String> {
         match it {
             Item::Node(d) => d.as_scalar().map(String::from),
@@ -2137,13 +2172,15 @@ pub mod path {
 
     /// A collection in boolean context: empty is unknown; a lone boolean is
     /// itself; anything else present is true.
-    fn truth<D: Document>(c: &[Item<D>]) -> Option<bool> {
-        match c {
+    fn truth<D: Document>(c: &[Item<D>]) -> Result<Option<bool>, Unsupported> {
+        Ok(match c {
             [] => None,
             [Item::Bool(b)] => Some(*b),
             [Item::Node(d)] => Some(d.as_bool().unwrap_or(true)),
-            _ => Some(true),
-        }
+            [_] => Some(true),
+            // singleton evaluation of collections: more than one item is an error
+            _ => return Err(Unsupported),
+        })
     }
 
     /// What an expression is evaluated in besides `$this`: the type of the
@@ -2166,19 +2203,48 @@ pub mod path {
         let inner = env.inner();
         let mut out = Vec::new();
         for it in coll {
-            if truth(&eval(cond, it, &inner)?) == Some(true) {
+            if truth(&eval(cond, it, &inner)?)? == Some(true) {
                 out.push(it.clone());
             }
         }
         Ok(out)
     }
 
-    /// FHIRPath equality between items: scalars by value, nodes structurally.
-    fn items_equal<D: Document>(a: &Item<D>, b: &Item<D>) -> bool {
-        match (a, b) {
-            (Item::Node(x), Item::Node(y)) => x.same(y),
-            _ => scalar_eq(a, b).unwrap_or(false),
+    /// FHIRPath `=` on two single items: integers numerically, booleans,
+    /// dates / times temporally (empty when precisions or timezone presence
+    /// differ), text by value, complex nodes structurally; items of different
+    /// kinds are simply not equal. A decimal is outside the core.
+    fn equal<D: Document>(a: &Item<D>, b: &Item<D>) -> Result<Option<bool>, Unsupported> {
+        if let (Some(x), Some(y)) = (num_of(a)?, num_of(b)?) {
+            return Ok(Some(x == y));
         }
+        let bool_of = |it: &Item<D>| match it {
+            Item::Bool(b) => Some(*b),
+            Item::Node(d) => d.as_bool(),
+            _ => None,
+        };
+        if let (Some(x), Some(y)) = (bool_of(a), bool_of(b)) {
+            return Ok(Some(x == y));
+        }
+        if is_text(a) && is_text(b) {
+            let (x, y) = (text_of(a)?, text_of(b)?);
+            return Ok(match (temporal::parse(&x), temporal::parse(&y)) {
+                (Some(tx), Some(ty)) => temporal::compare(&tx, &ty).map(|o| o.is_eq()),
+                _ => Some(x == y),
+            });
+        }
+        if let (Item::Node(x), Item::Node(y)) = (a, b) {
+            if x.as_scalar().is_none() && y.as_scalar().is_none() {
+                return Ok(Some(x.same(y)));
+            }
+        }
+        Ok(Some(false))
+    }
+
+    /// Equality as a plain yes/no (for `in`, `union`, `intersect`, `distinct`):
+    /// an undecidable comparison counts as not equal.
+    fn items_equal<D: Document>(a: &Item<D>, b: &Item<D>) -> bool {
+        matches!(equal(a, b), Ok(Some(true)))
     }
 
     /// The FHIR type of an item: the profile's declared type for `$this` when
@@ -2213,11 +2279,45 @@ pub mod path {
 
     /// `dateTime` matches `dateTime` / `FHIR.dateTime`; case-insensitive on the
     /// last segment, as FHIRPath type specifiers are written both ways.
-    fn type_matches(this_type: &str, spec: &str) -> bool {
+    /// FHIRPath `is`: the type itself or a supertype — FHIR's primitive
+    /// specialisations (`code` is a `string`, `canonical` a `uri`, `Age` a
+    /// `Quantity`), every resource a `Resource` (and, bar Bundle / Binary /
+    /// Parameters, a `DomainResource`), every datatype an `Element`, and the
+    /// FHIRPath System types the primitives map to (`String`, `Integer`,
+    /// `DateTime`, …). Case-insensitive on the last segment, as type
+    /// specifiers are written both ways.
+    fn type_matches(actual: &str, spec: &str) -> bool {
         fn last(t: &str) -> &str {
             t.rsplit('.').next().unwrap_or(t)
         }
-        last(this_type).eq_ignore_ascii_case(last(spec))
+        let (actual, spec) = (last(actual), last(spec));
+        let is = |t: &str| t.eq_ignore_ascii_case(spec);
+        if is(actual) {
+            return true;
+        }
+        let parents: &[&str] = match actual {
+            "code" | "id" | "markdown" | "xhtml" => &["string", "String"],
+            "string" | "base64Binary" => &["String"],
+            "url" | "canonical" | "uuid" | "oid" => &["uri", "String"],
+            "uri" => &["String"],
+            "positiveInt" | "unsignedInt" => &["integer", "Integer"],
+            "integer" => &["Integer"],
+            "decimal" => &["Decimal"],
+            "boolean" => &["Boolean"],
+            "date" => &["Date"],
+            "dateTime" | "instant" => &["DateTime"],
+            "time" => &["Time"],
+            "Age" | "Count" | "Distance" | "Duration" | "MoneyQuantity" | "SimpleQuantity" => &["Quantity", "Element"],
+            "BackboneElement" => &["Element"],
+            _ => &[],
+        };
+        if parents.iter().any(|p| is(p)) {
+            return true;
+        }
+        if crate::typemap::RESOURCES.binary_search(&actual).is_ok() {
+            return is("Resource") || (is("DomainResource") && !matches!(actual, "Bundle" | "Binary" | "Parameters"));
+        }
+        crate::typing::known_type(actual).is_some() && is("Element")
     }
 
     /// A collection that must be empty or a single item; more is unsupported
@@ -2235,8 +2335,33 @@ pub mod path {
     fn text_of<D: Document>(it: &Item<D>) -> Result<String, Unsupported> {
         match it {
             Item::Str(s) => Ok(s.clone()),
-            Item::Node(d) if d.as_bool().is_none() => d.as_scalar().map(String::from).ok_or(Unsupported),
+            Item::Node(d) if d.as_bool().is_none() && d.as_number().is_none() => {
+                d.as_scalar().map(String::from).ok_or(Unsupported)
+            }
             _ => Err(Unsupported),
+        }
+    }
+
+    /// The integer an item denotes: an integer literal, or a JSON number node
+    /// that is an integer. A decimal is outside the core (`Err`); a non-number
+    /// is `Ok(None)`.
+    fn num_of<D: Document>(it: &Item<D>) -> Result<Option<i64>, Unsupported> {
+        match it {
+            Item::Int(n) => Ok(Some(*n)),
+            Item::Node(d) => match d.as_number() {
+                Some(text) => parse_int(text).map(Some).ok_or(Unsupported),
+                None => Ok(None),
+            },
+            _ => Ok(None),
+        }
+    }
+
+    /// Is this item text (a string literal or a JSON string node)?
+    fn is_text<D: Document>(it: &Item<D>) -> bool {
+        match it {
+            Item::Str(_) => true,
+            Item::Node(d) => d.as_bool().is_none() && d.as_number().is_none() && d.as_scalar().is_some(),
+            _ => false,
         }
     }
 
@@ -2299,20 +2424,32 @@ pub mod path {
         r.map(Some).ok_or(Unsupported)
     }
 
-    fn compare<D: Document>(op: Op, a: &Item<D>, b: &Item<D>) -> Result<bool, Unsupported> {
-        let ord = match (a, b) {
-            (Item::Int(x), Item::Int(y)) => x.cmp(y),
-            (Item::Int(_), _) | (_, Item::Int(_)) | (Item::Bool(_), _) | (_, Item::Bool(_)) => return Err(Unsupported),
-            // Strings compare by code point, which is what `str`'s order is.
-            _ => text_of(a)?.cmp(&text_of(b)?),
+    /// `<` `<=` `>` `>=`: integers numerically; dates / times temporally
+    /// (empty when precisions or timezone presence differ); other text by
+    /// code point. Mixed kinds are outside the core.
+    fn compare<D: Document>(op: Op, a: &Item<D>, b: &Item<D>) -> Result<Option<bool>, Unsupported> {
+        let ord = match (num_of(a)?, num_of(b)?) {
+            (Some(x), Some(y)) => x.cmp(&y),
+            (None, None) if is_text(a) && is_text(b) => {
+                let (x, y) = (text_of(a)?, text_of(b)?);
+                match (temporal::parse(&x), temporal::parse(&y)) {
+                    (Some(tx), Some(ty)) => match temporal::compare(&tx, &ty) {
+                        Some(o) => o,
+                        None => return Ok(None),
+                    },
+                    // Strings compare by code point, which is what `str`'s order is.
+                    _ => x.cmp(&y),
+                }
+            }
+            _ => return Err(Unsupported),
         };
-        Ok(match op {
+        Ok(Some(match op {
             Op::Lt => ord.is_lt(),
             Op::Le => ord.is_le(),
             Op::Gt => ord.is_gt(),
             Op::Ge => ord.is_ge(),
             _ => return Err(Unsupported),
-        })
+        }))
     }
 
     fn logic(op: Op, a: Option<bool>, b: Option<bool>) -> Option<bool> {
@@ -2393,13 +2530,17 @@ pub mod path {
                     ("exists", 0) => vec![Item::Bool(!coll.is_empty())],
                     ("exists", 1) => vec![Item::Bool(!filter(&coll, &args[0], env)?.is_empty())],
                     ("empty", 0) => vec![Item::Bool(coll.is_empty())],
-                    ("not", 0) => match truth(&coll) {
+                    ("not", 0) => match truth(&coll)? {
                         Some(b) => vec![Item::Bool(!b)],
                         None => vec![],
                     },
                     ("count", 0) => vec![Item::Int(coll.len() as i64)],
                     ("first", 0) => coll.into_iter().take(1).collect(),
-                    ("hasValue", 0) => vec![Item::Bool(coll.iter().any(|it| match it { Item::Node(d) => d.as_scalar().is_some(), _ => true }))],
+                    ("hasValue", 0) => vec![Item::Bool(match coll.as_slice() {
+                        [Item::Node(d)] => d.as_scalar().is_some(),
+                        [_] => true,
+                        _ => false,
+                    })],
                     ("where", 1) => filter(&coll, &args[0], env)?,
                     ("last", 0) => coll.into_iter().last().into_iter().collect(),
                     // `single()`: the one item, empty for none; more is an error in the spec
@@ -2416,7 +2557,7 @@ pub mod path {
                         let inner = env.inner();
                         let mut all = true;
                         for it in &coll {
-                            all &= truth(&eval(&args[0], it, &inner)?) == Some(true);
+                            all &= truth(&eval(&args[0], it, &inner)?)? == Some(true);
                         }
                         vec![Item::Bool(all)]
                     }
@@ -2538,7 +2679,7 @@ pub mod path {
                             return Ok(vec![]);
                         };
                         let inner = env.inner();
-                        match truth(&eval(&args[0], this, &inner)?) {
+                        match truth(&eval(&args[0], this, &inner)?)? {
                             Some(true) => eval(&args[1], this, &inner)?,
                             _ if args.len() == 3 => eval(&args[2], this, &inner)?,
                             _ => vec![],
@@ -2591,12 +2732,10 @@ pub mod path {
                 let (Some(a), Some(b)) = (single(&a)?, single(&b)?) else {
                     return Ok(vec![]);
                 };
-                match (a, b, op) {
-                    (Item::Int(x), Item::Int(y), _) => arith(*op, *x, *y)?.map(Item::Int).into_iter().collect(),
+                match (num_of(a)?, num_of(b)?) {
+                    (Some(x), Some(y)) => arith(*op, x, y)?.map(Item::Int).into_iter().collect(),
                     // `+` on strings concatenates.
-                    (Item::Str(_) | Item::Node(_), Item::Str(_) | Item::Node(_), Op::Add) => {
-                        vec![Item::Str(text_of(a)? + &text_of(b)?)]
-                    }
+                    (None, None) if *op == Op::Add && is_text(a) && is_text(b) => vec![Item::Str(text_of(a)? + &text_of(b)?)],
                     _ => return Err(Unsupported),
                 }
             }
@@ -2628,7 +2767,7 @@ pub mod path {
                 let (Some(a), Some(b)) = (single(&a)?, single(&b)?) else {
                     return Ok(vec![]);
                 };
-                vec![Item::Bool(compare(*op, a, b)?)]
+                compare(*op, a, b)?.map(Item::Bool).into_iter().collect()
             }
             Expr::Bin(l, op @ (Op::Eq | Op::Ne), r) => {
                 let (a, b) = (eval(l, ctx, env)?, eval(r, ctx, env)?);
@@ -2638,14 +2777,14 @@ pub mod path {
                 if a.len() != 1 || b.len() != 1 {
                     return Err(Unsupported);
                 }
-                match scalar_eq(&a[0], &b[0]) {
+                match equal(&a[0], &b[0])? {
                     Some(eq) => vec![Item::Bool(if *op == Op::Eq { eq } else { !eq })],
-                    None => return Err(Unsupported),
+                    None => vec![],
                 }
             }
             Expr::Bin(l, op, r) => {
-                let a = truth(&eval(l, ctx, env)?);
-                let b = truth(&eval(r, ctx, env)?);
+                let a = truth(&eval(l, ctx, env)?)?;
+                let b = truth(&eval(r, ctx, env)?)?;
                 match logic(*op, a, b) {
                     Some(v) => vec![Item::Bool(v)],
                     None => vec![],
@@ -2673,16 +2812,154 @@ pub mod path {
     pub fn check_with<D: Document>(expr: &Expr, ctx: &D, this_type: Option<&str>, root: Option<&D>) -> Verdict {
         let root_item = root.map(|r| Item::Node(r.clone()));
         let env = Env { this_type, root: root_item.as_ref() };
-        match eval(expr, &Item::Node(ctx.clone()), &env) {
+        match eval(expr, &Item::Node(ctx.clone()), &env).and_then(|coll| truth(&coll)) {
             Err(Unsupported) => Verdict::Unsupported,
-            Ok(coll) => {
-                if truth(&coll) == Some(false) {
-                    Verdict::Fail
-                } else {
-                    Verdict::Pass
+            Ok(Some(false)) => Verdict::Fail,
+            Ok(_) => Verdict::Pass,
+        }
+    }
+}
+
+/// FHIRPath's date / dateTime / time values, enough to compare them: a
+/// partial date (`2020`, `2020-03`, `2020-03-01`), an optional time
+/// (`T10:00`, `:30`, `.250`) and an optional timezone (`Z`, `+10:00`).
+/// Comparison follows the spec: different precisions (seconds and
+/// milliseconds counting as one), or a timezone on one side only, is empty;
+/// otherwise the instants are compared with offsets normalised.
+pub mod temporal {
+    use core::cmp::Ordering;
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct Temporal {
+        /// 1 year … 3 day, 4 hour, 5 minute, 6 second (milliseconds fold in).
+        pub precision: u8,
+        /// The instant in milliseconds, offsets applied (a partial date is
+        /// taken at its start; only same-precision values are compared).
+        pub millis: i64,
+        pub has_date: bool,
+        pub has_tz: bool,
+    }
+
+    fn digits(s: &[u8], n: usize) -> Option<i64> {
+        let part = s.get(..n)?;
+        if part.len() != n || !part.iter().all(u8::is_ascii_digit) {
+            return None;
+        }
+        part.iter().try_fold(0i64, |acc, &c| acc.checked_mul(10)?.checked_add((c - b'0') as i64))
+    }
+
+    /// Days since 1970-01-01 for a proleptic Gregorian date (Howard Hinnant's algorithm).
+    fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
+        let y = if m <= 2 { y - 1 } else { y };
+        let era = if y >= 0 { y } else { y - 399 } / 400;
+        let yoe = y - era * 400;
+        let mp = (m + 9) % 12;
+        let doy = (153 * mp + 2) / 5 + d - 1;
+        let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+        era * 146097 + doe - 719468
+    }
+
+    pub fn parse(s: &str) -> Option<Temporal> {
+        let b = s.as_bytes();
+        let mut i = 0;
+        let (mut y, mut mo, mut d) = (1970i64, 1i64, 1i64);
+        let mut precision = 0u8;
+        let mut has_date = false;
+        if b.first().is_some_and(u8::is_ascii_digit) {
+            y = digits(b, 4)?;
+            i = 4;
+            precision = 1;
+            has_date = true;
+            if b.get(i) == Some(&b'-') {
+                mo = digits(&b[i + 1..], 2)?;
+                i += 3;
+                precision = 2;
+                if b.get(i) == Some(&b'-') {
+                    d = digits(&b[i + 1..], 2)?;
+                    i += 3;
+                    precision = 3;
                 }
             }
+            if !(1..=12).contains(&mo) || !(1..=31).contains(&d) {
+                return None;
+            }
         }
+        let (mut h, mut mi, mut sec, mut ms) = (0i64, 0i64, 0i64, 0i64);
+        let mut has_tz = false;
+        let mut tz = 0i64;
+        let time_starts = b.get(i) == Some(&b'T') || (!has_date && b.get(i).is_some_and(u8::is_ascii_digit));
+        if time_starts {
+            if precision != 0 && precision < 3 {
+                return None; // a time needs a full date before it
+            }
+            if b.get(i) == Some(&b'T') {
+                i += 1;
+            }
+            h = digits(&b[i..], 2)?;
+            if b.get(i + 2) != Some(&b':') {
+                return None;
+            }
+            mi = digits(&b[i + 3..], 2)?;
+            i += 5;
+            precision = 5;
+            if b.get(i) == Some(&b':') {
+                sec = digits(&b[i + 1..], 2)?;
+                i += 3;
+                precision = 6;
+                if b.get(i) == Some(&b'.') {
+                    let start = i + 1;
+                    let mut j = start;
+                    while b.get(j).is_some_and(u8::is_ascii_digit) {
+                        j += 1;
+                    }
+                    if j == start {
+                        return None;
+                    }
+                    let frac = &s[start..j];
+                    let mut scaled = 0i64;
+                    for k in 0..3 {
+                        scaled = scaled * 10 + frac.as_bytes().get(k).map_or(0, |c| (c - b'0') as i64);
+                    }
+                    ms = scaled;
+                    i = j;
+                }
+            }
+            if h > 23 || mi > 59 || sec > 60 {
+                return None;
+            }
+            match b.get(i) {
+                Some(b'Z') => {
+                    has_tz = true;
+                    i += 1;
+                }
+                Some(&sign @ (b'+' | b'-')) => {
+                    let th = digits(&b[i + 1..], 2)?;
+                    if b.get(i + 3) != Some(&b':') {
+                        return None;
+                    }
+                    let tm = digits(&b[i + 4..], 2)?;
+                    tz = (th * 60 + tm) * if sign == b'-' { -1 } else { 1 };
+                    has_tz = true;
+                    i += 6;
+                }
+                _ => {}
+            }
+        }
+        if i != b.len() || precision == 0 {
+            return None;
+        }
+        let days = if has_date { days_from_civil(y, mo, d) } else { 0 };
+        let millis = (((days * 24 + h) * 60 + mi - tz) * 60 + sec) * 1000 + ms;
+        Some(Temporal { precision, millis, has_date, has_tz })
+    }
+
+    /// `None` when the values are not comparable (different precision, or a
+    /// timezone on one side only, or a date against a time).
+    pub fn compare(a: &Temporal, b: &Temporal) -> Option<Ordering> {
+        if a.precision != b.precision || a.has_tz != b.has_tz || a.has_date != b.has_date {
+            return None;
+        }
+        Some(a.millis.cmp(&b.millis))
     }
 }
 
@@ -3219,32 +3496,72 @@ mod tests {
     }
 
     const PATIENT_ID: &str = r#""identifier":[{"system":"http://hospital.example.org/mrn","value":"1"}]"#;
-    const PATIENT_OK: &str = r#"{"resourceType":"Patient","identifier":[{"system":"http://hospital.example.org/mrn","value":"1"}],"name":[{"family":"Doe","use":"official"}],"gender":"male","birthDate":"1970-01-01"}"#;
+    const PATIENT_OK: &str = r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},"identifier":[{"system":"http://hospital.example.org/mrn","value":"1"}],"name":[{"family":"Doe","use":"official"}],"gender":"male","birthDate":"1970-01-01"}"#;
 
-    // --- Observation, default checks (no declared profile) ---
+    // --- no declared profile: the base resource applies, which we do not compile ---
 
     #[test]
-    fn valid_observation_default() {
-        let r = probe_str(
-            r#"{"resourceType":"Observation","status":"final","code":{"text":"HR"},"subject":{"reference":"Patient/1"},"valueQuantity":{"value":60}}"#,
-        );
-        assert!(r.contains("\"valid\":true"), "{r}");
+    fn unprofiled_resource_is_valid_and_claims_no_profile() {
+        let r = probe_str(r#"{"resourceType":"Observation","status":"final","code":{"text":"HR"},"valueQuantity":{"value":60}}"#);
+        assert!(r.contains("\"valid\":true") && !r.contains("\"profile\""), "{r}");
+        // a validator may carry a jurisdiction default for a resource type
+        let v = super::Validator::new().with_default_profile("http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient");
+        let bare = br#"{"resourceType":"Patient","active":true}"#;
+        assert!(super::wire::report(&v.validate(bare)).contains("Patient.identifier is required"));
+        assert!(super::wire::report(&super::validate_bytes(bare)).contains("\"valid\":true"));
+        // an unknown default URL is ignored, never guessed
+        let v2 = super::Validator::new().with_default_profile("http://example.org/nope");
+        assert!(super::wire::report(&v2.validate(bare)).contains("\"valid\":true"));
     }
 
     #[test]
-    fn nested_code_does_not_satisfy_top_level() {
-        let r = probe_str(
-            r#"{"resourceType":"Observation","status":"final","subject":{"code":"nope"},"valueString":"x"}"#,
-        );
-        assert!(r.contains("code is required"), "{r}");
+    fn versioned_canonical_selects_the_profile() {
+        let r = probe_str(&PATIENT_OK.replace("au-core-patient\"", "au-core-patient|2.0.0\""));
+        assert!(r.contains("\"profile\":\"AU Core Patient\""), "{r}");
+    }
+
+    #[test]
+    fn resource_type_must_be_a_string() {
+        let r = probe_str(r#"{"resourceType":5}"#);
+        assert!(r.contains("resourceType must be a string") && r.contains("\"valid\":false"), "{r}");
     }
 
     #[test]
     fn tricky_string_does_not_end_object_early() {
         let r = probe_str(
-            r#"{"resourceType":"Observation","note":"a } \" tricky","status":"final","code":{},"subject":{},"valueString":"x"}"#,
+            &PATIENT_OK.replace("\"gender\"", "\"note\":\"a } \\\" tricky\",\"gender\""),
         );
         assert!(r.contains("\"valid\":true"), "{r}");
+    }
+
+    // --- JSON strings are decoded before anything compares them ---
+
+    #[test]
+    fn json_escapes_are_decoded() {
+        use super::json::{parse, Value};
+        let v = parse(br#"{"a\u006de":"http:\/\/loinc.org","q":"say \"hi\"\n","emoji":"\ud83d\ude00","lone":"\ud83d"}"#).unwrap();
+        let Value::Object(kvs) = v else { panic!() };
+        let get = |k: &str| kvs.iter().find(|(kk, _)| kk.as_ref() == k).map(|(_, v)| v.clone()).unwrap();
+        assert_eq!(get("ame"), Value::Str("http://loinc.org".into()));
+        assert_eq!(get("q"), Value::Str("say \"hi\"\n".into()));
+        assert_eq!(get("emoji"), Value::Str("\u{1F600}".into()));
+        assert_eq!(get("lone"), Value::Str("\u{FFFD}".into()));
+        assert!(parse(br#""\x""#).is_err());
+        assert!(parse(br#"{} trailing"#).is_err());
+        assert!(parse(b"{}  \n").is_ok());
+    }
+
+    #[test]
+    fn escaped_slashes_still_match_fixed_systems_and_slices() {
+        let r = probe_str(&HEARTRATE_OK.replace("http://loinc.org", "http:\\/\\/loinc.org"));
+        assert!(r.contains("\"valid\":true"), "{r}");
+    }
+
+    #[test]
+    fn primitive_extension_nulls_are_placeholders() {
+        use super::document::{Document, Parsed};
+        let d = Parsed::parse(br#"{"resourceType":"Patient","name":[{"_given":[null,{"extension":[{"url":"http://x","valueString":"y"}]}]}]}"#).unwrap();
+        assert_eq!(d.doc().child_counts("Patient.name.given"), vec![1]);
     }
 
     // --- Patient (generated au-core-patient) ---
@@ -3258,7 +3575,7 @@ mod tests {
 
     #[test]
     fn patient_missing_mandatory_is_error() {
-        let r = probe_str(r#"{"resourceType":"Patient","active":true}"#);
+        let r = probe_str(r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},"active":true}"#);
         assert!(r.contains("Patient.identifier is required"), "{r}");
         assert!(r.contains("Patient.name is required"), "{r}");
         assert!(r.contains("Patient.gender is required"), "{r}");
@@ -3340,6 +3657,19 @@ mod tests {
         assert!(wrong.contains("\"valid\":false"), "{wrong}");
         let right = probe_str(&ni("http://ns.electronichealth.net.au/id/hi/ihi/1.0"));
         assert!(right.contains("\"valid\":true"), "{right}");
+    }
+
+    #[test]
+    fn a_pattern_discriminator_needs_one_coding_carrying_every_leaf() {
+        // MR under v2-0203 plus a *local* NI: no single coding is the IHI pattern
+        // (v2-0203 + NI), so this is not the `ihi` slice and au-ihi must not fire.
+        let split = PATIENT_OK.replace(
+            PATIENT_ID,
+            r#""identifier":[{"type":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"MR"},{"system":"http://example.org/local","code":"NI"}]},"system":"http://hospital.example.org/mrn","value":"1"}]"#,
+        );
+        let r = probe_str(&split);
+        assert!(!r.contains("identifier:ihi"), "{r}");
+        assert!(r.contains("\"valid\":true"), "{r}");
     }
 
     // --- Observation: generated au-core-heartrate, selected via meta.profile ---
@@ -3429,8 +3759,7 @@ mod tests {
     #[test]
     fn fhirpath_unsupported_is_skipped_not_guessed() {
         use super::path::parse;
-        // dom-3 parses (descendants / union / in are in the core) but `as(canonical)` on
-        // untyped descendant nodes evaluates as unsupported — so the whole invariant is skipped
+        // %resource without a root, and type functions on untyped nodes: unsupported
         assert_eq!(
             fp("contained.where(('#'+id in (%resource.descendants().reference | %resource.descendants().as(canonical))).not()).empty()", r#"{"contained":[{"id":"x"}]}"#),
             super::path::Verdict::Unsupported
@@ -3661,6 +3990,80 @@ mod tests {
         assert!(!probe_str(HEARTRATE_OK).contains("obs-7"));
     }
 
+    // --- review findings: what the spec says and we now do ---
+
+    #[test]
+    fn fhirpath_string_escapes_are_decoded() {
+        use super::path::Verdict::Pass;
+        let d = r#"{"v":"a.b","n":"12"}"#;
+        assert_eq!(fp("v.matches('a\\\\.b')", d), Pass); // FHIRPath source: 'a\\.b' → regex a\.b
+        assert_eq!(fp("n.matches('^\\\\d+$')", d), Pass);
+        assert_eq!(fp("'it\\'s' = 'it' + '\\'' + 's'", d), Pass); // FHIRPath source: 'it\'s'
+        assert_eq!(fp("'\\u0041' = 'A'", d), Pass);
+        assert!(super::path::parse("'\\q' = 'q'").is_err()); // not a FHIRPath escape: the parse is refused
+        // $index / $total: not in the core
+        assert!(super::path::parse("$index = 0").is_err());
+        assert!(super::path::parse("$total").is_err());
+    }
+
+    #[test]
+    fn implies_is_left_associative_and_booleans_are_singletons() {
+        use super::path::Verdict::{Fail, Pass, Unsupported};
+        let d = r#"{"a":["x","y"],"one":["x"]}"#;
+        assert_eq!(fp("false implies true implies false", d), Fail); // (false implies true) implies false
+        // more than one item in boolean context: skipped, never guessed
+        assert_eq!(fp("a.not()", d), Unsupported);
+        assert_eq!(fp("a and true", d), Unsupported);
+        assert_eq!(fp("one and true", d), Pass);
+        assert_eq!(fp("a.hasValue()", d), Fail);
+        assert_eq!(fp("one.hasValue()", d), Pass);
+    }
+
+    #[test]
+    fn numbers_are_numbers() {
+        use super::path::Verdict::{Fail, Pass, Unsupported};
+        let d = r#"{"a":1,"b":2,"c":10,"d":9,"s":"1","x":1.5}"#;
+        assert_eq!(fp("a + b = 3", d), Pass);
+        assert_eq!(fp("c > d", d), Pass);
+        assert_eq!(fp("a = 1", d), Pass);
+        assert_eq!(fp("a = s", d), Fail); // different types are not equal
+        assert_eq!(fp("1 = '1'", d), Fail);
+        assert_eq!(fp("(a).length() = 1", d), Unsupported);
+        assert_eq!(fp("x = 1", d), Unsupported); // decimals: outside the core
+        assert_eq!(fp("a + s = 2", d), Unsupported);
+    }
+
+    #[test]
+    fn dates_compare_as_instants() {
+        use super::path::Verdict::{Fail, Pass};
+        let d = r#"{"h":"2020-01-01T10:00:00.000Z","p":"2020-01-01T10:00:00Z","q":"2020-01-01T10:00:00+00:00","later":"2020-01-01T19:00:00+10:00","early":"2020-01-01T09:30:00Z","day":"2020-01-01","month":"2020-01"}"#;
+        assert_eq!(fp("h >= p", d), Pass);
+        assert_eq!(fp("h = p and p = q", d), Pass);
+        assert_eq!(fp("later < early", d), Pass); // 19:00+10:00 is 09:00Z — before 09:30Z
+        assert_eq!(fp("early > later", d), Pass);
+        assert_eq!(fp("(day = month).empty()", d), Pass); // different precision: empty
+        assert_eq!(fp("(day < h).empty()", d), Pass);     // date vs dateTime with tz: empty
+        assert_eq!(fp("day < '2020-01-02'", d), Pass);
+        assert_eq!(fp("'b' > 'a'", d), Pass);            // plain text still compares
+        assert_eq!(fp("h < p", d), Fail);
+    }
+
+    #[test]
+    fn type_tests_honour_the_hierarchy() {
+        use super::path::Verdict::{Fail, Pass};
+        let d = r#"{"resourceType":"Condition","onsetAge":{"value":1,"unit":"a"},"code":{"text":"x"},"subject":{"reference":"Patient/1"},"id":"c1"}"#;
+        assert_eq!(fp("onset is Quantity", d), Pass);
+        assert_eq!(fp("onset is Age", d), Pass);
+        assert_eq!(fp("onset is CodeableConcept", d), Fail);
+        assert_eq!(fp("$this is Resource and $this is DomainResource", r#"{"resourceType":"Condition"}"#), Pass);
+        assert_eq!(fp("$this is DomainResource", r#"{"resourceType":"Bundle"}"#), super::path::Verdict::Unsupported); // Bundle is not in the table
+        assert_eq!(fp("code is Element", d), Pass);
+        assert_eq!(fp("id is id and id is string and id is String", d), Pass);
+        assert_eq!(fp("subject.reference is string", d), Pass);
+        let mr = r#"{"resourceType":"MedicationRequest","instantiatesCanonical":["http://x"],"instantiatesUri":["http://y"]}"#;
+        assert_eq!(fp("descendants().ofType(uri).count() = 2", mr), Pass); // canonical is a uri
+    }
+
     // --- regex + tier three collections ---
 
     #[test]
@@ -3696,7 +4099,7 @@ mod tests {
         let d = r#"{"value":"8003608833357361","a":["x","y"],"b":["y","z"],"item":[{"linkId":"1","item":[{"linkId":"2"}]},{"linkId":"3"}]}"#;
         assert_eq!(fp("value.matches('^([0-9]{16})$')", d), Pass);
         assert_eq!(fp("value.matches('^([0-9]{15})$')", d), Fail);
-        assert_eq!(fp("value.matches('(a)\\1')", d), Unsupported); // a backreference: refused
+        assert_eq!(fp("value.matches('(a)\\\\1')", d), Unsupported); // a backreference: refused
         assert_eq!(fp("nope.matches('x').empty()", d), Pass);
         assert_eq!(fp("(a | b).count() = 3", d), Pass);
         assert_eq!(fp("'y' in a and 'y' in b and ('q' in a).not()", d), Pass);
@@ -3726,7 +4129,6 @@ mod tests {
     #[test]
     fn questionnaireresponse_repeat_invariant_is_live() {
         use super::path::parse;
-        assert!(parse("(QuestionnaireResponse|repeat(answer|item)).select(item.where(answer.value.exists()).linkId.isDistinct()).allTrue()").is_ok() || true);
         // the registry's own sdcqr-2 must now parse
         let expr = super::generated::REGISTRY
             .iter()
@@ -3770,7 +4172,7 @@ mod tests {
         use super::path::Verdict::{Fail, Pass, Unsupported};
         let d = r#"{"resourceType":"MedicationRequest","instantiatesCanonical":["http://x/plan"],"instantiatesUri":["http://x/u"],"subject":{"reference":"Patient/1"},"medicationCodeableConcept":{"text":"m"}}"#;
         assert_eq!(fp("descendants().as(canonical).count() = 1", d), Pass);
-        assert_eq!(fp("descendants().ofType(FHIR.uri).count() = 1", d), Pass);
+        assert_eq!(fp("descendants().ofType(FHIR.uri).count() = 2", d), Pass); // canonical is a uri
         assert_eq!(fp("medication.ofType(CodeableConcept).exists()", d), Pass);
         assert_eq!(fp("medication is CodeableConcept", d), Pass);
         assert_eq!(fp("medication is Reference", d), Fail);
@@ -3847,7 +4249,7 @@ mod tests {
 
     #[test]
     fn operation_outcome_is_spec_shaped() {
-        let v = validate_bytes(br#"{"resourceType":"Patient","active":true}"#);
+        let v = validate_bytes(br#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},"active":true}"#);
         let o = v.to_operation_outcome();
         assert!(o.starts_with("{\"resourceType\":\"OperationOutcome\",\"issue\":["), "{o}");
         assert!(o.contains("\"severity\":\"error\",\"code\":\"required\""), "{o}");

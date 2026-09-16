@@ -74,6 +74,39 @@ pub static TYPES: &[&str] = &[
     "UsageContext",
 ];
 
+/// The resource types among them (for `is Resource` / `is DomainResource`), sorted.
+pub static RESOURCES: &[&str] = &[
+    "AllergyIntolerance",
+    "CarePlan",
+    "CareTeam",
+    "Condition",
+    "Coverage",
+    "Device",
+    "DiagnosticReport",
+    "DocumentReference",
+    "DomainResource",
+    "Encounter",
+    "Goal",
+    "HealthcareService",
+    "Immunization",
+    "Location",
+    "Medication",
+    "MedicationDispense",
+    "MedicationRequest",
+    "MedicationStatement",
+    "Observation",
+    "Organization",
+    "Patient",
+    "Practitioner",
+    "PractitionerRole",
+    "Procedure",
+    "Provenance",
+    "QuestionnaireResponse",
+    "RelatedPerson",
+    "ServiceRequest",
+    "Specimen",
+];
+
 /// (`Type.element.path`, `type|type…` or `#contentReference.path`), sorted by path.
 pub static TABLE: &[(&str, &str)] = &[
     ("Address.city", "string"),

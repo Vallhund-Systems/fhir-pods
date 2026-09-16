@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.2.0 — 2026-09-15
+
+Review pass: an independent correctness review (16 findings, 8 of them
+wrong verdicts), a hot-path audit, and a structure pass.
+
+**Behaviour changes**
+- **No implicit default profiles.** A resource that declares no profile we
+  have compiled is valid with no profile claimed — the spec's behaviour and
+  the reference validator's. The old AU Core defaults for a bare `Patient`
+  and the hand-written `Observation` fallback are gone. A jurisdiction
+  default is now explicit: `Validator::new().with_default_profile(url)`.
+- **JSON string escapes are decoded** (`\/`, `\uXXXX` with surrogate pairs,
+  `\"`, …) before anything compares them; trailing characters after the
+  document are a parse error; a non-string `resourceType` is a structure
+  error; `null` placeholders in a `_name` array are not counted as elements.
+- **Pattern discriminators match one instance**: a `patternCodeableConcept`
+  slice needs ONE coding carrying every leaf, not one coding per leaf.
+- **Versioned canonicals** (`url|version`) in `meta.profile` are recognised.
+- **FHIRPath**: numbers are numbers (integer arithmetic / comparison /
+  equality on JSON numbers; decimals are outside the core → skipped),
+  dates and times compare as instants with the spec's precision and
+  timezone rules, `is`/`as`/`ofType` honour the type hierarchy (`code` is a
+  `string`, `canonical` a `uri`, `Age` a `Quantity`, every resource a
+  `Resource`…), string escapes are decoded, `implies` is left-associative,
+  a multi-item collection in boolean context is skipped (not treated as
+  true), `hasValue()` needs a single value, `$index`/`$total` are refused.
+- Generator: an element carrying an object `fixed`/`pattern` keeps its
+  cardinality (26 elements and 15 slice sub-elements gained their min/max).
+
+**API**
+- `Validator` — the registry's invariants parsed once (~0.6 ms); ~2× faster
+  per validation than the free functions, which remain. The pods use one.
+- `Validation.profiles`, `Document::child_instances` / `as_number` /
+  `choice_children` (additive).
+
+**Corpus**: 294/294 against the reference validator (six new probes).
+
 ## 0.1.1 — 2026-09-15
 
 - **Typed traversal.** A JSON node now learns its FHIR type from a compact

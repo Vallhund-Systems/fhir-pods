@@ -33,6 +33,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 ElementConstraint { path: "$this.extension", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("type"), required_binding: None },
+                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
             ] },
             Slice { name: "effectivePeriod", min: 0, max: Max::Bounded(1), profile: None, discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "effectivePeriod" },

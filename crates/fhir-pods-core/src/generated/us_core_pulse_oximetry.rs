@@ -63,13 +63,11 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ] },
         Slicing { path: "Observation.code.coding", closed: false, slices: &[
             Slice { name: "PulseOx", min: 1, max: Max::Bounded(1), profile: None, discriminators: &[
-                Discriminator::Value { path: "$this.system", value: "http://loinc.org" },
-                Discriminator::Value { path: "$this.code", value: "59408-5" },
+                Discriminator::Pattern { path: "$this", pairs: &[("system", "http://loinc.org"), ("code", "59408-5")] },
             ], elements: &[
             ] },
             Slice { name: "O2Sat", min: 1, max: Max::Bounded(1), profile: None, discriminators: &[
-                Discriminator::Value { path: "$this.system", value: "http://loinc.org" },
-                Discriminator::Value { path: "$this.code", value: "2708-6" },
+                Discriminator::Pattern { path: "$this", pairs: &[("system", "http://loinc.org"), ("code", "2708-6")] },
             ], elements: &[
             ] },
         ] },
@@ -87,9 +85,9 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ] },
         Slicing { path: "Observation.component", closed: false, slices: &[
             Slice { name: "FlowRate", min: 0, max: Max::Bounded(1), profile: None, discriminators: &[
-                Discriminator::Value { path: "$this.code.coding.system", value: "http://loinc.org" },
-                Discriminator::Value { path: "$this.code.coding.code", value: "3151-8" },
+                Discriminator::Pattern { path: "$this.code.coding", pairs: &[("system", "http://loinc.org"), ("code", "3151-8")] },
             ], elements: &[
+                ElementConstraint { path: "$this.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.dataAbsentReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
@@ -101,9 +99,9 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 ElementConstraint { path: "$this.value[x].value", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
             ] },
             Slice { name: "Concentration", min: 0, max: Max::Bounded(1), profile: None, discriminators: &[
-                Discriminator::Value { path: "$this.code.coding.system", value: "http://loinc.org" },
-                Discriminator::Value { path: "$this.code.coding.code", value: "3150-0" },
+                Discriminator::Pattern { path: "$this.code.coding", pairs: &[("system", "http://loinc.org"), ("code", "3150-0")] },
             ], elements: &[
+                ElementConstraint { path: "$this.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.dataAbsentReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },

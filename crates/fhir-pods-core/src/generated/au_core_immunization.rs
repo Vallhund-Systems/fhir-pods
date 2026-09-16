@@ -64,17 +64,17 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ] },
         Slicing { path: "Immunization.performer", closed: false, slices: &[
             Slice { name: "administeredBy", min: 0, max: Max::Bounded(1), profile: None, discriminators: &[
-                Discriminator::Value { path: "$this.function.coding.system", value: "http://terminology.hl7.org/CodeSystem/v2-0443" },
-                Discriminator::Value { path: "$this.function.coding.code", value: "AP" },
+                Discriminator::Pattern { path: "$this.function.coding", pairs: &[("system", "http://terminology.hl7.org/CodeSystem/v2-0443"), ("code", "AP")] },
             ], elements: &[
                 ElementConstraint { path: "$this.actor", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
+                ElementConstraint { path: "$this.function", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
             ] },
             Slice { name: "approvedBy", min: 0, max: Max::Bounded(1), profile: None, discriminators: &[
-                Discriminator::Value { path: "$this.function.coding.system", value: "http://terminology.hl7.org/CodeSystem/v2-0443" },
-                Discriminator::Value { path: "$this.function.coding.code", value: "OP" },
+                Discriminator::Pattern { path: "$this.function.coding", pairs: &[("system", "http://terminology.hl7.org/CodeSystem/v2-0443"), ("code", "OP")] },
             ], elements: &[
                 ElementConstraint { path: "$this.actor", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
+                ElementConstraint { path: "$this.function", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
             ] },
         ] },

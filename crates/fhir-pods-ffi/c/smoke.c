@@ -41,7 +41,7 @@ int main(void) {
         fprintf(stderr, "ABI mismatch: %u\n", fhir_pods_abi_version());
         return 2;
     }
-    const char *bad = "{\"resourceType\":\"Patient\",\"active\":true}";
+    const char *bad = "{\"resourceType\":\"Patient\",\"meta\":{\"profile\":[\"http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient\"]},\"active\":true}";
     char *report = call(fhir_pods_validate, bad);
     char *outcome = call(fhir_pods_operation_outcome, bad);
     int ok = strstr(report, "\"valid\":false") && strstr(report, "Patient.identifier is required")
@@ -55,7 +55,7 @@ int main(void) {
 
     /* The terminology seam: telecom.system is bound to a set the core does not
      * bundle, so the host is asked; its answer decides. */
-    const char *tel = "{\"resourceType\":\"Patient\",\"identifier\":[{\"system\":\"http://h.example.org/mrn\",\"value\":\"1\"}],"
+    const char *tel = "{\"resourceType\":\"Patient\",\"meta\":{\"profile\":[\"http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient\"]},\"identifier\":[{\"system\":\"http://h.example.org/mrn\",\"value\":\"1\"}],"
                       "\"name\":[{\"family\":\"D\"}],\"gender\":\"male\",\"birthDate\":\"1970-01-01\","
                       "\"telecom\":[{\"system\":\"phone\",\"value\":\"1\"}]}";
     struct tx yes = { "phone", 0 }, no = { "fax", 0 };

@@ -63,6 +63,12 @@ def main():
         for t in types:
             f.write(f'    "{t}",\n')
         f.write("];\n\n")
+        f.write("/// The resource types among them (for `is Resource` / `is DomainResource`), sorted.\n")
+        f.write("pub static RESOURCES: &[&str] = &[\n")
+        for t in types:
+            if sds[t]["kind"] == "resource":
+                f.write(f'    "{t}",\n')
+        f.write("];\n\n")
         f.write("/// (`Type.element.path`, `type|type…` or `#contentReference.path`), sorted by path.\n")
         f.write("pub static TABLE: &[(&str, &str)] = &[\n")
         for path, ty in entries:

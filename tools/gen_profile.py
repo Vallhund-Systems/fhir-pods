@@ -91,48 +91,75 @@ def choice_key(sliced_path, type_code):
     return base + type_code[0].upper() + type_code[1:]
 
 
-def flatten(obj, prefix=""):
-    """Leaf (relative path, scalar) pairs of a pattern/fixed object. Arrays
-    contribute their elements' leaves — a pattern on a repeating element means
-    'contains an element matching this'."""
-    out = []
+def pattern_groups(obj, anchor="", rel=""):
+    """The scalar leaves of a pattern / fixed object, grouped by the innermost
+    repeating element each sits in: `(here, groups)` where `here` is this
+    level's own leaves and `groups` is `[(anchor, [(rel, value)])]` for every
+    array element below. A pattern `{coding: [{system: S, code: C}]}` means
+    "some coding carries BOTH S and C" — one group anchored at `coding` — not
+    two independent conditions."""
+    here, groups = [], []
     if isinstance(obj, dict):
         for k, v in obj.items():
-            out += flatten(v, f"{prefix}.{k}" if prefix else k)
-    elif isinstance(obj, list):
-        for v in obj:
-            out += flatten(v, prefix)
+            sub = f"{rel}.{k}" if rel else k
+            if isinstance(v, list):
+                list_anchor = f"{anchor}.{sub}" if anchor else sub
+                for item in v:
+                    h, g = pattern_groups(item, list_anchor, "")
+                    if h:
+                        groups.append((list_anchor, h))
+                    groups += g
+            else:
+                h, g = pattern_groups(v, anchor, sub)
+                here += h
+                groups += g
     elif isinstance(obj, SCALAR) and not isinstance(obj, bool):
-        out.append((prefix, str(obj)))
+        here.append((rel, str(obj)))
+    return here, groups
+
+
+def groups_of(obj, base=""):
+    """All groups of a pattern object placed at `base` (relative to `$this`):
+    the root-level leaves as one group anchored at `base`, plus the array
+    groups below it."""
+    here, groups = pattern_groups(obj)
+    out = []
+    if here:
+        out.append((base, here))
+    for anchor, pairs in groups:
+        out.append((f"{base}.{anchor}" if base else anchor, pairs))
     return out
 
 
 def profile_discriminators(ref, dpath):
     """What an external profile fixes at `dpath` (relative to its root type):
-    its pattern/fixed object flattened, plus scalar fixeds on `dpath`'s
-    children. These become the slice's Value discriminators."""
+    its pattern/fixed object as groups (see `pattern_groups`), plus scalar
+    fixeds on `dpath`'s children. These become the slice's discriminators."""
     if not ref:
         return []
     root = ref.get("type")
     want = f"{root}.{dpath}"
-    pairs = []
+    groups = []
     for e in (ref.get("snapshot") or {}).get("element", []):
         p, eid = e.get("path", ""), e.get("id", "")
         if ":" in eid:
             continue
         if p == want:
             for k, v in e.items():
-                if k.startswith(("pattern", "fixed")):
-                    pairs += [(f"{dpath}.{sub}" if sub else dpath, val) for sub, val in flatten(v)]
+                if k.startswith(("pattern", "fixed")) and isinstance(v, (dict, list)):
+                    groups += groups_of(v, dpath)
+                elif k.startswith(("pattern", "fixed")) and isinstance(v, SCALAR) and not isinstance(v, bool):
+                    groups.append(("", [(dpath, str(v))]))
         elif p.startswith(want + "."):
             fx = scalar_fixed(e)
             if fx is not None:
-                pairs.append((p[len(root) + 1:], fx))
+                groups.append(("", [(p[len(root) + 1:], fx)]))
     seen, out = set(), []
-    for pair in pairs:
-        if pair not in seen:
-            seen.add(pair)
-            out.append(pair)
+    for g in groups:
+        key = (g[0], tuple(g[1]))
+        if key not in seen:
+            seen.add(key)
+            out.append(g)
     return out
 
 
@@ -174,6 +201,21 @@ def must_support_of(sd):
         path, eid = e.get("path", ""), e.get("id", "")
         if "." in path and ":" not in eid and e.get("mustSupport"):
             out.append(path)
+    return out
+
+
+def group_discriminators(groups):
+    """Discriminator tuples for pattern groups: a lone leaf is a plain value
+    check; two or more leaves in one group must be matched by ONE instance of
+    the group's anchor element."""
+    out = []
+    for anchor, pairs in groups:
+        base = "$this" + (f".{anchor}" if anchor else "")
+        if len(pairs) == 1:
+            rel, v = pairs[0]
+            out.append(("value", base + (f".{rel}" if rel else ""), v))
+        else:
+            out.append(("pattern", base, tuple(pairs)))
     return out
 
 
@@ -235,13 +277,13 @@ def build(sd, load=None):
                 continue
             rel = path[len(head) + 1:]
             if has_object_fixed(e):
-                # Not enforced (pattern semantics differ from fixed), but the
-                # slice can be discriminated by it.
+                # The pattern itself is not enforced (pattern semantics differ
+                # from fixed) but the slice can be discriminated by it — and
+                # the element's cardinality still applies.
                 for k, v in e.items():
                     if k.startswith(("pattern", "fixed")) and isinstance(v, (dict, list)):
                         sl.setdefault("objpat", {})[rel] = v
                 deferred += 1
-                continue
             min_, max_, fixed, bind, enforceable = constraint(e)
             if enforceable:
                 merge(sl["subs"], rel, min_, max_, fixed, bind)
@@ -249,10 +291,10 @@ def build(sd, load=None):
                 deferred += 1
             continue
 
-        # a plain, non-sliced element
+        # a plain, non-sliced element (an object pattern is not enforced, but
+        # the element's cardinality is)
         if has_object_fixed(e):
             deferred += 1
-            continue
         min_, max_, fixed, bind, enforceable = constraint(e)
         if enforceable:
             merge(elements, path, min_, max_, fixed, bind)
@@ -288,18 +330,15 @@ def build(sd, load=None):
                         key = "" if dpath == "$this" else dpath
                         obj = sl.get("objpat", {}).get(key)
                         if obj:
-                            discs.extend(
-                                ("value", "$this" + "".join(f".{seg}" for seg in (key, s) if seg), v)
-                                for s, v in flatten(obj)
-                            )
+                            discs.extend(group_discriminators(groups_of(obj, key)))
                             continue
                     if val is None and sl["profile"] and load:
                         # The slice inherits an external profile: discriminate
                         # by what that profile fixes at the discriminator path
                         # (e.g. au-ihi's `type` pattern → coding NI).
-                        pairs = profile_discriminators(load(sl["profile"]), dpath)
-                        if pairs:
-                            discs.extend(("value", "$this." + p, v) for p, v in pairs)
+                        groups = profile_discriminators(load(sl["profile"]), dpath)
+                        if groups:
+                            discs.extend(group_discriminators(groups))
                             continue
                     if val is None:
                         ok = False
@@ -378,6 +417,9 @@ def emit(sd, provenance, load=None):
             for d in discs:
                 if d[0] == "type":
                     out.append(f"                Discriminator::Type {{ key: {rs(d[1])} }},")
+                elif d[0] == "pattern":
+                    pairs = ", ".join(f"({rs(rel)}, {rs(v)})" for rel, v in d[2])
+                    out.append(f"                Discriminator::Pattern {{ path: {rs(d[1])}, pairs: &[{pairs}] }},")
                 else:
                     out.append(f"                Discriminator::Value {{ path: {rs(d[1])}, value: {rs(d[2])} }},")
             out.append("            ], elements: &[")

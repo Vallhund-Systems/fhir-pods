@@ -49,8 +49,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     slicings: &[
         Slicing { path: "CarePlan.category", closed: false, slices: &[
             Slice { name: "AssessPlan", min: 1, max: Max::Bounded(1), profile: None, discriminators: &[
-                Discriminator::Value { path: "$this.coding.system", value: "http://hl7.org/fhir/us/core/CodeSystem/careplan-category" },
-                Discriminator::Value { path: "$this.coding.code", value: "assess-plan" },
+                Discriminator::Pattern { path: "$this.coding", pairs: &[("system", "http://hl7.org/fhir/us/core/CodeSystem/careplan-category"), ("code", "assess-plan")] },
             ], elements: &[
             ] },
         ] },
