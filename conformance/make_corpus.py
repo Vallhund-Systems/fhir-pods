@@ -44,6 +44,7 @@ IGS = [
 # (scripts/gen-profiles.sh) never depends on another tool's package cache.
 DEPS = [
     ("hl7.fhir.au.base", "6.0.0", "package-au-base"),
+    ("hl7.fhir.r4.core", "4.0.1", "package-r4"),   # the element-type table (tools/gen_typemap.py)
 ]
 
 
@@ -266,8 +267,16 @@ def add_au_profile(d):
     d["meta"]["profile"].append(PT)
 
 
+def orphan_contained(d):
+    """Point the medication reference away from the contained Medication, so
+    the contained resource is referenced by nothing — dom-3 (needs typed
+    traversal: descendants().as(canonical) etc.)."""
+    d["medicationReference"] = {"reference": "Medication/elsewhere"}
+
+
 # (example file glob, fixture name, mutation, expected verdict)
 US_MUTATIONS = [
+    ("MedicationRequest-medicationrequest-contained-oral-axid.json", "us-medreq-orphan-contained", orphan_contained, False),
     ("Patient-example.json", "us-patient-two-profiles", add_au_profile, True),
     ("Patient-example.json", "us-patient-missing-name", drop("name"), False),
     ("Patient-example.json", "us-patient-bad-gender", lambda d: d.update(gender="banana"), False),

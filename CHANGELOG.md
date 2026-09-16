@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.1 — 2026-09-15
+
+- **Typed traversal.** A JSON node now learns its FHIR type from a compact
+  element-type table generated from the base FHIR package (`src/typemap.rs`,
+  registry resource types + all datatypes; `id`/`extension` implicit): root
+  `resourceType`, then element by element — choice keys, backbone paths,
+  content references, contained resources. `descendants().as(canonical)`,
+  `value.ofType(Quantity)`, `x is Reference` work on arbitrary nodes; under a
+  resource the table doesn't cover, nodes are untyped and such expressions
+  are skipped, never guessed.
+- **`dom-3`** (contained resources must be referenced) now evaluates —
+  every invariant expression in the registry is live except `htmlChecks()`
+  and `resolve()`, which a library without a reference resolver cannot do.
+- `single()`.
+- libFuzzer targets exercised on nightly (`cargo fuzz`).
+- `.wasm` 331 → 371 KB (96 KB gzipped) for the type table.
+
 ## 0.1.0 — 2026-09-15
 
 First cut. One verifier core, one C ABI (version 3), three pods.

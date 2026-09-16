@@ -36,6 +36,101 @@ use validate::{IssueType, Report, Severity};
 /// `REGISTRY` keyed by canonical URL.
 pub mod generated;
 
+/// The element-type table generated from the base FHIR package
+/// (`tools/gen_typemap.py`): `Type.element` → its FHIR type(s).
+mod typemap;
+
+/// Typed traversal: a JSON node learns its FHIR type from the table as it is
+/// reached — root `resourceType`, then element by element (choice keys,
+/// backbone paths, content references, contained resources). What lets
+/// `descendants().as(canonical)`, `value.ofType(Quantity)` and `$this is
+/// dateTime` work on arbitrary nodes without the document carrying types.
+/// Under a resource type the table doesn't cover, a node has no type and
+/// type-dependent FHIRPath is skipped, never guessed.
+pub mod typing {
+    use alloc::string::String;
+
+    use crate::typemap::{TABLE, TYPES};
+
+    /// A resource or datatype name the table knows.
+    pub fn known_type(name: &str) -> Option<&'static str> {
+        TYPES.binary_search(&name).ok().map(|i| TYPES[i])
+    }
+
+    fn lookup(path: &str) -> Option<&'static (&'static str, &'static str)> {
+        TABLE.binary_search_by(|(p, _)| (*p).cmp(path)).ok().map(|i| &TABLE[i])
+    }
+
+    /// A child's typing: `ctx` is what its own children resolve against (a
+    /// type name, or a backbone path like `Observation.component`); `ty` is
+    /// its FHIR type name for `is` / `as` / `ofType`.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub struct Child {
+        pub ctx: &'static str,
+        pub ty: &'static str,
+    }
+
+    /// The typing of element `key` under `ctx`. `Child { ty: "Resource" }`
+    /// means "whatever the child's own `resourceType` says" (contained,
+    /// Bundle.entry.resource) — the caller resolves it from the node.
+    pub fn child(ctx: &'static str, key: &str) -> Option<Child> {
+        match key {
+            "id" => return Some(Child { ctx: "string", ty: if ctx.contains('.') || known_type(ctx).is_none() { "string" } else { "id" } }),
+            "extension" | "modifierExtension" => return Some(Child { ctx: "Extension", ty: "Extension" }),
+            k if k.starts_with('_') => return Some(Child { ctx: "Element", ty: "Element" }),
+            _ => {}
+        }
+        let mut full = String::with_capacity(ctx.len() + 1 + key.len());
+        full.push_str(ctx);
+        full.push('.');
+        full.push_str(key);
+        let (path, ty) = match lookup(&full) {
+            Some((p, t)) => (*p, *t),
+            None => choice(ctx, key)?,
+        };
+        Some(resolve(path, ty))
+    }
+
+    /// `valueQuantity` under `Observation` → the `Observation.value[x]` entry
+    /// with `Quantity` among its types.
+    fn choice(ctx: &str, key: &str) -> Option<(&'static str, &'static str)> {
+        let mut prefix = String::from(ctx);
+        prefix.push('.');
+        let start = TABLE.partition_point(|(p, _)| *p < prefix.as_str());
+        for (path, tys) in &TABLE[start..] {
+            let Some(rest) = path.strip_prefix(prefix.as_str()) else { break };
+            let Some(stem) = rest.strip_suffix("[x]") else { continue };
+            if stem.contains('.') {
+                continue;
+            }
+            let Some(suffix) = key.strip_prefix(stem) else { continue };
+            if suffix.is_empty() {
+                continue;
+            }
+            for t in tys.split('|') {
+                let (first, tail) = t.split_at(1);
+                if suffix.len() == t.len() && suffix[..1].eq_ignore_ascii_case(first) && &suffix[1..] == tail {
+                    return Some((path, t));
+                }
+            }
+        }
+        None
+    }
+
+    fn resolve(path: &'static str, ty: &'static str) -> Child {
+        if let Some(cref) = ty.strip_prefix('#') {
+            return Child { ctx: cref, ty: "BackboneElement" };
+        }
+        // a choice list that was not narrowed (path given with `[x]`): untypable
+        let ty = ty.split('|').next().unwrap_or(ty);
+        match ty {
+            "BackboneElement" | "Element" => Child { ctx: path, ty },
+            "Resource" | "DomainResource" => Child { ctx: "Resource", ty: "Resource" },
+            t => Child { ctx: known_type(t).unwrap_or(t), ty: t },
+        }
+    }
+}
+
 /// The ergonomic result: what was validated, against which profile, and every
 /// finding. Never a thrown error — validation state is data.
 pub struct Validation {
@@ -668,6 +763,11 @@ pub mod document {
         fn same(&self, other: &Self) -> bool;
         /// Every direct child node (array members expanded) — `descendants()`.
         fn all_children(&self) -> Vec<Self>;
+        /// This node's FHIR type name, when the adapter can tell.
+        fn fhir_type(&self) -> Option<&'static str>;
+        /// The children of a choice element (`value` → `valueQuantity` /
+        /// `valueString` / …), each typed by its concrete key.
+        fn choice_children(&self, stem: &str) -> Vec<Self>;
     }
 
     /// Owner of a parsed resource; hands out `TreeDoc` views.
@@ -680,14 +780,37 @@ pub mod document {
             Ok(Self { value: json::parse(input)? })
         }
         pub fn doc(&self) -> TreeDoc<'_, 'a> {
-            TreeDoc { root: &self.value }
+            TreeDoc { root: &self.value, ctx: resource_ctx(&self.value) }
         }
     }
 
-    /// The value-tree adapter: a view rooted at any node.
+    /// The typing context of a resource node: its `resourceType`, if the
+    /// element-type table knows it.
+    fn resource_ctx(v: &Value<'_>) -> Option<&'static str> {
+        match v {
+            Value::Object(kvs) => kvs.iter().find(|(k, _)| *k == "resourceType").and_then(|(_, v)| match v {
+                Value::Str(s) => crate::typing::known_type(s),
+                _ => None,
+            }),
+            _ => None,
+        }
+    }
+
+    /// The value-tree adapter: a view rooted at any node, carrying the typing
+    /// context it was reached through (`None` when unknown).
     #[derive(Clone, Copy)]
     pub struct TreeDoc<'v, 'a> {
         root: &'v Value<'a>,
+        ctx: Option<&'static str>,
+    }
+
+    impl<'v, 'a> TreeDoc<'v, 'a> {
+        /// The typing context of a child reached by `key`; a `Resource` child
+        /// takes its own `resourceType`.
+        fn child_ctx(ctx: Option<&'static str>, key: &str, child: &'v Value<'a>) -> Option<&'static str> {
+            let ch = crate::typing::child(ctx?, key)?;
+            if ch.ty == "Resource" { resource_ctx(child) } else { Some(ch.ctx) }
+        }
     }
 
     impl<'v, 'a> Document for TreeDoc<'v, 'a> {
@@ -716,7 +839,25 @@ pub mod document {
         }
 
         fn instances(&self, path: &str) -> Vec<Self> {
-            json::resolve(self.root, path).into_iter().map(|n| TreeDoc { root: n }).collect()
+            // Type the result by folding the path's segments; a `[x]` segment
+            // or an unknown element leaves the result untyped.
+            let mut ctx = self.ctx;
+            let mut first = true;
+            for seg in path.split('.') {
+                let skip = seg == "$this" || (first && Some(seg) == self.ctx);
+                first = false;
+                if skip {
+                    continue;
+                }
+                ctx = match ctx {
+                    Some(c) if !seg.ends_with("[x]") => crate::typing::child(c, seg).map(|ch| ch.ctx),
+                    _ => None,
+                };
+            }
+            json::resolve(self.root, path)
+                .into_iter()
+                .map(|n| TreeDoc { root: n, ctx: if ctx == Some("Resource") { resource_ctx(n) } else { ctx } })
+                .collect()
         }
 
         fn as_scalar(&self) -> Option<&str> {
@@ -740,14 +881,37 @@ pub mod document {
 
         fn all_children(&self) -> Vec<Self> {
             let mut out = Vec::new();
-            let mut push = |v: &'v Value<'a>| match v {
-                Value::Array(xs) => out.extend(xs.iter().map(|x| TreeDoc { root: x })),
-                v => out.push(TreeDoc { root: v }),
+            let ctx = self.ctx;
+            let mut push = |key: &str, v: &'v Value<'a>| match v {
+                Value::Array(xs) => out.extend(xs.iter().map(|x| TreeDoc { root: x, ctx: Self::child_ctx(ctx, key, x) })),
+                v => out.push(TreeDoc { root: v, ctx: Self::child_ctx(ctx, key, v) }),
             };
             match self.root {
-                Value::Object(kvs) => kvs.iter().for_each(|(_, v)| push(v)),
-                Value::Array(xs) => xs.iter().for_each(|v| push(v)),
+                // `resourceType` is the JSON type tag, not an element
+                Value::Object(kvs) => kvs.iter().filter(|(k, _)| *k != "resourceType").for_each(|(k, v)| push(k, v)),
+                Value::Array(xs) => xs.iter().for_each(|v| push("", v)),
                 _ => {}
+            }
+            out
+        }
+
+        fn fhir_type(&self) -> Option<&'static str> {
+            self.ctx.map(|c| if c.contains('.') { "BackboneElement" } else { c })
+        }
+
+        fn choice_children(&self, stem: &str) -> Vec<Self> {
+            let Value::Object(kvs) = self.root else { return Vec::new() };
+            let mut out = Vec::new();
+            for (k, v) in kvs {
+                let Some(rest) = k.strip_prefix(stem) else { continue };
+                if !rest.starts_with(|c: char| c.is_ascii_uppercase()) {
+                    continue;
+                }
+                let ctx = Self::child_ctx(self.ctx, k, v);
+                match v {
+                    Value::Array(xs) => out.extend(xs.iter().map(|x| TreeDoc { root: x, ctx })),
+                    v => out.push(TreeDoc { root: v, ctx }),
+                }
             }
             out
         }
@@ -1859,6 +2023,36 @@ pub mod path {
         }
     }
 
+    /// The FHIR type of an item: the profile's declared type for `$this` when
+    /// the engine supplied one, else what the document adapter knows, else
+    /// the system type of a literal. Unknown → unsupported, never guessed.
+    fn item_type<'a, D: Document>(it: &'a Item<D>, operand: &Expr, env: &Env<'a, D>) -> Result<&'a str, Unsupported> {
+        if matches!(operand, Expr::This) {
+            if let Some(t) = env.this_type {
+                return Ok(t);
+            }
+        }
+        match it {
+            Item::Node(d) => d.fhir_type().ok_or(Unsupported),
+            Item::Str(_) => Ok("string"),
+            Item::Int(_) => Ok("integer"),
+            Item::Bool(_) => Ok("boolean"),
+        }
+    }
+
+    /// The type name in `as(canonical)` / `ofType(FHIR.Quantity)` — written as
+    /// a bare path, so it parses as navigation; read back here.
+    fn type_arg(e: &Expr) -> Option<&str> {
+        match e {
+            Expr::Nav(base, name) if matches!(**base, Expr::This) => Some(name),
+            Expr::Nav(base, name) => match &**base {
+                Expr::Nav(inner, ns) if matches!(**inner, Expr::This) && (ns == "FHIR" || ns == "System") => Some(name),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
     /// `dateTime` matches `dateTime` / `FHIR.dateTime`; case-insensitive on the
     /// last segment, as FHIRPath type specifiers are written both ways.
     fn type_matches(this_type: &str, spec: &str) -> bool {
@@ -1996,16 +2190,20 @@ pub mod path {
                 ("resource", Some(root)) => vec![root.clone()],
                 _ => return Err(Unsupported),
             },
-            Expr::Is(operand, ty) => match (&**operand, env.this_type) {
-                (Expr::This, Some(this_type)) => vec![Item::Bool(type_matches(this_type, ty))],
-                _ => return Err(Unsupported),
-            },
-            Expr::As(operand, ty) => match (&**operand, env.this_type) {
-                (Expr::This, Some(this_type)) => {
-                    if type_matches(this_type, ty) { vec![ctx.clone()] } else { vec![] }
-                }
-                _ => return Err(Unsupported),
-            },
+            Expr::Is(operand, ty) => {
+                let coll = eval(operand, ctx, env)?;
+                let Some(it) = single(&coll)? else {
+                    return Ok(vec![]);
+                };
+                vec![Item::Bool(type_matches(item_type(it, operand, env)?, ty))]
+            }
+            Expr::As(operand, ty) => {
+                let coll = eval(operand, ctx, env)?;
+                let Some(it) = single(&coll)? else {
+                    return Ok(vec![]);
+                };
+                if type_matches(item_type(it, operand, env)?, ty) { vec![it.clone()] } else { vec![] }
+            }
             Expr::Lit(Lit::Str(s)) => vec![Item::Str(s.clone())],
             Expr::Lit(Lit::Int(n)) => vec![Item::Int(*n)],
             Expr::Lit(Lit::Bool(b)) => vec![Item::Bool(*b)],
@@ -2022,8 +2220,8 @@ pub mod path {
                     };
                     let mut found = d.instances(&format!("$this.{name}"));
                     if found.is_empty() {
-                        // Choice type: `value` reaches `valueQuantity`.
-                        found = d.instances(&format!("$this.{name}[x]"));
+                        // Choice type: `value` reaches `valueQuantity` (typed by its key).
+                        found = d.choice_children(name);
                     }
                     out.extend(found.into_iter().map(Item::Node));
                 }
@@ -2044,6 +2242,8 @@ pub mod path {
                     ("hasValue", 0) => vec![Item::Bool(coll.iter().any(|it| scalar_of(it).is_some()))],
                     ("where", 1) => filter(&coll, &args[0], env)?,
                     ("last", 0) => coll.into_iter().last().into_iter().collect(),
+                    // `single()`: the one item, empty for none; more is an error in the spec
+                    ("single", 0) => single(&coll)?.cloned().into_iter().collect(),
                     ("select", 1) => {
                         let inner = env.inner();
                         let mut out = Vec::new();
@@ -2064,6 +2264,21 @@ pub mod path {
                     ("intersect", 1) => {
                         let other = eval(&args[0], ctx, env)?;
                         coll.into_iter().filter(|a| other.iter().any(|b| items_equal(a, b))).collect()
+                    }
+                    // `as(T)` / `ofType(T)` as functions: the items of that type.
+                    // (`as` on a collection is treated as a filter, as the
+                    // reference engine does in dom-3.)
+                    ("as", 1) | ("ofType", 1) => {
+                        let Some(ty) = type_arg(&args[0]) else {
+                            return Err(Unsupported);
+                        };
+                        let mut out = Vec::new();
+                        for it in &coll {
+                            if type_matches(item_type(it, &args[0], &env.inner())?, ty) {
+                                out.push(it.clone());
+                            }
+                        }
+                        out
                     }
                     ("descendants", 0) => {
                         let mut out = Vec::new();
@@ -3115,6 +3330,9 @@ mod tests {
         assert_eq!(fp("n.toString() = '42'", d), Pass);
         assert_eq!(fp("(42).toString().length() = 2", d), Pass);
         assert_eq!(fp("list.last() = 'bb'", d), Pass);
+        assert_eq!(fp("value.single() = '800360'", d), Pass);
+        assert_eq!(fp("nope.single().empty()", d), Pass);
+        assert_eq!(fp("list.single()", d), Unsupported);
         // a string function on a non-string, or on a multi-item collection: unsupported
         assert_eq!(fp("(1).length() = 1", d), Unsupported);
         assert_eq!(fp("list.length() = 1", d), Unsupported);
@@ -3240,9 +3458,10 @@ mod tests {
         let vs1 = parse("($this as dateTime).toString().length() >= 8").unwrap();
         assert_eq!(check_with(&vs1, &d.doc(), Some("dateTime"), None), Verdict::Fail);
         assert_eq!(check_with(&vs1, &d.doc(), Some("Period"), None), Verdict::Pass); // empty >= 8 is empty → passes
-        // `is` on anything but $this: unsupported
-        let other = parse("value is Quantity").unwrap();
-        assert_eq!(check_with(&other, &d.doc(), Some("Observation"), None), Verdict::Unsupported);
+        // `is` on a node whose type the table cannot give: unsupported, not guessed
+        let other = parse("a is string").unwrap();
+        let untyped = Parsed::parse(br#"{"resourceType":"Nope","a":"x"}"#).unwrap();
+        assert_eq!(check_with(&other, &untyped.doc(), Some("Nope"), None), Verdict::Unsupported);
     }
 
     #[test]
@@ -3356,6 +3575,71 @@ mod tests {
             .map(|i| i.expression)
             .expect("sdcqr-2 in the registry");
         assert!(parse(expr).is_ok(), "{expr}");
+    }
+
+    // --- typed traversal + dom-3 ---
+
+    #[test]
+    fn nodes_know_their_fhir_type_from_the_table() {
+        use super::document::{Document, Parsed};
+        let src = br#"{"resourceType":"Observation","valueQuantity":{"value":1},"component":[{"code":{"coding":[{"system":"x"}]}}],"contained":[{"resourceType":"Patient","name":[{"family":"D"}]}],"referenceRange":[{"low":{"value":1}}]}"#;
+        let d = Parsed::parse(src).unwrap();
+        let doc = d.doc();
+        assert_eq!(doc.fhir_type(), Some("Observation"));
+        let value = doc.instances("$this.valueQuantity");
+        assert_eq!(value[0].fhir_type(), Some("Quantity"));
+        assert_eq!(value[0].instances("$this.value")[0].fhir_type(), Some("decimal"));
+        let comp = doc.instances("$this.component");
+        assert_eq!(comp[0].fhir_type(), Some("BackboneElement"));
+        assert_eq!(comp[0].instances("$this.code.coding.system")[0].fhir_type(), Some("uri"));
+        let contained = doc.instances("$this.contained");
+        assert_eq!(contained[0].fhir_type(), Some("Patient"));
+        assert_eq!(contained[0].instances("$this.name")[0].fhir_type(), Some("HumanName"));
+        // content reference
+        assert_eq!(doc.instances("$this.referenceRange.low")[0].fhir_type(), Some("Quantity"));
+        // untyped: a resource the table doesn't cover, or a [x] path
+        assert_eq!(Parsed::parse(br#"{"resourceType":"Nope","a":1}"#).unwrap().doc().fhir_type(), None);
+        assert_eq!(doc.instances("$this.value[x]")[0].fhir_type(), None);
+        // descendants carry types
+        let kinds: Vec<_> = doc.all_children().iter().map(|c| c.fhir_type()).collect();
+        assert!(kinds.contains(&Some("Quantity")) && kinds.contains(&Some("Patient")) && kinds.contains(&Some("BackboneElement")), "{kinds:?}");
+    }
+
+    #[test]
+    fn fhirpath_type_functions_on_typed_nodes() {
+        use super::path::Verdict::{Fail, Pass, Unsupported};
+        let d = r#"{"resourceType":"MedicationRequest","instantiatesCanonical":["http://x/plan"],"instantiatesUri":["http://x/u"],"subject":{"reference":"Patient/1"},"medicationCodeableConcept":{"text":"m"}}"#;
+        assert_eq!(fp("descendants().as(canonical).count() = 1", d), Pass);
+        assert_eq!(fp("descendants().ofType(FHIR.uri).count() = 1", d), Pass);
+        assert_eq!(fp("medication.ofType(CodeableConcept).exists()", d), Pass);
+        assert_eq!(fp("medication is CodeableConcept", d), Pass);
+        assert_eq!(fp("medication is Reference", d), Fail);
+        assert_eq!(fp("subject is Reference and subject.reference is string", d), Pass);
+        // untyped resource: skipped, not guessed
+        assert_eq!(fp("descendants().as(canonical).empty()", r#"{"resourceType":"Nope","a":"b"}"#), Unsupported);
+    }
+
+    #[test]
+    fn dom3_contained_resources_must_be_referenced() {
+        use super::path::Verdict::{Fail, Pass};
+        let mk = |reference: &str| {
+            format!(
+                r#"{{"resourceType":"MedicationRequest","contained":[{{"resourceType":"Medication","id":"med","code":{{"text":"x"}}}}],"status":"active","intent":"order","medicationReference":{{"reference":"{reference}"}},"subject":{{"reference":"Patient/1"}}}}"#
+            )
+        };
+        let dom3 = super::generated::REGISTRY.iter().flat_map(|p| p.invariants.iter()).find(|i| i.key == "dom-3").unwrap().expression;
+        use super::document::Parsed;
+        use super::path::{check_with, parse};
+        let e = parse(dom3).unwrap();
+        let (ok_src, bad_src) = (mk("#med"), mk("Medication/other"));
+        let ok = Parsed::parse(ok_src.as_bytes()).unwrap();
+        assert_eq!(check_with(&e, &ok.doc(), Some("MedicationRequest"), Some(&ok.doc())), Pass);
+        let bad = Parsed::parse(bad_src.as_bytes()).unwrap();
+        assert_eq!(check_with(&e, &bad.doc(), Some("MedicationRequest"), Some(&bad.doc())), Fail);
+        // through the engine, on a profiled resource
+        let profiled = bad_src.replace("\"resourceType\":\"MedicationRequest\",", "\"resourceType\":\"MedicationRequest\",\"meta\":{\"profile\":[\"http://hl7.org/fhir/us/core/StructureDefinition/us-core-medicationrequest\"]},");
+        let r = probe_str(&profiled);
+        assert!(r.contains("dom-3"), "{r}");
     }
 
     // --- several declared profiles ---

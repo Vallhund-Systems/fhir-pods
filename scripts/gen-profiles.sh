@@ -21,11 +21,13 @@ PRIMARIES=(
 DEPS=(
   "$C/package-au-base/package"  # hl7.fhir.au.base 6.0.0
 )
+R4="$C/package-r4/package"        # hl7.fhir.r4.core 4.0.1 — the element-type table only
 PROVENANCE="hl7.fhir.au.core 2.0.0 + hl7.fhir.us.core 6.1.0 + hl7.fhir.uv.ipa 1.1.0 + hl7.fhir.au.base 6.0.0"
 
-for d in "${PRIMARIES[@]}" "${DEPS[@]}"; do
+for d in "${PRIMARIES[@]}" "${DEPS[@]}" "$R4"; do
   [ -d "$d" ] || { echo "missing package dir $d — run: python3 conformance/make_corpus.py" >&2; exit 1; }
 done
 
 rm -f "$OUT"/*.rs
 python3 "$ROOT/tools/gen_all.py" --primaries "${#PRIMARIES[@]}" "$OUT" "$PROVENANCE" "${PRIMARIES[@]}" "${DEPS[@]}"
+python3 "$ROOT/tools/gen_typemap.py" "$R4" "$OUT" "$ROOT/crates/fhir-pods-core/src/typemap.rs"

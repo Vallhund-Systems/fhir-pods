@@ -493,6 +493,19 @@ treat `$validate.profile` `uri`→`canonical` + R5's `usageContext` as additive.
   gitignored cache like every other package (`DEPS` in `make_corpus.py`),
   and `scripts/gen-profiles.sh` is the one regeneration command.
   Registry: 168 profiles. `.wasm` 331 KB (83 KB gzipped).
+- **Pass 17 — typed traversal, dom-3, libFuzzer (2026-09-15).** JSON carries
+  no element types, so the last unsupported invariant needed the base spec:
+  `tools/gen_typemap.py` compiles a 1,170-entry element-type table (registry
+  resource types + all datatypes; `id`/`extension` implicit) from
+  `hl7.fhir.r4.core`, and the document adapter types nodes as it reaches
+  them — root `resourceType`, choice keys (`valueQuantity` → `Quantity`),
+  backbone paths, `contentReference`, contained resources by their own
+  `resourceType`. `is`/`as`/`ofType` then work on any node (`as` on a
+  collection filters, as the reference engine does in dom-3). `dom-3` is
+  live: an orphaned contained Medication fails, and the oracle agrees
+  (**289/289**). What's left is exactly what a library can't do:
+  `htmlChecks()` and `resolve()`. Cost: `.wasm` 331 → 371 KB. libFuzzer
+  targets run on nightly (installed on request).
 - **Inferno** (ONC g10) and **Touchstone** are **API-behavior** harnesses
   (SMART launch, Bulk Data, search, US Core over the wire) — relevant only if we
   later ship a *server* surface, not for the embeddable validator. Note them,

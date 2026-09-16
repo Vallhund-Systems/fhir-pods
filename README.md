@@ -47,11 +47,12 @@ Working verifier for **AU Core 2.0.0**, **US Core 6.1.0** and **IPA 1.1.0**
 complex `Extension` datatypes slices inherit — AU Base's IHI/Medicare/DVA,
 US Core's race / ethnicity): per-parent cardinality, fixed values, required
 bindings, slicing with profile inheritance, every declared profile applied,
-and a FHIRPath engine (with a linear-time `matches()` regex) sufficient for
-every invariant in the registry bar `dom-3` (skipped, never guessed).
-Agrees with the HL7 reference validator on **288/288** corpus instances (the
-three IGs' own 253 published examples + 35 broken ones). Delivered as a
-~330 KB `.wasm` (83 KB gzipped) and an Expo
+typed traversal from a compact element-type table, and a FHIRPath engine
+(with a linear-time `matches()` regex) that evaluates every invariant in the
+registry except `htmlChecks()` and `resolve()` (skipped, never guessed).
+Agrees with the HL7 reference validator on **289/289** corpus instances (the
+three IGs' own 253 published examples + 36 broken ones). Delivered as a
+~370 KB `.wasm` (96 KB gzipped) and an Expo
 module (iOS + Android), each measured at tens of microseconds per resource;
 terminology beyond the bundled sets arrives through a host-provided seam
 (`TerminologyProvider`), never as shipped content. What "agrees" covers and
@@ -64,7 +65,7 @@ Zero dependencies, `no_std`, fuzzed. Design and decisions:
 
 - `crates/fhir-pods-core` — the Rust verifier + lowering core (zero deps, no `unsafe`).
 - `crates/fhir-pods-ffi` — the one lean C ABI, compiled per target (wasm32 / native staticlib).
-- `pods/wasm` — the wasm pod: a ~330 KB `.wasm` (83 KB gzipped) + a zero-dependency JS wrapper.
+- `pods/wasm` — the wasm pod: a ~370 KB `.wasm` (96 KB gzipped) + a zero-dependency JS wrapper.
 - `pods/expo` — the expo pod: the core as an Expo native module (iOS XCFramework + Android jniLibs).
 - `scripts/` — `gen-profiles.sh`, `build-wasm.sh`, `build-ios-xcframework.sh`, `build-android-jnilibs.sh`, `smoke-c.sh`, `check-no-std.sh`, `release.sh`.
 - `docs/architecture.md` — the design, delivery model, audit surface, and perf budget.
@@ -87,8 +88,9 @@ runs under plain `cargo test` with no dependencies: deterministic under
 `FUZZ_SEED`, so any failure is a seed you paste back to replay. It feeds byte
 soup, mutated documents, FHIR-shaped resources with real declared profiles, and
 random FHIRPath — holding *never panics, never hangs, deterministic, well-formed
-wire output*. The **libFuzzer targets** (`fuzz/`, needs nightly) are for
-coverage-guided sessions. Both parsers are depth-bounded, so hostile nesting is
+wire output*. The **libFuzzer targets** (`fuzz/`) run on nightly:
+`cd fuzz && cargo +nightly fuzz run validate_bytes` (also `json_parse`,
+`fhirpath_parse`). Both parsers are depth-bounded, so hostile nesting is
 a `ParseError`, never a stack overflow.
 
 ## License

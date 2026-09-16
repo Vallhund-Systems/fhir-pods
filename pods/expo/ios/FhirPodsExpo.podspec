@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name           = 'FhirPodsExpo'
-  s.version        = '0.1.0'
+  s.version        = '0.1.1'
   s.summary        = 'Embeddable FHIR verifier (expo pod) — Rust core over a lean C ABI.'
   s.license        = { :type => 'MIT' }
   s.author         = 'Justin Grosvenor'

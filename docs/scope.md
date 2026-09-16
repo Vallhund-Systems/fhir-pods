@@ -1,6 +1,6 @@
 # Scope — what "agrees with the reference validator" means
 
-`conformance/run.py` reports **288/288 agree** across AU Core 2.0.0, US Core
+`conformance/run.py` reports **289/289 agree** across AU Core 2.0.0, US Core
 6.1.0 and IPA 1.1.0. This note says precisely what that claim covers and what it deliberately
 does not, so nobody reads more into it than it says.
 
@@ -14,7 +14,9 @@ variants), our verdict equals the HL7 reference validator's
 - **Where** — the set of element paths carrying `error`-level issues, after
   normalising the two locator styles (ours: `Observation.component:diastolic`;
   theirs: FHIRPath with indices). A difference here is printed as
-  `issue paths differ (info)` — one remains (below).
+  `issue paths differ (info)` — two remain: the display-name case below, and
+  the orphan-contained probe, where the oracle also flags the dangling
+  `Medication/elsewhere` reference we do not resolve.
 
 Warnings and informational issues are **not** scored. Both sides emit them;
 they differ in volume and kind, and the differences are all in the areas below.
@@ -47,15 +49,18 @@ the 271/271.
 
 ## What we skip, never guess
 
-- FHIRPath outside the supported core: `as(type)` / `ofType(type)` as
-  functions on arbitrary nodes (JSON carries no element types; only `$this`'s
-  type is known, from the profile), `memberOf`, string concatenation `&`,
-  equivalence `~`, decimals. Every one of the registry's distinct invariant
-  expressions now parses; `dom-3` (contained-reference integrity) is the one
-  that still evaluates `Unsupported`, because it needs `as(canonical)` over
-  `descendants()`. Skipped. Type tests (`$this is dateTime`, `$this as
-  dateTime`) resolve against the element's type *from the profile* — never
-  from the value's shape — and are unsupported on anything but `$this`.
+- FHIRPath outside the supported core: `htmlChecks()` (xhtml validity),
+  `resolve()` (reference resolution — a library has no resolver; a seam,
+  later), `memberOf`, string concatenation `&`, equivalence `~`, decimals.
+  Every one of the registry's invariant expressions parses and, on a typed
+  resource, evaluates — except the two above (`txt-1`/`txt-2`, `ctm-1`).
+  Type tests and casts (`is`, `as`, `ofType`) resolve against the element's
+  FHIR type — the profile's declared type for the invariant's own element,
+  the element-type table for everything else (root `resourceType`, then key
+  by key through choice elements, backbone paths, content references and
+  contained resources) — never from the value's shape. A node under a
+  resource type the table doesn't cover has no type, and such an expression
+  is skipped.
 - `matches(regex)` runs on a small linear-time engine (literals, classes,
   anchors, groups, alternation, bounded quantifiers). Backreferences,
   lookaround, flags, `\b` and unicode properties are refused →
