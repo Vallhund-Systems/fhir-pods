@@ -59,6 +59,32 @@ export interface Lowered {
   validation: Validation;
 }
 
+/** What de-identification does to an element. */
+export type DeidAction = "keep" | "remove" | "mask" | "year" | "pseudonym";
+
+/**
+ * A de-identification policy. `base` is Safe Harbor unless "none"; `rules`
+ * apply after it, most specific target first (`Patient.address.city` beats
+ * `Address.city` beats `Address`). `salt` keys the pseudonyms — keep it
+ * secret and stable. `today` (a date) is what "over 89" is measured against.
+ */
+export interface DeidPolicy {
+  salt: string;
+  today?: string;
+  base?: "safe-harbor" | "none";
+  rules?: { target: string; action: DeidAction }[];
+}
+
+export interface Deidentified {
+  resource: Record<string, unknown>;
+  /** What was done, element by element. */
+  applied: { path: string; action: DeidAction }[];
+  /** The copy's conformance to the profiles it declares. */
+  validation: Validation;
+  /** What a Safe Harbor check still finds in the copy — empty under the default policy. */
+  remaining: { path: string; what: string }[];
+}
+
 /** One binding the bundled sets (and any loaded table) could not decide. */
 export interface Need {
   valueSet: string;
@@ -89,6 +115,14 @@ export interface Pod {
   lower(profileUrl: string, inputs: Record<string, unknown> | string): Lowered;
   /** The inputs a profile takes. */
   slots(profileUrl: string): Slot[];
+  /**
+   * A de-identified copy under `policy` (Safe Harbor by default): names,
+   * contact details, addresses below state, exact dates, ages over 89,
+   * narrative, notes and attachments removed (or masked where the profile
+   * requires the element); identifiers and references pseudonymised with
+   * the salt. Throws only when it cannot start (bad policy, not a resource).
+   */
+  deidentify(json: string | Uint8Array, policy: DeidPolicy): Deidentified;
   /**
    * Load a compiled terminology table (the line format `tools/compile_valueset.py`
    * writes from `$expand` responses). It answers after the bundled sets and

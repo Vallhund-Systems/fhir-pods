@@ -153,6 +153,36 @@ fn select_profiles(
     if out.is_empty() {
         out.extend(defaults.iter().filter(|(rt, _)| *rt == resource_type).map(|(_, p)| *p));
     }
+    // The spec's own rule, and the reference validator's: an Observation
+    // that carries a base vital-sign profile's LOINC code (or, for the
+    // generic profile, the vital-signs category) conforms to that profile.
+    if resource_type == "Observation" {
+        for p in generated::IMPLIED {
+            if out.iter().any(|q| q.url == p.url) {
+                continue;
+            }
+            // the profile's fixed LOINC code, whatever the slice label on `coding`
+            let unlabelled = |path: &str| -> String {
+                path.split('.').map(|seg| seg.split(':').next().unwrap_or(seg)).collect::<Vec<_>>().join(".")
+            };
+            let fixed =
+                |leaf: &str| p.lowering.fixed.iter().find(|(path, _)| unlabelled(path) == leaf).map(|(_, v)| *v);
+            let loinc = fixed("code.coding.system") == Some("http://loinc.org");
+            let carries = match fixed("code.coding.code").filter(|_| loinc) {
+                Some(code) => doc.instances("$this.code.coding").iter().any(|c| {
+                    c.scalars("$this.code").contains(&code) && c.scalars("$this.system").contains(&"http://loinc.org")
+                }),
+                None => doc.instances("$this.category.coding").iter().any(|c| {
+                    c.scalars("$this.code").contains(&"vital-signs")
+                        && c.scalars("$this.system")
+                            .contains(&"http://terminology.hl7.org/CodeSystem/observation-category")
+                }),
+            };
+            if carries {
+                out.push(p);
+            }
+        }
+    }
     out
 }
 
@@ -211,6 +241,15 @@ fn parse_failure(e: json::ParseError) -> Validation {
 
 pub mod wire;
 
+/// An owned JSON tree (lowering builds one; de-identification rewrites one).
+pub mod node;
+
+/// SHA-256 / HMAC-SHA256, for pseudonyms.
+pub mod hash;
+
+/// De-identification under a data policy (Safe Harbor by default).
+pub mod deidentify;
+
 pub mod json;
 pub mod lower;
 
@@ -243,7 +282,8 @@ impl Validator {
     pub fn new() -> Self {
         let mut keys: Vec<(usize, &'static str)> = Vec::new();
         for p in generated::REGISTRY {
-            for inv in p.invariants {
+            let slice_invariants = p.slicings.iter().flat_map(|s| s.slices.iter()).flat_map(|sl| sl.invariants.iter());
+            for inv in p.invariants.iter().chain(slice_invariants) {
                 keys.push((inv.expression.as_ptr() as usize, inv.expression));
             }
         }

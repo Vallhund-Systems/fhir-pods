@@ -18,7 +18,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Observation.component.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Observation.component.dataAbsentReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Observation.component.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "Observation.component.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["Quantity", "CodeableConcept", "string", "boolean", "integer", "Range", "Ratio", "SampledData", "time", "dateTime", "Period"] },
+        ElementConstraint { path: "Observation.component.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S2 },
         ElementConstraint { path: "Observation.dataAbsentReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Observation.device", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Observation.effective[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["dateTime"] },
@@ -56,6 +56,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 ElementConstraint { path: "$this.coding.version", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
+            ], invariants: &[
             ], profile: None },
         ] },
         Slicing { path: "Observation.code.coding", closed: false, slices: &[
@@ -69,6 +70,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 ElementConstraint { path: "$this.system", min: 1, max: Max::Bounded(1), fixed: Some("http://loinc.org"), required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.userSelected", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.version", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
+            ], invariants: &[
             ], profile: None },
             Slice { name: "snomedBodyWeightCode", discriminators: &[
                 Discriminator::Value { path: "$this.code", value: "27113001" },
@@ -80,6 +82,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 ElementConstraint { path: "$this.system", min: 1, max: Max::Bounded(1), fixed: Some("http://snomed.info/sct"), required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.userSelected", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.version", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
+            ], invariants: &[
             ], profile: None },
         ] },
         Slicing { path: "Observation.value[x]", closed: true, slices: &[
@@ -92,6 +95,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 ElementConstraint { path: "$this.system", min: 1, max: Max::Bounded(1), fixed: Some("http://unitsofmeasure.org"), required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.unit", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.value", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
+            ], invariants: &[
             ], profile: None },
         ] },
     ],

@@ -15,7 +15,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Observation.component.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Observation.component.dataAbsentReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Observation.component.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "Observation.component.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["Quantity", "CodeableConcept", "string", "boolean", "integer", "Range", "Ratio", "SampledData", "time", "dateTime", "Period"] },
+        ElementConstraint { path: "Observation.component.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S2 },
         ElementConstraint { path: "Observation.dataAbsentReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Observation.device", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Observation.effective[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["dateTime"] },
@@ -36,18 +36,22 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Observation.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/us/core/ValueSet/us-core-observation-smoking-status-status", kind: BindingKind::Code }), types: &[] },
         ElementConstraint { path: "Observation.subject", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Observation.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "Observation.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["CodeableConcept", "Quantity", "string", "boolean", "integer", "Range", "Ratio", "SampledData", "time", "dateTime", "Period"] },
+        ElementConstraint { path: "Observation.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S41 },
     ],
     slicings: &[
         Slicing { path: "Observation.category", closed: false, slices: &[
             Slice { name: "SocialHistory", discriminators: &[
                 Discriminator::Pattern { path: "$this.coding", pairs: &[("system", "http://terminology.hl7.org/CodeSystem/observation-category"), ("code", "social-history")] },
-            ], min: 1, max: Max::Bounded(1), elements: &[], profile: None },
+            ], min: 1, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: None },
         ] },
         Slicing { path: "Observation.effective[x]", closed: true, slices: &[
             Slice { name: "effectiveDateTime", discriminators: &[
                 Discriminator::Type { key: "effectiveDateTime" },
-            ], min: 1, max: Max::Bounded(1), elements: &[], profile: None },
+            ], min: 1, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: None },
         ] },
     ],
     invariants: &[
@@ -58,7 +62,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Observation", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["Observation"] },
         ProfileInvariant { path: "Observation", key: "obs-6", severity: InvariantSeverity::Error, human: "dataAbsentReason SHALL only be present if Observation.value[x] is not present", expression: "dataAbsentReason.empty() or value.empty()", types: &["Observation"] },
         ProfileInvariant { path: "Observation", key: "obs-7", severity: InvariantSeverity::Error, human: "If Observation.code is the same as an Observation.component.code then the value element associated with the code SHALL NOT be present", expression: "value.empty() or component.code.where(coding.intersect(%resource.code.coding).exists()).empty()", types: &["Observation"] },
-        ProfileInvariant { path: "Observation.value[x]", key: "us-core-3", severity: InvariantSeverity::Error, human: "SHALL use UCUM for coded quantity units.", expression: "value.ofType(Quantity).system.empty() or value.ofType(Quantity).system = 'http://unitsofmeasure.org'", types: &["CodeableConcept", "Quantity", "string", "boolean", "integer", "Range", "Ratio", "SampledData", "time", "dateTime", "Period"] },
+        ProfileInvariant { path: "Observation.value[x]", key: "us-core-3", severity: InvariantSeverity::Error, human: "SHALL use UCUM for coded quantity units.", expression: "value.ofType(Quantity).system.empty() or value.ofType(Quantity).system = 'http://unitsofmeasure.org'", types: super::intern::S41 },
         ProfileInvariant { path: "Observation.referenceRange", key: "obs-3", severity: InvariantSeverity::Error, human: "Must have at least a low or a high or text", expression: "low.exists() or high.exists() or text.exists()", types: &["BackboneElement"] },
     ],
     lowering: &LOWERING,
@@ -93,19 +97,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "value[x]",
             ty: "choice",
-            choices: &[
-                "valueCodeableConcept",
-                "valueQuantity",
-                "valueString",
-                "valueBoolean",
-                "valueInteger",
-                "valueRange",
-                "valueRatio",
-                "valueSampledData",
-                "valueTime",
-                "valueDateTime",
-                "valuePeriod",
-            ],
+            choices: super::intern::S42,
             min: 1,
             max: Max::Bounded(1),
             must_support: true,

@@ -435,7 +435,8 @@ impl P {
         Ok(e)
     }
 
-    /// `dateTime`, `FHIR.dateTime`, `System.String` — the last segment names the type.
+    /// `dateTime`, `FHIR.dateTime`, `System.String` — kept as written; the
+    /// namespace decides how the name is matched (see `type_matches`).
     fn type_specifier(&mut self) -> Result<String, Unsupported> {
         let Some(Tok::Ident(mut t)) = self.next() else {
             return Err(Unsupported);
@@ -445,7 +446,8 @@ impl P {
             let Some(Tok::Ident(seg)) = self.next() else {
                 return Err(Unsupported);
             };
-            t = seg;
+            t.push('.');
+            t.push_str(&seg);
         }
         Ok(t)
     }
@@ -664,49 +666,64 @@ fn item_type<'a, D: Document>(it: &'a Item<D>, operand: &Expr, env: &Env<'a, D>)
     }
 }
 
-/// The type name in `as(canonical)` / `ofType(FHIR.Quantity)` — written as
-/// a bare path, so it parses as navigation; read back here.
-fn type_arg(e: &Expr) -> Option<&str> {
+/// The type name in `as(canonical)` / `ofType(System.String)` — written as
+/// a bare path, so it parses as navigation; read back here as (namespace, name).
+fn type_arg(e: &Expr) -> Option<(Option<&str>, &str)> {
     match e {
-        Expr::Nav(base, name) if matches!(**base, Expr::This) => Some(name),
+        Expr::Nav(base, name) if matches!(**base, Expr::This) => Some((None, name)),
         Expr::Nav(base, name) => match &**base {
-            Expr::Nav(inner, ns) if matches!(**inner, Expr::This) && (ns == "FHIR" || ns == "System") => Some(name),
+            Expr::Nav(inner, ns) if matches!(**inner, Expr::This) && (ns == "FHIR" || ns == "System") => {
+                Some((Some(ns.as_str()), name))
+            }
             _ => None,
         },
         _ => None,
     }
 }
 
-/// `dateTime` matches `dateTime` / `FHIR.dateTime`; case-insensitive on the
-/// last segment, as FHIRPath type specifiers are written both ways.
-/// FHIRPath `is`: the type itself or a supertype — FHIR's primitive
-/// specialisations (`code` is a `string`, `canonical` a `uri`, `Age` a
-/// `Quantity`), every resource a `Resource` (and, bar Bundle / Binary /
-/// Parameters, a `DomainResource`), every datatype an `Element`, and the
-/// FHIRPath System types the primitives map to (`String`, `Integer`,
-/// `DateTime`, …). Case-insensitive on the last segment, as type
-/// specifiers are written both ways.
+/// Does a node of FHIR type `actual` satisfy the type specifier `spec`
+/// (`dateTime`, `FHIR.dateTime`, `System.DateTime`)? See [`type_matches_ns`].
 fn type_matches(actual: &str, spec: &str) -> bool {
-    fn last(t: &str) -> &str {
-        t.rsplit('.').next().unwrap_or(t)
+    match spec.split_once('.') {
+        Some((ns, name)) => type_matches_ns(actual, Some(ns), name),
+        None => type_matches_ns(actual, None, spec),
     }
-    let (actual, spec) = (last(actual), last(spec));
-    let is = |t: &str| t.eq_ignore_ascii_case(spec);
+}
+
+/// FHIRPath `is`, as the reference engine has it: a bare or `FHIR.` name is
+/// a FHIR type, matched as written — the type itself or a supertype (`code`
+/// is a `string`, `canonical` a `uri`, `Age` a `Quantity`, every resource a
+/// `Resource` and, bar Bundle / Binary / Parameters, a `DomainResource`,
+/// every datatype an `Element`). A `System.` name is the FHIRPath system
+/// type a primitive maps to. Names are case-sensitive: `$this is DateTime`
+/// on a FHIR `dateTime` is false, so US Core's `us-core-1` never fires —
+/// there, or here.
+fn type_matches_ns(actual: &str, ns: Option<&str>, spec: &str) -> bool {
+    let actual = actual.strip_prefix("FHIR.").unwrap_or(actual);
+    if ns == Some("System") {
+        let system = spec;
+        let mapped = match actual {
+            "string" | "code" | "id" | "markdown" | "xhtml" | "base64Binary" | "uri" | "url" | "canonical" | "uuid"
+            | "oid" => "String",
+            "integer" | "positiveInt" | "unsignedInt" => "Integer",
+            "decimal" => "Decimal",
+            "boolean" => "Boolean",
+            "date" => "Date",
+            "dateTime" | "instant" => "DateTime",
+            "time" => "Time",
+            "Quantity" | "Age" | "Count" | "Distance" | "Duration" | "MoneyQuantity" | "SimpleQuantity" => "Quantity",
+            _ => return false,
+        };
+        return mapped == system;
+    }
+    let is = |t: &str| t == spec;
     if is(actual) {
         return true;
     }
     let parents: &[&str] = match actual {
-        "code" | "id" | "markdown" | "xhtml" => &["string", "String"],
-        "string" | "base64Binary" => &["String"],
-        "url" | "canonical" | "uuid" | "oid" => &["uri", "String"],
-        "uri" => &["String"],
-        "positiveInt" | "unsignedInt" => &["integer", "Integer"],
-        "integer" => &["Integer"],
-        "decimal" => &["Decimal"],
-        "boolean" => &["Boolean"],
-        "date" => &["Date"],
-        "dateTime" | "instant" => &["DateTime"],
-        "time" => &["Time"],
+        "code" | "id" | "markdown" | "xhtml" => &["string"],
+        "url" | "canonical" | "uuid" | "oid" => &["uri"],
+        "positiveInt" | "unsignedInt" => &["integer"],
         "Age" | "Count" | "Distance" | "Duration" | "MoneyQuantity" | "SimpleQuantity" => &["Quantity", "Element"],
         "BackboneElement" => &["Element"],
         _ => &[],
@@ -974,12 +991,12 @@ fn eval<D: Document>(e: &Expr, ctx: &Item<D>, env: &Env<'_, D>) -> Result<Vec<It
                 // (`as` on a collection is treated as a filter, as the
                 // reference engine does in dom-3.)
                 ("as", 1) | ("ofType", 1) => {
-                    let Some(ty) = type_arg(&args[0]) else {
+                    let Some((ns, ty)) = type_arg(&args[0]) else {
                         return Err(Unsupported);
                     };
                     let mut out = Vec::new();
                     for it in &coll {
-                        if type_matches(item_type(it, &args[0], &env.inner())?, ty) {
+                        if type_matches_ns(item_type(it, &args[0], &env.inner())?, ns, ty) {
                             out.push(it.clone());
                         }
                     }

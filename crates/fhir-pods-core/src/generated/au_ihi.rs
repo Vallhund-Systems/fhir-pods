@@ -21,13 +21,19 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         Slicing { path: "Identifier.extension", closed: false, slices: &[
             Slice { name: "ihiStatus", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org.au/fhir/StructureDefinition/ihi-status" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org.au/fhir/StructureDefinition/ihi-status") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org.au/fhir/StructureDefinition/ihi-status") },
             Slice { name: "ihiRecordStatus", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org.au/fhir/StructureDefinition/ihi-record-status" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org.au/fhir/StructureDefinition/ihi-record-status") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org.au/fhir/StructureDefinition/ihi-record-status") },
             Slice { name: "ihiVerifiedDate", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org.au/fhir/StructureDefinition/ihi-verified-date" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org.au/fhir/StructureDefinition/ihi-verified-date") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org.au/fhir/StructureDefinition/ihi-verified-date") },
         ] },
     ],
     invariants: &[

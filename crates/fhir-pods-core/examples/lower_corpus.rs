@@ -169,7 +169,11 @@ fn main() {
     entries.sort();
     for path in entries {
         let name = path.file_name().unwrap().to_string_lossy().to_string();
-        if !name.ends_with(".json") || name.starts_with('_') || name == "manifest.json" || name.starts_with("lowered-")
+        if !name.ends_with(".json")
+            || name.starts_with('_')
+            || name.ends_with("manifest.json")
+            || name.starts_with("lowered-")
+            || name.starts_with("deid-")
         {
             continue;
         }

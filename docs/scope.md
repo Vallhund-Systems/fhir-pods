@@ -63,6 +63,17 @@ the 294/294.
   every R4 resource type and datatype; a node under a `resourceType` the
   spec doesn't define has no type, and such an expression is skipped — and
   reported as an `information` issue naming the invariant.
+- An Observation carrying a base vital-sign profile's LOINC code (or the
+  vital-signs category) is validated against that base profile as well as
+  what it declares — the spec's rule, and the reference validator's.
+- A slice's own invariants (US Core's NPI / CLIA / NAIC checks) are
+  evaluated on the slice's instances only.
+- `is` / `as` / `ofType` match type names as written, like the reference
+  engine: a bare name is a FHIR type (`dateTime`), a `System.` name the
+  FHIRPath system type a primitive maps to (`System.DateTime`). So US Core's
+  `us-core-1` (`$this is DateTime implies …`) is vacuously true on a FHIR
+  `dateTime` — in the reference validator and here — and a year-only
+  `effectiveDateTime` passes it while failing the vital-signs `vs-1`.
 - `matches(regex)` runs on a small linear-time engine (literals, classes,
   anchors, groups, alternation, bounded quantifiers). Backreferences,
   lookaround, flags, `\b` and unicode properties are refused →

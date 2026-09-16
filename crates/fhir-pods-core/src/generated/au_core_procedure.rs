@@ -22,7 +22,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Procedure.location", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Procedure.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Procedure.outcome", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "Procedure.performed[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["dateTime", "Period", "string", "Age", "Range"] },
+        ElementConstraint { path: "Procedure.performed[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S20 },
         ElementConstraint { path: "Procedure.performer.actor", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Procedure.performer.function", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Procedure.performer.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
@@ -37,10 +37,14 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         Slicing { path: "Procedure.extension", closed: false, slices: &[
             Slice { name: "sexParameterForClinicalUse", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse" },
-            ], min: 0, max: Max::Star, elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse") },
+            ], min: 0, max: Max::Star, elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse") },
             Slice { name: "targetBodyStructure", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/procedure-targetBodyStructure" },
-            ], min: 0, max: Max::Star, elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/procedure-targetBodyStructure") },
+            ], min: 0, max: Max::Star, elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/procedure-targetBodyStructure") },
         ] },
     ],
     invariants: &[
@@ -81,7 +85,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "performed[x]",
             ty: "choice",
-            choices: &["performedDateTime", "performedPeriod", "performedString", "performedAge", "performedRange"],
+            choices: super::intern::S21,
             min: 0,
             max: Max::Bounded(1),
             must_support: true,

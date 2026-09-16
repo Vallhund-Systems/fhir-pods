@@ -12,7 +12,7 @@ JS  ──validate(json)──►  hand-written wrapper  ──C ABI──►  R
 No wasm-bindgen, no glue runtime: the wrapper is ~70 lines over `pod_alloc` /
 `pod_free` and the entrypoints. The `.wasm` carries the 168 compiled
 AU Core + US Core + IPA profiles (and the datatypes they inherit),
-the bundled value sets and the FHIRPath engine — ~385 KB, 101 KB gzipped.
+the bundled value sets and the FHIRPath engine — ~715 KB, 198 KB gzipped.
 
 ## Build
 
@@ -69,6 +69,30 @@ pod.mustSupportGaps(JSON.stringify(patient));
 // ["Patient.telecom.system", "Patient.birthDate", …] — must-support elements
 // the selected profile expects a client to populate when it has the data
 ```
+
+### De-identification
+
+```js
+const { resource, applied, validation, remaining } = pod.deidentify(JSON.stringify(patient), {
+  salt: process.env.DEID_SALT,   // keys the pseudonyms — secret, stable
+  today: "2026-09-16",           // what "over 89" is measured against
+  rules: [{ target: "Observation.effectiveDateTime", action: "keep" }], // on top of Safe Harbor
+});
+```
+
+Safe Harbor by default: names, contact details, addresses below state,
+exact dates (year only), ages over 89, narrative, notes, attachments,
+signatures and device serials go; identifiers and references become
+HMAC-SHA256 pseudonyms under the salt, the same everywhere. Where the
+declared profile requires an element that goes, a `data-absent-reason:
+masked` stub stands in, so the copy stays conformant wherever the profile
+permits — `validation` says where it does not (a vital sign's date must be
+precise to the day, for one). `applied` is the audit trail; `remaining` is
+what a Safe Harbor check still finds, empty under the default policy. Rules
+target a type (`HumanName`), a member of a type (`Address.city`) or an
+element (`Patient.address.city`); the most specific wins; `base: "none"`
+starts from nothing. Free text outside narrative and notes is the host's
+call — name it in the rules.
 
 ### Terminology
 

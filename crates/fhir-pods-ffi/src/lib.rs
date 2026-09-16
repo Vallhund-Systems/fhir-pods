@@ -44,7 +44,7 @@ fn validator() -> &'static Validator {
 
 /// Bump when the exported surface or the memory contract changes; the
 /// wrappers refuse a mismatched module.
-pub const ABI_VERSION: u32 = 5;
+pub const ABI_VERSION: u32 = 6;
 
 /// The compiled terminology table the host loaded (`fhir_pods_terminology_load`),
 /// consulted after the bundled sets and before any host callback.
@@ -172,6 +172,67 @@ pub unsafe extern "C" fn fhir_pods_lower_tx(
     ctx: *mut c_void,
 ) -> *mut u8 {
     with_tx(cb, ctx, |tx| pack(lower_json(input(profile, profile_len), input(inputs, inputs_len), tx).as_bytes()))
+}
+
+/// De-identify: `resource` under `policy` (JSON — `{"salt": "…", "today":
+/// "2026-09-16", "base": "safe-harbor" | "none", "rules": [{"target",
+/// "action"}]}`). Returns `{"resource": {…}, "applied": [{"path","action"}],
+/// "validation": {…}, "remaining": [{"path","what"}]}`, or `{"error": "…"}`
+/// when it could not start (bad policy, not a resource, unknown type).
+#[no_mangle]
+pub unsafe extern "C" fn fhir_pods_deidentify(
+    resource: *const u8,
+    resource_len: usize,
+    policy: *const u8,
+    policy_len: usize,
+) -> *mut u8 {
+    pack(deidentify_json(input(resource, resource_len), input(policy, policy_len)).as_bytes())
+}
+
+fn deidentify_json(resource: &[u8], policy: &[u8]) -> String {
+    let error = |e: &dyn core::fmt::Display| {
+        let mut s = String::from("{\"error\":\"");
+        wire::escape(&mut s, &e.to_string());
+        s.push_str("\"}");
+        s
+    };
+    let policy = match fhir_pods_core::deidentify::Policy::from_json(policy) {
+        Ok(p) => p,
+        Err(e) => return error(&e),
+    };
+    let d = match validator().deidentify(resource, &policy) {
+        Ok(d) => d,
+        Err(e) => return error(&e),
+    };
+    let mut s = String::with_capacity(d.resource.len() + 512);
+    s.push_str("{\"resource\":");
+    s.push_str(&d.resource);
+    s.push_str(",\"applied\":[");
+    for (i, a) in d.applied.iter().enumerate() {
+        if i > 0 {
+            s.push(',');
+        }
+        s.push_str("{\"path\":\"");
+        wire::escape(&mut s, &a.path);
+        s.push_str("\",\"action\":\"");
+        s.push_str(a.action.name());
+        s.push_str("\"}");
+    }
+    s.push_str("],\"validation\":");
+    s.push_str(&wire::report(&d.validation));
+    s.push_str(",\"remaining\":[");
+    for (i, f) in d.remaining.iter().enumerate() {
+        if i > 0 {
+            s.push(',');
+        }
+        s.push_str("{\"path\":\"");
+        wire::escape(&mut s, &f.path);
+        s.push_str("\",\"what\":\"");
+        wire::escape(&mut s, &f.what);
+        s.push_str("\"}");
+    }
+    s.push_str("]}");
+    s
 }
 
 /// Load a compiled terminology table (the line format `tools/compile_valueset.py`
@@ -543,6 +604,18 @@ mod android {
     }
 
     #[no_mangle]
+    pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_deidentify<'l>(
+        mut env: JNIEnv<'l>,
+        _this: JObject<'l>,
+        resource: JByteArray<'l>,
+        policy: JByteArray<'l>,
+    ) -> jbyteArray {
+        let (r, p) = (bytes_in(&mut env, &resource), bytes_in(&mut env, &policy));
+        let doc = deidentify_json(&r, &p);
+        bytes_out(&mut env, &doc)
+    }
+
+    #[no_mangle]
     pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_terminologyLoad<'l>(
         mut env: JNIEnv<'l>,
         _this: JObject<'l>,
@@ -596,6 +669,10 @@ mod android {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The loaded terminology table is process-wide state; tests that load
+    /// one and tests that expect none run one at a time.
+    static TABLE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
     /// Round-trip through the C ABI exactly as a host would.
     unsafe fn call(f: unsafe extern "C" fn(*const u8, usize) -> *mut u8, json: &str) -> String {
@@ -670,6 +747,7 @@ mod tests {
     /// one kept.
     #[test]
     fn compiled_table_and_needs_over_the_abi() {
+        let _serial = TABLE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         // date-accuracy-indicator is bound to an NCTS-hosted set the core does not bundle
         let json = r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},"identifier":[{"system":"http://h.example.org/mrn","value":"1"}],"name":[{"family":"D"}],"gender":"male","birthDate":"1970-01-01","_birthDate":{"extension":[{"url":"http://hl7.org.au/fhir/StructureDefinition/date-accuracy-indicator","valueCoding":{"system":"https://healthterminologies.gov.au/fhir/CodeSystem/date-accuracy-indicator-1","code":"AAA"}}]}}"#;
         unsafe {
@@ -702,6 +780,25 @@ mod tests {
     }
 
     #[test]
+    fn deidentify_over_the_abi() {
+        unsafe {
+            let json = r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},"identifier":[{"system":"http://h.example.org/mrn","value":"1"}],"name":[{"family":"Doe"}],"gender":"male","birthDate":"1970-01-01"}"#;
+            let policy = r#"{"salt":"s","today":"2026-09-16"}"#;
+            let out = unpack(fhir_pods_deidentify(json.as_ptr(), json.len(), policy.as_ptr(), policy.len()));
+            assert!(out.starts_with("{\"resource\":{\"resourceType\":\"Patient\"") && !out.contains("Doe"), "{out}");
+            assert!(
+                out.contains("\"applied\":[") && out.contains("\"path\":\"Patient.name\",\"action\":\"mask\""),
+                "{out}"
+            );
+            assert!(out.contains("\"remaining\":[]") && out.contains("\"valid\":true"), "{out}");
+            let bad = unpack(fhir_pods_deidentify(json.as_ptr(), json.len(), b"{}".as_ptr(), 2));
+            assert_eq!(bad, "{\"error\":\"policy needs a non-empty salt\"}");
+            let nope = unpack(fhir_pods_deidentify(b"[]".as_ptr(), 2, policy.as_ptr(), policy.len()));
+            assert!(nope.contains("\"error\""), "{nope}");
+        }
+    }
+
+    #[test]
     fn null_input_is_empty_input() {
         unsafe {
             let ret = fhir_pods_validate(std::ptr::null(), 0);
@@ -713,6 +810,7 @@ mod tests {
     /// sees UTF-8 strings, and its answer lands in the report.
     #[test]
     fn host_terminology_callback() {
+        let _serial = TABLE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         struct Log(Vec<String>, i32);
         unsafe extern "C" fn cb(
             ctx: *mut c_void,

@@ -12,7 +12,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Extension.extension", min: 2, max: Max::Star, fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Extension.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Extension.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org.au/fhir/StructureDefinition/identifier-routability"), required_binding: None, types: &[] },
-        ElementConstraint { path: "Extension.value[x]", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: &["base64Binary", "boolean", "canonical", "code", "date", "dateTime", "decimal", "id", "instant", "integer", "markdown", "oid", "positiveInt", "string", "time", "unsignedInt", "uri", "url", "uuid", "Address", "Age", "Annotation", "Attachment", "CodeableConcept", "Coding", "ContactPoint", "Count", "Distance", "Duration", "HumanName", "Identifier", "Money", "Period", "Quantity", "Range", "Ratio", "Reference", "SampledData", "Signature", "Timing", "ContactDetail", "Contributor", "DataRequirement", "Expression", "ParameterDefinition", "RelatedArtifact", "TriggerDefinition", "UsageContext", "Dosage", "Meta"] },
+        ElementConstraint { path: "Extension.value[x]", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: super::intern::S29 },
     ],
     slicings: &[
         Slicing { path: "Extension.extension", closed: false, slices: &[
@@ -22,6 +22,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("routability-flag"), required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["boolean"] },
+            ], invariants: &[
             ], profile: None },
             Slice { name: "routability-preference", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "routability-preference" },
@@ -29,6 +30,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("routability-preference"), required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["unsignedInt"] },
+            ], invariants: &[
             ], profile: None },
             Slice { name: "routability-asserter", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "routability-asserter" },
@@ -36,6 +38,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("routability-asserter"), required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["uri"] },
+            ], invariants: &[
             ], profile: None },
         ] },
     ],

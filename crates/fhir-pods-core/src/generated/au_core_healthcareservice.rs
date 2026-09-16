@@ -42,12 +42,16 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         Slicing { path: "HealthcareService.availableTime.availableStartTime.extension", closed: false, slices: &[
             Slice { name: "timeZone", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/timezone" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/timezone") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/timezone") },
         ] },
         Slicing { path: "HealthcareService.availableTime.availableEndTime.extension", closed: false, slices: &[
             Slice { name: "timeZone", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/timezone" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/timezone") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/timezone") },
         ] },
     ],
     invariants: &[

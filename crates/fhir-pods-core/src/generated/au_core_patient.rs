@@ -22,7 +22,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Patient.contact.name", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Patient.contact.organization", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Patient.contact.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "Patient.deceased[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["boolean", "dateTime"] },
+        ElementConstraint { path: "Patient.deceased[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S18 },
         ElementConstraint { path: "Patient.gender", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/administrative-gender|4.0.1", kind: BindingKind::Code }), types: &[] },
         ElementConstraint { path: "Patient.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Patient.identifier", min: 1, max: Max::Star, fixed: None, required_binding: None, types: &[] },
@@ -34,7 +34,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Patient.managingOrganization", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Patient.maritalStatus", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Patient.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "Patient.multipleBirth[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["boolean", "integer"] },
+        ElementConstraint { path: "Patient.multipleBirth[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S19 },
         ElementConstraint { path: "Patient.name", min: 1, max: Max::Star, fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Patient.name.family", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Patient.name.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
@@ -53,63 +53,96 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         Slicing { path: "Patient.extension", closed: false, slices: &[
             Slice { name: "birthPlace", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/patient-birthPlace" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/patient-birthPlace") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/patient-birthPlace") },
             Slice { name: "indigenousStatus", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org.au/fhir/StructureDefinition/indigenous-status" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org.au/fhir/StructureDefinition/indigenous-status") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org.au/fhir/StructureDefinition/indigenous-status") },
             Slice { name: "veteranStatus", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org.au/fhir/StructureDefinition/veteran-status" },
-            ], min: 0, max: Max::Star, elements: &[], profile: Some("http://hl7.org.au/fhir/StructureDefinition/veteran-status") },
+            ], min: 0, max: Max::Star, elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org.au/fhir/StructureDefinition/veteran-status") },
             Slice { name: "closingTheGapRegistration", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org.au/fhir/StructureDefinition/closing-the-gap-registration" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org.au/fhir/StructureDefinition/closing-the-gap-registration") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org.au/fhir/StructureDefinition/closing-the-gap-registration") },
             Slice { name: "mothersMaidenName", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/patient-mothersMaidenName" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/patient-mothersMaidenName") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/patient-mothersMaidenName") },
             Slice { name: "interpreterRequired", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/patient-interpreterRequired" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/patient-interpreterRequired") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/patient-interpreterRequired") },
             Slice { name: "dateOfArrival", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org.au/fhir/StructureDefinition/date-of-arrival" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org.au/fhir/StructureDefinition/date-of-arrival") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org.au/fhir/StructureDefinition/date-of-arrival") },
             Slice { name: "genderIdentity", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/individual-genderIdentity" },
-            ], min: 0, max: Max::Star, elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/individual-genderIdentity") },
+            ], min: 0, max: Max::Star, elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/individual-genderIdentity") },
             Slice { name: "individualPronouns", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/individual-pronouns" },
-            ], min: 0, max: Max::Star, elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/individual-pronouns") },
+            ], min: 0, max: Max::Star, elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/individual-pronouns") },
             Slice { name: "recordedSexOrGender", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/individual-recordedSexOrGender" },
-            ], min: 0, max: Max::Star, elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/individual-recordedSexOrGender") },
+            ], min: 0, max: Max::Star, elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/individual-recordedSexOrGender") },
             Slice { name: "sexParameterForClinicalUse", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse" },
-            ], min: 0, max: Max::Star, elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse") },
+            ], min: 0, max: Max::Star, elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse") },
         ] },
         Slicing { path: "Patient.identifier", closed: false, slices: &[
             Slice { name: "ihi", discriminators: &[
                 Discriminator::Pattern { path: "$this.type.coding", pairs: &[("system", "http://terminology.hl7.org/CodeSystem/v2-0203"), ("code", "NI")] },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org.au/fhir/StructureDefinition/au-ihi") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org.au/fhir/StructureDefinition/au-ihi") },
             Slice { name: "medicare", discriminators: &[
                 Discriminator::Pattern { path: "$this.type.coding", pairs: &[("system", "http://terminology.hl7.org/CodeSystem/v2-0203"), ("code", "MC")] },
-            ], min: 0, max: Max::Star, elements: &[], profile: Some("http://hl7.org.au/fhir/StructureDefinition/au-medicarecardnumber") },
+            ], min: 0, max: Max::Star, elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org.au/fhir/StructureDefinition/au-medicarecardnumber") },
         ] },
         Slicing { path: "Patient.birthDate.extension", closed: false, slices: &[
             Slice { name: "accuracyIndicator", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org.au/fhir/StructureDefinition/date-accuracy-indicator" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org.au/fhir/StructureDefinition/date-accuracy-indicator") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org.au/fhir/StructureDefinition/date-accuracy-indicator") },
             Slice { name: "birthTime", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/patient-birthTime" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/patient-birthTime") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/patient-birthTime") },
         ] },
         Slicing { path: "Patient.deceased[x]", closed: true, slices: &[
             Slice { name: "deceasedBoolean", discriminators: &[
                 Discriminator::Type { key: "deceasedBoolean" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: None },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: None },
             Slice { name: "deceasedDateTime", discriminators: &[
                 Discriminator::Type { key: "deceasedDateTime" },
             ], min: 0, max: Max::Bounded(1), elements: &[
                 ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.value", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
+            ], invariants: &[
             ], profile: None },
         ] },
     ],

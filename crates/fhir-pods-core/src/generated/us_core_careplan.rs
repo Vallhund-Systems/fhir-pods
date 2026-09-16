@@ -17,9 +17,9 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "CarePlan.activity.detail.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "CarePlan.activity.detail.kind", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/care-plan-activity-kind|4.0.1", kind: BindingKind::Code }), types: &[] },
         ElementConstraint { path: "CarePlan.activity.detail.location", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "CarePlan.activity.detail.product[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["CodeableConcept", "Reference"] },
+        ElementConstraint { path: "CarePlan.activity.detail.product[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S10 },
         ElementConstraint { path: "CarePlan.activity.detail.quantity", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "CarePlan.activity.detail.scheduled[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["Timing", "Period", "string"] },
+        ElementConstraint { path: "CarePlan.activity.detail.scheduled[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S25 },
         ElementConstraint { path: "CarePlan.activity.detail.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/care-plan-activity-status|4.0.1", kind: BindingKind::Code }), types: &[] },
         ElementConstraint { path: "CarePlan.activity.detail.statusReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "CarePlan.activity.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
@@ -47,7 +47,9 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         Slicing { path: "CarePlan.category", closed: false, slices: &[
             Slice { name: "AssessPlan", discriminators: &[
                 Discriminator::Pattern { path: "$this.coding", pairs: &[("system", "http://hl7.org/fhir/us/core/CodeSystem/careplan-category"), ("code", "assess-plan")] },
-            ], min: 1, max: Max::Bounded(1), elements: &[], profile: None },
+            ], min: 1, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: None },
         ] },
     ],
     invariants: &[

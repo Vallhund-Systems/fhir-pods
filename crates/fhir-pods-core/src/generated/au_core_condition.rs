@@ -9,7 +9,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     name: "AU Core Condition",
     resource_type: "Condition",
     elements: &[
-        ElementConstraint { path: "Condition.abatement[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["dateTime", "Age", "Period", "Range"] },
+        ElementConstraint { path: "Condition.abatement[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S0 },
         ElementConstraint { path: "Condition.asserter", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Condition.category", min: 1, max: Max::Star, fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Condition.clinicalStatus", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/condition-clinical|4.0.1", kind: BindingKind::CodeableConcept }), types: &[] },
@@ -20,7 +20,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Condition.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Condition.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Condition.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "Condition.onset[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["dateTime", "Age", "Period", "Range"] },
+        ElementConstraint { path: "Condition.onset[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S0 },
         ElementConstraint { path: "Condition.recordedDate", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Condition.recorder", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Condition.severity", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
@@ -95,7 +95,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "onset[x]",
             ty: "choice",
-            choices: &["onsetDateTime", "onsetAge", "onsetPeriod", "onsetRange"],
+            choices: super::intern::S1,
             min: 0,
             max: Max::Bounded(1),
             must_support: true,
@@ -103,7 +103,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "abatement[x]",
             ty: "choice",
-            choices: &["abatementDateTime", "abatementAge", "abatementPeriod", "abatementRange"],
+            choices: super::intern::S3,
             min: 0,
             max: Max::Bounded(1),
             must_support: true,

@@ -12,7 +12,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "DiagnosticReport.category", min: 1, max: Max::Star, fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "DiagnosticReport.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "DiagnosticReport.conclusion", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "DiagnosticReport.effective[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["dateTime", "Period"] },
+        ElementConstraint { path: "DiagnosticReport.effective[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S16 },
         ElementConstraint { path: "DiagnosticReport.encounter", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "DiagnosticReport.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "DiagnosticReport.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
@@ -30,7 +30,9 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         Slicing { path: "DiagnosticReport.category", closed: false, slices: &[
             Slice { name: "LaboratorySlice", discriminators: &[
                 Discriminator::Pattern { path: "$this.coding", pairs: &[("system", "http://terminology.hl7.org/CodeSystem/v2-0074"), ("code", "LAB")] },
-            ], min: 1, max: Max::Bounded(1), elements: &[], profile: None },
+            ], min: 1, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: None },
         ] },
     ],
     invariants: &[
@@ -69,7 +71,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "effective[x]",
             ty: "choice",
-            choices: &["effectiveDateTime", "effectivePeriod"],
+            choices: super::intern::S17,
             min: 0,
             max: Max::Bounded(1),
             must_support: true,

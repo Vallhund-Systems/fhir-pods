@@ -51,6 +51,11 @@ public class FhirPodsExpoModule: Module {
       call({ ptr, len, _, _ in fhir_pods_slots(ptr, len) }, profileUrl)
     }
 
+    // De-identification: {"resource","applied","validation","remaining"} or {"error"}.
+    Function("deidentify") { (json: String, policyJson: String) -> String in
+      call2({ a, al, b, bl, _, _ in fhir_pods_deidentify(a, al, b, bl) }, json, policyJson)
+    }
+
     // Compiled terminology: load a table for every call that follows
     // (1 = loaded, 0 = unparseable; "" clears).
     Function("terminologyLoad") { (table: String) -> Int in

@@ -1,5 +1,69 @@
 # Changelog
 
+## 0.4.0 — 2026-09-16
+
+**De-identification.** ABI 6: `fhir_pods_deidentify(resource, policy)`;
+wasm `deidentify(json, policy)`, Expo `deidentify(json, policy)`; core
+`Validator::deidentify` / `deidentify::{Policy, Action, check}`.
+
+- Safe Harbor by default, as a typed walk: `HumanName`, `ContactPoint`,
+  `Narrative`, `Annotation`, `Attachment`, `Signature` removed; `Address`
+  kept to `state` / `country` (and `use` / `type`); `date` / `dateTime` to
+  the year, `instant` removed; ages over 89 (a birth date against the
+  policy's `today`; an `Age` quantity clamped to 90); `Identifier.value`,
+  `Reference.reference` and every resource `id` pseudonymised by
+  HMAC-SHA256 under the host's salt (references keep their type and base
+  URL, contained references their `#`, and a resource's own id maps as a
+  reference to it does); `Reference.display`, `Meta.versionId`,
+  `Device.serialNumber` / `udiCarrier` removed.
+- Policy is data: `{"salt", "today", "base": "safe-harbor" | "none",
+  "rules": [{"target", "action"}]}` — a target is a type, a type member
+  (`Address.city`) or an element path (`Patient.address.city`); the most
+  specific wins, the last among equals. Actions: keep, remove, mask, year,
+  pseudonym.
+- Conformance kept where the profile permits: an element the declared
+  profile requires (`min ≥ 1`) is masked with `data-absent-reason: masked`
+  (a primitive through its `_name` carrier) instead of dropped; an element
+  emptied by what went inside it goes; an element the base spec does not
+  define is removed and recorded; an unknown `resourceType` is refused.
+- Output carries the audit trail (`applied`), the copy's validation, and
+  `remaining` — what `check` still finds (empty under the default policy).
+- Proof: `examples/deid_corpus.rs` de-identifies every publisher-valid
+  corpus example, requires the checker to find nothing, and hands every
+  copy to the reference validator with our verdict on its conformance;
+  fuzzed by a seeded arm and a libFuzzer target.
+- Pseudonyms keep the shape of what they replace — digits for digits,
+  letters for letters of the same case, punctuation as is — so an NPI stays
+  ten digits, a URI keeps its scheme, a `maxLength` still holds; a value
+  that passes the Luhn check (an IHI, an NPI over `80840`) gets a pseudonym
+  that does too. Not preserved, by design: format rules on letters (CLIA's
+  `D` in third position) — a policy rule decides those identifiers.
+- `hash`: SHA-256 and HMAC-SHA256, `no_std`, tested against the published
+  vectors. `node`: the owned JSON tree, shared by lowering and
+  de-identification.
+**Verifier**
+- **FHIRPath type names are matched as written**, as the reference engine
+  does: a bare name is a FHIR type, `System.X` the system type a primitive
+  maps to. `$this is DateTime` on a FHIR `dateTime` is false — which is why
+  US Core's `us-core-1` never fires in the reference validator, and now not
+  here (89 de-identified copies disagreed before this).
+
+- **Slice-scoped invariants are evaluated** on the slice's instances (US
+  Core's NPI / CLIA / NAIC identifier checks, `us-core-16` … `19`) — they
+  were dropped by the generator before, because evaluated on the whole
+  path they would over-apply. The IR's `Slice` carries `invariants`.
+- **The base spec's vital-sign profiles are implied**, as the reference
+  validator does and the spec requires: an Observation carrying one of
+  their LOINC codes (or the vital-signs category, for the generic profile)
+  is validated against it whether or not it declares it. The eleven
+  profiles are compiled from `hl7.fhir.r4.core` into `generated::IMPLIED`
+  (registry: 179 profiles).
+- `.wasm`: 713 KB (198 KB gzipped) — de-identification, the hash, and the
+  eleven base vital-sign profiles.
+- Generated profiles intern their shared string lists
+  (`generated/intern.rs`) — smaller source; the binary was already
+  deduplicated by the compiler.
+
 ## 0.3.1 — 2026-09-16
 
 **Terminology, wired for real.** ABI 5.

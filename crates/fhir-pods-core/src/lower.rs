@@ -18,90 +18,10 @@ use alloc::vec::Vec;
 
 use crate::compiled::{CompiledProfile, Max, Slot};
 use crate::json::Value;
+use crate::node::Node;
 use crate::terminology::TerminologyProvider;
 use crate::validate::{IssueType, Report, Severity};
-use crate::wire::escape;
 use crate::{Validation, Validator};
-
-/// An owned JSON tree, built up then serialised.
-#[derive(Debug, Clone, PartialEq)]
-pub enum Node {
-    Null,
-    Bool(bool),
-    Number(String),
-    Str(String),
-    Array(Vec<Node>),
-    Object(Vec<(String, Node)>),
-}
-
-impl Node {
-    fn from_value(v: &Value<'_>) -> Node {
-        match v {
-            Value::Null => Node::Null,
-            Value::Bool(b) => Node::Bool(*b),
-            Value::Number(n) => Node::Number((*n).into()),
-            Value::Str(s) => Node::Str(s.to_string()),
-            Value::Array(xs) => Node::Array(xs.iter().map(Node::from_value).collect()),
-            Value::Object(kvs) => Node::Object(kvs.iter().map(|(k, v)| (k.to_string(), Node::from_value(v))).collect()),
-        }
-    }
-
-    fn write(&self, out: &mut String) {
-        match self {
-            Node::Null => out.push_str("null"),
-            Node::Bool(b) => out.push_str(if *b { "true" } else { "false" }),
-            Node::Number(n) => out.push_str(n),
-            Node::Str(s) => {
-                out.push('"');
-                escape(out, s);
-                out.push('"');
-            }
-            Node::Array(xs) => {
-                out.push('[');
-                for (i, x) in xs.iter().enumerate() {
-                    if i > 0 {
-                        out.push(',');
-                    }
-                    x.write(out);
-                }
-                out.push(']');
-            }
-            Node::Object(kvs) => {
-                out.push('{');
-                for (i, (k, v)) in kvs.iter().enumerate() {
-                    if i > 0 {
-                        out.push(',');
-                    }
-                    out.push('"');
-                    escape(out, k);
-                    out.push_str("\":");
-                    v.write(out);
-                }
-                out.push('}');
-            }
-        }
-    }
-
-    fn member_mut(&mut self, key: &str) -> Option<&mut Node> {
-        match self {
-            Node::Object(kvs) => kvs.iter_mut().find(|(k, _)| k == key).map(|(_, v)| v),
-            _ => None,
-        }
-    }
-
-    fn member_or_insert(&mut self, key: &str, make: Node) -> &mut Node {
-        if let Node::Object(kvs) = self {
-            if let Some(i) = kvs.iter().position(|(k, _)| k == key) {
-                return &mut kvs[i].1;
-            }
-            kvs.push((key.into(), make));
-            return &mut kvs.last_mut().unwrap().1;
-        }
-        // a scalar where an object was expected: replace it (an input collision is reported separately)
-        *self = Node::Object(alloc::vec![(key.into(), make)]);
-        self.member_mut(key).unwrap()
-    }
-}
 
 /// The outcome: the resource as JSON text, and its validation.
 #[derive(Debug, Clone, PartialEq, Eq)]

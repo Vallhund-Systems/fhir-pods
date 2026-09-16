@@ -23,7 +23,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Provenance.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Provenance.location", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Provenance.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "Provenance.occurred[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["Period", "dateTime"] },
+        ElementConstraint { path: "Provenance.occurred[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S36 },
         ElementConstraint { path: "Provenance.recorded", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Provenance.target", min: 1, max: Max::Star, fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Provenance.target.display", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
@@ -42,6 +42,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 ElementConstraint { path: "$this.onBehalfOf", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.type", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.who", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
+            ], invariants: &[
             ], profile: None },
             Slice { name: "ProvenanceTransmitter", discriminators: &[
                 Discriminator::Pattern { path: "$this.type.coding", pairs: &[("system", "http://hl7.org/fhir/us/core/CodeSystem/us-core-provenance-participant-type"), ("code", "transmitter")] },
@@ -50,6 +51,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 ElementConstraint { path: "$this.onBehalfOf", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.type", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.who", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
+            ], invariants: &[
             ], profile: None },
         ] },
     ],

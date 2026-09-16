@@ -9,7 +9,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     name: "US Core Condition Problems and Health Concerns Profile",
     resource_type: "Condition",
     elements: &[
-        ElementConstraint { path: "Condition.abatement[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["dateTime", "Age", "Period", "Range", "string"] },
+        ElementConstraint { path: "Condition.abatement[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S24 },
         ElementConstraint { path: "Condition.asserter", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Condition.category", min: 1, max: Max::Star, fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Condition.clinicalStatus", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/condition-clinical", kind: BindingKind::CodeableConcept }), types: &[] },
@@ -20,7 +20,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Condition.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Condition.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Condition.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "Condition.onset[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["dateTime", "Age", "Period", "Range", "string"] },
+        ElementConstraint { path: "Condition.onset[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S24 },
         ElementConstraint { path: "Condition.recordedDate", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Condition.recorder", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Condition.severity", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
@@ -35,7 +35,9 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         Slicing { path: "Condition.extension", closed: false, slices: &[
             Slice { name: "assertedDate", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/condition-assertedDate" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/condition-assertedDate") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/condition-assertedDate") },
         ] },
     ],
     invariants: &[
@@ -106,7 +108,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "onset[x]",
             ty: "choice",
-            choices: &["onsetDateTime", "onsetAge", "onsetPeriod", "onsetRange", "onsetString"],
+            choices: super::intern::S26,
             min: 0,
             max: Max::Bounded(1),
             must_support: true,
@@ -114,7 +116,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "abatement[x]",
             ty: "choice",
-            choices: &["abatementDateTime", "abatementAge", "abatementPeriod", "abatementRange", "abatementString"],
+            choices: super::intern::S27,
             min: 0,
             max: Max::Bounded(1),
             must_support: true,

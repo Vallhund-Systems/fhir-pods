@@ -57,7 +57,11 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         Slicing { path: "Practitioner.identifier", closed: false, slices: &[
             Slice { name: "NPI", discriminators: &[
                 Discriminator::Value { path: "$this.system", value: "http://hl7.org/fhir/sid/us-npi" },
-            ], min: 0, max: Max::Star, elements: &[], profile: None },
+            ], min: 0, max: Max::Star, elements: &[
+            ], invariants: &[
+                ProfileInvariant { path: "$this", key: "us-core-16", severity: InvariantSeverity::Error, human: "NPI must be 10 digits", expression: "value.matches('^[0-9]{10}$')", types: &["Identifier"] },
+                ProfileInvariant { path: "$this", key: "us-core-17", severity: InvariantSeverity::Error, human: "NPI check digit must be valid (Luhn algorithm check)", expression: "(((select(value.substring(0,1).toInteger()).select(iif($this<5, $this*2, (($this*2)-9))))+(value.substring(1,1).toInteger())+(select(value.substring(2,1).toInteger()).select(iif($this<5, $this*2, (($this*2)-9))))+(value.substring(3,1).toInteger())+(select(value.substring(4,1).toInteger()).select(iif($this<5, $this*2, (($this*2)-9))))+(value.substring(5,1).toInteger())+(select(value.substring(6,1).toInteger()).select(iif($this<5, $this*2, (($this*2)-9))))+(value.substring(7,1).toInteger())+(select(value.substring(8,1).toInteger()).select(iif($this<5, $this*2, (($this*2)-9))))+(value.substring(9,1).toInteger()) + 24)mod 10=0)", types: &["Identifier"] },
+            ], profile: None },
         ] },
     ],
     invariants: &[

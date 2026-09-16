@@ -42,17 +42,23 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         Slicing { path: "PractitionerRole.identifier", closed: false, slices: &[
             Slice { name: "medicareProvider", discriminators: &[
                 Discriminator::Pattern { path: "$this.type.coding", pairs: &[("system", "http://terminology.hl7.org.au/CodeSystem/v2-0203"), ("code", "UPIN")] },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org.au/fhir/StructureDefinition/au-medicareprovidernumber") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org.au/fhir/StructureDefinition/au-medicareprovidernumber") },
         ] },
         Slicing { path: "PractitionerRole.availableTime.availableStartTime.extension", closed: false, slices: &[
             Slice { name: "timeZone", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/timezone" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/timezone") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/timezone") },
         ] },
         Slicing { path: "PractitionerRole.availableTime.availableEndTime.extension", closed: false, slices: &[
             Slice { name: "timeZone", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/timezone" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/timezone") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/timezone") },
         ] },
     ],
     invariants: &[

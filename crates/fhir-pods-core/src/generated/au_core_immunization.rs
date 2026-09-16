@@ -26,17 +26,17 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Immunization.lotNumber", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Immunization.manufacturer", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Immunization.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "Immunization.occurrence[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["dateTime", "string"] },
+        ElementConstraint { path: "Immunization.occurrence[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S7 },
         ElementConstraint { path: "Immunization.patient", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Immunization.performer.actor", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Immunization.performer.function", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Immunization.performer.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Immunization.primarySource", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Immunization.protocolApplied.authority", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "Immunization.protocolApplied.doseNumber[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["positiveInt", "string"] },
+        ElementConstraint { path: "Immunization.protocolApplied.doseNumber[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S8 },
         ElementConstraint { path: "Immunization.protocolApplied.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Immunization.protocolApplied.series", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "Immunization.protocolApplied.seriesDoses[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["positiveInt", "string"] },
+        ElementConstraint { path: "Immunization.protocolApplied.seriesDoses[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S8 },
         ElementConstraint { path: "Immunization.reaction.date", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Immunization.reaction.detail", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Immunization.reaction.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
@@ -56,7 +56,9 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         Slicing { path: "Immunization.extension", closed: false, slices: &[
             Slice { name: "vaccineVialSerialNumber", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org.au/fhir/StructureDefinition/vaccine-serial-number" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org.au/fhir/StructureDefinition/vaccine-serial-number") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org.au/fhir/StructureDefinition/vaccine-serial-number") },
         ] },
         Slicing { path: "Immunization.performer", closed: false, slices: &[
             Slice { name: "administeredBy", discriminators: &[
@@ -65,6 +67,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 ElementConstraint { path: "$this.actor", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.function", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
+            ], invariants: &[
             ], profile: None },
             Slice { name: "approvedBy", discriminators: &[
                 Discriminator::Pattern { path: "$this.function.coding", pairs: &[("system", "http://terminology.hl7.org/CodeSystem/v2-0443"), ("code", "OP")] },
@@ -72,6 +75,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 ElementConstraint { path: "$this.actor", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.function", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
+            ], invariants: &[
             ], profile: None },
         ] },
     ],
@@ -125,7 +129,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "occurrence[x]",
             ty: "choice",
-            choices: &["occurrenceDateTime", "occurrenceString"],
+            choices: super::intern::S9,
             min: 1,
             max: Max::Bounded(1),
             must_support: true,

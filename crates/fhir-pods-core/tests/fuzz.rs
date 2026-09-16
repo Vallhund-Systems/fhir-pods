@@ -543,6 +543,24 @@ fn check_validate(input: &[u8], seed: u64, iter: u64, kind: &str) {
     }
 }
 
+/// De-identification never panics; a copy it produces is well-formed JSON
+/// the Safe Harbor check finds nothing in, and is deterministic.
+fn check_deid(input: &[u8], seed: u64, iter: u64) {
+    use fhir_pods_core::deidentify::Policy;
+    let r = catch_unwind(AssertUnwindSafe(|| {
+        let v = fhir_pods_core::Validator::new();
+        let policy = Policy::safe_harbor(b"fuzz").today(2026);
+        if let Ok(d) = v.deidentify(input, &policy) {
+            json::parse(d.resource.as_bytes()).expect("de-identified copy must be well-formed JSON");
+            assert!(d.remaining.is_empty(), "identifying data survived: {:?} in {}", d.remaining, d.resource);
+            assert_eq!(d, v.deidentify(input, &policy).unwrap(), "non-deterministic de-identification");
+        }
+    }));
+    if r.is_err() {
+        panic!("fuzz failure: kind=deidentify seed={seed} iter={iter}\ninput={:?}", String::from_utf8_lossy(input));
+    }
+}
+
 /// Lowering never panics, whatever the inputs; its output is well-formed
 /// JSON that validates deterministically.
 fn check_lower(profile_url: &str, inputs: &[u8], seed: u64, iter: u64) {
@@ -619,7 +637,7 @@ fn seeded_fuzz_never_panics() {
         );
     }
     for iter in 0..iters {
-        match iter % 7 {
+        match iter % 8 {
             0 => check_validate(&byte_soup(&mut rng), seed, iter, "bytes"),
             1 => {
                 let base = resource(&mut rng);
@@ -637,6 +655,14 @@ fn seeded_fuzz_never_panics() {
                 let url = if rng.chance(3) { rng.pick(STRS) } else { profile.url };
                 let inputs = lowering_inputs(&mut rng, profile);
                 check_lower(url, &inputs, seed, iter);
+            }
+            6 => {
+                let doc = if !corpus.is_empty() && rng.chance(2) {
+                    mutate_corpus(&mut rng, &corpus)
+                } else {
+                    resource(&mut rng).into_bytes()
+                };
+                check_deid(&doc, seed, iter);
             }
             _ => {
                 let expr = expression(&mut rng);

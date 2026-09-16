@@ -9,7 +9,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     name: "IPA-problem-list-item",
     resource_type: "Condition",
     elements: &[
-        ElementConstraint { path: "Condition.abatement[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["dateTime", "Age", "Period", "Range", "string"] },
+        ElementConstraint { path: "Condition.abatement[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S24 },
         ElementConstraint { path: "Condition.asserter", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Condition.category", min: 1, max: Max::Star, fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Condition.clinicalStatus", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/condition-clinical|4.0.1", kind: BindingKind::CodeableConcept }), types: &[] },
@@ -20,7 +20,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Condition.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Condition.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Condition.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "Condition.onset[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["dateTime", "Age", "Period", "Range", "string"] },
+        ElementConstraint { path: "Condition.onset[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S24 },
         ElementConstraint { path: "Condition.recordedDate", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Condition.recorder", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Condition.severity", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
@@ -35,7 +35,9 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         Slicing { path: "Condition.category", closed: false, slices: &[
             Slice { name: "problem-list-item", discriminators: &[
                 Discriminator::Pattern { path: "$this.coding", pairs: &[("system", "http://terminology.hl7.org/CodeSystem/condition-category"), ("code", "problem-list-item")] },
-            ], min: 1, max: Max::Bounded(1), elements: &[], profile: None },
+            ], min: 1, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: None },
         ] },
     ],
     invariants: &[

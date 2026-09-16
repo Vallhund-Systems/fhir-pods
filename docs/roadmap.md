@@ -70,7 +70,7 @@ result is put in front of the reference validator alongside the corpus.
   for the codings the registry fixes; a table's displays for the rest); the
   verifier asks it for membership.
 
-## 0.4 — Documents (IPS / AU PS)
+## 0.5 — Documents (IPS / AU PS)
 
 **What.** `fhir_pods_document(kind, resources[])` → a document `Bundle`:
 `Composition` with the standard sections (problems, medications, allergies,
@@ -90,22 +90,37 @@ well-defined inside a document).
 **Proof.** The IGs' own document examples, plus assembled documents from the
 registry's examples, against the oracle.
 
-## 0.4.x — De-identification
+## 0.4 — De-identification — shipped
 
 **What.** `fhir_pods_deidentify(resource, policy)` → a copy safe to leave
 the patient's device for analysis, training or support: Safe Harbor by
-default (identifiers, names, addresses beyond state, contact details, exact
-dates → year, ages over 89 → 90+, device serials, free-text narrative and
-notes removed or flagged), references pseudonymised consistently with a
-host-supplied salt. Policy is data (which elements, which treatment), typed
-traversal already knows what every node *is* (`HumanName`, `Address`,
-`ContactPoint`, `Identifier`, `date`/`dateTime`), so the pass is a walk.
+default (names, contact details, addresses below state, exact dates → year,
+ages over 89, narrative, notes, attachments, signatures, device serials
+removed; identifiers and references pseudonymised with a host-supplied salt
+through HMAC-SHA256, consistently across resources). Policy is data — a
+base plus rules by type, type member or element path, most specific wins —
+and the walk is typed, so what a node *is* decides. Where the resource's
+profile requires an element that is removed, a `data-absent-reason: masked`
+stub stands in, so the copy stays conformant wherever the profile permits;
+an element emptied by what was removed inside it goes too; an element the
+base spec does not define cannot be typed and is removed, recorded.
 
-**Proof.** A checker: after de-identification, no node of an identifying
-type survives outside the allow-list; dates carry only a year; the result
-still validates against its profile where the profile permits.
+**Proof.** A checker (`deidentify::check`) finds nothing in the copy —
+identifying types other than masked stubs, address members below state,
+dates finer than a year, instants, reference displays, ages over 89 — and
+every publisher-valid corpus example is de-identified and put in front of
+the reference validator with our verdict on the copy's conformance
+(`examples/deid_corpus.rs`, run by the harness). Fuzzed: a seeded arm and a
+libFuzzer target assert the check holds for every copy produced.
 
-## 0.5 — Audit and provenance
+**Not covered by the default policy**, by design: free text in `string`
+elements other than narrative and notes (`Observation.valueString`, a
+`CodeableConcept.text`) — a host names those in its policy; dates the
+profile needs to the day (vital signs' `effective[x]`, invariant vs-1) are
+a conformance finding the host decides on (keep the one date, or accept
+the finding).
+
+## 0.6 — Audit and provenance
 
 `AuditEvent` and `Provenance` built through the lowering engine from the
 base spec's own definitions (the registry gains the base resources it needs
@@ -124,7 +139,8 @@ are plumbing, correlated by id).
 
 ## Sequence
 
-lowering → terminology → de-identification → documents (+ IG #4) → audit.
+lowering → terminology → de-identification → documents (+ IG #4) → audit
+(the first three shipped 0.3.0 → 0.4.0).
 Lowering first because it is what makes the verifier pay for itself; de-id
 before documents because it is small and it is a policy commitment a host
 can point at. Each pod ships as a minor version with its own release notes,

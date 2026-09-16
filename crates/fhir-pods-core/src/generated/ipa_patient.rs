@@ -20,7 +20,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Patient.contact.name", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Patient.contact.organization", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Patient.contact.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "Patient.deceased[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["boolean", "dateTime"] },
+        ElementConstraint { path: "Patient.deceased[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S18 },
         ElementConstraint { path: "Patient.gender", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/administrative-gender|4.0.1", kind: BindingKind::Code }), types: &[] },
         ElementConstraint { path: "Patient.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Patient.identifier", min: 1, max: Max::Star, fixed: None, required_binding: None, types: &[] },
@@ -39,7 +39,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Patient.managingOrganization", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Patient.maritalStatus", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Patient.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "Patient.multipleBirth[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["boolean", "integer"] },
+        ElementConstraint { path: "Patient.multipleBirth[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S19 },
         ElementConstraint { path: "Patient.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
     ],
     slicings: &[

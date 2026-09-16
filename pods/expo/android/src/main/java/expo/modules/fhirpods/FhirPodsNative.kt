@@ -39,6 +39,9 @@ internal object FhirPodsNative {
   /** {"slots":[...]} — the inputs a profile takes, or {"error"}. */
   external fun slots(profile: ByteArray): ByteArray
 
+  /** {"resource","applied","validation","remaining"} — the de-identified copy, or {"error"}. */
+  external fun deidentify(resource: ByteArray, policy: ByteArray): ByteArray
+
   /** Load a compiled terminology table: 1 = loaded, 0 = unparseable (the old one stays). */
   external fun terminologyLoad(table: ByteArray): Int
 

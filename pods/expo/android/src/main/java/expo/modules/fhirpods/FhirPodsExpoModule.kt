@@ -41,6 +41,11 @@ class FhirPodsExpoModule : Module() {
       String(FhirPodsNative.slots(profileUrl.toByteArray(Charsets.UTF_8)), Charsets.UTF_8)
     }
 
+    // De-identification: {"resource","applied","validation","remaining"} or {"error"}.
+    Function("deidentify") { json: String, policyJson: String ->
+      String(FhirPodsNative.deidentify(json.toByteArray(Charsets.UTF_8), policyJson.toByteArray(Charsets.UTF_8)), Charsets.UTF_8)
+    }
+
     // Compiled terminology: load a table for every call that follows
     // (1 = loaded, 0 = unparseable; "" clears).
     Function("terminologyLoad") { table: String ->

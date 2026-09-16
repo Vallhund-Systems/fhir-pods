@@ -32,13 +32,19 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         Slicing { path: "RelatedPerson.extension", closed: false, slices: &[
             Slice { name: "genderIdentity", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/individual-genderIdentity" },
-            ], min: 0, max: Max::Star, elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/individual-genderIdentity") },
+            ], min: 0, max: Max::Star, elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/individual-genderIdentity") },
             Slice { name: "individualPronouns", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/individual-pronouns" },
-            ], min: 0, max: Max::Star, elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/individual-pronouns") },
+            ], min: 0, max: Max::Star, elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/individual-pronouns") },
             Slice { name: "recordedSexOrGender", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/individual-recordedSexOrGender" },
-            ], min: 0, max: Max::Star, elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/individual-recordedSexOrGender") },
+            ], min: 0, max: Max::Star, elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/individual-recordedSexOrGender") },
         ] },
     ],
     invariants: &[

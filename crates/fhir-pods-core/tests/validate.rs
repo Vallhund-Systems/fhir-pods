@@ -260,3 +260,44 @@ fn garbage_reports_a_parse_error() {
     let r = probe_str("not json");
     assert!(r.contains("could not parse"), "{r}");
 }
+
+#[test]
+fn slice_scoped_invariants_run_on_the_slice_only_through_both_entry_points() {
+    // US Core Organization: identifier:NPI must be 10 digits (us-core-16), identifier:CLIA 10 with a D third (us-core-18)
+    let org = |npi: &str, clia: &str| {
+        format!(
+            r#"{{"resourceType":"Organization","meta":{{"profile":["http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization"]}},"identifier":[{{"system":"http://hl7.org/fhir/sid/us-npi","value":"{npi}"}},{{"system":"urn:oid:2.16.840.1.113883.4.7","value":"{clia}"}},{{"system":"http://example.org/other","value":"x"}}],"active":true,"name":"Acme"}}"#
+        )
+    };
+    let bad = org("123", "12X4567890");
+    for report in [
+        fhir_pods_core::wire::report(&fhir_pods_core::validate_bytes(bad.as_bytes())),
+        fhir_pods_core::wire::report(&fhir_pods_core::Validator::new().validate(bad.as_bytes())),
+    ] {
+        assert!(report.contains("\"path\":\"Organization.identifier:NPI\",\"message\":\"us-core-16"), "{report}");
+        assert!(report.contains("\"path\":\"Organization.identifier:CLIA\",\"message\":\"us-core-18"), "{report}");
+        // the third identifier belongs to no slice: nothing scoped to a slice fires on it
+        assert!(!report.contains("Organization.identifier\",\"message\":\"us-core-1"), "{report}");
+    }
+    let ok = org("1234567893", "12D4567890");
+    let report = fhir_pods_core::wire::report(&fhir_pods_core::Validator::new().validate(ok.as_bytes()));
+    assert!(!report.contains("us-core-16") && !report.contains("us-core-18"), "{report}");
+}
+
+#[test]
+fn an_observation_with_a_vital_sign_loinc_code_is_held_to_the_base_profile() {
+    // no declared profile, LOINC 29463-7: the base bodyweight profile applies (spec rule) — a
+    // valueString is not what it allows, and a year-only date fails vs-1
+    let obs = r#"{"resourceType":"Observation","status":"final","category":[{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/observation-category","code":"vital-signs"}]}],"code":{"coding":[{"system":"http://loinc.org","code":"29463-7"}]},"subject":{"reference":"Patient/1"},"effectiveDateTime":"2026","valueString":"heavy"}"#;
+    let r = fhir_pods_core::validate_bytes(obs.as_bytes());
+    let text = fhir_pods_core::wire::report(&r);
+    assert!(
+        r.profiles.iter().any(|p| p.contains("Body Weight")) && r.profiles.iter().any(|p| p.contains("Vital Signs")),
+        "{text}"
+    );
+    assert!(text.contains("vs-1") && text.contains("allows the types"), "{text}");
+    // a code that is not a vital sign implies nothing
+    let other = obs.replace("29463-7", "2339-0").replace("vital-signs", "laboratory");
+    let r = fhir_pods_core::validate_bytes(other.as_bytes());
+    assert!(r.profiles.is_empty(), "{:?}", r.profiles);
+}

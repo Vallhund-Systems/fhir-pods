@@ -293,3 +293,32 @@ come from its `_name` carrier, paired by position), and the probe that then
 disagreed with the oracle exposed the next gap: a choice element's allowed
 types were not enforced (`value[x]` restricted to Coding accepted a
 `valueString`). The IR now carries `types` per choice element. **558/558.**
+- **Pass 20 — de-identification (2026-09-16).** Safe Harbor as a typed walk
+over the owned JSON tree lowering already had (now `node`), with policy as
+data and HMAC-SHA256 pseudonyms (`hash`, `no_std`, published vectors).
+Two design calls decided the proof: a required element that goes is
+*masked* (`data-absent-reason: masked`, through the `_name` carrier for a
+primitive) rather than dropped, so AU Core's Patient — name, gender and
+birth date all required — stays conformant after de-identification; and an
+element emptied by what went inside it (`Patient.contact` once its name
+and telecom are gone) goes too, or `pat-1` fires on an empty backbone. The
+checker is the other half of the proof: it objects to the original on
+every count and to nothing in the copy. What it cannot prove is
+pseudonymisation, and what the default policy cannot keep is a date a
+profile needs to the day (`vs-1` on vital signs) — both stated in the
+roadmap. Interning the generated string lists changed the binary by zero
+bytes: LLVM already merged them.
+- **Pass 21 — what de-identification found in the verifier (2026-09-16).**
+Putting 262 de-identified copies in front of the oracle disagreed on 99.
+Eighty-nine were one thing: US Core's `us-core-1` reads `$this is DateTime
+implies …` with the FHIRPath *System* type name, and the reference engine
+matches type names as written, so on a FHIR `dateTime` the test is false
+and the constraint never fires there — ours matched case-insensitively and
+fired on every year-only date. Bug-for-bug now (`docs/scope.md`). The rest
+were pseudonyms breaking identifier formats (now shape-preserving, Luhn
+kept) and two verifier gaps the copies exposed: slice-scoped invariants
+(NPI / CLIA / NAIC) were never evaluated, and the base spec's vital-sign
+profiles were never implied — the reference applies `bodyweight` to any
+Observation with LOINC 29463-7 because the spec says so. Both fixed:
+registry 179 profiles. **819/819** across corpus, lowered and
+de-identified copies.

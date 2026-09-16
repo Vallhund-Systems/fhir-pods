@@ -60,13 +60,16 @@ Rust-shaped. (See [`docs/architecture.md`](docs/architecture.md).)
   (generated from the packages); the rest arrives through a host seam — a
   compiled expansion table loaded at run time, an ask-then-answer loop
   (`terminology_needs`), or a synchronous provider — never as shipped content.
-- **Delivery:** a ~645 KB `.wasm` (168 KB gzipped) with a dependency-free JS
+- **Delivery:** a ~715 KB `.wasm` (198 KB gzipped) with a dependency-free JS
   wrapper, and an Expo module (iOS XCFramework + Android jniLibs) — each
   measured at tens of microseconds per profiled resource.
 - Zero dependencies, `no_std`, `#![forbid(unsafe_code)]`, fuzzed.
 - **Boundary:** the pods know FHIR; a host knows its data. Domain-specific
   maps (a host's records → FHIR) live in the host, never here.
-- **Next:** de-identification, documents, audit — the pod family in
+- **De-identification:** a Safe Harbor copy under a data policy — typed
+  walk, pseudonyms keyed by the host's salt, masked stubs where a profile
+  requires what was removed, a checker that proves the copy clean.
+- **Next:** documents (IPS / AU PS), audit — the pod family in
   [`docs/roadmap.md`](docs/roadmap.md).
 
 Design: [`docs/architecture.md`](docs/architecture.md) ·
@@ -85,7 +88,7 @@ how it got here: [`docs/history.md`](docs/history.md).
 
 - `crates/fhir-pods-core` — the Rust verifier core (zero deps, no `unsafe`, `no_std`).
 - `crates/fhir-pods-ffi` — the one lean C ABI, compiled per target (wasm32 / native staticlib).
-- `pods/wasm` — the wasm pod: a ~645 KB `.wasm` (168 KB gzipped) + a zero-dependency JS wrapper.
+- `pods/wasm` — the wasm pod: a ~715 KB `.wasm` (198 KB gzipped) + a zero-dependency JS wrapper.
 - `pods/expo` — the expo pod: the core as an Expo native module (iOS XCFramework + Android jniLibs).
 - `scripts/` — `gen-profiles.sh`, `build-wasm.sh`, `build-ios-xcframework.sh`, `build-android-jnilibs.sh`, `smoke-c.sh`, `check-no-std.sh`, `release.sh`.
 - `docs/architecture.md` — the design, delivery model, audit surface, and perf budget.

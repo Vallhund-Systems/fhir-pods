@@ -14,7 +14,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Observation.component.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Observation.component.dataAbsentReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Observation.component.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "Observation.component.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["Quantity", "CodeableConcept", "string", "boolean", "integer", "Range", "Ratio", "SampledData", "time", "dateTime", "Period"] },
+        ElementConstraint { path: "Observation.component.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S2 },
         ElementConstraint { path: "Observation.dataAbsentReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Observation.device", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Observation.effective[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["dateTime"] },
@@ -41,17 +41,23 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         Slicing { path: "Observation.category", closed: false, slices: &[
             Slice { name: "SocialHistory", discriminators: &[
                 Discriminator::Pattern { path: "$this.coding", pairs: &[("system", "http://terminology.hl7.org/CodeSystem/observation-category"), ("code", "social-history")] },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: None },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: None },
         ] },
         Slicing { path: "Observation.effective[x]", closed: true, slices: &[
             Slice { name: "effectiveDateTime", discriminators: &[
                 Discriminator::Type { key: "effectiveDateTime" },
-            ], min: 1, max: Max::Bounded(1), elements: &[], profile: None },
+            ], min: 1, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: None },
         ] },
         Slicing { path: "Observation.value[x]", closed: true, slices: &[
             Slice { name: "valueCodeableConcept", discriminators: &[
                 Discriminator::Type { key: "valueCodeableConcept" },
-            ], min: 1, max: Max::Bounded(1), elements: &[], profile: None },
+            ], min: 1, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: None },
         ] },
     ],
     invariants: &[

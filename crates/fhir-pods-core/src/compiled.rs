@@ -63,6 +63,9 @@ pub struct Slice {
     pub max: Max,
     /// Constraints on the slice's sub-elements, paths relative as `$this.…`.
     pub elements: &'static [ElementConstraint],
+    /// Invariants declared on the slice itself (`$this`) or its sub-elements
+    /// (`$this.…`) — evaluated on the slice's instances only.
+    pub invariants: &'static [ProfileInvariant],
     /// A profile (by canonical URL, looked up in the registry) that matched
     /// instances must also conform to — how a slice inherits an external
     /// datatype profile's constraints, e.g. `au-ihi` on `Patient.identifier:ihi`.

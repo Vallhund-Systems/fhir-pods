@@ -20,7 +20,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "AllergyIntolerance.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "AllergyIntolerance.lastOccurrence", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "AllergyIntolerance.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "AllergyIntolerance.onset[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["dateTime", "Age", "Period", "Range"] },
+        ElementConstraint { path: "AllergyIntolerance.onset[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S0 },
         ElementConstraint { path: "AllergyIntolerance.patient", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "AllergyIntolerance.reaction.description", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "AllergyIntolerance.reaction.exposureRoute", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
@@ -86,7 +86,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "onset[x]",
             ty: "choice",
-            choices: &["onsetDateTime", "onsetAge", "onsetPeriod", "onsetRange"],
+            choices: super::intern::S1,
             min: 0,
             max: Max::Bounded(1),
             must_support: true,

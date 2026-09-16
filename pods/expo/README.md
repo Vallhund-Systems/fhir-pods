@@ -73,6 +73,27 @@ mustSupportGaps(JSON.stringify(patient));
 // ["Patient.telecom.system", "Patient.birthDate", …]
 ```
 
+## De-identification
+
+```ts
+import { deidentify } from "fhir-pods-expo";
+const { resource, applied, validation, remaining } = deidentify(json, {
+  salt: await SecureStore.getItemAsync("deid-salt"), // keys the pseudonyms — secret, stable
+  today: "2026-09-16",
+  rules: [{ target: "Observation.effectiveDateTime", action: "keep" }], // on top of Safe Harbor
+});
+```
+
+Safe Harbor by default — names, contact details, addresses below state,
+exact dates (year only), ages over 89, narrative, notes, attachments,
+signatures and device serials go; identifiers and references become
+HMAC-SHA256 pseudonyms under the salt. Where the declared profile requires
+an element that goes, a `data-absent-reason: masked` stub stands in, so the
+copy stays conformant wherever the profile permits (`validation` says where
+it does not). `applied` is the audit trail; `remaining` is what a Safe
+Harbor check still finds, empty under the default policy. Rules target a
+type, a member of a type or an element; the most specific wins.
+
 ## Terminology
 
 The pod bundles every licence-free value set the registry binds (the FHIR and

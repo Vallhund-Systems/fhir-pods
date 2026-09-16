@@ -16,7 +16,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "QuestionnaireResponse.identifier", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "QuestionnaireResponse.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "QuestionnaireResponse.item.answer.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "QuestionnaireResponse.item.answer.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["boolean", "date", "dateTime", "time", "decimal", "integer", "string", "Coding", "uri", "Quantity", "Attachment", "Reference"] },
+        ElementConstraint { path: "QuestionnaireResponse.item.answer.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S37 },
         ElementConstraint { path: "QuestionnaireResponse.item.definition", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "QuestionnaireResponse.item.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "QuestionnaireResponse.item.linkId", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
@@ -35,34 +35,50 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         Slicing { path: "QuestionnaireResponse.extension", closed: false, slices: &[
             Slice { name: "signature", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/questionnaireresponse-signature" },
-            ], min: 0, max: Max::Star, elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/questionnaireresponse-signature") },
+            ], min: 0, max: Max::Star, elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/questionnaireresponse-signature") },
             Slice { name: "completionMode", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/questionnaireresponse-completionMode" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/questionnaireresponse-completionMode") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/questionnaireresponse-completionMode") },
         ] },
         Slicing { path: "QuestionnaireResponse.questionnaire.extension", closed: false, slices: &[
             Slice { name: "questionnaireDisplay", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/display" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/display") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/display") },
             Slice { name: "url", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/us/core/StructureDefinition/us-core-extension-questionnaire-uri" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org/fhir/us/core/StructureDefinition/us-core-extension-questionnaire-uri") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/us/core/StructureDefinition/us-core-extension-questionnaire-uri") },
         ] },
         Slicing { path: "QuestionnaireResponse.item.extension", closed: false, slices: &[
             Slice { name: "itemMedia", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-itemMedia" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-itemMedia") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-itemMedia") },
             Slice { name: "ItemSignature", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/questionnaireresponse-signature" },
-            ], min: 0, max: Max::Star, elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/questionnaireresponse-signature") },
+            ], min: 0, max: Max::Star, elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/questionnaireresponse-signature") },
         ] },
         Slicing { path: "QuestionnaireResponse.item.answer.extension", closed: false, slices: &[
             Slice { name: "itemAnswerMedia", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-itemAnswerMedia" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-itemAnswerMedia") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-itemAnswerMedia") },
             Slice { name: "ordinalValue", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/ordinalValue" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/ordinalValue") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/ordinalValue") },
         ] },
     ],
     invariants: &[

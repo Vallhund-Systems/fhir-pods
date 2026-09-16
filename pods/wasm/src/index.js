@@ -3,7 +3,7 @@
 // WebAssembly does (browser, edge runtimes, Node, Bun, Deno).
 
 /** The ABI this wrapper speaks; a module reporting anything else is refused. */
-export const ABI_VERSION = 5;
+export const ABI_VERSION = 6;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -91,6 +91,12 @@ export async function instantiate(source, options = {}) {
       const out = JSON.parse(call(ex.fhir_pods_slots, profileUrl));
       if (out.error) throw new Error(`fhir-pods: ${out.error}`);
       return out.slots;
+    },
+    // De-identification: a Safe Harbor copy (by default) under a policy object.
+    deidentify: (json, policy = {}) => {
+      const out = JSON.parse(call(ex.fhir_pods_deidentify, json, JSON.stringify(policy)));
+      if (out.error) throw new Error(`fhir-pods: ${out.error}`);
+      return out;
     },
     // Compiled terminology: load a table (the line format tools/compile_valueset.py
     // writes from $expand responses). It answers after the bundled sets and

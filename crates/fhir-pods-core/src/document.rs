@@ -52,6 +52,10 @@ impl<'a> Parsed<'a> {
     pub fn parse(input: &'a [u8]) -> Result<Self, json::ParseError> {
         Ok(Self { value: json::parse(input)? })
     }
+    /// The whole parsed tree.
+    pub fn value(&self) -> &Value<'a> {
+        &self.value
+    }
     pub fn doc(&self) -> TreeDoc<'_, 'a> {
         TreeDoc { root: &self.value, ctx: resource_ctx(&self.value), carrier: None }
     }

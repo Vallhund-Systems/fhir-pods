@@ -32,10 +32,14 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         Slicing { path: "Organization.identifier", closed: false, slices: &[
             Slice { name: "hpio", discriminators: &[
                 Discriminator::Value { path: "$this.system", value: "http://ns.electronichealth.net.au/id/hi/hpio/1.0" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org.au/fhir/StructureDefinition/au-hpio") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org.au/fhir/StructureDefinition/au-hpio") },
             Slice { name: "abn", discriminators: &[
                 Discriminator::Value { path: "$this.system", value: "http://hl7.org.au/id/abn" },
-            ], min: 0, max: Max::Star, elements: &[], profile: Some("http://hl7.org.au/fhir/StructureDefinition/au-australianbusinessnumber") },
+            ], min: 0, max: Max::Star, elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org.au/fhir/StructureDefinition/au-australianbusinessnumber") },
         ] },
     ],
     invariants: &[

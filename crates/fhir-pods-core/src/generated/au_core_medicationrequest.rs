@@ -24,10 +24,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "MedicationRequest.dispenseRequest.quantity", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "MedicationRequest.dispenseRequest.validityPeriod", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "MedicationRequest.doNotPerform", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "MedicationRequest.dosageInstruction.asNeeded[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["boolean", "CodeableConcept"] },
-        ElementConstraint { path: "MedicationRequest.dosageInstruction.doseAndRate.dose[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["Range", "Quantity"] },
+        ElementConstraint { path: "MedicationRequest.dosageInstruction.asNeeded[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S11 },
+        ElementConstraint { path: "MedicationRequest.dosageInstruction.doseAndRate.dose[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S12 },
         ElementConstraint { path: "MedicationRequest.dosageInstruction.doseAndRate.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "MedicationRequest.dosageInstruction.doseAndRate.rate[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["Ratio", "Range", "Quantity"] },
+        ElementConstraint { path: "MedicationRequest.dosageInstruction.doseAndRate.rate[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S13 },
         ElementConstraint { path: "MedicationRequest.dosageInstruction.doseAndRate.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "MedicationRequest.dosageInstruction.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "MedicationRequest.dosageInstruction.maxDosePerAdministration", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
@@ -46,20 +46,20 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "MedicationRequest.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "MedicationRequest.intent", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/medicationrequest-intent|4.0.1", kind: BindingKind::Code }), types: &[] },
         ElementConstraint { path: "MedicationRequest.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "MedicationRequest.medication[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["CodeableConcept", "Reference"] },
+        ElementConstraint { path: "MedicationRequest.medication[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S10 },
         ElementConstraint { path: "MedicationRequest.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "MedicationRequest.performer", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "MedicationRequest.performerType", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "MedicationRequest.priorPrescription", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "MedicationRequest.priority", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/request-priority|4.0.1", kind: BindingKind::Code }), types: &[] },
         ElementConstraint { path: "MedicationRequest.recorder", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "MedicationRequest.reported[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["boolean", "Reference"] },
+        ElementConstraint { path: "MedicationRequest.reported[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S14 },
         ElementConstraint { path: "MedicationRequest.requester", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "MedicationRequest.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/medicationrequest-status|4.0.1", kind: BindingKind::Code }), types: &[] },
         ElementConstraint { path: "MedicationRequest.statusReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "MedicationRequest.subject", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "MedicationRequest.substitution", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "MedicationRequest.substitution.allowed[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["boolean", "CodeableConcept"] },
+        ElementConstraint { path: "MedicationRequest.substitution.allowed[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S11 },
         ElementConstraint { path: "MedicationRequest.substitution.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "MedicationRequest.substitution.reason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "MedicationRequest.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
@@ -68,10 +68,14 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         Slicing { path: "MedicationRequest.extension", closed: false, slices: &[
             Slice { name: "sexParameterForClinicalUse", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse" },
-            ], min: 0, max: Max::Star, elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse") },
+            ], min: 0, max: Max::Star, elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse") },
             Slice { name: "subsidisedConcurrentSupply", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org.au/fhir/StructureDefinition/subsidised-concurrent-supply" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org.au/fhir/StructureDefinition/subsidised-concurrent-supply") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org.au/fhir/StructureDefinition/subsidised-concurrent-supply") },
         ] },
         Slicing { path: "MedicationRequest.medication[x]", closed: true, slices: &[
             Slice { name: "medicationCodeableConcept", discriminators: &[
@@ -85,10 +89,13 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 ElementConstraint { path: "$this.coding.version", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
                 ElementConstraint { path: "$this.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
+            ], invariants: &[
             ], profile: None },
             Slice { name: "medicationReference", discriminators: &[
                 Discriminator::Type { key: "medicationReference" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: None },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: None },
         ] },
     ],
     invariants: &[
@@ -158,7 +165,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "medication[x]",
             ty: "choice",
-            choices: &["medicationCodeableConcept", "medicationReference"],
+            choices: super::intern::S15,
             min: 1,
             max: Max::Bounded(1),
             must_support: true,

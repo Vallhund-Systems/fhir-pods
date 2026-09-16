@@ -28,7 +28,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Medication.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Medication.ingredient.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Medication.ingredient.isActive", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
-        ElementConstraint { path: "Medication.ingredient.item[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["CodeableConcept", "Reference"] },
+        ElementConstraint { path: "Medication.ingredient.item[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S10 },
         ElementConstraint { path: "Medication.ingredient.strength", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Medication.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
         ElementConstraint { path: "Medication.manufacturer", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
@@ -40,7 +40,9 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         Slicing { path: "Medication.code.coding.extension", closed: false, slices: &[
             Slice { name: "medicationClass", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org.au/fhir/StructureDefinition/medication-type" },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org.au/fhir/StructureDefinition/medication-type") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org.au/fhir/StructureDefinition/medication-type") },
         ] },
     ],
     invariants: &[

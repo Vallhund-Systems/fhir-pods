@@ -32,18 +32,26 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         Slicing { path: "Practitioner.extension", closed: false, slices: &[
             Slice { name: "genderIdentity", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/individual-genderIdentity" },
-            ], min: 0, max: Max::Star, elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/individual-genderIdentity") },
+            ], min: 0, max: Max::Star, elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/individual-genderIdentity") },
             Slice { name: "individualPronouns", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/individual-pronouns" },
-            ], min: 0, max: Max::Star, elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/individual-pronouns") },
+            ], min: 0, max: Max::Star, elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/individual-pronouns") },
             Slice { name: "recordedSexOrGender", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/individual-recordedSexOrGender" },
-            ], min: 0, max: Max::Star, elements: &[], profile: Some("http://hl7.org/fhir/StructureDefinition/individual-recordedSexOrGender") },
+            ], min: 0, max: Max::Star, elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org/fhir/StructureDefinition/individual-recordedSexOrGender") },
         ] },
         Slicing { path: "Practitioner.identifier", closed: false, slices: &[
             Slice { name: "hpii", discriminators: &[
                 Discriminator::Pattern { path: "$this.type.coding", pairs: &[("system", "http://terminology.hl7.org/CodeSystem/v2-0203"), ("code", "NPI")] },
-            ], min: 0, max: Max::Bounded(1), elements: &[], profile: Some("http://hl7.org.au/fhir/StructureDefinition/au-hpii") },
+            ], min: 0, max: Max::Bounded(1), elements: &[
+            ], invariants: &[
+            ], profile: Some("http://hl7.org.au/fhir/StructureDefinition/au-hpii") },
         ] },
     ],
     invariants: &[

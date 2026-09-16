@@ -87,6 +87,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                     types: &["Coding"],
                 },
             ],
+            invariants: &[],
             profile: Some("http://hl7.org.au/fhir/StructureDefinition/date-accuracy-indicator"),
         }],
     }],

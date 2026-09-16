@@ -9,8 +9,8 @@
 extern "C" {
 #endif
 
-/* ABI version; a host refuses a mismatched module. This header is ABI 5. */
-#define FHIR_PODS_ABI_VERSION 5u
+/* ABI version; a host refuses a mismatched module. This header is ABI 6. */
+#define FHIR_PODS_ABI_VERSION 6u
 uint32_t fhir_pods_abi_version(void);
 
 /* Allocate `len` bytes in the module for the host to fill. */
@@ -62,6 +62,16 @@ uint8_t *fhir_pods_validate_tx(const uint8_t *ptr, size_t len, fhir_pods_tx_call
 uint8_t *fhir_pods_operation_outcome_tx(const uint8_t *ptr, size_t len, fhir_pods_tx_callback cb, void *ctx);
 uint8_t *fhir_pods_lower_tx(const uint8_t *profile, size_t profile_len, const uint8_t *inputs, size_t inputs_len,
                             fhir_pods_tx_callback cb, void *ctx);
+
+/* De-identification: a copy of the resource under a policy (JSON:
+ * {"salt": "...", "today": "YYYY-MM-DD", "base": "safe-harbor" | "none",
+ *  "rules": [{"target": "Patient.address.city", "action": "keep"}, ...]}
+ * — Safe Harbor by default; identifiers and references pseudonymised with
+ * the salt). Returns {"resource": {...}, "applied": [{"path","action"}],
+ * "validation": {...}, "remaining": [{"path","what"}]} — `remaining` is what
+ * a Safe Harbor check still finds (empty under the default policy) — or
+ * {"error": "..."} when it could not start. */
+uint8_t *fhir_pods_deidentify(const uint8_t *resource, size_t resource_len, const uint8_t *policy, size_t policy_len);
 
 /* Compiled terminology. Load a table (the line format tools/compile_valueset.py
  * writes from $expand responses): it answers after the bundled sets and before

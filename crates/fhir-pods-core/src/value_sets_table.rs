@@ -542,6 +542,23 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
         ],
     ),
     (
+        "http://hl7.org/fhir/ValueSet/ucum-vitals-common",
+        &[
+            ("http://unitsofmeasure.org", "%", "percent"),
+            ("http://unitsofmeasure.org", "/min", "per minute"),
+            ("http://unitsofmeasure.org", "Cel", "degree Celsius"),
+            ("http://unitsofmeasure.org", "[degF]", "degree Fahrenheit"),
+            ("http://unitsofmeasure.org", "[in_i]", "inch (international)"),
+            ("http://unitsofmeasure.org", "[lb_av]", "pound (US and British)"),
+            ("http://unitsofmeasure.org", "cm", "centimeter"),
+            ("http://unitsofmeasure.org", "g", "gram"),
+            ("http://unitsofmeasure.org", "kg", "kilogram"),
+            ("http://unitsofmeasure.org", "kg/m2", "kilogram / (meter ^ 2)"),
+            ("http://unitsofmeasure.org", "m2", "square meter"),
+            ("http://unitsofmeasure.org", "mm[Hg]", "millimeter of mercury"),
+        ],
+    ),
+    (
         "http://hl7.org/fhir/ValueSet/udi-entry-type",
         &[
             ("http://hl7.org/fhir/udi-entry-type", "barcode", "Barcode"),

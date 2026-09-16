@@ -279,7 +279,20 @@ fn type_tests_honour_the_hierarchy() {
     assert_eq!(fp("$this is DomainResource", r#"{"resourceType":"Bundle"}"#), Fail); // a Resource, not a Domain one
     assert_eq!(fp("$this is DomainResource", r#"{"resourceType":"Nope"}"#), fhir_pods_core::path::Verdict::Unsupported); // not in the table
     assert_eq!(fp("code is Element", d), Pass);
-    assert_eq!(fp("id is id and id is string and id is String", d), Pass);
+    assert_eq!(fp("id is id and id is string and id is FHIR.string", d), Pass);
+    // type names are matched as written, like the reference engine: the
+    // FHIRPath system types answer only when qualified — so `$this is
+    // DateTime` on a dateTime is false (and US Core's us-core-1 never fires)
+    assert_eq!(fp("id is String", d), Fail);
+    assert_eq!(fp("id is System.String and id.length() > 0", d), Pass);
+    assert_eq!(fp("recordedDate is DateTime", r#"{"resourceType":"Condition","recordedDate":"2020"}"#), Fail);
+    assert_eq!(
+        fp(
+            "recordedDate is dateTime and recordedDate is System.DateTime",
+            r#"{"resourceType":"Condition","recordedDate":"2020"}"#
+        ),
+        Pass
+    );
     assert_eq!(fp("subject.reference is string", d), Pass);
     let mr =
         r#"{"resourceType":"MedicationRequest","instantiatesCanonical":["http://x"],"instantiatesUri":["http://y"]}"#;

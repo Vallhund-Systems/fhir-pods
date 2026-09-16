@@ -47,3 +47,10 @@ path = "fuzz_targets/lower.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "deidentify"
+path = "fuzz_targets/deidentify.rs"
+test = false
+doc = false
+bench = false
