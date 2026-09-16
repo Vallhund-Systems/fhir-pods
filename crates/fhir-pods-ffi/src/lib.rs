@@ -69,7 +69,7 @@ pub extern "C" fn pod_alloc(len: usize) -> *mut u8 {
 #[no_mangle]
 pub unsafe extern "C" fn pod_free(ptr: *mut u8, len: usize) {
     if !ptr.is_null() {
-        drop(Box::from_raw(std::slice::from_raw_parts_mut(ptr, len)));
+        drop(Box::from_raw(std::ptr::slice_from_raw_parts_mut(ptr, len)));
     }
 }
 
@@ -100,7 +100,12 @@ pub unsafe extern "C" fn fhir_pods_operation_outcome(ptr: *const u8, len: usize)
 
 /// [`fhir_pods_validate`] with a host terminology callback (`cb` may be null).
 #[no_mangle]
-pub unsafe extern "C" fn fhir_pods_validate_tx(ptr: *const u8, len: usize, cb: Option<TxCallback>, ctx: *mut c_void) -> *mut u8 {
+pub unsafe extern "C" fn fhir_pods_validate_tx(
+    ptr: *const u8,
+    len: usize,
+    cb: Option<TxCallback>,
+    ctx: *mut c_void,
+) -> *mut u8 {
     with_tx(cb, ctx, |tx| pack(wire::report(&validator().validate_with(input(ptr, len), tx)).as_bytes()))
 }
 
@@ -218,7 +223,14 @@ mod wasm_host {
     impl TerminologyProvider for ImportTx {
         fn validate_code(&self, value_set: &str, system: &str, code: &str) -> Membership {
             membership(unsafe {
-                fhir_pods_host_tx(value_set.as_ptr(), value_set.len(), system.as_ptr(), system.len(), code.as_ptr(), code.len())
+                fhir_pods_host_tx(
+                    value_set.as_ptr(),
+                    value_set.len(),
+                    system.as_ptr(),
+                    system.len(),
+                    code.as_ptr(),
+                    code.len(),
+                )
             })
         }
     }
@@ -230,7 +242,12 @@ mod wasm_host {
 
     #[no_mangle]
     pub unsafe extern "C" fn fhir_pods_operation_outcome_host_tx(ptr: *const u8, len: usize) -> *mut u8 {
-        pack(validator().validate_with(input(ptr, len), &Chain(&[&Bundled, &ImportTx])).to_operation_outcome().as_bytes())
+        pack(
+            validator()
+                .validate_with(input(ptr, len), &Chain(&[&Bundled, &ImportTx]))
+                .to_operation_outcome()
+                .as_bytes(),
+        )
     }
 }
 
@@ -272,7 +289,8 @@ mod android {
     impl TerminologyProvider for JavaTx<'_, '_> {
         fn validate_code(&self, value_set: &str, system: &str, code: &str) -> Membership {
             let mut env = self.env.borrow_mut();
-            let (Ok(vs), Ok(sys), Ok(cd)) = (env.new_string(value_set), env.new_string(system), env.new_string(code)) else {
+            let (Ok(vs), Ok(sys), Ok(cd)) = (env.new_string(value_set), env.new_string(system), env.new_string(code))
+            else {
                 return Membership::Unknown;
             };
             let r = env.call_method(
@@ -300,11 +318,19 @@ mod android {
         let input = bytes_in(env, json);
         let doc = if provider.is_null() {
             let v = validator().validate_with(&input, &Bundled);
-            if outcome { v.to_operation_outcome() } else { wire::report(&v) }
+            if outcome {
+                v.to_operation_outcome()
+            } else {
+                wire::report(&v)
+            }
         } else {
             let host = JavaTx { env: RefCell::new(env), provider };
             let v = validator().validate_with(&input, &Chain(&[&Bundled, &host]));
-            if outcome { v.to_operation_outcome() } else { wire::report(&v) }
+            if outcome {
+                v.to_operation_outcome()
+            } else {
+                wire::report(&v)
+            }
         };
         bytes_out(env, &doc)
     }
@@ -369,10 +395,16 @@ mod tests {
     #[test]
     fn both_entrypoints_round_trip() {
         unsafe {
-            let r = call(fhir_pods_validate, r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},"active":true}"#);
+            let r = call(
+                fhir_pods_validate,
+                r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},"active":true}"#,
+            );
             assert!(r.contains("\"valid\":false"), "{r}");
             assert!(r.contains("Patient.identifier is required"), "{r}");
-            let o = call(fhir_pods_operation_outcome, r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},"active":true}"#);
+            let o = call(
+                fhir_pods_operation_outcome,
+                r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},"active":true}"#,
+            );
             assert!(o.starts_with("{\"resourceType\":\"OperationOutcome\""), "{o}");
             let bad = call(fhir_pods_validate, "not json");
             assert!(bad.contains("\"severity\":\"fatal\""), "{bad}");
@@ -384,7 +416,10 @@ mod tests {
     #[test]
     fn must_support_is_information_not_validation() {
         unsafe {
-            let r = call(fhir_pods_must_support, r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"]},"identifier":[{"system":"http://h.example.org/mrn","value":"1"}],"name":[{"family":"D"}],"gender":"male"}"#);
+            let r = call(
+                fhir_pods_must_support,
+                r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"]},"identifier":[{"system":"http://h.example.org/mrn","value":"1"}],"name":[{"family":"D"}],"gender":"male"}"#,
+            );
             assert!(r.starts_with("{\"mustSupportGaps\":[") && r.contains("\"Patient.birthDate\""), "{r}");
             assert_eq!(call(fhir_pods_must_support, "not json"), "{\"mustSupportGaps\":[]}");
         }
@@ -403,7 +438,15 @@ mod tests {
     #[test]
     fn host_terminology_callback() {
         struct Log(Vec<String>, i32);
-        unsafe extern "C" fn cb(ctx: *mut c_void, vs: *const u8, vsl: usize, sys: *const u8, sysl: usize, code: *const u8, cl: usize) -> i32 {
+        unsafe extern "C" fn cb(
+            ctx: *mut c_void,
+            vs: *const u8,
+            vsl: usize,
+            sys: *const u8,
+            sysl: usize,
+            code: *const u8,
+            cl: usize,
+        ) -> i32 {
             let log = &mut *(ctx as *mut Log);
             let s = |p: *const u8, n: usize| String::from_utf8_lossy(std::slice::from_raw_parts(p, n)).into_owned();
             log.0.push(format!("{} {} {}", s(vs, vsl), s(sys, sysl), s(code, cl)));
@@ -412,12 +455,14 @@ mod tests {
         let json = r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},"identifier":[{"system":"http://h.example.org/mrn","value":"1"}],"name":[{"family":"D"}],"gender":"male","birthDate":"1970-01-01","telecom":[{"system":"phone","value":"1"}]}"#;
         unsafe {
             let mut log = Log(Vec::new(), 0);
-            let r = unpack(fhir_pods_validate_tx(json.as_ptr(), json.len(), Some(cb), &mut log as *mut Log as *mut c_void));
+            let r =
+                unpack(fhir_pods_validate_tx(json.as_ptr(), json.len(), Some(cb), &mut log as *mut Log as *mut c_void));
             assert_eq!(log.0, vec!["http://hl7.org/fhir/ValueSet/contact-point-system|4.0.1  phone"]);
             assert!(r.contains("'phone' is not in the bound value set"), "{r}");
 
             let mut log = Log(Vec::new(), 1);
-            let r = unpack(fhir_pods_validate_tx(json.as_ptr(), json.len(), Some(cb), &mut log as *mut Log as *mut c_void));
+            let r =
+                unpack(fhir_pods_validate_tx(json.as_ptr(), json.len(), Some(cb), &mut log as *mut Log as *mut c_void));
             assert!(!r.contains("contact-point-system"), "{r}");
 
             let r = unpack(fhir_pods_validate_tx(json.as_ptr(), json.len(), None, std::ptr::null_mut()));

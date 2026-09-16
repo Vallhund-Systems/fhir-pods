@@ -70,7 +70,11 @@ pub mod typing {
                 i += 1;
             }
         }
-        if pb.len() > i { Greater } else { Equal }
+        if pb.len() > i {
+            Greater
+        } else {
+            Equal
+        }
     }
 
     fn lookup2(ctx: &str, key: &str) -> Option<&'static (&'static str, &'static str)> {
@@ -92,7 +96,11 @@ pub mod typing {
     pub fn child(ctx: &'static str, key: &str) -> Option<Child> {
         match key {
             "id" => {
-                let ty = if ctx.contains('.') || crate::typemap::RESOURCES.binary_search(&ctx).is_err() { "string" } else { "id" };
+                let ty = if ctx.contains('.') || crate::typemap::RESOURCES.binary_search(&ctx).is_err() {
+                    "string"
+                } else {
+                    "id"
+                };
                 return Some(Child { ctx: ty, ty });
             }
             "extension" | "modifierExtension" => return Some(Child { ctx: "Extension", ty: "Extension" }),
@@ -180,7 +188,11 @@ pub fn validate_bytes_with(input: &[u8], tx: &dyn terminology::TerminologyProvid
     validate_bytes_impl(input, tx, None)
 }
 
-fn validate_bytes_impl(input: &[u8], tx: &dyn terminology::TerminologyProvider, cache: Option<&Validator>) -> Validation {
+fn validate_bytes_impl(
+    input: &[u8],
+    tx: &dyn terminology::TerminologyProvider,
+    cache: Option<&Validator>,
+) -> Validation {
     // The scanner's contract, kept: a resource is a top-level object.
     let first = input.iter().position(|b| !matches!(b, b' ' | b'\t' | b'\n' | b'\r')).unwrap_or(input.len());
     if input.get(first) != Some(&b'{') {
@@ -355,13 +367,11 @@ pub mod wire {
     ///   is no node to point at (`Patient.gender` missing → `Patient`);
     /// * our slice labels become FHIRPath: `value[x]:valueQuantity` →
     ///   `value.ofType(Quantity)`, and a plain `:slice` label is dropped.
+    ///
     /// The ergonomic `Issue.path` keeps the precise, labelled location.
     pub fn expression(path: &str, code: IssueType) -> String {
-        let located = if code == IssueType::Required {
-            path.rsplit_once('.').map_or(path, |(parent, _)| parent)
-        } else {
-            path
-        };
+        let located =
+            if code == IssueType::Required { path.rsplit_once('.').map_or(path, |(parent, _)| parent) } else { path };
         let mut out = String::with_capacity(located.len());
         for (i, seg) in located.split('.').enumerate() {
             if i > 0 {
@@ -515,7 +525,10 @@ pub mod json {
                 match seg.strip_suffix("[x]") {
                     Some(prefix) => {
                         for (k, v) in members {
-                            if k.len() > prefix.len() && k.starts_with(prefix) && k.as_bytes()[prefix.len()].is_ascii_uppercase() {
+                            if k.len() > prefix.len()
+                                && k.starts_with(prefix)
+                                && k.as_bytes()[prefix.len()].is_ascii_uppercase()
+                            {
                                 expand(v, f);
                             }
                         }
@@ -553,7 +566,11 @@ pub mod json {
 
     fn expand<'v, 'a>(v: &'v Value<'a>, f: &mut dyn FnMut(&'v Value<'a>)) {
         match v {
-            Value::Array(items) => items.iter().for_each(|x| f(x)),
+            Value::Array(items) => {
+                for x in items {
+                    f(x)
+                }
+            }
             other => f(other),
         }
     }
@@ -562,7 +579,6 @@ pub mod json {
     pub fn children<'v, 'a>(node: &'v Value<'a>, seg: &str, out: &mut Vec<&'v Value<'a>>) {
         for_each_child(node, seg, &mut |v| out.push(v));
     }
-
 
     /// Recursive descent must be bounded: past this, nesting is a `ParseError`
     /// — never a stack overflow, which is an abort (not a panic) and fatal on
@@ -622,7 +638,8 @@ pub mod json {
                     Some(b'\\') => {
                         let o = owned.get_or_insert_with(String::new);
                         o.push_str(
-                            core::str::from_utf8(&b[run..self.i]).map_err(|_| ParseError { at: run, msg: "invalid utf-8" })?,
+                            core::str::from_utf8(&b[run..self.i])
+                                .map_err(|_| ParseError { at: run, msg: "invalid utf-8" })?,
                         );
                         let at = self.i;
                         let esc = b.get(self.i + 1).copied().ok_or(ParseError { at, msg: "unterminated string" })?;
@@ -701,8 +718,8 @@ pub mod json {
             if self.i == start {
                 return Err(ParseError { at: start, msg: "expected value" });
             }
-            let s = core::str::from_utf8(&b[start..self.i])
-                .map_err(|_| ParseError { at: start, msg: "invalid utf-8" })?;
+            let s =
+                core::str::from_utf8(&b[start..self.i]).map_err(|_| ParseError { at: start, msg: "invalid utf-8" })?;
             Ok(Value::Number(s))
         }
 
@@ -785,9 +802,7 @@ pub mod json {
                 }
             }
         }
-
     }
-
 }
 
 /// The `Document` port: how the engine reads a resource, independent of the
@@ -878,7 +893,11 @@ pub mod document {
         /// takes its own `resourceType`.
         fn child_ctx(ctx: Option<&'static str>, key: &str, child: &'v Value<'a>) -> Option<&'static str> {
             let ch = crate::typing::child(ctx?, key)?;
-            if ch.ty == "Resource" { resource_ctx(child) } else { Some(ch.ctx) }
+            if ch.ty == "Resource" {
+                resource_ctx(child)
+            } else {
+                Some(ch.ctx)
+            }
         }
     }
 
@@ -972,12 +991,16 @@ pub mod document {
             let mut out = Vec::new();
             let ctx = self.ctx;
             let mut push = |key: &str, v: &'v Value<'a>| match v {
-                Value::Array(xs) => out.extend(xs.iter().map(|x| TreeDoc { root: x, ctx: Self::child_ctx(ctx, key, x) })),
+                Value::Array(xs) => {
+                    out.extend(xs.iter().map(|x| TreeDoc { root: x, ctx: Self::child_ctx(ctx, key, x) }))
+                }
                 v => out.push(TreeDoc { root: v, ctx: Self::child_ctx(ctx, key, v) }),
             };
             match self.root {
                 // `resourceType` is the JSON type tag, not an element
-                Value::Object(kvs) => kvs.iter().filter(|(k, _)| k.as_ref() != "resourceType").for_each(|(k, v)| push(k, v)),
+                Value::Object(kvs) => {
+                    kvs.iter().filter(|(k, _)| k.as_ref() != "resourceType").for_each(|(k, v)| push(k, v))
+                }
                 Value::Array(xs) => xs.iter().for_each(|v| push("", v)),
                 _ => {}
             }
@@ -1109,8 +1132,6 @@ pub mod compiled {
         pub elements: &'static [ElementConstraint],
         pub slicings: &'static [Slicing],
         pub invariants: &'static [ProfileInvariant],
-        /// Constraints not yet enforced (nested slicing / non-scalar patterns / mustSupport-only).
-        pub deferred: u32,
         /// Elements the IG flags `mustSupport`. Not a validation rule (no
         /// validator fails on it) — a conforming *client* is expected to
         /// populate them when it has the data, so gaps are reported separately
@@ -1208,8 +1229,8 @@ pub mod engine {
     use alloc::string::String;
 
     use crate::compiled::{
-        BindingKind, CompiledProfile, Discriminator, ElementConstraint, InvariantSeverity, Max, ProfileInvariant, Slice,
-        Slicing,
+        BindingKind, CompiledProfile, Discriminator, ElementConstraint, InvariantSeverity, Max, ProfileInvariant,
+        Slice, Slicing,
     };
     use crate::document::Document;
     use crate::path::{self, Verdict};
@@ -1234,18 +1255,20 @@ pub mod engine {
     /// Must-support elements that are absent where their parent is present.
     /// A child under an absent parent is not a gap — the parent is.
     pub fn must_support_gaps<D: Document>(profile: &CompiledProfile, doc: &D) -> Vec<&'static str> {
-        profile
-            .must_support
-            .iter()
-            .copied()
-            .filter(|path| doc.child_counts(path).iter().any(|&n| n == 0))
-            .collect()
+        profile.must_support.iter().copied().filter(|path| doc.child_counts(path).contains(&0)).collect()
     }
 
     /// `root` is the resource being validated (`%resource`) — the same node
     /// as `doc` at the top level, and still the resource when `doc` is a
     /// slice instance being checked against an inherited profile.
-    pub(crate) fn validate_at<D: Document>(profile: &CompiledProfile, doc: &D, root: &D, tx: &dyn TerminologyProvider, depth: usize, cache: Option<&crate::Validator>) -> Report {
+    pub(crate) fn validate_at<D: Document>(
+        profile: &CompiledProfile,
+        doc: &D,
+        root: &D,
+        tx: &dyn TerminologyProvider,
+        depth: usize,
+        cache: Option<&crate::Validator>,
+    ) -> Report {
         let mut r = Report::default();
         for el in profile.elements {
             check_element(el, el.path, doc, tx, &mut r);
@@ -1303,15 +1326,31 @@ pub mod engine {
     /// Cardinality (per parent instance), fixed value, and required binding for
     /// one element. `label` is the path reported in issues — absolute at the top
     /// level, `Path:slice.sub` inside a slice.
-    fn check_element(el: &ElementConstraint, label: &str, doc: &impl Document, tx: &dyn TerminologyProvider, r: &mut Report) {
+    fn check_element(
+        el: &ElementConstraint,
+        label: &str,
+        doc: &impl Document,
+        tx: &dyn TerminologyProvider,
+        r: &mut Report,
+    ) {
         for count in doc.child_counts(el.path) {
             let count = count as u32;
             if count < el.min {
-                r.push(Severity::Error, IssueType::Required, label, format!("{label} is required (min {}, found {count})", el.min));
+                r.push(
+                    Severity::Error,
+                    IssueType::Required,
+                    label,
+                    format!("{label} is required (min {}, found {count})", el.min),
+                );
             }
             if let Max::Bounded(m) = el.max {
                 if count > m {
-                    r.push(Severity::Error, IssueType::Structure, label, format!("{label} exceeds max {m} (found {count})"));
+                    r.push(
+                        Severity::Error,
+                        IssueType::Structure,
+                        label,
+                        format!("{label} exceeds max {m} (found {count})"),
+                    );
                 }
             }
         }
@@ -1372,9 +1411,12 @@ pub mod engine {
     fn report_membership(m: Membership, vs: &str, what: &str, label: &str, r: &mut Report) {
         match m {
             Membership::Member => {}
-            Membership::NotMember => {
-                r.push(Severity::Error, IssueType::CodeInvalid, label, format!("'{what}' is not in the bound value set"))
-            }
+            Membership::NotMember => r.push(
+                Severity::Error,
+                IssueType::CodeInvalid,
+                label,
+                format!("'{what}' is not in the bound value set"),
+            ),
             Membership::Unknown => r.push(
                 Severity::Warning,
                 IssueType::NotSupported,
@@ -1388,7 +1430,7 @@ pub mod engine {
     /// all match; type slices are selected by key in `check_slicing`.
     fn matches(slice: &Slice, inst: &impl Document) -> bool {
         slice.discriminators.iter().all(|d| match d {
-            Discriminator::Value { path, value } => inst.scalars(path).iter().any(|s| *s == *value),
+            Discriminator::Value { path, value } => inst.scalars(path).contains(value),
             Discriminator::Pattern { path, pairs } => inst.instances(path).iter().any(|n| {
                 pairs.iter().all(|(rel, value)| {
                     let mut p = String::from("$this");
@@ -1396,7 +1438,7 @@ pub mod engine {
                         p.push('.');
                         p.push_str(rel);
                     }
-                    n.scalars(&p).iter().any(|s| *s == *value)
+                    n.scalars(&p).contains(value)
                 })
             }),
             Discriminator::Type { .. } => true,
@@ -1413,7 +1455,15 @@ pub mod engine {
     /// Evaluate a slicing per parent instance: assign instances to slices, check
     /// each slice's cardinality, validate its sub-constraints against every
     /// matched instance (re-rooted as `$this`), and enforce `closed`.
-    fn check_slicing<D: Document>(slicing: &Slicing, doc: &D, root: &D, tx: &dyn TerminologyProvider, r: &mut Report, depth: usize, cache: Option<&crate::Validator>) {
+    fn check_slicing<D: Document>(
+        slicing: &Slicing,
+        doc: &D,
+        root: &D,
+        tx: &dyn TerminologyProvider,
+        r: &mut Report,
+        depth: usize,
+        cache: Option<&crate::Validator>,
+    ) {
         let Some((parent_path, last)) = slicing.path.rsplit_once('.') else {
             return;
         };
@@ -1433,11 +1483,21 @@ pub mod engine {
                 matched += insts.len();
                 let count = insts.len() as u32;
                 if count < slice.min {
-                    r.push(Severity::Error, IssueType::Required, &label, format!("{label} is required (min {}, found {count})", slice.min));
+                    r.push(
+                        Severity::Error,
+                        IssueType::Required,
+                        &label,
+                        format!("{label} is required (min {}, found {count})", slice.min),
+                    );
                 }
                 if let Max::Bounded(m) = slice.max {
                     if count > m {
-                        r.push(Severity::Error, IssueType::Structure, &label, format!("{label} exceeds max {m} (found {count})"));
+                        r.push(
+                            Severity::Error,
+                            IssueType::Structure,
+                            &label,
+                            format!("{label} exceeds max {m} (found {count})"),
+                        );
                     }
                 }
                 let base_len = label.len();
@@ -1469,7 +1529,11 @@ pub mod engine {
                     Severity::Error,
                     IssueType::Structure,
                     slicing.path,
-                    format!("{} has {} element(s) matching no slice (closed slicing)", slicing.path, all.len() - matched),
+                    format!(
+                        "{} has {} element(s) matching no slice (closed slicing)",
+                        slicing.path,
+                        all.len() - matched
+                    ),
                 );
             }
         }
@@ -1489,25 +1553,27 @@ pub mod value_sets {
             }
             "http://hl7.org/fhir/ValueSet/observation-status" => Some(matches!(
                 code,
-                "registered" | "preliminary" | "final" | "amended" | "corrected"
-                    | "cancelled" | "entered-in-error" | "unknown"
+                "registered"
+                    | "preliminary"
+                    | "final"
+                    | "amended"
+                    | "corrected"
+                    | "cancelled"
+                    | "entered-in-error"
+                    | "unknown"
             )),
-            "http://hl7.org/fhir/ValueSet/name-use" => Some(matches!(
-                code,
-                "usual" | "official" | "temp" | "nickname" | "anonymous" | "old" | "maiden"
-            )),
+            "http://hl7.org/fhir/ValueSet/name-use" => {
+                Some(matches!(code, "usual" | "official" | "temp" | "nickname" | "anonymous" | "old" | "maiden"))
+            }
             "http://hl7.org/fhir/ValueSet/link-type" => {
                 Some(matches!(code, "replaced-by" | "replaces" | "refer" | "seealso"))
             }
-            "http://hl7.org/fhir/ValueSet/quantity-comparator" => {
-                Some(matches!(code, "<" | "<=" | ">=" | ">"))
-            }
+            "http://hl7.org/fhir/ValueSet/quantity-comparator" => Some(matches!(code, "<" | "<=" | ">=" | ">")),
             // The vital-signs UCUM unit sets, concept lists taken verbatim from
             // hl7.fhir.r4.core#4.0.1 (CC0). UCUM is freely embeddable.
             "http://hl7.org/fhir/ValueSet/ucum-vitals-common" => Some(matches!(
                 code,
-                "%" | "cm" | "[in_i]" | "kg" | "g" | "[lb_av]" | "Cel" | "[degF]" | "mm[Hg]" | "/min"
-                    | "kg/m2" | "m2"
+                "%" | "cm" | "[in_i]" | "kg" | "g" | "[lb_av]" | "Cel" | "[degF]" | "mm[Hg]" | "/min" | "kg/m2" | "m2"
             )),
             "http://hl7.org/fhir/ValueSet/ucum-bodyweight" => Some(matches!(code, "kg" | "[lb_av]" | "g")),
             "http://hl7.org/fhir/ValueSet/ucum-bodylength" => Some(matches!(code, "cm" | "[in_i]")),
@@ -1517,28 +1583,9 @@ pub mod value_sets {
     }
 }
 
-
-pub mod model {
-    use alloc::string::String;
-
-    #[derive(Debug, Clone)]
-    pub struct Resource {
-        pub resource_type: String,
-        pub raw: String,
-    }
-
-    impl Resource {
-        pub fn new(resource_type: impl Into<String>, raw: impl Into<String>) -> Self {
-            Self { resource_type: resource_type.into(), raw: raw.into() }
-        }
-    }
-}
-
 /// The verifier types — the finding vocabulary, aligned to `OperationOutcome`.
 pub mod validate {
     use alloc::{string::String, vec::Vec};
-
-    use crate::model::Resource;
 
     /// `OperationOutcome.issue.severity`.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1596,15 +1643,6 @@ pub mod validate {
         pub(crate) fn push(&mut self, severity: Severity, code: IssueType, path: &str, message: String) {
             self.issues.push(Issue { severity, code, path: path.into(), message });
         }
-    }
-
-    #[derive(Debug, Clone)]
-    pub struct Profile {
-        pub url: String,
-    }
-
-    pub trait Validator {
-        fn validate(&self, resource: &Resource, profile: &Profile) -> Report;
     }
 }
 
@@ -1810,7 +1848,8 @@ pub mod path {
                                     0xE0..=0xEF => 3,
                                     _ => 4,
                                 };
-                                let s = core::str::from_utf8(b.get(j..j + len).ok_or(Unsupported)?).map_err(|_| Unsupported)?;
+                                let s = core::str::from_utf8(b.get(j..j + len).ok_or(Unsupported)?)
+                                    .map_err(|_| Unsupported)?;
                                 out_s.push_str(s);
                                 j += len;
                             }
@@ -2499,7 +2538,11 @@ pub mod path {
                 let Some(it) = single(&coll)? else {
                     return Ok(vec![]);
                 };
-                if type_matches(item_type(it, operand, env)?, ty) { vec![it.clone()] } else { vec![] }
+                if type_matches(item_type(it, operand, env)?, ty) {
+                    vec![it.clone()]
+                } else {
+                    vec![]
+                }
             }
             Expr::Lit(Lit::Str(s)) => vec![Item::Str(s.clone())],
             Expr::Lit(Lit::Int(n)) => vec![Item::Int(*n)],
@@ -2627,7 +2670,8 @@ pub mod path {
                         })]
                     }
                     ("isDistinct", 0) => {
-                        let distinct = coll.iter().enumerate().all(|(i, a)| !coll[..i].iter().any(|b| items_equal(a, b)));
+                        let distinct =
+                            coll.iter().enumerate().all(|(i, a)| !coll[..i].iter().any(|b| items_equal(a, b)));
                         vec![Item::Bool(distinct)]
                     }
                     ("distinct", 0) => {
@@ -2665,7 +2709,8 @@ pub mod path {
                                 return Err(Unsupported);
                             };
                             for ext in d.child_instances("extension") {
-                                let matches = ext.child_instances("url").iter().any(|u| u.as_scalar() == Some(url.as_str()));
+                                let matches =
+                                    ext.child_instances("url").iter().any(|u| u.as_scalar() == Some(url.as_str()));
                                 if matches {
                                     out.push(Item::Node(ext));
                                 }
@@ -2735,7 +2780,9 @@ pub mod path {
                 match (num_of(a)?, num_of(b)?) {
                     (Some(x), Some(y)) => arith(*op, x, y)?.map(Item::Int).into_iter().collect(),
                     // `+` on strings concatenates.
-                    (None, None) if *op == Op::Add && is_text(a) && is_text(b) => vec![Item::Str(text_of(a)? + &text_of(b)?)],
+                    (None, None) if *op == Op::Add && is_text(a) && is_text(b) => {
+                        vec![Item::Str(text_of(a)? + &text_of(b)?)]
+                    }
                     _ => return Err(Unsupported),
                 }
             }
@@ -3151,11 +3198,19 @@ pub mod regex {
                     let min = self.number()?;
                     let max = if self.peek() == Some(',') {
                         self.i += 1;
-                        if self.peek() == Some('}') { None } else { Some(self.number()?) }
+                        if self.peek() == Some('}') {
+                            None
+                        } else {
+                            Some(self.number()?)
+                        }
                     } else {
                         Some(min)
                     };
-                    if self.peek() != Some('}') || max.is_some_and(|m| m < min) || min > MAX_REPEAT || max.is_some_and(|m| m > MAX_REPEAT) {
+                    if self.peek() != Some('}')
+                        || max.is_some_and(|m| m < min)
+                        || min > MAX_REPEAT
+                        || max.is_some_and(|m| m > MAX_REPEAT)
+                    {
                         return Err(Unsupported);
                     }
                     (min, max)
@@ -3433,60 +3488,6 @@ pub mod terminology {
     }
 }
 
-pub mod lower {
-    use alloc::string::String;
-
-    use crate::model::Resource;
-
-    #[derive(Debug, Clone)]
-    pub struct Mapping {
-        pub target_type: String,
-    }
-
-    pub trait Lower<T> {
-        fn lower(&self, source: &T, mapping: &Mapping) -> Resource;
-    }
-}
-
-pub mod audit {
-    use alloc::string::String;
-
-    use crate::model::Resource;
-
-    #[derive(Debug, Clone, Copy)]
-    pub enum Action {
-        Create,
-        Read,
-        Update,
-        Delete,
-        Execute,
-    }
-
-    #[derive(Debug, Clone, Copy)]
-    pub enum Outcome {
-        Success,
-        MinorFailure,
-        SeriousFailure,
-        MajorFailure,
-    }
-
-    #[derive(Debug, Clone)]
-    pub struct AuditRecord {
-        pub actor: String,
-        pub action: Action,
-        pub subject_ref: String,
-        pub outcome: Outcome,
-        pub recorded: String,
-        pub trace_id: Option<String>,
-    }
-
-    impl AuditRecord {
-        pub fn to_audit_event(&self) -> Resource {
-            Resource::new("AuditEvent", "{}")
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::{probe, validate_bytes};
@@ -3502,10 +3503,13 @@ mod tests {
 
     #[test]
     fn unprofiled_resource_is_valid_and_claims_no_profile() {
-        let r = probe_str(r#"{"resourceType":"Observation","status":"final","code":{"text":"HR"},"valueQuantity":{"value":60}}"#);
+        let r = probe_str(
+            r#"{"resourceType":"Observation","status":"final","code":{"text":"HR"},"valueQuantity":{"value":60}}"#,
+        );
         assert!(r.contains("\"valid\":true") && !r.contains("\"profile\""), "{r}");
         // a validator may carry a jurisdiction default for a resource type
-        let v = super::Validator::new().with_default_profile("http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient");
+        let v = super::Validator::new()
+            .with_default_profile("http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient");
         let bare = br#"{"resourceType":"Patient","active":true}"#;
         assert!(super::wire::report(&v.validate(bare)).contains("Patient.identifier is required"));
         assert!(super::wire::report(&super::validate_bytes(bare)).contains("\"valid\":true"));
@@ -3528,9 +3532,7 @@ mod tests {
 
     #[test]
     fn tricky_string_does_not_end_object_early() {
-        let r = probe_str(
-            &PATIENT_OK.replace("\"gender\"", "\"note\":\"a } \\\" tricky\",\"gender\""),
-        );
+        let r = probe_str(&PATIENT_OK.replace("\"gender\"", "\"note\":\"a } \\\" tricky\",\"gender\""));
         assert!(r.contains("\"valid\":true"), "{r}");
     }
 
@@ -3539,7 +3541,9 @@ mod tests {
     #[test]
     fn json_escapes_are_decoded() {
         use super::json::{parse, Value};
-        let v = parse(br#"{"a\u006de":"http:\/\/loinc.org","q":"say \"hi\"\n","emoji":"\ud83d\ude00","lone":"\ud83d"}"#).unwrap();
+        let v =
+            parse(br#"{"a\u006de":"http:\/\/loinc.org","q":"say \"hi\"\n","emoji":"\ud83d\ude00","lone":"\ud83d"}"#)
+                .unwrap();
         let Value::Object(kvs) = v else { panic!() };
         let get = |k: &str| kvs.iter().find(|(kk, _)| kk.as_ref() == k).map(|(_, v)| v.clone()).unwrap();
         assert_eq!(get("ame"), Value::Str("http://loinc.org".into()));
@@ -3575,7 +3579,9 @@ mod tests {
 
     #[test]
     fn patient_missing_mandatory_is_error() {
-        let r = probe_str(r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},"active":true}"#);
+        let r = probe_str(
+            r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},"active":true}"#,
+        );
         assert!(r.contains("Patient.identifier is required"), "{r}");
         assert!(r.contains("Patient.name is required"), "{r}");
         assert!(r.contains("Patient.gender is required"), "{r}");
@@ -3736,7 +3742,9 @@ mod tests {
     fn fhirpath_vs2_semantics() {
         use super::document::Parsed;
         use super::path::{check, parse, Verdict};
-        let vs2 = parse("(component.empty() and hasMember.empty()) implies (value.exists() or dataAbsentReason.exists())").unwrap();
+        let vs2 =
+            parse("(component.empty() and hasMember.empty()) implies (value.exists() or dataAbsentReason.exists())")
+                .unwrap();
         let has_value = Parsed::parse(br#"{"resourceType":"Observation","valueQuantity":{"value":1}}"#).unwrap();
         assert_eq!(check(&vs2, &has_value.doc()), Verdict::Pass);
         let has_component = Parsed::parse(br#"{"resourceType":"Observation","component":[{"code":{}}]}"#).unwrap();
@@ -3750,7 +3758,8 @@ mod tests {
         use super::document::Parsed;
         use super::path::{check, parse, Verdict};
         let e = parse("coding.where(system = 'http://loinc.org').exists()").unwrap();
-        let ok = Parsed::parse(br#"{"coding":[{"system":"http://snomed.info/sct"},{"system":"http://loinc.org"}]}"#).unwrap();
+        let ok = Parsed::parse(br#"{"coding":[{"system":"http://snomed.info/sct"},{"system":"http://loinc.org"}]}"#)
+            .unwrap();
         assert_eq!(check(&e, &ok.doc()), Verdict::Pass);
         let no = Parsed::parse(br#"{"coding":[{"system":"http://snomed.info/sct"}]}"#).unwrap();
         assert_eq!(check(&e, &no.doc()), Verdict::Fail);
@@ -3834,8 +3843,14 @@ mod tests {
     fn fhirpath_iif_select_all_extension() {
         use super::path::Verdict::{Fail, Pass};
         let d = r#"{"digits":["1","7"],"name":[{"family":"A"},{"family":"B"}],"extension":[{"url":"http://x/dar","valueCode":"unknown"},{"url":"http://x/other"}]}"#;
-        assert_eq!(fp("digits.select($this.toInteger()).select(iif($this < 5, $this * 2, $this * 2 - 9)).first() = 2", d), Pass);
-        assert_eq!(fp("digits.select($this.toInteger()).select(iif($this < 5, $this * 2, $this * 2 - 9)).last() = 5", d), Pass);
+        assert_eq!(
+            fp("digits.select($this.toInteger()).select(iif($this < 5, $this * 2, $this * 2 - 9)).first() = 2", d),
+            Pass
+        );
+        assert_eq!(
+            fp("digits.select($this.toInteger()).select(iif($this < 5, $this * 2, $this * 2 - 9)).last() = 5", d),
+            Pass
+        );
         assert_eq!(fp("iif(true, 'y', 'n') = 'y'", d), Pass);
         assert_eq!(fp("iif(nope.exists(), 'y', 'n') = 'n'", d), Pass);
         assert_eq!(fp("iif(false, 'y').empty()", d), Pass);
@@ -3884,15 +3899,22 @@ mod tests {
         use super::terminology::{Bundled, Chain, Membership, TerminologyProvider};
         use super::{validate_bytes, validate_bytes_with, wire};
         // telecom.system is bound (required) to contact-point-system, which is not bundled.
-        let patient = PATIENT_OK.replace("\"gender\"", "\"telecom\":[{\"system\":\"phone\",\"value\":\"1\"}],\"gender\"");
+        let patient =
+            PATIENT_OK.replace("\"gender\"", "\"telecom\":[{\"system\":\"phone\",\"value\":\"1\"}],\"gender\"");
         let bundled = wire::report(&validate_bytes(patient.as_bytes()));
-        assert!(bundled.contains("no bundled terminology for http://hl7.org/fhir/ValueSet/contact-point-system"), "{bundled}");
+        assert!(
+            bundled.contains("no bundled terminology for http://hl7.org/fhir/ValueSet/contact-point-system"),
+            "{bundled}"
+        );
 
         struct Host(Membership, core::cell::Cell<usize>);
         impl TerminologyProvider for Host {
             fn validate_code(&self, vs: &str, system: &str, code: &str) -> Membership {
                 self.1.set(self.1.get() + 1);
-                assert!(vs.starts_with("http://hl7.org/fhir/ValueSet/contact-point-system"), "asked about {vs} {system} {code}");
+                assert!(
+                    vs.starts_with("http://hl7.org/fhir/ValueSet/contact-point-system"),
+                    "asked about {vs} {system} {code}"
+                );
                 self.0
             }
         }
@@ -3903,7 +3925,10 @@ mod tests {
 
         let no = Host(Membership::NotMember, Default::default());
         let r = wire::report(&validate_bytes_with(patient.as_bytes(), &Chain(&[&Bundled, &no])));
-        assert!(r.contains("\"path\":\"Patient.telecom.system\",\"message\":\"'phone' is not in the bound value set\""), "{r}");
+        assert!(
+            r.contains("\"path\":\"Patient.telecom.system\",\"message\":\"'phone' is not in the bound value set\""),
+            "{r}"
+        );
         assert!(r.contains("\"valid\":false"), "{r}");
     }
 
@@ -3914,7 +3939,11 @@ mod tests {
         struct Only(&'static str);
         impl TerminologyProvider for Only {
             fn validate_code(&self, _vs: &str, _system: &str, code: &str) -> Membership {
-                if code == self.0 { Membership::Member } else { Membership::NotMember }
+                if code == self.0 {
+                    Membership::Member
+                } else {
+                    Membership::NotMember
+                }
             }
         }
         // Condition.clinicalStatus: required binding, CodeableConcept.
@@ -3947,7 +3976,7 @@ mod tests {
         let vs1 = parse("($this as dateTime).toString().length() >= 8").unwrap();
         assert_eq!(check_with(&vs1, &d.doc(), Some("dateTime"), None), Verdict::Fail);
         assert_eq!(check_with(&vs1, &d.doc(), Some("Period"), None), Verdict::Pass); // empty >= 8 is empty → passes
-        // `is` on a node whose type the table cannot give: unsupported, not guessed
+                                                                                     // `is` on a node whose type the table cannot give: unsupported, not guessed
         let other = parse("a is string").unwrap();
         let untyped = Parsed::parse(br#"{"resourceType":"Nope","a":"x"}"#).unwrap();
         assert_eq!(check_with(&other, &untyped.doc(), Some("Nope"), None), Verdict::Unsupported);
@@ -3958,7 +3987,9 @@ mod tests {
         use super::document::Parsed;
         use super::path::{check, check_with, parse, Verdict};
         // obs-7: a component must not repeat the observation's own code
-        let obs7 = parse("value.empty() or component.code.where(coding.intersect(%resource.code.coding).exists()).empty()").unwrap();
+        let obs7 =
+            parse("value.empty() or component.code.where(coding.intersect(%resource.code.coding).exists()).empty()")
+                .unwrap();
         let mk = |comp_code: &str| {
             format!(
                 r#"{{"resourceType":"Observation","code":{{"coding":[{{"system":"http://loinc.org","code":"85354-9"}}]}},"valueQuantity":{{"value":1}},"component":[{{"code":{{"coding":[{{"system":"http://loinc.org","code":"{comp_code}"}}]}}}}]}}"#
@@ -4001,7 +4032,7 @@ mod tests {
         assert_eq!(fp("'it\\'s' = 'it' + '\\'' + 's'", d), Pass); // FHIRPath source: 'it\'s'
         assert_eq!(fp("'\\u0041' = 'A'", d), Pass);
         assert!(super::path::parse("'\\q' = 'q'").is_err()); // not a FHIRPath escape: the parse is refused
-        // $index / $total: not in the core
+                                                             // $index / $total: not in the core
         assert!(super::path::parse("$index = 0").is_err());
         assert!(super::path::parse("$total").is_err());
     }
@@ -4011,7 +4042,7 @@ mod tests {
         use super::path::Verdict::{Fail, Pass, Unsupported};
         let d = r#"{"a":["x","y"],"one":["x"]}"#;
         assert_eq!(fp("false implies true implies false", d), Fail); // (false implies true) implies false
-        // more than one item in boolean context: skipped, never guessed
+                                                                     // more than one item in boolean context: skipped, never guessed
         assert_eq!(fp("a.not()", d), Unsupported);
         assert_eq!(fp("a and true", d), Unsupported);
         assert_eq!(fp("one and true", d), Pass);
@@ -4042,9 +4073,9 @@ mod tests {
         assert_eq!(fp("later < early", d), Pass); // 19:00+10:00 is 09:00Z — before 09:30Z
         assert_eq!(fp("early > later", d), Pass);
         assert_eq!(fp("(day = month).empty()", d), Pass); // different precision: empty
-        assert_eq!(fp("(day < h).empty()", d), Pass);     // date vs dateTime with tz: empty
+        assert_eq!(fp("(day < h).empty()", d), Pass); // date vs dateTime with tz: empty
         assert_eq!(fp("day < '2020-01-02'", d), Pass);
-        assert_eq!(fp("'b' > 'a'", d), Pass);            // plain text still compares
+        assert_eq!(fp("'b' > 'a'", d), Pass); // plain text still compares
         assert_eq!(fp("h < p", d), Fail);
     }
 
@@ -4111,7 +4142,7 @@ mod tests {
         assert_eq!(fp("a.trace('t').count() = 2", d), Pass);
         assert_eq!(fp("(true | false).anyTrue() and (true | false).allTrue().not() and (false).allFalse()", d), Pass);
         assert_eq!(fp("nope.allTrue()", d), Pass); // vacuous
-        // sdcqr-2's shape: every group's items have distinct linkIds
+                                                   // sdcqr-2's shape: every group's items have distinct linkIds
         assert_eq!(fp("repeat(item).select(item.linkId.isDistinct()).allTrue()", d), Pass);
     }
 
@@ -4164,7 +4195,12 @@ mod tests {
         assert_eq!(doc.instances("$this.value[x]")[0].fhir_type(), None);
         // descendants carry types
         let kinds: Vec<_> = doc.all_children().iter().map(|c| c.fhir_type()).collect();
-        assert!(kinds.contains(&Some("Quantity")) && kinds.contains(&Some("Patient")) && kinds.contains(&Some("BackboneElement")), "{kinds:?}");
+        assert!(
+            kinds.contains(&Some("Quantity"))
+                && kinds.contains(&Some("Patient"))
+                && kinds.contains(&Some("BackboneElement")),
+            "{kinds:?}"
+        );
     }
 
     #[test]
@@ -4189,7 +4225,12 @@ mod tests {
                 r#"{{"resourceType":"MedicationRequest","contained":[{{"resourceType":"Medication","id":"med","code":{{"text":"x"}}}}],"status":"active","intent":"order","medicationReference":{{"reference":"{reference}"}},"subject":{{"reference":"Patient/1"}}}}"#
             )
         };
-        let dom3 = super::generated::REGISTRY.iter().flat_map(|p| p.invariants.iter()).find(|i| i.key == "dom-3").unwrap().expression;
+        let dom3 = super::generated::REGISTRY
+            .iter()
+            .flat_map(|p| p.invariants.iter())
+            .find(|i| i.key == "dom-3")
+            .unwrap()
+            .expression;
         use super::document::Parsed;
         use super::path::{check_with, parse};
         let e = parse(dom3).unwrap();
@@ -4217,7 +4258,11 @@ mod tests {
         assert!(r.contains("\"profiles\":[\"US Core Patient Profile\",\"AU Core Patient\"]"), "{r}");
         // an AU-only finding shows up alongside the US ones
         let gender_bad = probe_str(&both.replace("\"male\"", "\"banana\""));
-        assert_eq!(gender_bad.matches("is not in the bound value set").count(), 1, "shared finding reported once: {gender_bad}");
+        assert_eq!(
+            gender_bad.matches("is not in the bound value set").count(),
+            1,
+            "shared finding reported once: {gender_bad}"
+        );
         let single = probe_str(PATIENT_OK);
         assert!(!single.contains("\"profiles\""), "{single}");
     }

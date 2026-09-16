@@ -31,3 +31,6 @@ done
 rm -f "$OUT"/*.rs
 python3 "$ROOT/tools/gen_all.py" --primaries "${#PRIMARIES[@]}" "$OUT" "$PROVENANCE" "${PRIMARIES[@]}" "${DEPS[@]}"
 python3 "$ROOT/tools/gen_typemap.py" "$R4" "$OUT" "$ROOT/crates/fhir-pods-core/src/typemap.rs"
+
+# generated output is formatted like the rest of the crate
+(cd "$ROOT" && cargo fmt -q --all)

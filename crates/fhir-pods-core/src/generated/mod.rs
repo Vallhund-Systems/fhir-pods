@@ -3,14 +3,25 @@
 
 use crate::compiled::CompiledProfile;
 
+pub mod address_identifier;
+pub mod ahpraprofession_details;
+pub mod ahpraregistration_details;
+pub mod associated_healthcareservice;
+pub mod au_accessionnumber;
+pub mod au_ahpraregistrationnumber;
+pub mod au_assigningauthority;
+pub mod au_australianbusinessnumber;
+pub mod au_australiancompanynumber;
+pub mod au_australianregistredbodynumber;
+pub mod au_careagencyemployeeidentifier;
 pub mod au_core_allergyintolerance;
 pub mod au_core_bloodpressure;
 pub mod au_core_bodyheight;
 pub mod au_core_bodytemp;
 pub mod au_core_bodyweight;
 pub mod au_core_condition;
-pub mod au_core_diagnosticresult_path;
 pub mod au_core_diagnosticresult;
+pub mod au_core_diagnosticresult_path;
 pub mod au_core_encounter;
 pub mod au_core_healthcareservice;
 pub mod au_core_heartrate;
@@ -29,9 +40,79 @@ pub mod au_core_resprate;
 pub mod au_core_rsg_sexassignedab;
 pub mod au_core_smokingstatus;
 pub mod au_core_waistcircum;
+pub mod au_cspregistrationnumber;
+pub mod au_cwlthseniorshealthcardnumber;
+pub mod au_deliverypointidentifier;
+pub mod au_dvanumber;
+pub mod au_employeenumber;
+pub mod au_etpprescriptionidentifier;
+pub mod au_gnafidentifier;
+pub mod au_healthcarecardnumber;
+pub mod au_hpii;
+pub mod au_hpio;
+pub mod au_ihi;
+pub mod au_insurancemembernumber;
+pub mod au_localdispenseidentifier;
+pub mod au_localorderidentifier;
+pub mod au_localprescriptionidentifier;
+pub mod au_localreportidentifier;
+pub mod au_locationspecificpracticenumber;
+pub mod au_medicalrecordnumber;
+pub mod au_medicarecardnumber;
+pub mod au_medicareprovidernumber;
+pub mod au_nataaccreditationnumber;
+pub mod au_natasitenumber;
+pub mod au_nationalprovideridentifieratorganisation;
+pub mod au_paididentifier;
+pub mod au_paioidentifier;
+pub mod au_pbsprescribernumber;
+pub mod au_pensionerconcessioncardnumber;
+pub mod au_pharmacyapprovalnumber;
+pub mod au_pi;
+pub mod au_receivingapplication;
+pub mod au_receivingfacility;
+pub mod au_residentialagedcareserviceidentifier;
+pub mod au_timezone;
+pub mod au_timezone_usage;
+pub mod author_related_person;
+pub mod change_description;
+pub mod closing_the_gap_registration;
+pub mod contact_purpose;
+pub mod date_accuracy_indicator;
+pub mod date_of_arrival;
+pub mod dispense_number;
+pub mod encounter_description;
+pub mod encryption_certificate_pem_x509;
 pub mod head_occipital_frontal_circumference_percentile;
+pub mod identifier_routability;
+pub mod ihi_record_status;
+pub mod ihi_status;
+pub mod ihi_verified_date;
+pub mod indigenous_status;
+pub mod information_recipient;
+pub mod ipa_allergyintolerance;
+pub mod ipa_condition;
+pub mod ipa_documentreference;
+pub mod ipa_immunization;
+pub mod ipa_medication;
+pub mod ipa_medicationrequest;
+pub mod ipa_medicationstatement;
+pub mod ipa_observation;
+pub mod ipa_patient;
+pub mod ipa_practitioner;
+pub mod ipa_practitionerrole;
+pub mod ipa_problem_list_item;
+pub mod medication_brand_name;
+pub mod medication_generic_name;
+pub mod medication_long_term;
+pub mod medication_strength;
+pub mod medication_type;
+pub mod name_context;
+pub mod no_fixed_address;
 pub mod pediatric_bmi_for_age;
 pub mod pediatric_weight_for_height;
+pub mod result_copies_to;
+pub mod subsidised_concurrent_supply;
 pub mod us_core_allergyintolerance;
 pub mod us_core_birthsex;
 pub mod us_core_blood_pressure;
@@ -88,100 +169,30 @@ pub mod us_core_specimen;
 pub mod us_core_tribal_affiliation;
 pub mod us_core_vital_signs;
 pub mod uscdi_requirement;
-pub mod ipa_allergyintolerance;
-pub mod ipa_condition;
-pub mod ipa_documentreference;
-pub mod ipa_immunization;
-pub mod ipa_medication;
-pub mod ipa_medicationrequest;
-pub mod ipa_medicationstatement;
-pub mod ipa_observation;
-pub mod ipa_patient;
-pub mod ipa_practitioner;
-pub mod ipa_practitionerrole;
-pub mod ipa_problem_list_item;
-pub mod address_identifier;
-pub mod ahpraprofession_details;
-pub mod ahpraregistration_details;
-pub mod associated_healthcareservice;
-pub mod au_accessionnumber;
-pub mod au_ahpraregistrationnumber;
-pub mod au_assigningauthority;
-pub mod au_australianbusinessnumber;
-pub mod au_australiancompanynumber;
-pub mod au_australianregistredbodynumber;
-pub mod au_careagencyemployeeidentifier;
-pub mod au_cspregistrationnumber;
-pub mod au_cwlthseniorshealthcardnumber;
-pub mod au_deliverypointidentifier;
-pub mod au_dvanumber;
-pub mod au_employeenumber;
-pub mod au_etpprescriptionidentifier;
-pub mod au_gnafidentifier;
-pub mod au_healthcarecardnumber;
-pub mod au_hpii;
-pub mod au_hpio;
-pub mod au_ihi;
-pub mod au_insurancemembernumber;
-pub mod au_localdispenseidentifier;
-pub mod au_localorderidentifier;
-pub mod au_localprescriptionidentifier;
-pub mod au_localreportidentifier;
-pub mod au_locationspecificpracticenumber;
-pub mod au_medicalrecordnumber;
-pub mod au_medicarecardnumber;
-pub mod au_medicareprovidernumber;
-pub mod au_nataaccreditationnumber;
-pub mod au_natasitenumber;
-pub mod au_nationalprovideridentifieratorganisation;
-pub mod au_paididentifier;
-pub mod au_paioidentifier;
-pub mod au_pbsprescribernumber;
-pub mod au_pensionerconcessioncardnumber;
-pub mod au_pharmacyapprovalnumber;
-pub mod au_pi;
-pub mod au_receivingapplication;
-pub mod au_receivingfacility;
-pub mod au_residentialagedcareserviceidentifier;
-pub mod au_timezone_usage;
-pub mod au_timezone;
-pub mod author_related_person;
-pub mod change_description;
-pub mod closing_the_gap_registration;
-pub mod contact_purpose;
-pub mod date_accuracy_indicator;
-pub mod date_of_arrival;
-pub mod dispense_number;
-pub mod encounter_description;
-pub mod encryption_certificate_pem_x509;
-pub mod identifier_routability;
-pub mod ihi_record_status;
-pub mod ihi_status;
-pub mod ihi_verified_date;
-pub mod indigenous_status;
-pub mod information_recipient;
-pub mod medication_brand_name;
-pub mod medication_generic_name;
-pub mod medication_long_term;
-pub mod medication_strength;
-pub mod medication_type;
-pub mod name_context;
-pub mod no_fixed_address;
-pub mod result_copies_to;
-pub mod subsidised_concurrent_supply;
 pub mod vaccine_serial_number;
 pub mod veteran_status;
 
 /// Every compiled profile, looked up by canonical URL (`meta.profile`, or a slice's `profile`).
 pub static REGISTRY: &[&CompiledProfile] = &[
+    &address_identifier::PROFILE,
+    &ahpraprofession_details::PROFILE,
+    &ahpraregistration_details::PROFILE,
+    &associated_healthcareservice::PROFILE,
+    &au_accessionnumber::PROFILE,
+    &au_ahpraregistrationnumber::PROFILE,
+    &au_assigningauthority::PROFILE,
+    &au_australianbusinessnumber::PROFILE,
+    &au_australiancompanynumber::PROFILE,
+    &au_australianregistredbodynumber::PROFILE,
+    &au_careagencyemployeeidentifier::PROFILE,
     &au_core_allergyintolerance::PROFILE,
     &au_core_bloodpressure::PROFILE,
     &au_core_bodyheight::PROFILE,
     &au_core_bodytemp::PROFILE,
     &au_core_bodyweight::PROFILE,
     &au_core_condition::PROFILE,
-    &au_core_diagnosticresult_path::PROFILE,
     &au_core_diagnosticresult::PROFILE,
+    &au_core_diagnosticresult_path::PROFILE,
     &au_core_encounter::PROFILE,
     &au_core_healthcareservice::PROFILE,
     &au_core_heartrate::PROFILE,
@@ -200,9 +211,79 @@ pub static REGISTRY: &[&CompiledProfile] = &[
     &au_core_rsg_sexassignedab::PROFILE,
     &au_core_smokingstatus::PROFILE,
     &au_core_waistcircum::PROFILE,
+    &au_cspregistrationnumber::PROFILE,
+    &au_cwlthseniorshealthcardnumber::PROFILE,
+    &au_deliverypointidentifier::PROFILE,
+    &au_dvanumber::PROFILE,
+    &au_employeenumber::PROFILE,
+    &au_etpprescriptionidentifier::PROFILE,
+    &au_gnafidentifier::PROFILE,
+    &au_healthcarecardnumber::PROFILE,
+    &au_hpii::PROFILE,
+    &au_hpio::PROFILE,
+    &au_ihi::PROFILE,
+    &au_insurancemembernumber::PROFILE,
+    &au_localdispenseidentifier::PROFILE,
+    &au_localorderidentifier::PROFILE,
+    &au_localprescriptionidentifier::PROFILE,
+    &au_localreportidentifier::PROFILE,
+    &au_locationspecificpracticenumber::PROFILE,
+    &au_medicalrecordnumber::PROFILE,
+    &au_medicarecardnumber::PROFILE,
+    &au_medicareprovidernumber::PROFILE,
+    &au_nataaccreditationnumber::PROFILE,
+    &au_natasitenumber::PROFILE,
+    &au_nationalprovideridentifieratorganisation::PROFILE,
+    &au_paididentifier::PROFILE,
+    &au_paioidentifier::PROFILE,
+    &au_pbsprescribernumber::PROFILE,
+    &au_pensionerconcessioncardnumber::PROFILE,
+    &au_pharmacyapprovalnumber::PROFILE,
+    &au_pi::PROFILE,
+    &au_receivingapplication::PROFILE,
+    &au_receivingfacility::PROFILE,
+    &au_residentialagedcareserviceidentifier::PROFILE,
+    &au_timezone::PROFILE,
+    &au_timezone_usage::PROFILE,
+    &author_related_person::PROFILE,
+    &change_description::PROFILE,
+    &closing_the_gap_registration::PROFILE,
+    &contact_purpose::PROFILE,
+    &date_accuracy_indicator::PROFILE,
+    &date_of_arrival::PROFILE,
+    &dispense_number::PROFILE,
+    &encounter_description::PROFILE,
+    &encryption_certificate_pem_x509::PROFILE,
     &head_occipital_frontal_circumference_percentile::PROFILE,
+    &identifier_routability::PROFILE,
+    &ihi_record_status::PROFILE,
+    &ihi_status::PROFILE,
+    &ihi_verified_date::PROFILE,
+    &indigenous_status::PROFILE,
+    &information_recipient::PROFILE,
+    &ipa_allergyintolerance::PROFILE,
+    &ipa_condition::PROFILE,
+    &ipa_documentreference::PROFILE,
+    &ipa_immunization::PROFILE,
+    &ipa_medication::PROFILE,
+    &ipa_medicationrequest::PROFILE,
+    &ipa_medicationstatement::PROFILE,
+    &ipa_observation::PROFILE,
+    &ipa_patient::PROFILE,
+    &ipa_practitioner::PROFILE,
+    &ipa_practitionerrole::PROFILE,
+    &ipa_problem_list_item::PROFILE,
+    &medication_brand_name::PROFILE,
+    &medication_generic_name::PROFILE,
+    &medication_long_term::PROFILE,
+    &medication_strength::PROFILE,
+    &medication_type::PROFILE,
+    &name_context::PROFILE,
+    &no_fixed_address::PROFILE,
     &pediatric_bmi_for_age::PROFILE,
     &pediatric_weight_for_height::PROFILE,
+    &result_copies_to::PROFILE,
+    &subsidised_concurrent_supply::PROFILE,
     &us_core_allergyintolerance::PROFILE,
     &us_core_birthsex::PROFILE,
     &us_core_blood_pressure::PROFILE,
@@ -259,87 +340,6 @@ pub static REGISTRY: &[&CompiledProfile] = &[
     &us_core_tribal_affiliation::PROFILE,
     &us_core_vital_signs::PROFILE,
     &uscdi_requirement::PROFILE,
-    &ipa_allergyintolerance::PROFILE,
-    &ipa_condition::PROFILE,
-    &ipa_documentreference::PROFILE,
-    &ipa_immunization::PROFILE,
-    &ipa_medication::PROFILE,
-    &ipa_medicationrequest::PROFILE,
-    &ipa_medicationstatement::PROFILE,
-    &ipa_observation::PROFILE,
-    &ipa_patient::PROFILE,
-    &ipa_practitioner::PROFILE,
-    &ipa_practitionerrole::PROFILE,
-    &ipa_problem_list_item::PROFILE,
-    &address_identifier::PROFILE,
-    &ahpraprofession_details::PROFILE,
-    &ahpraregistration_details::PROFILE,
-    &associated_healthcareservice::PROFILE,
-    &au_accessionnumber::PROFILE,
-    &au_ahpraregistrationnumber::PROFILE,
-    &au_assigningauthority::PROFILE,
-    &au_australianbusinessnumber::PROFILE,
-    &au_australiancompanynumber::PROFILE,
-    &au_australianregistredbodynumber::PROFILE,
-    &au_careagencyemployeeidentifier::PROFILE,
-    &au_cspregistrationnumber::PROFILE,
-    &au_cwlthseniorshealthcardnumber::PROFILE,
-    &au_deliverypointidentifier::PROFILE,
-    &au_dvanumber::PROFILE,
-    &au_employeenumber::PROFILE,
-    &au_etpprescriptionidentifier::PROFILE,
-    &au_gnafidentifier::PROFILE,
-    &au_healthcarecardnumber::PROFILE,
-    &au_hpii::PROFILE,
-    &au_hpio::PROFILE,
-    &au_ihi::PROFILE,
-    &au_insurancemembernumber::PROFILE,
-    &au_localdispenseidentifier::PROFILE,
-    &au_localorderidentifier::PROFILE,
-    &au_localprescriptionidentifier::PROFILE,
-    &au_localreportidentifier::PROFILE,
-    &au_locationspecificpracticenumber::PROFILE,
-    &au_medicalrecordnumber::PROFILE,
-    &au_medicarecardnumber::PROFILE,
-    &au_medicareprovidernumber::PROFILE,
-    &au_nataaccreditationnumber::PROFILE,
-    &au_natasitenumber::PROFILE,
-    &au_nationalprovideridentifieratorganisation::PROFILE,
-    &au_paididentifier::PROFILE,
-    &au_paioidentifier::PROFILE,
-    &au_pbsprescribernumber::PROFILE,
-    &au_pensionerconcessioncardnumber::PROFILE,
-    &au_pharmacyapprovalnumber::PROFILE,
-    &au_pi::PROFILE,
-    &au_receivingapplication::PROFILE,
-    &au_receivingfacility::PROFILE,
-    &au_residentialagedcareserviceidentifier::PROFILE,
-    &au_timezone_usage::PROFILE,
-    &au_timezone::PROFILE,
-    &author_related_person::PROFILE,
-    &change_description::PROFILE,
-    &closing_the_gap_registration::PROFILE,
-    &contact_purpose::PROFILE,
-    &date_accuracy_indicator::PROFILE,
-    &date_of_arrival::PROFILE,
-    &dispense_number::PROFILE,
-    &encounter_description::PROFILE,
-    &encryption_certificate_pem_x509::PROFILE,
-    &identifier_routability::PROFILE,
-    &ihi_record_status::PROFILE,
-    &ihi_status::PROFILE,
-    &ihi_verified_date::PROFILE,
-    &indigenous_status::PROFILE,
-    &information_recipient::PROFILE,
-    &medication_brand_name::PROFILE,
-    &medication_generic_name::PROFILE,
-    &medication_long_term::PROFILE,
-    &medication_strength::PROFILE,
-    &medication_type::PROFILE,
-    &name_context::PROFILE,
-    &no_fixed_address::PROFILE,
-    &result_copies_to::PROFILE,
-    &subsidised_concurrent_supply::PROFILE,
     &vaccine_serial_number::PROFILE,
     &veteran_status::PROFILE,
 ];
