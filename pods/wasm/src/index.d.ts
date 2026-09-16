@@ -45,6 +45,13 @@ export interface Pod {
   validate(json: string | Uint8Array): Validation;
   /** Validate a resource; the spec `OperationOutcome`. */
   operationOutcome(json: string | Uint8Array): OperationOutcome;
+  /**
+   * The selected profile's must-support elements the resource leaves empty
+   * (where their parent is present). Information for a client certifying
+   * against the IG — never part of the validation report; empty for
+   * unparseable input or no applicable profile.
+   */
+  mustSupportGaps(json: string | Uint8Array): string[];
   /** Same as {@link validate}, unparsed — for passing straight through. */
   validateText(json: string | Uint8Array): string;
   /** Same as {@link operationOutcome}, unparsed — for the wire. */

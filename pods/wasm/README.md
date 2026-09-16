@@ -10,9 +10,9 @@ JS  ──validate(json)──►  hand-written wrapper  ──C ABI──►  R
 ```
 
 No wasm-bindgen, no glue runtime: the wrapper is ~40 lines over `pod_alloc` /
-`pod_free` and the two entrypoints. The `.wasm` carries the 156 compiled
-AU Core + US Core profiles (and the AU Base / US Core datatypes they inherit),
-the bundled value sets and the FHIRPath engine — ~300 KB, 73 KB gzipped.
+`pod_free` and the entrypoints. The `.wasm` carries the 168 compiled
+AU Core + US Core + IPA profiles (and the datatypes they inherit),
+the bundled value sets and the FHIRPath engine — ~330 KB, 83 KB gzipped.
 
 ## Build
 
@@ -41,6 +41,14 @@ const outcome = pod.operationOutcome(JSON.stringify(observation));
 `validate` never throws for bad input: unparseable JSON is a `fatal` issue in
 the report. Both calls are synchronous — tens of microseconds for a profiled
 resource.
+
+### Must-support (information, not validation)
+
+```js
+pod.mustSupportGaps(JSON.stringify(patient));
+// ["Patient.telecom.system", "Patient.birthDate", …] — must-support elements
+// the selected profile expects a client to populate when it has the data
+```
 
 ### The terminology seam
 

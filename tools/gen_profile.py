@@ -159,6 +159,8 @@ def invariants_of(sd):
             # dateTime` resolve against, and — for a choice `[x]` — which
             # concrete keys the engine enumerates.
             types = [t.get("code") for t in e.get("type", []) if t.get("code")]
+            if "." not in path:
+                types = [sd.get("type")]  # the root: its type is the resource
             out.append((path, key, c.get("severity", "error"), c.get("human", ""), expr, types))
     return out
 

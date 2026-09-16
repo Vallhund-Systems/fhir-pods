@@ -56,3 +56,13 @@ export function validate(json: string): Validation {
 export function operationOutcome(json: string): OperationOutcome {
   return JSON.parse(FhirPodsExpoModule.operationOutcome(json)) as OperationOutcome;
 }
+
+/**
+ * The selected profile's must-support elements the resource leaves empty
+ * (where their parent is present). Information for a client certifying
+ * against the IG — never part of the validation report; empty for
+ * unparseable input or no applicable profile.
+ */
+export function mustSupportGaps(json: string): string[] {
+  return (JSON.parse(FhirPodsExpoModule.mustSupport(json)) as { mustSupportGaps: string[] }).mustSupportGaps;
+}

@@ -3,7 +3,7 @@
 // WebAssembly does (browser, edge runtimes, Node, Bun, Deno).
 
 /** The ABI this wrapper speaks; a module reporting anything else is refused. */
-export const ABI_VERSION = 2;
+export const ABI_VERSION = 3;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -66,6 +66,7 @@ export async function instantiate(source, options = {}) {
     abiVersion: abi,
     validate: (json) => JSON.parse(call(validate, json)),
     operationOutcome: (json) => JSON.parse(call(outcome, json)),
+    mustSupportGaps: (json) => JSON.parse(call(ex.fhir_pods_must_support, json)).mustSupportGaps,
     validateText: (json) => call(validate, json),
     operationOutcomeText: (json) => call(outcome, json),
   };

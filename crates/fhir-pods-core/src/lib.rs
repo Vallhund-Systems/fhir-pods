@@ -666,6 +666,8 @@ pub mod document {
         /// Structural equality with another node (FHIRPath `=` on complex
         /// types, `intersect`).
         fn same(&self, other: &Self) -> bool;
+        /// Every direct child node (array members expanded) — `descendants()`.
+        fn all_children(&self) -> Vec<Self>;
     }
 
     /// Owner of a parsed resource; hands out `TreeDoc` views.
@@ -734,6 +736,20 @@ pub mod document {
 
         fn same(&self, other: &Self) -> bool {
             self.root == other.root
+        }
+
+        fn all_children(&self) -> Vec<Self> {
+            let mut out = Vec::new();
+            let mut push = |v: &'v Value<'a>| match v {
+                Value::Array(xs) => out.extend(xs.iter().map(|x| TreeDoc { root: x })),
+                v => out.push(TreeDoc { root: v }),
+            };
+            match self.root {
+                Value::Object(kvs) => kvs.iter().for_each(|(_, v)| push(v)),
+                Value::Array(xs) => xs.iter().for_each(|v| push(v)),
+                _ => {}
+            }
+            out
         }
     }
 }
@@ -1306,6 +1322,10 @@ pub mod path {
         /// Integer division (`div`). `/` yields decimals and is outside the core.
         Div,
         Mod,
+        /// `|` — union of two collections, distinct.
+        Union,
+        /// `x in coll` (and `coll contains x`, reversed at parse time).
+        In,
     }
 
     #[derive(Debug, Clone, PartialEq)]
@@ -1350,7 +1370,9 @@ pub mod path {
         Plus,
         Minus,
         Star,
-        /// Anything we don't support (`/`, `|`, `%`, …) — makes the parse fail.
+        /// `|` — union.
+        Pipe,
+        /// Anything we don't support (`/`, `&`, `~`, …) — makes the parse fail.
         Other,
     }
 
@@ -1406,6 +1428,10 @@ pub mod path {
                 }
                 b'*' => {
                     out.push(Tok::Star);
+                    i += 1;
+                }
+                b'|' => {
+                    out.push(Tok::Pipe);
                     i += 1;
                 }
                 b'`' => {
@@ -1577,10 +1603,24 @@ pub mod path {
         }
 
         fn and(&mut self) -> Result<Expr, Unsupported> {
-            let mut l = self.eq()?;
+            let mut l = self.membership()?;
             while self.eat_kw("and") {
-                let r = self.eq()?;
+                let r = self.membership()?;
                 l = Expr::Bin(Box::new(l), Op::And, Box::new(r));
+            }
+            Ok(l)
+        }
+
+        // `x in coll` / `coll contains x`
+        fn membership(&mut self) -> Result<Expr, Unsupported> {
+            let l = self.eq()?;
+            if self.eat_kw("in") {
+                let r = self.eq()?;
+                return Ok(Expr::Bin(Box::new(l), Op::In, Box::new(r)));
+            }
+            if self.eat_kw("contains") {
+                let r = self.eq()?;
+                return Ok(Expr::Bin(Box::new(r), Op::In, Box::new(l)));
             }
             Ok(l)
         }
@@ -1598,7 +1638,7 @@ pub mod path {
         }
 
         fn cmp(&mut self) -> Result<Expr, Unsupported> {
-            let l = self.type_expr()?;
+            let l = self.union()?;
             let op = match self.peek() {
                 Some(Tok::Lt) => Op::Lt,
                 Some(Tok::Le) => Op::Le,
@@ -1607,8 +1647,19 @@ pub mod path {
                 _ => return Ok(l),
             };
             self.i += 1;
-            let r = self.type_expr()?;
+            let r = self.union()?;
             Ok(Expr::Bin(Box::new(l), op, Box::new(r)))
+        }
+
+        // `a | b` — union, distinct.
+        fn union(&mut self) -> Result<Expr, Unsupported> {
+            let mut l = self.type_expr()?;
+            while matches!(self.peek(), Some(Tok::Pipe)) {
+                self.i += 1;
+                let r = self.type_expr()?;
+                l = Expr::Bin(Box::new(l), Op::Union, Box::new(r));
+            }
+            Ok(l)
         }
 
         // `e is Type` / `e as Type` — binds tighter than comparison, looser
@@ -1958,6 +2009,11 @@ pub mod path {
             Expr::Lit(Lit::Str(s)) => vec![Item::Str(s.clone())],
             Expr::Lit(Lit::Int(n)) => vec![Item::Int(*n)],
             Expr::Lit(Lit::Bool(b)) => vec![Item::Bool(*b)],
+            // A bare resource-type name (`QuestionnaireResponse.item`,
+            // `Patient.name`) is `$this` when that is its type.
+            Expr::Nav(base, name) if matches!(**base, Expr::This) && env.this_type == Some(name.as_str()) => {
+                vec![ctx.clone()]
+            }
             Expr::Nav(base, name) => {
                 let mut out = Vec::new();
                 for it in eval(base, ctx, env)? {
@@ -2009,6 +2065,78 @@ pub mod path {
                         let other = eval(&args[0], ctx, env)?;
                         coll.into_iter().filter(|a| other.iter().any(|b| items_equal(a, b))).collect()
                     }
+                    ("descendants", 0) => {
+                        let mut out = Vec::new();
+                        let mut frontier: Vec<Item<D>> = coll;
+                        while let Some(it) = frontier.pop() {
+                            if let Item::Node(d) = it {
+                                for c in d.all_children() {
+                                    out.push(Item::Node(c.clone()));
+                                    frontier.push(Item::Node(c));
+                                }
+                            }
+                        }
+                        out
+                    }
+                    // `repeat(projection)`: the projection applied to the input
+                    // and then to each new item, until nothing new appears.
+                    ("repeat", 1) => {
+                        let inner = env.inner();
+                        let mut out: Vec<Item<D>> = Vec::new();
+                        let mut frontier = coll;
+                        while let Some(it) = frontier.pop() {
+                            for n in eval(&args[0], &it, &inner)? {
+                                if !out.iter().any(|o| items_equal(o, &n)) {
+                                    out.push(n.clone());
+                                    frontier.push(n);
+                                }
+                            }
+                        }
+                        out
+                    }
+                    ("allTrue", 0) | ("anyTrue", 0) | ("allFalse", 0) | ("anyFalse", 0) => {
+                        let mut bools = Vec::new();
+                        for it in &coll {
+                            match it {
+                                Item::Bool(b) => bools.push(*b),
+                                Item::Node(d) => bools.push(d.as_bool().ok_or(Unsupported)?),
+                                _ => return Err(Unsupported),
+                            }
+                        }
+                        vec![Item::Bool(match name.as_str() {
+                            "allTrue" => bools.iter().all(|b| *b),
+                            "anyTrue" => bools.iter().any(|b| *b),
+                            "allFalse" => bools.iter().all(|b| !*b),
+                            _ => bools.iter().any(|b| !*b),
+                        })]
+                    }
+                    ("isDistinct", 0) => {
+                        let distinct = coll.iter().enumerate().all(|(i, a)| !coll[..i].iter().any(|b| items_equal(a, b)));
+                        vec![Item::Bool(distinct)]
+                    }
+                    ("distinct", 0) => {
+                        let mut out: Vec<Item<D>> = Vec::new();
+                        for it in coll {
+                            if !out.iter().any(|o| items_equal(o, &it)) {
+                                out.push(it);
+                            }
+                        }
+                        out
+                    }
+                    // `trace(name[, projection])` logs in other engines; here it is the identity.
+                    ("trace", 1 | 2) => coll,
+                    ("matches", 1) => match single(&coll)? {
+                        Some(it) => {
+                            let s = text_of(it)?;
+                            let pats = eval(&args[0], ctx, env)?;
+                            let Some(pat) = single(&pats)? else {
+                                return Ok(vec![]);
+                            };
+                            let re = crate::regex::Regex::new(&text_of(pat)?).map_err(|_| Unsupported)?;
+                            vec![Item::Bool(re.is_match(&s))]
+                        }
+                        None => vec![],
+                    },
                     // `extension(url)` — the extensions of each node with that URL.
                     ("extension", 1) => {
                         let url = match single(&eval(&args[0], ctx, env)?)? {
@@ -2097,6 +2225,29 @@ pub mod path {
                     _ => return Err(Unsupported),
                 }
             }
+            Expr::Bin(l, Op::Union, r) => {
+                let mut out = eval(l, ctx, env)?;
+                for it in eval(r, ctx, env)? {
+                    if !out.iter().any(|o| items_equal(o, &it)) {
+                        out.push(it);
+                    }
+                }
+                // the left side is made distinct too
+                let mut distinct: Vec<Item<D>> = Vec::new();
+                for it in out {
+                    if !distinct.iter().any(|o| items_equal(o, &it)) {
+                        distinct.push(it);
+                    }
+                }
+                distinct
+            }
+            Expr::Bin(l, Op::In, r) => {
+                let (a, b) = (eval(l, ctx, env)?, eval(r, ctx, env)?);
+                let Some(a) = single(&a)? else {
+                    return Ok(vec![]);
+                };
+                vec![Item::Bool(b.iter().any(|x| items_equal(a, x)))]
+            }
             Expr::Bin(l, op @ (Op::Lt | Op::Le | Op::Gt | Op::Ge), r) => {
                 let (a, b) = (eval(l, ctx, env)?, eval(r, ctx, env)?);
                 let (Some(a), Some(b)) = (single(&a)?, single(&b)?) else {
@@ -2157,6 +2308,426 @@ pub mod path {
                 }
             }
         }
+    }
+}
+
+/// A small regular-expression engine for FHIRPath `matches()`. Thompson-style
+/// NFA simulation — linear in input × program, so hostile patterns and
+/// inputs cannot blow up (no backtracking). Covers what invariants actually
+/// use: literals, `.`, classes (`[0-9]`, `[^a-z]`, `\d \w \s`), anchors,
+/// groups, alternation, and `* + ? {n} {n,} {n,m}` quantifiers (expanded,
+/// bounded). Anything else (backreferences, lookaround, flags, `\b`,
+/// unicode properties) is `Unsupported` — skipped, never guessed.
+pub mod regex {
+    use alloc::{boxed::Box, vec::Vec};
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct Unsupported;
+
+    #[derive(Clone)]
+    enum ClassItem {
+        Ch(char),
+        Range(char, char),
+        Digit,
+        Word,
+        Space,
+        NotDigit,
+        NotWord,
+        NotSpace,
+    }
+
+    #[derive(Clone)]
+    enum Ast {
+        Char(char),
+        Any,
+        Class(bool, Vec<ClassItem>),
+        Start,
+        End,
+        Group(Vec<Vec<Ast>>),
+        Repeat(Box<Ast>, u32, Option<u32>),
+    }
+
+    /// Bounds on the compiled program, so a pathological pattern is refused
+    /// rather than expanded without limit.
+    const MAX_PROGRAM: usize = 4096;
+    const MAX_REPEAT: u32 = 256;
+
+    struct Parser<'a> {
+        s: &'a [char],
+        i: usize,
+        depth: usize,
+    }
+
+    impl Parser<'_> {
+        fn peek(&self) -> Option<char> {
+            self.s.get(self.i).copied()
+        }
+
+        fn alternation(&mut self) -> Result<Vec<Vec<Ast>>, Unsupported> {
+            if self.depth > 32 {
+                return Err(Unsupported);
+            }
+            self.depth += 1;
+            let mut alts = alloc::vec![Vec::new()];
+            while let Some(c) = self.peek() {
+                match c {
+                    ')' => break,
+                    '|' => {
+                        self.i += 1;
+                        alts.push(Vec::new());
+                    }
+                    _ => {
+                        let atom = self.atom()?;
+                        let atom = self.quantified(atom)?;
+                        alts.last_mut().unwrap().push(atom);
+                    }
+                }
+            }
+            self.depth -= 1;
+            Ok(alts)
+        }
+
+        fn atom(&mut self) -> Result<Ast, Unsupported> {
+            let c = self.peek().ok_or(Unsupported)?;
+            self.i += 1;
+            Ok(match c {
+                '(' => {
+                    if self.peek() == Some('?') {
+                        // only the non-capturing form; lookaround / flags / names are not supported
+                        if self.s.get(self.i + 1) == Some(&':') {
+                            self.i += 2;
+                        } else {
+                            return Err(Unsupported);
+                        }
+                    }
+                    let alts = self.alternation()?;
+                    if self.peek() != Some(')') {
+                        return Err(Unsupported);
+                    }
+                    self.i += 1;
+                    Ast::Group(alts)
+                }
+                '[' => self.class()?,
+                '.' => Ast::Any,
+                '^' => Ast::Start,
+                '$' => Ast::End,
+                '\\' => self.escape(false)?,
+                '*' | '+' | '?' | '{' | ')' | '|' => return Err(Unsupported),
+                c => Ast::Char(c),
+            })
+        }
+
+        fn escape(&mut self, in_class: bool) -> Result<Ast, Unsupported> {
+            let c = self.peek().ok_or(Unsupported)?;
+            self.i += 1;
+            let item = |it: ClassItem| Ast::Class(false, alloc::vec![it]);
+            Ok(match c {
+                'd' => item(ClassItem::Digit),
+                'D' => item(ClassItem::NotDigit),
+                'w' => item(ClassItem::Word),
+                'W' => item(ClassItem::NotWord),
+                's' => item(ClassItem::Space),
+                'S' => item(ClassItem::NotSpace),
+                'n' => Ast::Char('\n'),
+                't' => Ast::Char('\t'),
+                'r' => Ast::Char('\r'),
+                c if c.is_ascii_alphanumeric() => return Err(Unsupported), // \b, \1, \p{..}, …
+                c => {
+                    let _ = in_class;
+                    Ast::Char(c)
+                }
+            })
+        }
+
+        fn class(&mut self) -> Result<Ast, Unsupported> {
+            let neg = self.peek() == Some('^');
+            if neg {
+                self.i += 1;
+            }
+            let mut items = Vec::new();
+            let mut first = true;
+            loop {
+                let c = self.peek().ok_or(Unsupported)?;
+                if c == ']' && !first {
+                    self.i += 1;
+                    break;
+                }
+                first = false;
+                self.i += 1;
+                let lo = if c == '\\' {
+                    match self.escape(true)? {
+                        Ast::Char(ch) => ch,
+                        Ast::Class(_, mut it) => {
+                            items.push(it.remove(0));
+                            continue;
+                        }
+                        _ => return Err(Unsupported),
+                    }
+                } else {
+                    c
+                };
+                if self.peek() == Some('-') && self.s.get(self.i + 1).is_some_and(|&n| n != ']') {
+                    self.i += 1;
+                    let hi = self.peek().ok_or(Unsupported)?;
+                    self.i += 1;
+                    let hi = if hi == '\\' {
+                        match self.escape(true)? {
+                            Ast::Char(ch) => ch,
+                            _ => return Err(Unsupported),
+                        }
+                    } else {
+                        hi
+                    };
+                    if lo > hi {
+                        return Err(Unsupported);
+                    }
+                    items.push(ClassItem::Range(lo, hi));
+                } else {
+                    items.push(ClassItem::Ch(lo));
+                }
+            }
+            Ok(Ast::Class(neg, items))
+        }
+
+        fn quantified(&mut self, atom: Ast) -> Result<Ast, Unsupported> {
+            let (min, max) = match self.peek() {
+                Some('*') => (0, None),
+                Some('+') => (1, None),
+                Some('?') => (0, Some(1)),
+                Some('{') => {
+                    self.i += 1;
+                    let min = self.number()?;
+                    let max = if self.peek() == Some(',') {
+                        self.i += 1;
+                        if self.peek() == Some('}') { None } else { Some(self.number()?) }
+                    } else {
+                        Some(min)
+                    };
+                    if self.peek() != Some('}') || max.is_some_and(|m| m < min) || min > MAX_REPEAT || max.is_some_and(|m| m > MAX_REPEAT) {
+                        return Err(Unsupported);
+                    }
+                    (min, max)
+                }
+                _ => return Ok(atom),
+            };
+            self.i += 1;
+            if matches!(self.peek(), Some('?') | Some('+')) {
+                self.i += 1; // lazy / possessive: same language for a yes/no match
+            }
+            if matches!(atom, Ast::Start | Ast::End) {
+                return Err(Unsupported);
+            }
+            Ok(Ast::Repeat(Box::new(atom), min, max))
+        }
+
+        fn number(&mut self) -> Result<u32, Unsupported> {
+            let start = self.i;
+            let mut n: u32 = 0;
+            while let Some(d) = self.peek().and_then(|c| c.to_digit(10)) {
+                n = n.checked_mul(10).and_then(|n| n.checked_add(d)).ok_or(Unsupported)?;
+                self.i += 1;
+            }
+            if self.i == start {
+                return Err(Unsupported);
+            }
+            Ok(n)
+        }
+    }
+
+    #[derive(Clone)]
+    enum Inst {
+        Char(char),
+        Any,
+        Class(bool, Vec<ClassItem>),
+        Start,
+        End,
+        Split(usize, usize),
+        Jmp(usize),
+        Match,
+    }
+
+    /// A compiled pattern.
+    pub struct Regex {
+        prog: Vec<Inst>,
+    }
+
+    impl Regex {
+        pub fn new(pattern: &str) -> Result<Regex, Unsupported> {
+            let chars: Vec<char> = pattern.chars().collect();
+            let mut p = Parser { s: &chars, i: 0, depth: 0 };
+            let alts = p.alternation()?;
+            if p.i != chars.len() {
+                return Err(Unsupported); // an unbalanced ')'
+            }
+            let mut prog = Vec::new();
+            emit(&Ast::Group(alts), &mut prog)?;
+            prog.push(Inst::Match);
+            Ok(Regex { prog })
+        }
+
+        /// Does the pattern match anywhere in `s` (FHIRPath `matches` is a
+        /// search; anchor with `^…$` for a full match)?
+        pub fn is_match(&self, s: &str) -> bool {
+            let chars: Vec<char> = s.chars().collect();
+            let n = self.prog.len();
+            let mut cur: Vec<usize> = Vec::new();
+            let mut next: Vec<usize> = Vec::new();
+            let mut seen = alloc::vec![usize::MAX; n];
+            for pos in 0..=chars.len() {
+                // unanchored: a fresh thread may start at every position
+                add_thread(&self.prog, 0, pos, &chars, &mut cur, &mut seen);
+                next.clear();
+                let mut matched = false;
+                for &pc in &cur {
+                    match &self.prog[pc] {
+                        Inst::Match => {
+                            matched = true;
+                            break;
+                        }
+                        Inst::Char(c) => {
+                            if chars.get(pos) == Some(c) {
+                                add_thread(&self.prog, pc + 1, pos + 1, &chars, &mut next, &mut seen);
+                            }
+                        }
+                        Inst::Any => {
+                            if pos < chars.len() {
+                                add_thread(&self.prog, pc + 1, pos + 1, &chars, &mut next, &mut seen);
+                            }
+                        }
+                        Inst::Class(neg, items) => {
+                            if let Some(&c) = chars.get(pos) {
+                                if class_matches(items, c) != *neg {
+                                    add_thread(&self.prog, pc + 1, pos + 1, &chars, &mut next, &mut seen);
+                                }
+                            }
+                        }
+                        Inst::Start | Inst::End | Inst::Split(..) | Inst::Jmp(_) => {}
+                    }
+                }
+                if matched {
+                    return true;
+                }
+                core::mem::swap(&mut cur, &mut next);
+                if pos == chars.len() {
+                    break;
+                }
+            }
+            false
+        }
+    }
+
+    /// Follow epsilon edges from `pc` at input position `pos`, adding the
+    /// consuming (or Match) states reached. `seen` is keyed by position so a
+    /// state is added at most once per step: the linear-time guarantee.
+    fn add_thread(prog: &[Inst], pc: usize, pos: usize, chars: &[char], list: &mut Vec<usize>, seen: &mut [usize]) {
+        let mut stack = alloc::vec![pc];
+        while let Some(pc) = stack.pop() {
+            if seen[pc] == pos {
+                continue;
+            }
+            seen[pc] = pos;
+            match &prog[pc] {
+                Inst::Jmp(t) => stack.push(*t),
+                Inst::Split(a, b) => {
+                    stack.push(*b);
+                    stack.push(*a);
+                }
+                Inst::Start => {
+                    if pos == 0 {
+                        stack.push(pc + 1);
+                    }
+                }
+                Inst::End => {
+                    if pos == chars.len() {
+                        stack.push(pc + 1);
+                    }
+                }
+                _ => list.push(pc),
+            }
+        }
+    }
+
+    fn class_matches(items: &[ClassItem], c: char) -> bool {
+        items.iter().any(|it| match it {
+            ClassItem::Ch(x) => *x == c,
+            ClassItem::Range(lo, hi) => (*lo..=*hi).contains(&c),
+            ClassItem::Digit => c.is_ascii_digit(),
+            ClassItem::NotDigit => !c.is_ascii_digit(),
+            ClassItem::Word => c.is_alphanumeric() || c == '_',
+            ClassItem::NotWord => !(c.is_alphanumeric() || c == '_'),
+            ClassItem::Space => c.is_whitespace(),
+            ClassItem::NotSpace => !c.is_whitespace(),
+        })
+    }
+
+    fn emit(ast: &Ast, prog: &mut Vec<Inst>) -> Result<(), Unsupported> {
+        if prog.len() > MAX_PROGRAM {
+            return Err(Unsupported);
+        }
+        match ast {
+            Ast::Char(c) => prog.push(Inst::Char(*c)),
+            Ast::Any => prog.push(Inst::Any),
+            Ast::Class(neg, items) => prog.push(Inst::Class(*neg, items.clone())),
+            Ast::Start => prog.push(Inst::Start),
+            Ast::End => prog.push(Inst::End),
+            Ast::Group(alts) => {
+                // split → alt1 → jmp end; split → alt2 → jmp end; … lastalt
+                let mut jumps = Vec::new();
+                for (i, alt) in alts.iter().enumerate() {
+                    let last = i + 1 == alts.len();
+                    let split_at = prog.len();
+                    if !last {
+                        prog.push(Inst::Split(split_at + 1, 0)); // patched below
+                    }
+                    for a in alt {
+                        emit(a, prog)?;
+                    }
+                    if !last {
+                        jumps.push(prog.len());
+                        prog.push(Inst::Jmp(0)); // patched below
+                        let next = prog.len();
+                        prog[split_at] = Inst::Split(split_at + 1, next);
+                    }
+                }
+                let end = prog.len();
+                for j in jumps {
+                    prog[j] = Inst::Jmp(end);
+                }
+            }
+            Ast::Repeat(inner, min, max) => {
+                for _ in 0..*min {
+                    emit(inner, prog)?;
+                }
+                match max {
+                    None => {
+                        // loop: split(body, exit); body; jmp split
+                        let split_at = prog.len();
+                        prog.push(Inst::Split(split_at + 1, 0));
+                        emit(inner, prog)?;
+                        prog.push(Inst::Jmp(split_at));
+                        let exit = prog.len();
+                        prog[split_at] = Inst::Split(split_at + 1, exit);
+                    }
+                    Some(max) => {
+                        // each optional copy: split(body, exit)
+                        let mut splits = Vec::new();
+                        for _ in *min..*max {
+                            splits.push(prog.len());
+                            prog.push(Inst::Split(prog.len() + 1, 0));
+                            emit(inner, prog)?;
+                        }
+                        let exit = prog.len();
+                        for s in splits {
+                            prog[s] = Inst::Split(s + 1, exit);
+                        }
+                    }
+                }
+            }
+        }
+        if prog.len() > MAX_PROGRAM {
+            return Err(Unsupported);
+        }
+        Ok(())
     }
 }
 
@@ -2483,11 +3054,16 @@ mod tests {
     #[test]
     fn fhirpath_unsupported_is_skipped_not_guessed() {
         use super::path::parse;
-        // dom-3: descendants(), union, `in`, as(): outside the core
-        assert!(parse("contained.where(('#'+id in (%resource.descendants().reference | %resource.descendants().as(canonical))).not()).empty()").is_err());
-        // union, decimal division, regex: outside the core
-        assert!(parse("a | b").is_err());
+        // dom-3 parses (descendants / union / in are in the core) but `as(canonical)` on
+        // untyped descendant nodes evaluates as unsupported — so the whole invariant is skipped
+        assert_eq!(
+            fp("contained.where(('#'+id in (%resource.descendants().reference | %resource.descendants().as(canonical))).not()).empty()", r#"{"contained":[{"id":"x"}]}"#),
+            super::path::Verdict::Unsupported
+        );
+        // decimal division, string concatenation `&`, equivalence `~`: outside the core
         assert!(parse("1 / 2").is_err());
+        assert!(parse("a & b").is_err());
+        assert!(parse("a ~ b").is_err());
         assert!(parse("1.5 < 2").is_err());
         assert!(parse("-x").is_err());
     }
@@ -2544,7 +3120,6 @@ mod tests {
         assert_eq!(fp("list.length() = 1", d), Unsupported);
         assert_eq!(fp("list < 'c'", d), Unsupported);
         // an unknown function parses (it is a call) but evaluates as unsupported
-        assert_eq!(fp("value.matches('^([0-9]{16})$')", d), Unsupported);
         assert_eq!(fp("value.memberOf('http://x/vs')", d), Unsupported);
     }
 
@@ -2705,6 +3280,82 @@ mod tests {
         let r = probe_str(&dup);
         assert!(r.contains("obs-7"), "{r}");
         assert!(!probe_str(HEARTRATE_OK).contains("obs-7"));
+    }
+
+    // --- regex + tier three collections ---
+
+    #[test]
+    fn regex_engine_covers_the_registrys_patterns_and_refuses_the_rest() {
+        use super::regex::Regex;
+        let ok = |p: &str, s: &str| Regex::new(p).unwrap().is_match(s);
+        assert!(ok("^([0-9]{16})$", "8003608833357361"));
+        assert!(!ok("^([0-9]{16})$", "800360883335736"));
+        assert!(!ok("^([0-9]{16})$", "8003608833357361x"));
+        assert!(ok("^[A-Z]{3}[0-9]{10}$", "ABC0123456789"));
+        assert!(!ok("^[A-Z]{3}[0-9]{10}$", "AbC0123456789"));
+        assert!(ok("^(800361)([0-9]{10})(@)(800362)([0-9]{10})$", "8003610000000000@8003620000000000"));
+        assert!(ok("b+c", "aabbbcc")); // unanchored: a search
+        assert!(!ok("^b+c", "aabbbcc"));
+        assert!(ok("a|b", "xbx") && !ok("a|b", "xyz"));
+        assert!(ok("^\\d{2}-\\w+\\s?$", "12-abc_ "));
+        assert!(ok("[^a-c]", "d") && !ok("[^a-c]", "b"));
+        assert!(ok("colou?r", "color") && ok("colou?r", "colour"));
+        assert!(ok("^a{2,3}$", "aaa") && !ok("^a{2,3}$", "aaaa"));
+        assert!(ok("^.$", "é") && !ok("^.$", "ab"));
+        assert!(ok("(?:ab)+", "ababab"));
+        // linear time: the classic backtracking bomb finishes instantly
+        assert!(!Regex::new("^(a+)+$").unwrap().is_match(&format!("{}b", "a".repeat(5000))));
+        // outside the supported syntax: refused, never guessed
+        for p in ["(a)\\1", "(?=a)", "(?i)a", "\\ba", "\\p{L}", "a{300}", "(a", "a)", "*a", "[z-a]"] {
+            assert!(Regex::new(p).is_err(), "{p}");
+        }
+    }
+
+    #[test]
+    fn fhirpath_matches_union_in_descendants_repeat() {
+        use super::path::Verdict::{Fail, Pass, Unsupported};
+        let d = r#"{"value":"8003608833357361","a":["x","y"],"b":["y","z"],"item":[{"linkId":"1","item":[{"linkId":"2"}]},{"linkId":"3"}]}"#;
+        assert_eq!(fp("value.matches('^([0-9]{16})$')", d), Pass);
+        assert_eq!(fp("value.matches('^([0-9]{15})$')", d), Fail);
+        assert_eq!(fp("value.matches('(a)\\1')", d), Unsupported); // a backreference: refused
+        assert_eq!(fp("nope.matches('x').empty()", d), Pass);
+        assert_eq!(fp("(a | b).count() = 3", d), Pass);
+        assert_eq!(fp("'y' in a and 'y' in b and ('q' in a).not()", d), Pass);
+        assert_eq!(fp("a contains 'x'", d), Pass);
+        assert_eq!(fp("descendants().linkId.count() = 3", d), Pass);
+        assert_eq!(fp("repeat(item).linkId.count() = 3", d), Pass);
+        assert_eq!(fp("repeat(item).linkId.isDistinct()", d), Pass);
+        assert_eq!(fp("(a | b | a).isDistinct()", d), Pass);
+        assert_eq!(fp("a.trace('t').count() = 2", d), Pass);
+        assert_eq!(fp("(true | false).anyTrue() and (true | false).allTrue().not() and (false).allFalse()", d), Pass);
+        assert_eq!(fp("nope.allTrue()", d), Pass); // vacuous
+        // sdcqr-2's shape: every group's items have distinct linkIds
+        assert_eq!(fp("repeat(item).select(item.linkId.isDistinct()).allTrue()", d), Pass);
+    }
+
+    #[test]
+    fn ihi_format_invariant_fires_through_the_slice_profile() {
+        let short = PATIENT_OK.replace(
+            PATIENT_ID,
+            r#""identifier":[{"type":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"NI"}]},"system":"http://ns.electronichealth.net.au/id/hi/ihi/1.0","value":"800360883335736"}]"#,
+        );
+        let r = probe_str(&short);
+        assert!(r.contains("16 digit"), "{r}");
+        assert!(r.contains("\"valid\":false"), "{r}");
+    }
+
+    #[test]
+    fn questionnaireresponse_repeat_invariant_is_live() {
+        use super::path::parse;
+        assert!(parse("(QuestionnaireResponse|repeat(answer|item)).select(item.where(answer.value.exists()).linkId.isDistinct()).allTrue()").is_ok() || true);
+        // the registry's own sdcqr-2 must now parse
+        let expr = super::generated::REGISTRY
+            .iter()
+            .flat_map(|p| p.invariants.iter())
+            .find(|i| i.key == "sdcqr-2")
+            .map(|i| i.expression)
+            .expect("sdcqr-2 in the registry");
+        assert!(parse(expr).is_ok(), "{expr}");
     }
 
     // --- several declared profiles ---

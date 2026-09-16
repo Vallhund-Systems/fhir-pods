@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Regenerate crates/fhir-pods-core/src/generated from the pinned packages.
+# Packages are fetched by conformance/make_corpus.py into gitignored caches
+# under conformance/ (run it once first, or run conformance/run.py).
+#
+#   ./scripts/gen-profiles.sh
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+C="$ROOT/conformance"
+OUT="$ROOT/crates/fhir-pods-core/src/generated"
+
+# The IGs under test (primary: their resource profiles are compiled), then the
+# dependency packages whose datatype profiles slices inherit. Keep in step
+# with conformance/make_corpus.py (IGS + DEPS).
+PRIMARIES=(
+  "$C/package/package"          # hl7.fhir.au.core 2.0.0
+  "$C/package-us/package"       # hl7.fhir.us.core 6.1.0
+  "$C/package-ipa/package"      # hl7.fhir.uv.ipa 1.1.0
+)
+DEPS=(
+  "$C/package-au-base/package"  # hl7.fhir.au.base 6.0.0
+)
+PROVENANCE="hl7.fhir.au.core 2.0.0 + hl7.fhir.us.core 6.1.0 + hl7.fhir.uv.ipa 1.1.0 + hl7.fhir.au.base 6.0.0"
+
+for d in "${PRIMARIES[@]}" "${DEPS[@]}"; do
+  [ -d "$d" ] || { echo "missing package dir $d — run: python3 conformance/make_corpus.py" >&2; exit 1; }
+done
+
+rm -f "$OUT"/*.rs
+python3 "$ROOT/tools/gen_all.py" --primaries "${#PRIMARIES[@]}" "$OUT" "$PROVENANCE" "${PRIMARIES[@]}" "${DEPS[@]}"

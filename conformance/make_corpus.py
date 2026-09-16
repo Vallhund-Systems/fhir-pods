@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Emit the conformance corpus.
 
-Valid fixtures are each IG package's own example instances (AU Core, US Core)
+Valid fixtures are each IG package's own example instances (AU Core, US Core,
+IPA)
 — published, publisher-validated against each profile, the best possible
 "valid" source — fetched from packages.fhir.org at pinned versions into
 gitignored caches.
@@ -31,9 +32,18 @@ HR, PT = AU + "au-core-heartrate", AU + "au-core-patient"
 # The IGs under test: (package id, version, canonical prefix, cache dir,
 # fixture-name prefix). Each package's own examples are its valid fixtures.
 # The oracle (run.py) is handed the same list.
+IPA = "http://hl7.org/fhir/uv/ipa/StructureDefinition/"
 IGS = [
     ("hl7.fhir.au.core", "2.0.0", AU, "package", "example-"),
     ("hl7.fhir.us.core", "6.1.0", US, "package-us", "us-"),
+    ("hl7.fhir.uv.ipa", "1.1.0", IPA, "package-ipa", "ipa-"),
+]
+
+# Dependency packages whose datatype profiles slices inherit (no examples
+# taken from them): fetched into the same gitignored caches so the generator
+# (scripts/gen-profiles.sh) never depends on another tool's package cache.
+DEPS = [
+    ("hl7.fhir.au.base", "6.0.0", "package-au-base"),
 ]
 
 
@@ -41,7 +51,7 @@ def ensure_package(pkg_id, pkg_ver, cache_dir):
     """The unpacked package's example dir, fetching the package once."""
     cache = os.path.join(HERE, cache_dir)
     examples = os.path.join(cache, "package", "example")
-    if os.path.isdir(examples):
+    if os.path.isdir(os.path.join(cache, "package")):
         return examples
     os.makedirs(cache, exist_ok=True)
     print(f"==> fetching {pkg_id}#{pkg_ver}")
@@ -169,6 +179,16 @@ def add_bad_luhn_ihi(d):
     })
 
 
+def short_ihi(d):
+    """An NI identifier of 15 digits — inv-ihi-0 (`matches('^([0-9]{16})$')`),
+    the regex invariant; Luhn alone would not catch it."""
+    d.setdefault("identifier", []).append({
+        "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "NI"}]},
+        "system": "http://ns.electronichealth.net.au/id/hi/ihi/1.0",
+        "value": "800360883335736",
+    })
+
+
 def wrong_system_ihi(d):
     """An identifier typed NI (an IHI) whose system is not the IHI namespace —
     caught by au-ihi's fixed system, reached through the identifier slice.
@@ -272,6 +292,7 @@ MUTATIONS = [
     ("Observation-bloodpressure-1.json", "bloodpressure-wrong-diastolic-code", wrong_diastolic_code, False),
     ("Patient-ronny-irvine.json", "patient-ihi-bad-luhn", add_bad_luhn_ihi, False),
     ("Patient-ronny-irvine.json", "patient-ihi-wrong-system", wrong_system_ihi, False),
+    ("Patient-ronny-irvine.json", "patient-ihi-15-digits", short_ihi, False),
     ("Observation-heartrate-1.json", "heartrate-no-value-no-dar", drop_value_keep_no_dar, False),
     ("Observation-heartrate-1.json", "heartrate-subject-wrong-type", subject_wrong_type, True),
     ("Observation-bloodpressure-1.json", "bloodpressure-missing-diastolic", drop_diastolic, False),
@@ -295,6 +316,9 @@ def main():
             json.dump(resource, fh, indent=2)
             fh.write("\n")
         manifest.append({"file": fname, "profile": profile, "expect": expect, "ig": ig})
+
+    for pkg_id, pkg_ver, cache_dir in DEPS:
+        ensure_package(pkg_id, pkg_ver, cache_dir)
 
     au_ig = f"{IGS[0][0]}#{IGS[0][1]}"
     for name, profile, expect, resource in HAND_WRITTEN:

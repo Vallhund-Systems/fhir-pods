@@ -470,6 +470,29 @@ treat `$validate.profile` `uri`→`canonical` + R5's `usageContext` as additive.
   `descendants`/union/`in`/`as()`) and the QuestionnaireResponse
   `repeat`/`isDistinct` check. Oracle **272/272**, the single informational
   path difference unchanged; 500k fuzz iterations clean; 42 unit tests.
+- **Pass 14 — `matches()` and the rest of the collection vocabulary
+  (2026-09-15).** A small regex engine in the core: Thompson NFA simulation
+  (linear in input × program, so the classic `(a+)+$` bomb finishes
+  instantly), covering literals, `.`, classes, `\d\w\s`, anchors, groups,
+  alternation and bounded quantifiers; backreferences, lookaround, flags,
+  `\b`, unicode properties are refused → `Unsupported`. Plus union `|`,
+  `in`/`contains`, `descendants()`, `repeat()`, `isDistinct()`, `distinct()`,
+  `trace()` (identity), `allTrue`/`anyTrue`/`allFalse`/`anyFalse`, and a
+  bare resource-type name resolving to `$this` (root invariants now carry
+  the resource type). Every distinct invariant expression in the registry
+  parses; `dom-3` alone still evaluates `Unsupported` (`as(canonical)` over
+  untyped descendants — JSON carries no element types). A 15-digit IHI probe
+  agrees with the oracle: **273/273**.
+- **Pass 15 — must-support on the ABI (ABI 3).** `fhir_pods_must_support` +
+  JNI `mustSupport`; `pod.mustSupportGaps()` (wasm), `mustSupportGaps()`
+  (expo), Swift/Kotlin functions. Same memory contract; information, never
+  part of the validation report.
+- **Pass 16 — a third IG: IPA 1.1.0 (jurisdiction-neutral).** 12 profiles,
+  15 examples; **288/288 first try, zero generator or engine changes** — the
+  generality check passed. AU Base is now fetched into the repo's own
+  gitignored cache like every other package (`DEPS` in `make_corpus.py`),
+  and `scripts/gen-profiles.sh` is the one regeneration command.
+  Registry: 168 profiles. `.wasm` 331 KB (83 KB gzipped).
 - **Inferno** (ONC g10) and **Touchstone** are **API-behavior** harnesses
   (SMART launch, Bulk Data, search, US Core over the wire) — relevant only if we
   later ship a *server* surface, not for the embeddable validator. Note them,

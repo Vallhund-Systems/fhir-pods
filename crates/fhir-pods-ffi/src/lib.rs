@@ -12,6 +12,8 @@
 //! Each has a `_tx` twin taking a host **terminology callback** — the seam
 //! through which NCTS / VSAC / an on-device cache answer the bindings the
 //! bundled value sets can't. The bundled sets are always consulted first.
+//! [`fhir_pods_must_support`] is the client-side completeness check —
+//! information, never part of the validation report.
 //!
 //! ## Memory contract
 //! - Buffers returned to the host are `[u32 little-endian length][UTF-8 bytes…]`.
@@ -26,11 +28,11 @@
 use core::ffi::c_void;
 
 use fhir_pods_core::terminology::{Bundled, Chain, Membership, TerminologyProvider};
-use fhir_pods_core::{validate_bytes_with, wire};
+use fhir_pods_core::{must_support_gaps, validate_bytes_with, wire};
 
 /// Bump when the exported surface or the memory contract changes; the
 /// wrappers refuse a mismatched module.
-pub const ABI_VERSION: u32 = 2;
+pub const ABI_VERSION: u32 = 3;
 
 /// A host terminology callback: is (`system`, `code`) in `value_set`?
 /// Strings are UTF-8 `(ptr, len)`, valid only for the duration of the call;
@@ -101,6 +103,29 @@ pub unsafe extern "C" fn fhir_pods_operation_outcome_tx(
     ctx: *mut c_void,
 ) -> *mut u8 {
     with_tx(cb, ctx, |tx| pack(validate_bytes_with(input(ptr, len), tx).to_operation_outcome().as_bytes()))
+}
+
+/// The selected profile's must-support elements the resource leaves empty
+/// (where their parent is present): `{"mustSupportGaps":["Patient.telecom",…]}`.
+/// Not validation — no validator fails on must-support — but what a client
+/// certifying against the IG must populate when it has the data.
+#[no_mangle]
+pub unsafe extern "C" fn fhir_pods_must_support(ptr: *const u8, len: usize) -> *mut u8 {
+    pack(must_support_json(input(ptr, len)).as_bytes())
+}
+
+fn must_support_json(input: &[u8]) -> String {
+    let mut out = String::from("{\"mustSupportGaps\":[");
+    for (i, g) in must_support_gaps(input).iter().enumerate() {
+        if i > 0 {
+            out.push(',');
+        }
+        out.push('"');
+        out.push_str(g);
+        out.push('"');
+    }
+    out.push_str("]}");
+    out
 }
 
 struct HostTx {
@@ -290,6 +315,17 @@ mod android {
     }
 
     #[no_mangle]
+    pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_mustSupport<'l>(
+        mut env: JNIEnv<'l>,
+        _this: JObject<'l>,
+        json: JByteArray<'l>,
+    ) -> jbyteArray {
+        let input = bytes_in(&mut env, &json);
+        let doc = must_support_json(&input);
+        bytes_out(&mut env, &doc)
+    }
+
+    #[no_mangle]
     pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_operationOutcome<'l>(
         mut env: JNIEnv<'l>,
         _this: JObject<'l>,
@@ -332,6 +368,15 @@ mod tests {
             assert!(bad.contains("\"severity\":\"fatal\""), "{bad}");
             assert!(call(fhir_pods_validate, "").contains("fatal"));
             assert_eq!(fhir_pods_abi_version(), ABI_VERSION);
+        }
+    }
+
+    #[test]
+    fn must_support_is_information_not_validation() {
+        unsafe {
+            let r = call(fhir_pods_must_support, r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"]},"identifier":[{"system":"http://h.example.org/mrn","value":"1"}],"name":[{"family":"D"}],"gender":"male"}"#);
+            assert!(r.starts_with("{\"mustSupportGaps\":[") && r.contains("\"Patient.birthDate\""), "{r}");
+            assert_eq!(call(fhir_pods_must_support, "not json"), "{\"mustSupportGaps\":[]}");
         }
     }
 

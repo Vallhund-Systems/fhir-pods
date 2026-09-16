@@ -1,7 +1,7 @@
 # Scope — what "agrees with the reference validator" means
 
-`conformance/run.py` reports **271/271 agree** across AU Core 2.0.0 and US Core
-6.1.0. This note says precisely what that claim covers and what it deliberately
+`conformance/run.py` reports **288/288 agree** across AU Core 2.0.0, US Core
+6.1.0 and IPA 1.1.0. This note says precisely what that claim covers and what it deliberately
 does not, so nobody reads more into it than it says.
 
 ## The claim
@@ -47,15 +47,19 @@ the 271/271.
 
 ## What we skip, never guess
 
-- FHIRPath outside the supported core: `descendants()`, union `|`, `in`,
-  `as(type)` as a function, `repeat`, `isDistinct`, `matches` (regex),
-  `memberOf`, `ofType`. 2 of the 83 distinct invariant expressions in the
-  registry do not parse (`dom-3` contained-reference integrity and the
-  QuestionnaireResponse `repeat(answer|item)` linkId check); a further few
-  parse but evaluate `Unsupported`. All are skipped. Type tests (`$this is
-  dateTime`, `$this as dateTime`) resolve against the element's type *from
-  the profile* — never from the value's shape — and are unsupported on
-  anything but `$this`.
+- FHIRPath outside the supported core: `as(type)` / `ofType(type)` as
+  functions on arbitrary nodes (JSON carries no element types; only `$this`'s
+  type is known, from the profile), `memberOf`, string concatenation `&`,
+  equivalence `~`, decimals. Every one of the registry's distinct invariant
+  expressions now parses; `dom-3` (contained-reference integrity) is the one
+  that still evaluates `Unsupported`, because it needs `as(canonical)` over
+  `descendants()`. Skipped. Type tests (`$this is dateTime`, `$this as
+  dateTime`) resolve against the element's type *from the profile* — never
+  from the value's shape — and are unsupported on anything but `$this`.
+- `matches(regex)` runs on a small linear-time engine (literals, classes,
+  anchors, groups, alternation, bounded quantifiers). Backreferences,
+  lookaround, flags, `\b` and unicode properties are refused →
+  `Unsupported` → skipped.
 - Slices whose discriminator cannot be resolved from the profile (e.g.
   AU Core's `identifier:dva`, whose `type` pattern lives nowhere). Deferred.
 - Bindings to value sets we do not bundle. Warned, not failed.

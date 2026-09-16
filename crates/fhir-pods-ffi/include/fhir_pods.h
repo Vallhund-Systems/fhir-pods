@@ -9,8 +9,8 @@
 extern "C" {
 #endif
 
-/* ABI version; a host refuses a mismatched module. This header is ABI 2. */
-#define FHIR_PODS_ABI_VERSION 2u
+/* ABI version; a host refuses a mismatched module. This header is ABI 3. */
+#define FHIR_PODS_ABI_VERSION 3u
 uint32_t fhir_pods_abi_version(void);
 
 /* Allocate `len` bytes in the module for the host to fill. */
@@ -32,6 +32,12 @@ uint8_t *fhir_pods_validate(const uint8_t *ptr, size_t len);
 
 /* The spec resource: a FHIR OperationOutcome (the $validate wire form). */
 uint8_t *fhir_pods_operation_outcome(const uint8_t *ptr, size_t len);
+
+/* Must-support: the selected profile's must-support elements the resource
+ * leaves empty (where their parent is present), as
+ * {"mustSupportGaps":["Patient.telecom", ...]}. Information for a client
+ * certifying against the IG — never part of the validation report. */
+uint8_t *fhir_pods_must_support(const uint8_t *ptr, size_t len);
 
 /* The terminology seam. A host callback answering "is (system, code) in this
  * value set?" for the bindings the bundled value sets can't decide (the

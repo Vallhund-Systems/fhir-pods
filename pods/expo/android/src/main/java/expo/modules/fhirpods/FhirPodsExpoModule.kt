@@ -25,5 +25,11 @@ class FhirPodsExpoModule : Module() {
     Function("operationOutcome") { json: String ->
       String(FhirPodsNative.operationOutcome(json.toByteArray(Charsets.UTF_8), terminology), Charsets.UTF_8)
     }
+
+    // Must-support gaps: information for a client certifying against the IG,
+    // never part of the validation report.
+    Function("mustSupport") { json: String ->
+      String(FhirPodsNative.mustSupport(json.toByteArray(Charsets.UTF_8)), Charsets.UTF_8)
+    }
   }
 }

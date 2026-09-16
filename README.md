@@ -42,16 +42,16 @@ Rust-shaped. (See [`docs/architecture.md`](docs/architecture.md).)
 
 ## Status
 
-Working verifier for **AU Core 2.0.0** and **US Core 6.1.0** (156 compiled
-profiles: 74 resource profiles plus the `Identifier` and complex `Extension`
-datatypes slices inherit — AU Base's IHI/Medicare/DVA, US Core's race /
-ethnicity): per-parent cardinality, fixed values, required bindings, slicing
-with profile inheritance, every declared profile applied, and a FHIRPath
-core sufficient for 81 of the 83 distinct invariant expressions in the
-registry (the two left — `dom-3`'s `descendants()` and a QuestionnaireResponse
-`repeat` — are skipped, never guessed). Agrees with the HL7 reference
-validator on **272/272** corpus instances (both IGs' own 238 published
-examples + 34 broken ones). Delivered as a ~300 KB `.wasm` (73 KB gzipped) and an Expo
+Working verifier for **AU Core 2.0.0**, **US Core 6.1.0** and **IPA 1.1.0**
+(168 compiled profiles: 86 resource profiles plus the `Identifier` and
+complex `Extension` datatypes slices inherit — AU Base's IHI/Medicare/DVA,
+US Core's race / ethnicity): per-parent cardinality, fixed values, required
+bindings, slicing with profile inheritance, every declared profile applied,
+and a FHIRPath engine (with a linear-time `matches()` regex) sufficient for
+every invariant in the registry bar `dom-3` (skipped, never guessed).
+Agrees with the HL7 reference validator on **288/288** corpus instances (the
+three IGs' own 253 published examples + 35 broken ones). Delivered as a
+~330 KB `.wasm` (83 KB gzipped) and an Expo
 module (iOS + Android), each measured at tens of microseconds per resource;
 terminology beyond the bundled sets arrives through a host-provided seam
 (`TerminologyProvider`), never as shipped content. What "agrees" covers and
@@ -64,9 +64,9 @@ Zero dependencies, `no_std`, fuzzed. Design and decisions:
 
 - `crates/fhir-pods-core` — the Rust verifier + lowering core (zero deps, no `unsafe`).
 - `crates/fhir-pods-ffi` — the one lean C ABI, compiled per target (wasm32 / native staticlib).
-- `pods/wasm` — the wasm pod: a ~300 KB `.wasm` (73 KB gzipped) + a zero-dependency JS wrapper.
+- `pods/wasm` — the wasm pod: a ~330 KB `.wasm` (83 KB gzipped) + a zero-dependency JS wrapper.
 - `pods/expo` — the expo pod: the core as an Expo native module (iOS XCFramework + Android jniLibs).
-- `scripts/` — `build-wasm.sh`, `build-ios-xcframework.sh`, `build-android-jnilibs.sh`, `smoke-c.sh`, `check-no-std.sh`.
+- `scripts/` — `gen-profiles.sh`, `build-wasm.sh`, `build-ios-xcframework.sh`, `build-android-jnilibs.sh`, `smoke-c.sh`, `check-no-std.sh`, `release.sh`.
 - `docs/architecture.md` — the design, delivery model, audit surface, and perf budget.
 
 ## Testing
@@ -75,7 +75,8 @@ Zero dependencies, `no_std`, fuzzed. Design and decisions:
 cargo test -p fhir-pods-core                 # unit tests + the seeded fuzz harness (50k iterations)
 FUZZ_ITERS=1000000 FUZZ_SEED=42 cargo test -p fhir-pods-core --test fuzz   # longer / different seed
 ./scripts/check-no-std.sh                    # bare-metal build: nothing in the core touches std
-python3 conformance/run.py                   # differential test vs the HL7 reference validator (AU Core + US Core)
+python3 conformance/run.py                   # differential test vs the HL7 reference validator (AU Core, US Core, IPA)
+./scripts/gen-profiles.sh                    # regenerate the compiled profiles from the pinned packages
 cargo run -p fhir-pods-core --example probe -- [--outcome|--must-support] resource.json   # one resource, by hand
 ./scripts/smoke-c.sh                         # the C ABI, driven from C against the host staticlib
 ./scripts/build-wasm.sh && (cd pods/wasm && npm test)   # the wasm pod, end to end through the JS wrapper

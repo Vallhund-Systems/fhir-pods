@@ -22,7 +22,7 @@ HERE = os.path.join(ROOT, "conformance")
 CORPUS = os.path.join(HERE, "corpus")
 JAR = os.path.join(HERE, "validator_cli.jar")
 JAR_URL = "https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar"
-IGS = ["hl7.fhir.au.core#2.0.0", "hl7.fhir.us.core#6.1.0"]  # keep in step with make_corpus.IGS
+IGS = ["hl7.fhir.au.core#2.0.0", "hl7.fhir.us.core#6.1.0", "hl7.fhir.uv.ipa#1.1.0"]  # keep in step with make_corpus.IGS
 FILE_EXT = "operationoutcome-file"
 
 

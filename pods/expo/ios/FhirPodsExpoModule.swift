@@ -33,6 +33,12 @@ public class FhirPodsExpoModule: Module {
     Function("operationOutcome") { (json: String) -> String in
       call(fhir_pods_operation_outcome_tx, json)
     }
+
+    // Must-support gaps: information for a client certifying against the IG,
+    // never part of the validation report.
+    Function("mustSupport") { (json: String) -> String in
+      call({ ptr, len, _, _ in fhir_pods_must_support(ptr, len) }, json)
+    }
   }
 }
 

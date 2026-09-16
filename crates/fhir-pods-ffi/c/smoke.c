@@ -68,6 +68,14 @@ int main(void) {
     printf("tx: asked %d; with host=yes: %s\n", yes.asked, r_yes);
     free(r_yes); free(r_no); free(r_none);
 
+    /* Must-support: information, separate from validation. */
+    const char *us = "{\"resourceType\":\"Patient\",\"meta\":{\"profile\":[\"http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient\"]},"
+                     "\"identifier\":[{\"system\":\"http://h.example.org/mrn\",\"value\":\"1\"}],\"name\":[{\"family\":\"D\"}],\"gender\":\"male\"}";
+    char *ms = call(fhir_pods_must_support, us);
+    ok = ok && strstr(ms, "\"mustSupportGaps\":[") && strstr(ms, "\"Patient.birthDate\"");
+    printf("must-support: %s\n", ms);
+    free(ms);
+
     puts(ok ? "C ABI smoke: OK" : "C ABI smoke: FAILED");
     return ok ? 0 : 1;
 }

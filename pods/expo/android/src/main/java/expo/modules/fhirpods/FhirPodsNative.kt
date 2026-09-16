@@ -29,4 +29,7 @@ internal object FhirPodsNative {
 
   /** The spec resource: a FHIR OperationOutcome (the $validate wire form). */
   external fun operationOutcome(json: ByteArray, terminology: FhirPodsTerminology?): ByteArray
+
+  /** {"mustSupportGaps":[...]} — information, never part of the validation report. */
+  external fun mustSupport(json: ByteArray): ByteArray
 }

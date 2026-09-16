@@ -50,6 +50,14 @@ const outcome = operationOutcome(JSON.stringify(observation));
 `validate` never throws for bad input: unparseable JSON is a `fatal` issue in
 the report.
 
+## Must-support (information, not validation)
+
+```ts
+import { mustSupportGaps } from "fhir-pods-expo";
+mustSupportGaps(JSON.stringify(patient));
+// ["Patient.telecom.system", "Patient.birthDate", …]
+```
+
 ## The terminology seam
 
 Bindings the bundled value sets can't decide (SNOMED, LOINC answer lists,
@@ -84,8 +92,8 @@ builds, and answers from JS on both platforms — ABI 1, correct findings at the
 right paths, garbage in → `fatal` out, and **~22,000 validations/s on an
 iPhone 17 simulator (45 µs each) / ~19,600 on a Pixel 8 emulator (51 µs each),
 including `JSON.parse` of the report**. The real verifier is
-behind it (AU Core 2.0.0, 61 compiled profiles, FHIRPath invariants; 84/84
-agreement with the HL7 reference validator). The bridge is the same two calls
+behind it (AU Core 2.0.0, US Core 6.1.0, IPA 1.1.0 — 168 compiled profiles,
+FHIRPath invariants; 288/288 agreement with the HL7 reference validator). The bridge is the same two calls
 the wasm pod makes — the ABI never changes per target.
 
 ## Boundary
