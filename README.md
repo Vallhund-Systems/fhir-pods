@@ -57,6 +57,10 @@ Rust-shaped. (See [`docs/architecture.md`](docs/architecture.md).)
   wrapper, and an Expo module (iOS XCFramework + Android jniLibs) — each
   measured at tens of microseconds per profiled resource.
 - Zero dependencies, `no_std`, `#![forbid(unsafe_code)]`, fuzzed.
+- **Boundary:** the pods know FHIR; a host knows its data. Domain-specific
+  maps (a host's records → FHIR) live in the host, never here.
+- **Next:** lowering, terminology, de-identification, documents, audit — the
+  pod family in [`docs/roadmap.md`](docs/roadmap.md).
 
 Design: [`docs/architecture.md`](docs/architecture.md) ·
 decisions: [`docs/incumbent-apis.md`](docs/incumbent-apis.md) ·
