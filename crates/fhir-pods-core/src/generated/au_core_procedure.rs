@@ -51,6 +51,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Procedure", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["Procedure"] },
         ProfileInvariant { path: "Procedure.bodySite", key: "au-core-pro-01", severity: InvariantSeverity::Error, human: "If a coded body site is provided, at least one coding shall be from SNOMED CT", expression: "coding.exists() implies coding.where(system='http://snomed.info/sct').exists()", types: &["CodeableConcept"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Procedure.code",
         "Procedure.encounter",
@@ -59,5 +60,33 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Procedure.reasonReference",
         "Procedure.status",
         "Procedure.subject",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        (
+            "extension:sexParameterForClinicalUse.url",
+            "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse",
+        ),
+        ("extension:targetBodyStructure.url", "http://hl7.org/fhir/StructureDefinition/procedure-targetBodyStructure"),
+    ],
+    slices: &[("extension:sexParameterForClinicalUse", 0), ("extension:targetBodyStructure", 0)],
+    slots: &[
+        Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "code", ty: "CodeableConcept", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "encounter", ty: "Reference", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "performed[x]",
+            ty: "choice",
+            choices: &["performedDateTime", "performedPeriod", "performedString", "performedAge", "performedRange"],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "reasonCode", ty: "CodeableConcept", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "reasonReference", ty: "Reference", choices: &[], min: 0, max: Max::Star, must_support: true },
     ],
 };

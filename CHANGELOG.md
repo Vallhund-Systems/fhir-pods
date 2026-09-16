@@ -1,5 +1,50 @@
 # Changelog
 
+## 0.3.0 — 2026-09-16
+
+**Lowering — the transformer.** Build a conformant resource from its
+variable data only. The generator now emits, per profile, the fixed skeleton
+(every fixed / pattern / inherited-profile leaf at any depth, with which
+slices and optional elements gate it), the input *slots* (the required and
+must-support leaves the profile leaves open, typed; choice elements list
+their concrete keys) and the repeating paths. The engine merges inputs into
+the skeleton with typed coercions (a string into a `Reference`, a number into
+a `Quantity`, `{system, code}` into a `CodeableConcept`, a whole datatype
+object as given, `_name` primitive-extension carriers verbatim), reports
+unknown keys, wrong kinds and collisions with fixed values as issues, and
+validates the result — a lowered resource is never trusted unverified.
+
+- Rust: `Validator::lower(url, inputs)`, `lower_bytes`, `compiled::{Lowering, Slot}`.
+- ABI 4: `fhir_pods_lower`, `fhir_pods_lower_tx`, `fhir_pods_slots`; wasm
+  `pod.lower(url, inputs)` / `pod.slots(url)`; Expo `lower()` / `slots()`.
+- Proof: every publisher-valid corpus example is re-lowered from the values
+  at its slots and the result put in front of the reference validator
+  (`lower_corpus` — the harness runs it): 262/262 lowered resources valid.
+- Fuzzed: a lowering arm in the seeded harness and a libFuzzer target.
+- Inputs any resource may carry — `id`, `text`, `contained`, `extension`,
+  `modifierExtension`, `language`, `implicitRules` — pass through without
+  being profile slots. Wire shape (array or not) comes from the base spec's
+  element table, so a profile that cuts `Coverage.payor` to 0..1 still
+  emits the array the JSON representation requires.
+
+**Verifier**
+- **The element-type table covers every R4 resource type** (5,471 entries
+  across 187 types), not only the registry's — a contained resource or a
+  Bundle entry can be any of them, and `dom-3` walks
+  `descendants().as(uri)` through the contained resources. Before, an
+  Endpoint contained in an Organization left `dom-3` unevaluable and the
+  orphan passed silently; the oracle caught it on a lowered resource. The
+  table is packed (paths relative to their type, dictionary-encoded type
+  codes, the repeat flag folded in) so the full spec costs less than the
+  registry subset did unpacked.
+- **A skipped invariant is now visible**: an expression outside the
+  supported FHIRPath core (or one the table can't type) adds an
+  `information` / `not-supported` issue naming the invariant, once per
+  resource. Validity is unchanged (errors only); a silent gap no longer
+  reads as a pass.
+- `.wasm`: 570 KB (152 KB gzipped) — the LOWERING tables and the full type
+  table; ~29 µs mean per corpus validate in release.
+
 ## 0.2.0 — 2026-09-15
 
 Review pass: an independent correctness review (16 findings, 8 of them

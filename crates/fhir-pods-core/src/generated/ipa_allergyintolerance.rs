@@ -46,10 +46,37 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "AllergyIntolerance", key: "dom-5", severity: InvariantSeverity::Error, human: "If a resource is contained in another resource, it SHALL NOT have a security label", expression: "contained.meta.security.empty()", types: &["AllergyIntolerance"] },
         ProfileInvariant { path: "AllergyIntolerance", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["AllergyIntolerance"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "AllergyIntolerance.clinicalStatus",
         "AllergyIntolerance.code",
         "AllergyIntolerance.patient",
         "AllergyIntolerance.verificationStatus",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[],
+    slices: &[],
+    slots: &[
+        Slot {
+            path: "clinicalStatus",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot {
+            path: "verificationStatus",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "code", ty: "CodeableConcept", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "patient", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
     ],
 };

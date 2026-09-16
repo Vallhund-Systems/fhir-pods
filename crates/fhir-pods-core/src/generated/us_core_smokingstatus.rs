@@ -61,11 +61,54 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Observation.value[x]", key: "us-core-3", severity: InvariantSeverity::Error, human: "SHALL use UCUM for coded quantity units.", expression: "value.ofType(Quantity).system.empty() or value.ofType(Quantity).system = 'http://unitsofmeasure.org'", types: &["CodeableConcept", "Quantity", "string", "boolean", "integer", "Range", "Ratio", "SampledData", "time", "dateTime", "Period"] },
         ProfileInvariant { path: "Observation.referenceRange", key: "obs-3", severity: InvariantSeverity::Error, human: "Must have at least a low or a high or text", expression: "low.exists() or high.exists() or text.exists()", types: &["BackboneElement"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Observation.category",
         "Observation.code",
         "Observation.status",
         "Observation.subject",
         "Observation.value[x]",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        ("category:SocialHistory.coding.system", "http://terminology.hl7.org/CodeSystem/observation-category"),
+        ("category:SocialHistory.coding.code", "social-history"),
+    ],
+    slices: &[("category:SocialHistory", 1), ("effectiveDateTime", 1)],
+    slots: &[
+        Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "code", ty: "CodeableConcept", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "effectiveDateTime",
+            ty: "dateTime",
+            choices: &[],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: false,
+        },
+        Slot {
+            path: "value[x]",
+            ty: "choice",
+            choices: &[
+                "valueCodeableConcept",
+                "valueQuantity",
+                "valueString",
+                "valueBoolean",
+                "valueInteger",
+                "valueRange",
+                "valueRatio",
+                "valueSampledData",
+                "valueTime",
+                "valueDateTime",
+                "valuePeriod",
+            ],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
     ],
 };

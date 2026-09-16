@@ -75,6 +75,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "QuestionnaireResponse", key: "sdcqr-2", severity: InvariantSeverity::Error, human: "When repeats=true for a group, it'll be represented with multiple items with the same linkId in the QuestionnaireResponse.  For a question, it'll be represented by a single item with that linkId with multiple answers.", expression: "(QuestionnaireResponse|repeat(answer|item)).select(item.where(answer.value.exists()).linkId.isDistinct()).allTrue()", types: &["QuestionnaireResponse"] },
         ProfileInvariant { path: "QuestionnaireResponse.item", key: "qrs-1", severity: InvariantSeverity::Error, human: "Nested item can't be beneath both item and answer", expression: "(answer.exists() and item.exists()).not()", types: &["BackboneElement"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "QuestionnaireResponse.author",
         "QuestionnaireResponse.authored",
@@ -89,5 +90,47 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "QuestionnaireResponse.questionnaire",
         "QuestionnaireResponse.status",
         "QuestionnaireResponse.subject",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        ("extension:signature.url", "http://hl7.org/fhir/StructureDefinition/questionnaireresponse-signature"),
+        (
+            "extension:completionMode.url",
+            "http://hl7.org/fhir/StructureDefinition/questionnaireresponse-completionMode",
+        ),
+        ("questionnaire.extension:questionnaireDisplay.url", "http://hl7.org/fhir/StructureDefinition/display"),
+        (
+            "questionnaire.extension:url.url",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-extension-questionnaire-uri",
+        ),
+        ("item.extension:itemMedia.url", "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-itemMedia"),
+        ("item.extension:ItemSignature.url", "http://hl7.org/fhir/StructureDefinition/questionnaireresponse-signature"),
+        (
+            "item.answer.extension:itemAnswerMedia.url",
+            "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-itemAnswerMedia",
+        ),
+        ("item.answer.extension:ordinalValue.url", "http://hl7.org/fhir/StructureDefinition/ordinalValue"),
+    ],
+    slices: &[
+        ("extension:signature", 0),
+        ("extension:completionMode", 0),
+        ("questionnaire.extension:questionnaireDisplay", 0),
+        ("questionnaire.extension:url", 0),
+        ("item.extension:itemMedia", 0),
+        ("item.extension:ItemSignature", 0),
+        ("item.answer.extension:itemAnswerMedia", 0),
+        ("item.answer.extension:ordinalValue", 0),
+    ],
+    slots: &[
+        Slot { path: "identifier", ty: "Identifier", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "questionnaire", ty: "canonical", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "authored", ty: "dateTime", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "author", ty: "Reference", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "item", ty: "BackboneElement", choices: &[], min: 0, max: Max::Star, must_support: true },
     ],
 };

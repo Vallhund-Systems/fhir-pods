@@ -40,3 +40,10 @@ doc = false
 bench = false
 
 [workspace]
+
+[[bin]]
+name = "lower"
+path = "fuzz_targets/lower.rs"
+test = false
+doc = false
+bench = false

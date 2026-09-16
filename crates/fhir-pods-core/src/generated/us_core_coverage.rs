@@ -79,6 +79,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Coverage", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["Coverage"] },
         ProfileInvariant { path: "Coverage", key: "us-core-15", severity: InvariantSeverity::Error, human: "Member Id in Coverage.identifier or Coverage.subscriberId SHALL be present", expression: "identifier.type.coding.where(system='http://terminology.hl7.org/CodeSystem/v2-0203' and code='MB').exists() or subscriberId.exists()", types: &["Coverage"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Coverage.beneficiary",
         "Coverage.class",
@@ -89,5 +90,55 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Coverage.status",
         "Coverage.subscriberId",
         "Coverage.type",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        ("identifier:memberid.type.coding.system", "http://terminology.hl7.org/CodeSystem/v2-0203"),
+        ("identifier:memberid.type.coding.code", "MB"),
+        ("class:group.type.coding.system", "http://terminology.hl7.org/CodeSystem/coverage-class"),
+        ("class:group.type.coding.code", "group"),
+        ("class:plan.type.coding.system", "http://terminology.hl7.org/CodeSystem/coverage-class"),
+        ("class:plan.type.coding.code", "plan"),
+    ],
+    slices: &[("identifier:memberid", 0), ("class:group", 0), ("class:plan", 0)],
+    slots: &[
+        Slot { path: "identifier", ty: "Identifier", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot {
+            path: "identifier:memberid",
+            ty: "Identifier",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "type", ty: "CodeableConcept", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "subscriberId", ty: "string", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "beneficiary", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "relationship",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "period", ty: "Period", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "payor", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "class", ty: "BackboneElement", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot {
+            path: "class:group.value",
+            ty: "string",
+            choices: &[],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "class:group.name", ty: "string", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "class:plan.value", ty: "string", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "class:plan.name", ty: "string", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
     ],
 };

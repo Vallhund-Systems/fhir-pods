@@ -122,5 +122,18 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ],
     }],
     invariants: &[],
+    lowering: &LOWERING,
     must_support: &[],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        ("extension:namespace-id.url", "namespace-id"),
+        ("extension:universal-id.url", "universal-id"),
+        ("extension:universal-id-type.url", "universal-id-type"),
+        ("url", "http://hl7.org.au/fhir/StructureDefinition/au-receivingfacility"),
+    ],
+    slices: &[("extension:namespace-id", 0), ("extension:universal-id", 0), ("extension:universal-id-type", 0)],
+    slots: &[],
 };

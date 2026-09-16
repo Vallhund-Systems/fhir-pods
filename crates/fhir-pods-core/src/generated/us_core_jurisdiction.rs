@@ -34,5 +34,20 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     slicings: &[],
     invariants: &[],
+    lowering: &LOWERING,
     must_support: &[],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[("url", "http://hl7.org/fhir/us/core/StructureDefinition/us-core-jurisdiction")],
+    slices: &[],
+    slots: &[Slot {
+        path: "valueCodeableConcept",
+        ty: "CodeableConcept",
+        choices: &[],
+        min: 1,
+        max: Max::Bounded(1),
+        must_support: false,
+    }],
 };

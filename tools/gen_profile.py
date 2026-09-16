@@ -253,6 +253,245 @@ def must_support_of(sd):
     )
 
 
+# --- lowering: the fixed skeleton and the variable slots ------------------------
+
+# Types the engine knows how to coerce a shorthand into; anything else the
+# host supplies as a JSON object of the right shape.
+SLOT_TYPES = {
+    "boolean", "integer", "positiveInt", "unsignedInt", "decimal", "string", "code", "id", "markdown",
+    "uri", "url", "canonical", "oid", "uuid", "date", "dateTime", "instant", "time", "base64Binary",
+    "Reference", "Quantity", "SimpleQuantity", "Age", "Duration", "Count", "Distance", "CodeableConcept",
+    "Coding", "Period", "Identifier", "HumanName", "Address", "ContactPoint", "Attachment", "Annotation",
+    "Range", "Ratio", "Timing", "Dosage", "Narrative", "Money",
+}
+SKIP_SLOTS = {"id", "meta", "implicitRules", "language", "text", "contained", "modifierExtension"}
+
+
+def labelled(eid):
+    """`Observation.component:SystolicBP.code.coding:SBPCode.code` →
+    `component:SystolicBP.code.coding:SBPCode.code` (resource-relative, labels kept)."""
+    return eid.split(".", 1)[1] if "." in eid else ""
+
+
+def concrete_choice(e):
+    """`value[x]` with exactly one type → its concrete key (`valueQuantity`)."""
+    last = e.get("path", "").rsplit(".", 1)[-1]
+    if not last.endswith("[x]"):
+        return None
+    types = [t.get("code") for t in e.get("type", []) if t.get("code")]
+    if len(types) != 1:
+        return None
+    return last[:-3] + types[0][0].upper() + types[0][1:]
+
+
+def with_concrete(label_path, elements_by_id, eid):
+    """Rewrite each `[x]` segment of a labelled path to its concrete key: a
+    type slice (`value[x]:valueQuantity`) becomes just `valueQuantity`; an
+    unsliced single-typed choice (`component:SystolicBP.value[x]` typed
+    Quantity) becomes `valueQuantity` too."""
+    parts = label_path.split(".")
+    prefix_ids = eid.split(".")
+    out = []
+    for i, seg in enumerate(parts):
+        stem, _, label = seg.partition(":")
+        if stem.endswith("[x]"):
+            base = stem[:-3]
+            if label and label.startswith(base):
+                seg = label                              # a type slice: the label IS the key
+            else:
+                e = elements_by_id.get(".".join(prefix_ids[: i + 2]))
+                key = concrete_choice(e) if e else None
+                if key:
+                    seg = key + (":" + label if label else "")
+        out.append(seg)
+    return ".".join(out)
+
+
+def unlabelled(lp):
+    return ".".join(seg.split(":")[0] for seg in lp.split("."))
+
+
+def lowering_of(sd, load=None):
+    """(fixed, slices, slots) — see `compiled::Lowering`."""
+    els = (sd.get("snapshot") or {}).get("element", [])
+    by_id = {e.get("id", ""): e for e in els}
+    fixed, slices, slots = [], [], []
+    has_fixed_below = set()   # labelled paths that have a fixed leaf beneath them
+    fixed_decl_sites = []     # the elements fixed / pattern values are declared on (for gates)
+
+    for e in els:
+        eid, path = e.get("id", ""), e.get("path", "")
+        if "." not in path:
+            continue
+        lp = with_concrete(labelled(eid), by_id, eid)
+        # a slice element itself (a type slice keeps its place in the list under
+        # its concrete key, so the engine knows it is optional)
+        last_seg = eid.rsplit(".", 1)[-1]
+        if ":" in last_seg:
+            slices.append((lp, e.get("min", 0) or 0))
+            # an extension slice is identified by its URL; an inherited profile fixes leaves of its own
+            types = e.get("type", [])
+            prof = (types[0].get("profile") or [None])[0] if types else None
+            if prof and types[0].get("code") == "Extension":
+                fixed.append((lp + ".url", prof))
+            elif prof and load:
+                ref = load(prof)
+                if ref:
+                    root = ref.get("type")
+                    for re_ in (ref.get("snapshot") or {}).get("element", []):
+                        if ":" in re_.get("id", ""):
+                            continue
+                        rel = re_.get("path", "")[len(root) + 1:]
+                        if not rel:
+                            continue
+                        fx = scalar_fixed(re_)
+                        if fx is not None:
+                            fixed.append((lp + "." + rel, fx))
+                        obj = object_fixed(re_)
+                        if obj is not None:
+                            for anchor, pairs in groups_of(obj, rel):
+                                for sub, v in pairs:
+                                    fixed.append((lp + "." + anchor + ("." + sub if sub else ""), v))
+        fx = scalar_fixed(e)
+        if fx is not None:
+            fixed.append((lp, fx))
+            fixed_decl_sites.append(lp)
+        obj = object_fixed(e)
+        if obj is not None:
+            fixed_decl_sites.append(lp)
+            for anchor, pairs in groups_of(obj, ""):
+                for sub, v in pairs:
+                    fixed.append((lp + ("." + anchor if anchor else "") + ("." + sub if sub else ""), v))
+
+    # A fixed leaf suppresses its ancestors as slots — but only when it is
+    # reached without an optional slice: a required MRN is still an input
+    # even though the optional `identifier:ihi` slice fixes a system.
+    required_slices = {lp for lp, mn in slices if mn >= 1}
+    optional_slices = {lp for lp, mn in slices if mn == 0}
+
+    def under_optional_slice(lp):
+        parts = lp.split(".")
+        return any(".".join(parts[:i]) in optional_slices for i in range(1, len(parts)))
+
+    for lp, _ in fixed:
+        if under_optional_slice(lp):
+            continue
+        for path_form in (lp, unlabelled(lp)):
+            parts = path_form.split(".")
+            for i in range(1, len(parts)):
+                has_fixed_below.add(".".join(parts[:i]))
+    sliced = {e.get("path", "") for e in els if "slicing" in e}
+    type_of = {}
+    for e in els:
+        types = [t.get("code") for t in e.get("type", []) if t.get("code")]
+        if types and "." in e.get("path", ""):
+            type_of[with_concrete(labelled(e["id"]), by_id, e["id"])] = types[0]
+    QUANTITY = {"Quantity", "SimpleQuantity", "Age", "Duration", "Count", "Distance", "MoneyQuantity"}
+    DATATYPE_CONTAINERS = SLOT_TYPES - {"Quantity", "SimpleQuantity", "Age", "Duration", "Count", "Distance"}
+    unsliced_backbones = {
+        with_concrete(labelled(e["id"]), by_id, e["id"])
+        for e in els
+        if [t.get("code") for t in e.get("type", [])] == ["BackboneElement"] and e.get("path") not in sliced
+        and ":" not in labelled(e["id"]).rsplit(".", 1)[-1]
+    }
+    slot_paths = set()
+
+    def add_slot(lp, ty, choices, mn, mx, ms):
+        if lp not in slot_paths:
+            slot_paths.add(lp)
+            slots.append({"path": lp, "ty": ty, "choices": choices, "min": mn, "max": mx, "ms": ms})
+
+    for e in els:
+        eid, path = e.get("id", ""), e.get("path", "")
+        if "." not in path:
+            continue
+        lp = with_concrete(labelled(eid), by_id, eid)
+        first = lp.split(".")[0].split(":")[0]
+        if first in SKIP_SLOTS or first == "extension" and ":" not in lp:
+            continue
+        if scalar_fixed(e) is not None or object_fixed(e) is not None or lp in has_fixed_below or unlabelled(lp) in has_fixed_below:
+            continue
+        if e.get("max") == "0":
+            continue
+        types = [t.get("code") for t in e.get("type", []) if t.get("code")]
+        if not types or types[0] in ("Element", "Extension"):
+            continue
+        parts = lp.split(".")
+        ancestors = [".".join(parts[:i]) for i in range(1, len(parts))]
+        # beneath an unsliced group: the group is the slot (or nothing), never its parts
+        if any(a in unsliced_backbones for a in ancestors):
+            continue
+        # a plain child of a sliced element: reached through the slices, not here
+        if any(".".join(unlabelled(a).split(".")) in {p.split(".", 1)[1] for p in sliced} and ":" not in a.rsplit(".", 1)[-1] for a in ancestors):
+            continue
+        # a type slice the profile forbids (value[x]:valueQuantity 0..0) is not an input
+        if any(lp == with_concrete(labelled(o["id"]), by_id, o["id"]) and o.get("max") == "0" for o in els if ":" in o.get("id", "")):
+            continue
+        if types[0] == "BackboneElement" and ":" in lp.rsplit(".", 1)[-1]:
+            continue
+        if path in sliced:
+            # a sliced container: reached through its slices — unless none of
+            # them is required, in which case the container is the input
+            # (Provenance.agent with optional author / transmitter slices)
+            own_slices = [m for (sp, m) in slices if sp.rsplit(".", 1)[0] == lp.rsplit(".", 1)[0] and sp.startswith(lp + ":")]
+            if any(m >= 1 for m in own_slices):
+                continue
+        required = (e.get("min", 0) or 0) >= 1
+        ms = bool(e.get("mustSupport"))
+        if not (required or ms):
+            continue
+        mx = e.get("max")
+        mx = int(mx) if mx not in (None, "*") else None
+        # a part of a datatype (telecom.system): the datatype is the slot
+        holder = next((a for a in ancestors if type_of.get(a) in DATATYPE_CONTAINERS and a not in has_fixed_below and unlabelled(a) not in has_fixed_below), None)
+        if holder:
+            he = by_id.get(sd["type"] + "." + holder.replace(":", ":")) or {}
+            hmx = None
+            add_slot(holder, type_of[holder], (), 0, hmx, True)
+            continue
+        last = path.rsplit(".", 1)[-1]
+        if last.endswith("[x]") and len(types) > 1:
+            choices = tuple(last[:-3] + t[0].upper() + t[1:] for t in types)
+            ty = "choice"
+        else:
+            choices = ()
+            ty = types[0]
+        if ty != "choice" and ty not in SLOT_TYPES and ty != "BackboneElement":
+            continue
+        add_slot(lp, ty, choices, e.get("min", 0) or 0, mx, ms)
+
+    # a Quantity the profile fixes the unit of (system + code) still needs its number
+    for lp, _ in list(fixed):
+        parent, _, leaf = lp.rpartition(".")
+        if leaf in ("system", "code") and type_of.get(parent) in QUANTITY and parent + ".value" not in slot_paths:
+            if under_optional_slice(parent):
+                continue
+            add_slot(parent + ".value", "decimal", (), 1, 1, True)
+            add_slot(parent + ".unit", "string", (), 0, 1, True)
+    # gates: an optional element (min 0) on the way to a fixed leaf — the leaf
+    # applies only when an input reaches into it (component:SystolicBP
+    # .valueQuantity stays absent when the host gives a dataAbsentReason)
+    min_of = {}
+    for e in els:
+        if "." in e.get("path", ""):
+            min_of[with_concrete(labelled(e["id"]), by_id, e["id"])] = e.get("min", 0) or 0
+    gate_paths = {p for p, _ in slices}
+    for decl in fixed_decl_sites:
+        parts = decl.split(".")
+        for i in range(1, len(parts) + 1):
+            pre = ".".join(parts[:i])
+            if pre not in gate_paths and min_of.get(pre) == 0:
+                slices.append((pre, 0))
+                gate_paths.add(pre)
+    # dedupe fixed (an inherited leaf may repeat)
+    seen, uniq = set(), []
+    for f in fixed:
+        if f not in seen:
+            seen.add(f)
+            uniq.append(f)
+    return uniq, slices, slots
+
+
 # --- collect, then resolve ------------------------------------------------------
 
 @dataclass
@@ -462,9 +701,22 @@ def emit(sd, provenance, load=None):
             f"        ProfileInvariant {{ path: {rs(path)}, key: {rs(key)}, severity: {sev}, "
             f"human: {rs(human)}, expression: {rs(expr)}, types: &[{tys}] }},"
         )
-    out += ["    ],", "    must_support: &["]
+    out += ["    ],", "    lowering: &LOWERING,", "    must_support: &["]
     for path in must_support_of(sd):
         out.append(f"        {rs(path)},")
+    out += ["    ],", "};", ""]
+    fixed, slices, slots = lowering_of(sd, load)
+    out += ["/// How to build a resource for this profile (see `compiled::Lowering`).", "pub static LOWERING: Lowering = Lowering {", "    fixed: &["]
+    out += [f"        ({rs(p)}, {rs(v)})," for p, v in fixed]
+    out += ["    ],", "    slices: &["]
+    out += [f"        ({rs(p)}, {m})," for p, m in slices]
+    out += ["    ],", "    slots: &["]
+    for sl in slots:
+        ch = ", ".join(rs(c) for c in sl["choices"])
+        out.append(
+            f"        Slot {{ path: {rs(sl['path'])}, ty: {rs(sl['ty'])}, choices: &[{ch}], min: {sl['min']}, "
+            f"max: {max_rs(sl['max'])}, must_support: {str(sl['ms']).lower()} }},"
+        )
     out += ["    ],", "};", ""]
     return "\n".join(out), (len(c.elements), n_slices, len(c.deferred))
 

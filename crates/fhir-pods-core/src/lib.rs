@@ -156,6 +156,14 @@ fn select_profiles(
     out
 }
 
+/// [`Validator::lower`] without a validator (the invariants are re-parsed).
+pub fn lower_bytes(url: &str, inputs: &[u8]) -> Result<lower::Lowered, lower::LowerError> {
+    let url = url.split('|').next().unwrap_or(url);
+    let profile = generated::REGISTRY.iter().find(|p| p.url == url).ok_or(lower::LowerError::UnknownProfile)?;
+    let parsed = json::parse(inputs).map_err(|_| lower::LowerError::InputsNotAnObject)?;
+    lower::lower(profile, &parsed, None)
+}
+
 /// `wire::report(&validate_bytes(input))` — the `Validation` JSON, as text.
 pub fn probe(input: &[u8]) -> String {
     wire::report(&validate_bytes(input))
@@ -194,6 +202,7 @@ fn parse_failure(e: json::ParseError) -> Validation {
 pub mod wire;
 
 pub mod json;
+pub mod lower;
 
 pub mod document;
 
@@ -261,6 +270,16 @@ impl Validator {
     /// [`validate_bytes_with`], with the invariants already parsed.
     pub fn validate_with(&self, input: &[u8], tx: &dyn terminology::TerminologyProvider) -> Validation {
         validate_bytes_impl(input, tx, Some(self))
+    }
+
+    /// Build a conformant resource for the profile at `url` from its variable
+    /// inputs (a JSON object keyed by slot path), and validate it. See
+    /// [`lower`](crate::lower).
+    pub fn lower(&self, url: &str, inputs: &[u8]) -> Result<lower::Lowered, lower::LowerError> {
+        let url = url.split('|').next().unwrap_or(url);
+        let profile = generated::REGISTRY.iter().find(|p| p.url == url).ok_or(lower::LowerError::UnknownProfile)?;
+        let parsed = json::parse(inputs).map_err(|_| lower::LowerError::InputsNotAnObject)?;
+        lower::lower(profile, &parsed, Some(self))
     }
 
     /// [`must_support_gaps`], honouring this validator's default profiles.

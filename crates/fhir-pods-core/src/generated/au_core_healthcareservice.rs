@@ -57,10 +57,29 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "HealthcareService", key: "dom-5", severity: InvariantSeverity::Error, human: "If a resource is contained in another resource, it SHALL NOT have a security label", expression: "contained.meta.security.empty()", types: &["HealthcareService"] },
         ProfileInvariant { path: "HealthcareService", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["HealthcareService"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "HealthcareService.identifier",
         "HealthcareService.name",
         "HealthcareService.telecom",
         "HealthcareService.type",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        ("availableTime.availableStartTime.extension:timeZone.url", "http://hl7.org/fhir/StructureDefinition/timezone"),
+        ("availableTime.availableEndTime.extension:timeZone.url", "http://hl7.org/fhir/StructureDefinition/timezone"),
+    ],
+    slices: &[
+        ("availableTime.availableStartTime.extension:timeZone", 0),
+        ("availableTime.availableEndTime.extension:timeZone", 0),
+    ],
+    slots: &[
+        Slot { path: "identifier", ty: "Identifier", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "type", ty: "CodeableConcept", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "name", ty: "string", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "telecom", ty: "ContactPoint", choices: &[], min: 0, max: Max::Star, must_support: true },
     ],
 };

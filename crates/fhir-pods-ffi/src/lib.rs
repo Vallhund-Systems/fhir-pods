@@ -9,6 +9,8 @@
 //! - [`fhir_pods_validate`] — the `Validation` JSON (`valid`, `profile(s)`, `issues[]`).
 //! - [`fhir_pods_operation_outcome`] — the spec resource, for the wire.
 //! - [`fhir_pods_must_support`] — must-support gaps, information only.
+//! - [`fhir_pods_lower`] — build a conformant resource from its variable inputs (and validate it).
+//! - [`fhir_pods_slots`] — the inputs a profile takes.
 //!
 //! Each has a `_tx` twin taking a host **terminology callback** — the seam
 //! through which NCTS / VSAC / an on-device cache answer the bindings the
@@ -42,7 +44,7 @@ fn validator() -> &'static Validator {
 
 /// Bump when the exported surface or the memory contract changes; the
 /// wrappers refuse a mismatched module.
-pub const ABI_VERSION: u32 = 3;
+pub const ABI_VERSION: u32 = 4;
 
 /// A host terminology callback: is (`system`, `code`) in `value_set`?
 /// Strings are UTF-8 `(ptr, len)`, valid only for the duration of the call;
@@ -127,6 +129,111 @@ pub unsafe extern "C" fn fhir_pods_operation_outcome_tx(
 #[no_mangle]
 pub unsafe extern "C" fn fhir_pods_must_support(ptr: *const u8, len: usize) -> *mut u8 {
     pack(must_support_json(input(ptr, len)).as_bytes())
+}
+
+/// Lower: `profile` is a canonical URL, `inputs` a JSON object keyed by slot
+/// path. Returns `{"resource": {…}, "validation": {…}}`, or `{"error": "…"}`
+/// when lowering could not start (unknown profile, inputs not an object).
+#[no_mangle]
+pub unsafe extern "C" fn fhir_pods_lower(
+    profile: *const u8,
+    profile_len: usize,
+    inputs: *const u8,
+    inputs_len: usize,
+) -> *mut u8 {
+    pack(lower_json(input(profile, profile_len), input(inputs, inputs_len)).as_bytes())
+}
+
+/// [`fhir_pods_lower`] with a host terminology callback for the validation.
+#[no_mangle]
+pub unsafe extern "C" fn fhir_pods_lower_tx(
+    profile: *const u8,
+    profile_len: usize,
+    inputs: *const u8,
+    inputs_len: usize,
+    cb: Option<TxCallback>,
+    ctx: *mut c_void,
+) -> *mut u8 {
+    // The validation inside `lower` uses the bundled sets; re-validate the
+    // resource through the callback so the host's terminology counts.
+    let out = lower_json(input(profile, profile_len), input(inputs, inputs_len));
+    if cb.is_none() {
+        return pack(out.as_bytes());
+    }
+    match validator().lower(core::str::from_utf8(input(profile, profile_len)).unwrap_or(""), input(inputs, inputs_len))
+    {
+        Ok(l) => with_tx(cb, ctx, |tx| {
+            let mut v = validator().validate_with(l.resource.as_bytes(), tx);
+            // keep the input-level issues lowering found first
+            let mut issues: Vec<_> = l
+                .validation
+                .report
+                .issues
+                .iter()
+                .filter(|i| i.code == fhir_pods_core::validate::IssueType::Structure || i.path.contains('\''))
+                .cloned()
+                .collect();
+            issues.retain(|i| !v.report.issues.contains(i));
+            issues.append(&mut v.report.issues);
+            v.report.issues = issues;
+            pack(lowered_json(&l.resource, &v).as_bytes())
+        }),
+        Err(_) => pack(out.as_bytes()),
+    }
+}
+
+/// The inputs a profile takes: `{"slots":[{"path","type","choices","min","max","mustSupport"}]}`,
+/// or `{"error": "…"}` for an unknown profile.
+#[no_mangle]
+pub unsafe extern "C" fn fhir_pods_slots(profile: *const u8, profile_len: usize) -> *mut u8 {
+    let url = core::str::from_utf8(input(profile, profile_len)).unwrap_or("");
+    let url = url.split('|').next().unwrap_or(url);
+    let Some(p) = fhir_pods_core::generated::REGISTRY.iter().find(|p| p.url == url) else {
+        return pack(b"{\"error\":\"no compiled profile with that URL\"}");
+    };
+    let mut out = String::from("{\"slots\":[");
+    for (i, s) in p.lowering.slots.iter().enumerate() {
+        if i > 0 {
+            out.push(',');
+        }
+        out.push_str(&format!(
+            "{{\"path\":\"{}\",\"type\":\"{}\",\"choices\":[{}],\"min\":{},\"max\":{},\"mustSupport\":{}}}",
+            s.path,
+            s.ty,
+            s.choices.iter().map(|c| format!("\"{c}\"")).collect::<Vec<_>>().join(","),
+            s.min,
+            match s.max {
+                fhir_pods_core::compiled::Max::Bounded(n) => n.to_string(),
+                fhir_pods_core::compiled::Max::Star => "null".into(),
+            },
+            s.must_support
+        ));
+    }
+    out.push_str("]}");
+    pack(out.as_bytes())
+}
+
+fn lower_json(profile: &[u8], inputs: &[u8]) -> String {
+    let url = core::str::from_utf8(profile).unwrap_or("");
+    match validator().lower(url, inputs) {
+        Ok(l) => lowered_json(&l.resource, &l.validation),
+        Err(e) => {
+            let mut s = String::from("{\"error\":\"");
+            s.push_str(&e.to_string());
+            s.push_str("\"}");
+            s
+        }
+    }
+}
+
+fn lowered_json(resource: &str, validation: &fhir_pods_core::Validation) -> String {
+    let mut s = String::with_capacity(resource.len() + 256);
+    s.push_str("{\"resource\":");
+    s.push_str(resource);
+    s.push_str(",\"validation\":");
+    s.push_str(&wire::report(validation));
+    s.push('}');
+    s
 }
 
 fn must_support_json(input: &[u8]) -> String {
@@ -362,6 +469,37 @@ mod android {
     }
 
     #[no_mangle]
+    pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_lower<'l>(
+        mut env: JNIEnv<'l>,
+        _this: JObject<'l>,
+        profile: JByteArray<'l>,
+        inputs: JByteArray<'l>,
+    ) -> jbyteArray {
+        let (p, i) = (bytes_in(&mut env, &profile), bytes_in(&mut env, &inputs));
+        let doc = lower_json(&p, &i);
+        bytes_out(&mut env, &doc)
+    }
+
+    #[no_mangle]
+    pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_slots<'l>(
+        mut env: JNIEnv<'l>,
+        _this: JObject<'l>,
+        profile: JByteArray<'l>,
+    ) -> jbyteArray {
+        let p = bytes_in(&mut env, &profile);
+        let doc = unsafe { unpack_owned(fhir_pods_slots(p.as_ptr(), p.len())) };
+        bytes_out(&mut env, &doc)
+    }
+
+    /// Take a length-prefixed buffer back from the C ABI as a String.
+    unsafe fn unpack_owned(ret: *mut u8) -> String {
+        let len = u32::from_le_bytes(*(ret as *const [u8; 4])) as usize;
+        let s = String::from_utf8_lossy(std::slice::from_raw_parts(ret.add(4), len)).into_owned();
+        pod_free(ret, 4 + len);
+        s
+    }
+
+    #[no_mangle]
     pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_operationOutcome<'l>(
         mut env: JNIEnv<'l>,
         _this: JObject<'l>,
@@ -422,6 +560,25 @@ mod tests {
             );
             assert!(r.starts_with("{\"mustSupportGaps\":[") && r.contains("\"Patient.birthDate\""), "{r}");
             assert_eq!(call(fhir_pods_must_support, "not json"), "{\"mustSupportGaps\":[]}");
+        }
+    }
+
+    #[test]
+    fn lower_and_slots_over_the_abi() {
+        unsafe {
+            let hr = "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate";
+            let inputs = r#"{"status":"final","subject":"Patient/1","effectiveDateTime":"2026-09-16","valueQuantity.value":72,"valueQuantity.unit":"/min"}"#;
+            let out = unpack(fhir_pods_lower(hr.as_ptr(), hr.len(), inputs.as_ptr(), inputs.len()));
+            assert!(
+                out.starts_with("{\"resource\":{\"resourceType\":\"Observation\"") && out.contains("\"valid\":true"),
+                "{out}"
+            );
+            let slots = unpack(fhir_pods_slots(hr.as_ptr(), hr.len()));
+            assert!(slots.contains("\"path\":\"valueQuantity.value\",\"type\":\"decimal\""), "{slots}");
+            let nope = "http://example.org/nope";
+            assert!(
+                unpack(fhir_pods_lower(nope.as_ptr(), nope.len(), inputs.as_ptr(), inputs.len())).contains("\"error\"")
+            );
         }
     }
 

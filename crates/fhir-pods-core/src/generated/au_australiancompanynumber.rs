@@ -65,5 +65,16 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         expression: "value.matches('^([0-9]{9})$')",
         types: &["Identifier"],
     }],
+    lowering: &LOWERING,
     must_support: &[],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[("system", "http://hl7.org.au/id/acn")],
+    slices: &[],
+    slots: &[
+        Slot { path: "type", ty: "CodeableConcept", choices: &[], min: 1, max: Max::Bounded(1), must_support: false },
+        Slot { path: "value", ty: "string", choices: &[], min: 1, max: Max::Bounded(1), must_support: false },
+    ],
 };

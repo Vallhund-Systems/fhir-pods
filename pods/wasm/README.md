@@ -42,6 +42,26 @@ const outcome = pod.operationOutcome(JSON.stringify(observation));
 the report. Both calls are synchronous — tens of microseconds for a profiled
 resource.
 
+### Lowering — a conformant resource from the variable data only
+
+```js
+pod.slots("http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate");
+// [{ path: "status", type: "code", min: 1, … }, { path: "valueQuantity.value", type: "decimal", … }, …]
+
+const { resource, validation } = pod.lower("…/au-core-heartrate", {
+  status: "final", subject: "Patient/1", effectiveDateTime: "2026-09-16T08:00:00+10:00",
+  "valueQuantity.value": 72, "valueQuantity.unit": "beats/minute",
+});
+// resource: the full Observation — LOINC + SNOMED codings, category, UCUM
+// system and unit code all filled in by the profile; validation: its verdict.
+```
+
+Slot keys are labelled paths (`component:SystolicBP.valueQuantity.value` for
+a blood pressure); a string becomes a `Reference`, a number a `Quantity`,
+`{system, code}` a `CodeableConcept`, and a datatype object is taken as
+given. Unknown keys, wrong kinds and collisions with a fixed value are issues
+in `validation`, never dropped.
+
 ### Must-support (information, not validation)
 
 ```js

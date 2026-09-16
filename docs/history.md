@@ -252,3 +252,27 @@ live: an orphaned contained Medication fails, and the oracle agrees
 (**289/289**). What's left is exactly what a library can't do:
 `htmlChecks()` and `resolve()`. Cost: `.wasm` 331 → 371 KB. libFuzzer
 targets run on nightly (installed on request).
+- **Pass 18 — lowering, proved (2026-09-16).** The transformer: per profile
+the generator emits the fixed skeleton, the gated slices and the typed input
+slots; the engine merges a host's inputs, applies the fixed leaves where
+their gates are live, and validates. Proof = every publisher-valid corpus
+example re-lowered from the values at its own slots and put in front of
+the oracle. First run **449/556**: two families. (1) Pattern-derived leaves
+(`category.coding.code` from a `patternCodeableConcept`) landed in an
+object because "which elements repeat" came from the profile snapshot,
+which omits `coding` when nothing constrains it — now repetition and wire
+shape come from the base spec's element table, for lowering and for the
+extractor alike (`Coverage.payor` cut to 0..1 is still an array). Fixing
+that exposed a placement bug: slice instances were keyed by the unlabelled
+prefix, so `component:systolic.code.coding` and `component:diastolic…`
+shared one array. (2) A `MedicationRequest` referencing `#med1` lowered
+without its `contained` — pass-through members (`id`, `text`, `contained`,
+extensions) now travel, and the extractor carries a contained resource only
+where a slot value still reaches it. **556/556.** The last disagreement was
+the verifier's, not lowering's: an Organization containing an Endpoint —
+a type outside the registry — left `dom-3` unevaluable and the orphan
+passed silently. The type table now covers every R4 resource type (5,471
+entries, 187 types), packed (relative paths, dictionary-encoded codes,
+repeat flag in the entry: 570 KB `.wasm`, 152 KB gzipped, versus 681 KB
+unpacked), and a skipped invariant is reported as an `information` issue
+rather than nothing. ~29 µs mean per corpus validate.

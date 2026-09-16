@@ -62,6 +62,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "MedicationDispense", key: "mdd-1", severity: InvariantSeverity::Error, human: "whenHandedOver cannot be before whenPrepared", expression: "whenHandedOver.empty() or whenPrepared.empty() or whenHandedOver >= whenPrepared", types: &["MedicationDispense"] },
         ProfileInvariant { path: "MedicationDispense", key: "us-core-20", severity: InvariantSeverity::Error, human: "whenHandedOver SHALL be present if the status is \"completed\"", expression: "status='completed' implies whenHandedOver.exists()", types: &["MedicationDispense"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "MedicationDispense.authorizingPrescription",
         "MedicationDispense.dosageInstruction",
@@ -77,5 +78,36 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "MedicationDispense.subject",
         "MedicationDispense.type",
         "MedicationDispense.whenHandedOver",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[],
+    slices: &[],
+    slots: &[
+        Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "medication[x]",
+            ty: "choice",
+            choices: &["medicationCodeableConcept", "medicationReference"],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "performer", ty: "BackboneElement", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot {
+            path: "authorizingPrescription",
+            ty: "Reference",
+            choices: &[],
+            min: 0,
+            max: Max::Star,
+            must_support: true,
+        },
+        Slot { path: "type", ty: "CodeableConcept", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "quantity", ty: "Quantity", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "whenHandedOver", ty: "dateTime", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "dosageInstruction", ty: "Dosage", choices: &[], min: 0, max: Max::Star, must_support: true },
     ],
 };

@@ -56,6 +56,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Patient.name", key: "ipa-pat-3", severity: InvariantSeverity::Warning, human: "To be usable for a wide range of internationally available applications, the Patient.name.text SHOULD be present.", expression: "text.exists()", types: &["HumanName"] },
         ProfileInvariant { path: "Patient.contact", key: "pat-1", severity: InvariantSeverity::Error, human: "SHALL at least contain a contact's details or a reference to an organization", expression: "name.exists() or telecom.exists() or address.exists() or organization.exists()", types: &["BackboneElement"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Patient.active",
         "Patient.birthDate",
@@ -64,5 +65,19 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Patient.identifier.value",
         "Patient.link",
         "Patient.name",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[],
+    slices: &[],
+    slots: &[
+        Slot { path: "identifier", ty: "Identifier", choices: &[], min: 1, max: Max::Star, must_support: true },
+        Slot { path: "active", ty: "boolean", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "name", ty: "HumanName", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "gender", ty: "code", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "birthDate", ty: "date", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "link", ty: "BackboneElement", choices: &[], min: 0, max: Max::Star, must_support: true },
     ],
 };

@@ -16,7 +16,7 @@ reference where one exists, skip-never-guess, no licensed terminology
 shipped. Domain-specific maps (a host's own records → FHIR) live in the host,
 never here; the pods know FHIR, the host knows its data.
 
-## 0.3 — Lowering (the transformer)
+## 0.3 — Lowering (the transformer) — shipped
 
 **What.** Build a conformant resource from the *variable* data only. A
 compiled profile already fixes most of a resource — the LOINC + SNOMED
@@ -48,9 +48,9 @@ validation}`; `fhir_pods_inputs(profile_url)` → the slot list, so a host can
 generate its own typed bindings. Pods: `lower(profileUrl, inputs)` in JS /
 Swift / Kotlin.
 
-**Proof.** Every registry profile with a published example: lower the
-example's variable data → validate → the oracle agrees the output is valid;
-diff against the example for the fixed parts.
+**Proof.** Every publisher-valid corpus example is re-lowered from the
+values at its slots (`examples/lower_corpus.rs`, run by the harness) and the
+result is put in front of the reference validator alongside the corpus.
 
 ## 0.3.x — Terminology, wired for real
 

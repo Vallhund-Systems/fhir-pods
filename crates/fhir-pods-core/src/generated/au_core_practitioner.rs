@@ -59,10 +59,41 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Practitioner", key: "inv-pra-4", severity: InvariantSeverity::Warning, human: "Recorded sex or gender jurisdiction shall be a member of the Jurisdiction ValueSet - AU Extended value set if any codes within that value set can apply", expression: "extension('http://hl7.org/fhir/StructureDefinition/individual-recordedSexOrGender').extension('jurisdiction').empty() or extension('http://hl7.org/fhir/StructureDefinition/individual-recordedSexOrGender').extension('jurisdiction').value.all(memberOf('http://terminology.hl7.org.au/ValueSet/jurisdiction-extended'))", types: &["Practitioner"] },
         ProfileInvariant { path: "Practitioner", key: "inv-pra-5", severity: InvariantSeverity::Warning, human: "Recorded sex or gender source shall be a member of the AU Recorded Sex or Gender (RSG) Source value set if any codes within that value set can apply", expression: "extension('http://hl7.org/fhir/StructureDefinition/individual-recordedSexOrGender').extension('source').empty() or extension('http://hl7.org/fhir/StructureDefinition/individual-recordedSexOrGender').extension('source').value.ofType(CodeableConcept).all(memberOf('http://terminology.hl7.org.au/ValueSet/rsg-source'))", types: &["Practitioner"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Practitioner.identifier",
         "Practitioner.name",
         "Practitioner.name.family",
         "Practitioner.name.given",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        ("extension:genderIdentity.url", "http://hl7.org/fhir/StructureDefinition/individual-genderIdentity"),
+        ("extension:individualPronouns.url", "http://hl7.org/fhir/StructureDefinition/individual-pronouns"),
+        ("extension:recordedSexOrGender.url", "http://hl7.org/fhir/StructureDefinition/individual-recordedSexOrGender"),
+        ("identifier:hpii.type.coding.system", "http://terminology.hl7.org/CodeSystem/v2-0203"),
+        ("identifier:hpii.type.coding.code", "NPI"),
+        ("identifier:hpii.system", "http://ns.electronichealth.net.au/id/hi/hpii/1.0"),
+    ],
+    slices: &[
+        ("extension:genderIdentity", 0),
+        ("extension:individualPronouns", 0),
+        ("extension:recordedSexOrGender", 0),
+        ("identifier:hpii", 0),
+    ],
+    slots: &[
+        Slot { path: "identifier", ty: "Identifier", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot {
+            path: "identifier:hpii",
+            ty: "Identifier",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "name", ty: "HumanName", choices: &[], min: 1, max: Max::Star, must_support: true },
     ],
 };

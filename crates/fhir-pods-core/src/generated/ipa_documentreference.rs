@@ -57,6 +57,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "DocumentReference", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["DocumentReference"] },
         ProfileInvariant { path: "DocumentReference.content.attachment", key: "ipa-doc-1", severity: InvariantSeverity::Error, human: "DocumentReference.content.attachment.url or  DocumentReference.content.attachment.data or both SHALL be present.", expression: "url.exists() or data.exists()", types: &["Attachment"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "DocumentReference.author",
         "DocumentReference.category",
@@ -73,5 +74,21 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "DocumentReference.status",
         "DocumentReference.subject",
         "DocumentReference.type",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[],
+    slices: &[],
+    slots: &[
+        Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "type", ty: "CodeableConcept", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "category", ty: "CodeableConcept", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "date", ty: "instant", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "author", ty: "Reference", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "content", ty: "BackboneElement", choices: &[], min: 1, max: Max::Star, must_support: true },
+        Slot { path: "context", ty: "BackboneElement", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
     ],
 };

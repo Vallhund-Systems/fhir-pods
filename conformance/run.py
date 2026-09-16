@@ -125,7 +125,14 @@ def main():
             "Running OUR side only.\n"
         )
 
+    # The lowering proof: every valid example lowered from its slot values,
+    # written back as lowered-*.json for the oracle to judge.
+    subprocess.check_call(
+        ["cargo", "run", "-q", "-p", "fhir-pods-core", "--example", "lower_corpus", "--", CORPUS],
+        cwd=ROOT, stdout=subprocess.DEVNULL,
+    )
     manifest = json.load(open(os.path.join(CORPUS, "manifest.json")))
+    manifest += json.load(open(os.path.join(CORPUS, "lowered-manifest.json")))
     paths = [os.path.join(CORPUS, c["file"]) for c in manifest]
     oracle = oracle_batch(paths) if have_java else {}
 

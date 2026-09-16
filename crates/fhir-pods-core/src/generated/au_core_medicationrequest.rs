@@ -99,6 +99,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "MedicationRequest", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["MedicationRequest"] },
         ProfileInvariant { path: "MedicationRequest.authoredOn", key: "au-core-medreq-01", severity: InvariantSeverity::Error, human: "Date shall be precise to the day or, if not available, the Data Absent Reason extension shall be present", expression: "$this.hasValue() implies (extension('http://hl7.org/fhir/StructureDefinition/data-absent-reason').value.exists().not() and $this.toString().length() >= 10)", types: &["dateTime"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "MedicationRequest.authoredOn",
         "MedicationRequest.dosageInstruction",
@@ -111,5 +112,79 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "MedicationRequest.requester",
         "MedicationRequest.status",
         "MedicationRequest.subject",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        (
+            "extension:sexParameterForClinicalUse.url",
+            "http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse",
+        ),
+        (
+            "extension:subsidisedConcurrentSupply.url",
+            "http://hl7.org.au/fhir/StructureDefinition/subsidised-concurrent-supply",
+        ),
+        (
+            "medicationCodeableConcept.coding.extension:medicationClass.url",
+            "http://hl7.org.au/fhir/StructureDefinition/medication-type",
+        ),
+        (
+            "medicationCodeableConcept.coding:pbs.extension:medicationClass.url",
+            "http://hl7.org.au/fhir/StructureDefinition/medication-type",
+        ),
+        (
+            "medicationCodeableConcept.coding:amt.extension:medicationClass.url",
+            "http://hl7.org.au/fhir/StructureDefinition/medication-type",
+        ),
+    ],
+    slices: &[
+        ("extension:sexParameterForClinicalUse", 0),
+        ("extension:subsidisedConcurrentSupply", 0),
+        ("medicationCodeableConcept", 0),
+        ("medicationCodeableConcept.coding.extension:medicationClass", 0),
+        ("medicationCodeableConcept.coding:pbs", 0),
+        ("medicationCodeableConcept.coding:pbs.extension:medicationClass", 0),
+        ("medicationCodeableConcept.coding:amt", 0),
+        ("medicationCodeableConcept.coding:amt.extension:medicationClass", 0),
+        ("medicationReference", 0),
+        ("supportingInformation:bodyHeight", 0),
+        ("supportingInformation:bodyWeight", 0),
+    ],
+    slots: &[
+        Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "intent", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "medication[x]",
+            ty: "choice",
+            choices: &["medicationCodeableConcept", "medicationReference"],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot {
+            path: "medicationCodeableConcept",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot {
+            path: "medicationReference",
+            ty: "Reference",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "encounter", ty: "Reference", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "authoredOn", ty: "dateTime", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "requester", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "reasonCode", ty: "CodeableConcept", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "reasonReference", ty: "Reference", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "dosageInstruction", ty: "Dosage", choices: &[], min: 0, max: Max::Star, must_support: true },
     ],
 };

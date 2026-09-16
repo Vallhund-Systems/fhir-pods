@@ -83,6 +83,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Immunization", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["Immunization"] },
         ProfileInvariant { path: "Immunization.education", key: "imm-1", severity: InvariantSeverity::Error, human: "One of documentType or reference SHALL be present", expression: "documentType.exists() or reference.exists()", types: &["BackboneElement"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Immunization.lotNumber",
         "Immunization.note",
@@ -91,5 +92,62 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Immunization.primarySource",
         "Immunization.status",
         "Immunization.vaccineCode",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        ("extension:vaccineVialSerialNumber.url", "http://hl7.org.au/fhir/StructureDefinition/vaccine-serial-number"),
+        ("performer:administeredBy.function.coding.system", "http://terminology.hl7.org/CodeSystem/v2-0443"),
+        ("performer:administeredBy.function.coding.code", "AP"),
+        ("performer:approvedBy.function.coding.system", "http://terminology.hl7.org/CodeSystem/v2-0443"),
+        ("performer:approvedBy.function.coding.code", "OP"),
+    ],
+    slices: &[
+        ("extension:vaccineVialSerialNumber", 0),
+        ("vaccineCode.coding:amtVaccineCode", 0),
+        ("vaccineCode.coding:airVaccineCode", 0),
+        ("performer:administeredBy", 0),
+        ("performer:approvedBy", 0),
+    ],
+    slots: &[
+        Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "vaccineCode",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "patient", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "occurrence[x]",
+            ty: "choice",
+            choices: &["occurrenceDateTime", "occurrenceString"],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "primarySource", ty: "boolean", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "lotNumber", ty: "string", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "performer:administeredBy.actor",
+            ty: "Reference",
+            choices: &[],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: false,
+        },
+        Slot {
+            path: "performer:approvedBy.actor",
+            ty: "Reference",
+            choices: &[],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: false,
+        },
+        Slot { path: "note", ty: "Annotation", choices: &[], min: 0, max: Max::Star, must_support: true },
     ],
 };

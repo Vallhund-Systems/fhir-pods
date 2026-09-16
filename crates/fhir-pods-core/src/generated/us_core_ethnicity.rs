@@ -129,5 +129,43 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ],
     }],
     invariants: &[],
+    lowering: &LOWERING,
     must_support: &[],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        ("extension:ombCategory.url", "ombCategory"),
+        ("extension:detailed.url", "detailed"),
+        ("extension:text.url", "text"),
+        ("url", "http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity"),
+    ],
+    slices: &[("extension:ombCategory", 0), ("extension:detailed", 0), ("extension:text", 1)],
+    slots: &[
+        Slot {
+            path: "extension:ombCategory.valueCoding",
+            ty: "Coding",
+            choices: &[],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: false,
+        },
+        Slot {
+            path: "extension:detailed.valueCoding",
+            ty: "Coding",
+            choices: &[],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: false,
+        },
+        Slot {
+            path: "extension:text.valueString",
+            ty: "string",
+            choices: &[],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: false,
+        },
+    ],
 };

@@ -61,5 +61,16 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     slicings: &[],
     invariants: &[],
+    lowering: &LOWERING,
     must_support: &[],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[("system", "http://ns.electronichealth.net.au/id/dva")],
+    slices: &[],
+    slots: &[
+        Slot { path: "type", ty: "CodeableConcept", choices: &[], min: 1, max: Max::Bounded(1), must_support: false },
+        Slot { path: "value", ty: "string", choices: &[], min: 1, max: Max::Bounded(1), must_support: false },
+    ],
 };

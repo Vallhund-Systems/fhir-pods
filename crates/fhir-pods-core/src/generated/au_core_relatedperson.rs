@@ -56,6 +56,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "RelatedPerson", key: "au-core-relper-01", severity: InvariantSeverity::Error, human: "Either a name or a relationship shall be provided (or both)", expression: "name.exists() or relationship.exists()", types: &["RelatedPerson"] },
         ProfileInvariant { path: "RelatedPerson", key: "au-core-relper-02", severity: InvariantSeverity::Error, human: "Names shall have at least text, family name, or given name present, or if neither is available, the Data Absent Reason extension shall be present", expression: "name.exists() implies name.extension('http://hl7.org/fhir/StructureDefinition/data-absent-reason').exists() xor name.all(text.exists() or family.exists() or given.exists())", types: &["RelatedPerson"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "RelatedPerson.address",
         "RelatedPerson.name",
@@ -66,5 +67,26 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "RelatedPerson.patient",
         "RelatedPerson.relationship",
         "RelatedPerson.telecom",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        ("extension:genderIdentity.url", "http://hl7.org/fhir/StructureDefinition/individual-genderIdentity"),
+        ("extension:individualPronouns.url", "http://hl7.org/fhir/StructureDefinition/individual-pronouns"),
+        ("extension:recordedSexOrGender.url", "http://hl7.org/fhir/StructureDefinition/individual-recordedSexOrGender"),
+    ],
+    slices: &[
+        ("extension:genderIdentity", 0),
+        ("extension:individualPronouns", 0),
+        ("extension:recordedSexOrGender", 0),
+    ],
+    slots: &[
+        Slot { path: "patient", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "relationship", ty: "CodeableConcept", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "name", ty: "HumanName", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "telecom", ty: "ContactPoint", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "address", ty: "Address", choices: &[], min: 0, max: Max::Star, must_support: true },
     ],
 };

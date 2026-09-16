@@ -38,6 +38,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Goal", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["Goal"] },
         ProfileInvariant { path: "Goal.target", key: "gol-1", severity: InvariantSeverity::Error, human: "Goal.target.measure is required if Goal.target.detail is populated", expression: "(detail.exists() and measure.exists()) or detail.exists().not()", types: &["BackboneElement"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Goal.description",
         "Goal.lifecycleStatus",
@@ -45,5 +46,32 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Goal.subject",
         "Goal.target",
         "Goal.target.due[x]",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[],
+    slices: &[],
+    slots: &[
+        Slot { path: "lifecycleStatus", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "description",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "start[x]",
+            ty: "choice",
+            choices: &["startDate", "startCodeableConcept"],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "target", ty: "BackboneElement", choices: &[], min: 0, max: Max::Star, must_support: true },
     ],
 };

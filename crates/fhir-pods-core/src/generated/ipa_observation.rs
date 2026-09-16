@@ -50,6 +50,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Observation", key: "ipa-obs-1", severity: InvariantSeverity::Error, human: "If there is no component or hasMember element then either a value[x] or a data absent reason must be present", expression: "(component.empty() and hasMember.empty()) implies (dataAbsentReason or value)", types: &["Observation"] },
         ProfileInvariant { path: "Observation.referenceRange", key: "obs-3", severity: InvariantSeverity::Error, human: "Must have at least a low or a high or text", expression: "low.exists() or high.exists() or text.exists()", types: &["BackboneElement"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Observation.category",
         "Observation.code",
@@ -58,5 +59,53 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Observation.status",
         "Observation.subject",
         "Observation.value[x]",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[],
+    slices: &[],
+    slots: &[
+        Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "category", ty: "CodeableConcept", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "code", ty: "CodeableConcept", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "effective[x]",
+            ty: "choice",
+            choices: &["effectiveDateTime", "effectivePeriod", "effectiveTiming", "effectiveInstant"],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot {
+            path: "value[x]",
+            ty: "choice",
+            choices: &[
+                "valueQuantity",
+                "valueCodeableConcept",
+                "valueString",
+                "valueBoolean",
+                "valueInteger",
+                "valueRange",
+                "valueRatio",
+                "valueSampledData",
+                "valueTime",
+                "valueDateTime",
+                "valuePeriod",
+            ],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot {
+            path: "dataAbsentReason",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
     ],
 };

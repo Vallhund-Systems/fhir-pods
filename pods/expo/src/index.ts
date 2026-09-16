@@ -67,3 +67,42 @@ export function operationOutcome(json: string): OperationOutcome {
 export function mustSupportGaps(json: string): string[] {
   return (JSON.parse(FhirPodsExpoModule.mustSupport(json)) as { mustSupportGaps: string[] }).mustSupportGaps;
 }
+
+/** One variable input of a profile. */
+export interface Slot {
+  /** Labelled, resource-relative path: `subject`, `component:SystolicBP.valueQuantity.value`. */
+  path: string;
+  /** The FHIR type the value is coerced to; `choice` for a `[x]` element (see `choices`). */
+  type: string;
+  /** For a choice slot, the concrete keys accepted as input keys (`effectiveDateTime`, …). */
+  choices: string[];
+  min: number;
+  /** `null` = unbounded. */
+  max: number | null;
+  mustSupport: boolean;
+}
+
+export interface Lowered {
+  resource: Record<string, unknown>;
+  validation: Validation;
+}
+
+/**
+ * Build a conformant resource for the profile from its variable inputs (a
+ * JSON object keyed by slot path — see {@link slots}), validated on the way
+ * out; the native terminology provider, if installed, is consulted. Throws
+ * only when lowering cannot start (unknown profile, inputs not an object);
+ * every other problem is an issue in `validation`.
+ */
+export function lower(profileUrl: string, inputs: Record<string, unknown>): Lowered {
+  const out = JSON.parse(FhirPodsExpoModule.lower(profileUrl, JSON.stringify(inputs))) as Lowered & { error?: string };
+  if (out.error) throw new Error(`fhir-pods: ${out.error}`);
+  return out;
+}
+
+/** The inputs a profile takes. */
+export function slots(profileUrl: string): Slot[] {
+  const out = JSON.parse(FhirPodsExpoModule.slots(profileUrl)) as { slots?: Slot[]; error?: string };
+  if (out.error) throw new Error(`fhir-pods: ${out.error}`);
+  return out.slots ?? [];
+}

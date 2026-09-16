@@ -43,10 +43,30 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Procedure", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["Procedure"] },
         ProfileInvariant { path: "Procedure", key: "us-core-7", severity: InvariantSeverity::Error, human: "Performed SHALL be present if the status is 'completed' or 'in-progress'", expression: "(status='completed' or status='in-progress') implies performed.exists()", types: &["Procedure"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Procedure.code",
         "Procedure.performed[x]",
         "Procedure.status",
         "Procedure.subject",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[],
+    slices: &[],
+    slots: &[
+        Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "code", ty: "CodeableConcept", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "performed[x]",
+            ty: "choice",
+            choices: &["performedDateTime", "performedPeriod", "performedString", "performedAge", "performedRange"],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
     ],
 };

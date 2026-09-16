@@ -48,8 +48,19 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Specimen", key: "dom-5", severity: InvariantSeverity::Error, human: "If a resource is contained in another resource, it SHALL NOT have a security label", expression: "contained.meta.security.empty()", types: &["Specimen"] },
         ProfileInvariant { path: "Specimen", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["Specimen"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Specimen.subject",
         "Specimen.type",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[],
+    slices: &[],
+    slots: &[
+        Slot { path: "type", ty: "CodeableConcept", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
     ],
 };

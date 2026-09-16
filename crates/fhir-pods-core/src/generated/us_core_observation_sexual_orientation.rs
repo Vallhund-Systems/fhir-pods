@@ -55,10 +55,37 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Observation", key: "us-core-2", severity: InvariantSeverity::Error, human: "If there is no component or hasMember element then either a value[x] or a data absent reason must be present", expression: "(component.empty() and hasMember.empty()) implies (dataAbsentReason.exists() or value.exists())", types: &["Observation"] },
         ProfileInvariant { path: "Observation.referenceRange", key: "obs-3", severity: InvariantSeverity::Error, human: "Must have at least a low or a high or text", expression: "low.exists() or high.exists() or text.exists()", types: &["BackboneElement"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Observation.code",
         "Observation.effective[x]",
         "Observation.status",
         "Observation.subject",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[("code.coding.system", "http://loinc.org"), ("code.coding.code", "76690-7")],
+    slices: &[("valueCodeableConcept", 0)],
+    slots: &[
+        Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "effective[x]",
+            ty: "choice",
+            choices: &["effectiveDateTime", "effectivePeriod", "effectiveTiming", "effectiveInstant"],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot {
+            path: "valueCodeableConcept",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
     ],
 };

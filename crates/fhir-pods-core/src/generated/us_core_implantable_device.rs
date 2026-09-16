@@ -60,6 +60,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Device", key: "dom-5", severity: InvariantSeverity::Error, human: "If a resource is contained in another resource, it SHALL NOT have a security label", expression: "contained.meta.security.empty()", types: &["Device"] },
         ProfileInvariant { path: "Device", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["Device"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Device.distinctIdentifier",
         "Device.expirationDate",
@@ -71,5 +72,42 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Device.udiCarrier",
         "Device.udiCarrier.carrierHRF",
         "Device.udiCarrier.deviceIdentifier",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[],
+    slices: &[],
+    slots: &[
+        Slot {
+            path: "udiCarrier",
+            ty: "BackboneElement",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot {
+            path: "distinctIdentifier",
+            ty: "string",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot {
+            path: "manufactureDate",
+            ty: "dateTime",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "expirationDate", ty: "dateTime", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "lotNumber", ty: "string", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "serialNumber", ty: "string", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "type", ty: "CodeableConcept", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "patient", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
     ],
 };

@@ -50,6 +50,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Condition.stage", key: "con-1", severity: InvariantSeverity::Error, human: "Stage SHALL have summary or assessment", expression: "summary.exists() or assessment.exists()", types: &["BackboneElement"] },
         ProfileInvariant { path: "Condition.evidence", key: "con-2", severity: InvariantSeverity::Error, human: "evidence SHALL have code or details", expression: "code.exists() or detail.exists()", types: &["BackboneElement"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Condition.abatement[x]",
         "Condition.category",
@@ -59,5 +60,65 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Condition.recordedDate",
         "Condition.subject",
         "Condition.verificationStatus",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[("extension:assertedDate.url", "http://hl7.org/fhir/StructureDefinition/condition-assertedDate")],
+    slices: &[("extension:assertedDate", 0), ("category:us-core", 1), ("category:screening-assessment", 0)],
+    slots: &[
+        Slot {
+            path: "clinicalStatus",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot {
+            path: "verificationStatus",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "category", ty: "CodeableConcept", choices: &[], min: 1, max: Max::Star, must_support: true },
+        Slot {
+            path: "category:us-core",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 1,
+            max: Max::Star,
+            must_support: true,
+        },
+        Slot {
+            path: "category:screening-assessment",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 0,
+            max: Max::Star,
+            must_support: true,
+        },
+        Slot { path: "code", ty: "CodeableConcept", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "onset[x]",
+            ty: "choice",
+            choices: &["onsetDateTime", "onsetAge", "onsetPeriod", "onsetRange", "onsetString"],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot {
+            path: "abatement[x]",
+            ty: "choice",
+            choices: &["abatementDateTime", "abatementAge", "abatementPeriod", "abatementRange", "abatementString"],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "recordedDate", ty: "dateTime", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
     ],
 };

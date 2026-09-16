@@ -110,6 +110,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Observation.referenceRange", key: "obs-3", severity: InvariantSeverity::Error, human: "Must have at least a low or a high or text", expression: "low.exists() or high.exists() or text.exists()", types: &["BackboneElement"] },
         ProfileInvariant { path: "Observation.component", key: "vs-3", severity: InvariantSeverity::Error, human: "If there is no a value a data absent reason must be present", expression: "value.exists() or dataAbsentReason.exists()", types: &["BackboneElement"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Observation.category",
         "Observation.code",
@@ -122,5 +123,63 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Observation.status",
         "Observation.subject",
         "Observation.value[x]",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        ("category:VSCat.coding.system", "http://terminology.hl7.org/CodeSystem/observation-category"),
+        ("category:VSCat.coding.code", "vital-signs"),
+        ("code.coding:BodyTempCode.system", "http://loinc.org"),
+        ("code.coding:BodyTempCode.code", "8310-5"),
+        ("code.coding:snomedBodyTempCode.system", "http://snomed.info/sct"),
+        ("code.coding:snomedBodyTempCode.code", "386725007"),
+        ("valueQuantity.system", "http://unitsofmeasure.org"),
+    ],
+    slices: &[
+        ("category:VSCat", 1),
+        ("code.coding:BodyTempCode", 1),
+        ("code.coding:snomedBodyTempCode", 1),
+        ("valueQuantity", 0),
+    ],
+    slots: &[
+        Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "effectiveDateTime",
+            ty: "dateTime",
+            choices: &[],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "valueQuantity", ty: "Quantity", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "valueQuantity.value",
+            ty: "decimal",
+            choices: &[],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot {
+            path: "valueQuantity.unit",
+            ty: "string",
+            choices: &[],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "valueQuantity.code", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "dataAbsentReason",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "component", ty: "BackboneElement", choices: &[], min: 0, max: Max::Star, must_support: true },
     ],
 };

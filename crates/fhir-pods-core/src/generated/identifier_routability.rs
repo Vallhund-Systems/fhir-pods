@@ -42,6 +42,48 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     invariants: &[
         ProfileInvariant { path: "Extension", key: "inv-idrout-0", severity: InvariantSeverity::Error, human: "preference is required when flag is true", expression: "extension.where(url='routability-flag').value.single()=true implies extension.where(url='routability-preference').exists()", types: &["Extension"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        ("extension:routability-flag.url", "routability-flag"),
+        ("extension:routability-preference.url", "routability-preference"),
+        ("extension:routability-asserter.url", "routability-asserter"),
+        ("url", "http://hl7.org.au/fhir/StructureDefinition/identifier-routability"),
+    ],
+    slices: &[
+        ("extension:routability-flag", 1),
+        ("extension:routability-preference", 0),
+        ("extension:routability-asserter", 1),
+    ],
+    slots: &[
+        Slot {
+            path: "extension:routability-flag.valueBoolean",
+            ty: "boolean",
+            choices: &[],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: false,
+        },
+        Slot {
+            path: "extension:routability-preference.valueUnsignedInt",
+            ty: "unsignedInt",
+            choices: &[],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: false,
+        },
+        Slot {
+            path: "extension:routability-asserter.valueUri",
+            ty: "uri",
+            choices: &[],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: false,
+        },
     ],
 };

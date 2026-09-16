@@ -95,6 +95,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Patient.name", key: "us-core-6", severity: InvariantSeverity::Error, human: "At least name.given and/or name.family are present or, if neither is available, the Data Absent Reason Extension is present.", expression: "(family.exists() or given.exists()) xor extension.where(url='http://hl7.org/fhir/StructureDefinition/data-absent-reason').exists()", types: &["HumanName"] },
         ProfileInvariant { path: "Patient.contact", key: "pat-1", severity: InvariantSeverity::Error, human: "SHALL at least contain a contact's details or a reference to an organization", expression: "name.exists() or telecom.exists() or address.exists() or organization.exists()", types: &["BackboneElement"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Patient.address",
         "Patient.address.city",
@@ -113,5 +114,36 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Patient.telecom.system",
         "Patient.telecom.use",
         "Patient.telecom.value",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        ("extension:race.url", "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race"),
+        ("extension:ethnicity.url", "http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity"),
+        (
+            "extension:tribalAffiliation.url",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation",
+        ),
+        ("extension:birthsex.url", "http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex"),
+        ("extension:sex.url", "http://hl7.org/fhir/us/core/StructureDefinition/us-core-sex"),
+        ("extension:genderIdentity.url", "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"),
+    ],
+    slices: &[
+        ("extension:race", 0),
+        ("extension:ethnicity", 0),
+        ("extension:tribalAffiliation", 0),
+        ("extension:birthsex", 0),
+        ("extension:sex", 0),
+        ("extension:genderIdentity", 0),
+    ],
+    slots: &[
+        Slot { path: "identifier", ty: "Identifier", choices: &[], min: 1, max: Max::Star, must_support: true },
+        Slot { path: "name", ty: "HumanName", choices: &[], min: 1, max: Max::Star, must_support: true },
+        Slot { path: "telecom", ty: "ContactPoint", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "gender", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "birthDate", ty: "date", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "address", ty: "Address", choices: &[], min: 0, max: Max::Star, must_support: true },
     ],
 };

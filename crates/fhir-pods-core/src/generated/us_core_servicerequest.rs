@@ -40,6 +40,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "ServiceRequest", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["ServiceRequest"] },
         ProfileInvariant { path: "ServiceRequest", key: "prr-1", severity: InvariantSeverity::Error, human: "orderDetail SHALL only be present if code is present", expression: "orderDetail.empty() or code.exists()", types: &["ServiceRequest"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "ServiceRequest.authoredOn",
         "ServiceRequest.category",
@@ -49,5 +50,36 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "ServiceRequest.requester",
         "ServiceRequest.status",
         "ServiceRequest.subject",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[],
+    slices: &[("category:us-core", 0)],
+    slots: &[
+        Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "intent", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "category", ty: "CodeableConcept", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot {
+            path: "category:us-core",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 0,
+            max: Max::Star,
+            must_support: true,
+        },
+        Slot { path: "code", ty: "CodeableConcept", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "occurrence[x]",
+            ty: "choice",
+            choices: &["occurrencePeriod", "occurrenceDateTime", "occurrenceTiming"],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "authoredOn", ty: "dateTime", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "requester", ty: "Reference", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
     ],
 };

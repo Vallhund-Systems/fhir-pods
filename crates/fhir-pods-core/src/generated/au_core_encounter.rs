@@ -59,6 +59,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Encounter", key: "dom-5", severity: InvariantSeverity::Error, human: "If a resource is contained in another resource, it SHALL NOT have a security label", expression: "contained.meta.security.empty()", types: &["Encounter"] },
         ProfileInvariant { path: "Encounter", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["Encounter"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Encounter.class",
         "Encounter.location",
@@ -73,5 +74,37 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Encounter.serviceType",
         "Encounter.status",
         "Encounter.subject",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[],
+    slices: &[],
+    slots: &[
+        Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "class", ty: "Coding", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "serviceType",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "participant", ty: "BackboneElement", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "period", ty: "Period", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "reasonCode", ty: "CodeableConcept", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "reasonReference", ty: "Reference", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "location", ty: "BackboneElement", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot {
+            path: "serviceProvider",
+            ty: "Reference",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
     ],
 };

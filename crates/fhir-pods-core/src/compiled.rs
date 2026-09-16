@@ -98,6 +98,34 @@ pub struct ProfileInvariant {
 }
 
 /// A profile compiled to embeddable rules.
+/// One variable input of a profile: an element the host supplies when
+/// lowering — everything the profile does not fix. `path` is the labelled
+/// resource-relative path (`component:SystolicBP.valueQuantity`, `subject`);
+/// `ty` the FHIR type the value is coerced to; `choices` the concrete keys a
+/// choice element accepts (`valueQuantity`, `valueString`, …) when the path
+/// ends in `[x]`.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Slot {
+    pub path: &'static str,
+    pub ty: &'static str,
+    pub choices: &'static [&'static str],
+    pub min: u32,
+    pub max: Max,
+    pub must_support: bool,
+}
+
+/// What the generator knows about building a resource for this profile:
+/// the fixed leaves (labelled paths → scalar, from every fixed / pattern /
+/// inherited-profile value at any depth), which slices are required (and
+/// so instantiated by default) versus on demand, and the input slots. Which
+/// elements repeat comes from the base spec's element table (`typing`).
+#[derive(Debug, PartialEq, Eq)]
+pub struct Lowering {
+    pub fixed: &'static [(&'static str, &'static str)],
+    pub slices: &'static [(&'static str, u32)],
+    pub slots: &'static [Slot],
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct CompiledProfile {
     pub url: &'static str,
@@ -106,6 +134,8 @@ pub struct CompiledProfile {
     pub elements: &'static [ElementConstraint],
     pub slicings: &'static [Slicing],
     pub invariants: &'static [ProfileInvariant],
+    /// How to build a resource for this profile from its variable inputs.
+    pub lowering: &'static Lowering,
     /// Elements the IG flags `mustSupport`. Not a validation rule (no
     /// validator fails on it) — a conforming *client* is expected to
     /// populate them when it has the data, so gaps are reported separately

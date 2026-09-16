@@ -43,6 +43,11 @@ Rust-shaped. (See [`docs/architecture.md`](docs/architecture.md).)
 - **AU Core 2.0.0, US Core 6.1.0, IPA 1.1.0** — 168 compiled profiles (86
   resource profiles plus the `Identifier` and complex `Extension` datatypes
   slices inherit).
+- **Lowering:** build a conformant resource from its variable data only —
+  the profile supplies the codings, categories, units and slices; the host
+  supplies `status`, `subject`, `effectiveDateTime`, `valueQuantity.value`…
+  and gets the resource back validated. Proven by re-lowering every corpus
+  example from its slot values: 262/262 valid.
 - **Checks:** per-parent cardinality, fixed values, required bindings, slicing
   with profile inheritance, every declared profile applied, must-support gaps
   (as information), and a FHIRPath engine with typed traversal and a
@@ -53,14 +58,14 @@ Rust-shaped. (See [`docs/architecture.md`](docs/architecture.md).)
   covers and excludes: [`docs/scope.md`](docs/scope.md).
 - **Terminology** beyond the bundled base sets arrives through a
   host-provided seam (`TerminologyProvider`), never as shipped content.
-- **Delivery:** a ~385 KB `.wasm` (101 KB gzipped) with a dependency-free JS
+- **Delivery:** a ~570 KB `.wasm` (152 KB gzipped) with a dependency-free JS
   wrapper, and an Expo module (iOS XCFramework + Android jniLibs) — each
   measured at tens of microseconds per profiled resource.
 - Zero dependencies, `no_std`, `#![forbid(unsafe_code)]`, fuzzed.
 - **Boundary:** the pods know FHIR; a host knows its data. Domain-specific
   maps (a host's records → FHIR) live in the host, never here.
-- **Next:** lowering, terminology, de-identification, documents, audit — the
-  pod family in [`docs/roadmap.md`](docs/roadmap.md).
+- **Next:** terminology, de-identification, documents, audit — the pod
+  family in [`docs/roadmap.md`](docs/roadmap.md).
 
 Design: [`docs/architecture.md`](docs/architecture.md) ·
 decisions: [`docs/incumbent-apis.md`](docs/incumbent-apis.md) ·
@@ -70,14 +75,15 @@ how it got here: [`docs/history.md`](docs/history.md).
 
 - Browser / edge / Node: [`pods/wasm`](pods/wasm/README.md) — `instantiate(bytes)` → `validate(json)`.
 - iOS / Android (Expo): [`pods/expo`](pods/expo/README.md) — `validate(json)`, native terminology provider.
-- Rust: `let v = fhir_pods_core::Validator::new(); v.validate(bytes) -> Validation` (the free
-  `validate_bytes` re-parses invariants per call); the C ABI is `crates/fhir-pods-ffi/include/fhir_pods.h`.
+- Rust: `let v = fhir_pods_core::Validator::new(); v.validate(bytes) -> Validation`,
+  `v.lower(profile_url, inputs) -> Lowered` (the free functions re-parse invariants per call);
+  the C ABI is `crates/fhir-pods-ffi/include/fhir_pods.h`.
 
 ## Layout
 
 - `crates/fhir-pods-core` — the Rust verifier core (zero deps, no `unsafe`, `no_std`).
 - `crates/fhir-pods-ffi` — the one lean C ABI, compiled per target (wasm32 / native staticlib).
-- `pods/wasm` — the wasm pod: a ~385 KB `.wasm` (101 KB gzipped) + a zero-dependency JS wrapper.
+- `pods/wasm` — the wasm pod: a ~570 KB `.wasm` (152 KB gzipped) + a zero-dependency JS wrapper.
 - `pods/expo` — the expo pod: the core as an Expo native module (iOS XCFramework + Android jniLibs).
 - `scripts/` — `gen-profiles.sh`, `build-wasm.sh`, `build-ios-xcframework.sh`, `build-android-jnilibs.sh`, `smoke-c.sh`, `check-no-std.sh`, `release.sh`.
 - `docs/architecture.md` — the design, delivery model, audit surface, and perf budget.

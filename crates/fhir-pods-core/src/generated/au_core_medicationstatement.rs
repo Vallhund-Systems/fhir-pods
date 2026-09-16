@@ -70,6 +70,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "MedicationStatement", key: "dom-5", severity: InvariantSeverity::Error, human: "If a resource is contained in another resource, it SHALL NOT have a security label", expression: "contained.meta.security.empty()", types: &["MedicationStatement"] },
         ProfileInvariant { path: "MedicationStatement", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["MedicationStatement"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "MedicationStatement.dateAsserted",
         "MedicationStatement.dosage",
@@ -80,5 +81,74 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "MedicationStatement.reasonReference",
         "MedicationStatement.status",
         "MedicationStatement.subject",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        ("extension:longTerm.url", "http://hl7.org.au/fhir/StructureDefinition/medication-long-term"),
+        (
+            "medicationCodeableConcept.coding.extension:medicationClass.url",
+            "http://hl7.org.au/fhir/StructureDefinition/medication-type",
+        ),
+        (
+            "medicationCodeableConcept.coding:pbs.extension:medicationClass.url",
+            "http://hl7.org.au/fhir/StructureDefinition/medication-type",
+        ),
+        (
+            "medicationCodeableConcept.coding:amt.extension:medicationClass.url",
+            "http://hl7.org.au/fhir/StructureDefinition/medication-type",
+        ),
+    ],
+    slices: &[
+        ("extension:longTerm", 0),
+        ("medicationCodeableConcept", 0),
+        ("medicationCodeableConcept.coding.extension:medicationClass", 0),
+        ("medicationCodeableConcept.coding:pbs", 0),
+        ("medicationCodeableConcept.coding:pbs.extension:medicationClass", 0),
+        ("medicationCodeableConcept.coding:amt", 0),
+        ("medicationCodeableConcept.coding:amt.extension:medicationClass", 0),
+        ("medicationReference", 0),
+    ],
+    slots: &[
+        Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "medication[x]",
+            ty: "choice",
+            choices: &["medicationCodeableConcept", "medicationReference"],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot {
+            path: "medicationCodeableConcept",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot {
+            path: "medicationReference",
+            ty: "Reference",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "effective[x]",
+            ty: "choice",
+            choices: &["effectiveDateTime", "effectivePeriod"],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "dateAsserted", ty: "dateTime", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "reasonCode", ty: "CodeableConcept", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "reasonReference", ty: "Reference", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "dosage", ty: "Dosage", choices: &[], min: 0, max: Max::Star, must_support: true },
     ],
 };

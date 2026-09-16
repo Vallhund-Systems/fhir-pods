@@ -69,6 +69,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Organization.telecom", key: "org-3", severity: InvariantSeverity::Error, human: "The telecom of an organization can never be of use 'home'", expression: "where(use = 'home').empty()", types: &["ContactPoint"] },
         ProfileInvariant { path: "Organization.address", key: "org-2", severity: InvariantSeverity::Error, human: "An address of an organization can never be of use 'home'", expression: "where(use = 'home').empty()", types: &["Address"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Organization.active",
         "Organization.address",
@@ -84,5 +85,22 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Organization.telecom",
         "Organization.telecom.system",
         "Organization.telecom.value",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        ("identifier:NPI.system", "http://hl7.org/fhir/sid/us-npi"),
+        ("identifier:CLIA.system", "urn:oid:2.16.840.1.113883.4.7"),
+        ("identifier:NAIC.system", "urn:oid:2.16.840.1.113883.6.300"),
+    ],
+    slices: &[("identifier:NPI", 0), ("identifier:CLIA", 0), ("identifier:NAIC", 0)],
+    slots: &[
+        Slot { path: "identifier", ty: "Identifier", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "active", ty: "boolean", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "name", ty: "string", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "telecom", ty: "ContactPoint", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "address", ty: "Address", choices: &[], min: 0, max: Max::Star, must_support: true },
     ],
 };

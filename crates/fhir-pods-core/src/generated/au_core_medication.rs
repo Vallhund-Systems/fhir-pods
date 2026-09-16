@@ -50,7 +50,32 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Medication", key: "dom-5", severity: InvariantSeverity::Error, human: "If a resource is contained in another resource, it SHALL NOT have a security label", expression: "contained.meta.security.empty()", types: &["Medication"] },
         ProfileInvariant { path: "Medication", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["Medication"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Medication.code",
     ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        ("code.coding.extension:medicationClass.url", "http://hl7.org.au/fhir/StructureDefinition/medication-type"),
+        ("code.coding:pbs.extension:medicationClass.url", "http://hl7.org.au/fhir/StructureDefinition/medication-type"),
+        ("code.coding:amt.extension:medicationClass.url", "http://hl7.org.au/fhir/StructureDefinition/medication-type"),
+    ],
+    slices: &[
+        ("code.coding.extension:medicationClass", 0),
+        ("code.coding:pbs", 0),
+        ("code.coding:pbs.extension:medicationClass", 0),
+        ("code.coding:amt", 0),
+        ("code.coding:amt.extension:medicationClass", 0),
+    ],
+    slots: &[Slot {
+        path: "code",
+        ty: "CodeableConcept",
+        choices: &[],
+        min: 1,
+        max: Max::Bounded(1),
+        must_support: true,
+    }],
 };

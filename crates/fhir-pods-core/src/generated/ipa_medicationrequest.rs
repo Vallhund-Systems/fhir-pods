@@ -73,6 +73,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "MedicationRequest", key: "dom-5", severity: InvariantSeverity::Error, human: "If a resource is contained in another resource, it SHALL NOT have a security label", expression: "contained.meta.security.empty()", types: &["MedicationRequest"] },
         ProfileInvariant { path: "MedicationRequest", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["MedicationRequest"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "MedicationRequest.authoredOn",
         "MedicationRequest.dosageInstruction",
@@ -84,5 +85,36 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "MedicationRequest.requester",
         "MedicationRequest.status",
         "MedicationRequest.subject",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[],
+    slices: &[],
+    slots: &[
+        Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "intent", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "reported[x]",
+            ty: "choice",
+            choices: &["reportedBoolean", "reportedReference"],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot {
+            path: "medication[x]",
+            ty: "choice",
+            choices: &["medicationCodeableConcept", "medicationReference"],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "encounter", ty: "Reference", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "authoredOn", ty: "dateTime", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "requester", ty: "Reference", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "dosageInstruction", ty: "Dosage", choices: &[], min: 0, max: Max::Star, must_support: true },
     ],
 };

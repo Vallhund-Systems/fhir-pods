@@ -50,6 +50,21 @@ const outcome = operationOutcome(JSON.stringify(observation));
 `validate` never throws for bad input: unparseable JSON is a `fatal` issue in
 the report.
 
+## Lowering — a conformant resource from the variable data only
+
+```ts
+import { lower, slots } from "fhir-pods-expo";
+slots("http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate"); // the inputs it takes
+const { resource, validation } = lower("…/au-core-heartrate", {
+  status: "final", subject: "Patient/1", effectiveDateTime: "2026-09-16T08:00:00+10:00",
+  "valueQuantity.value": 72, "valueQuantity.unit": "beats/minute",
+});
+```
+
+The profile supplies the codings, category, units and slices; the host
+supplies the variable data; the result comes back validated (through the
+native terminology provider when one is installed).
+
 ## Must-support (information, not validation)
 
 ```ts

@@ -72,6 +72,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Observation.effective[x]", key: "au-core-obs-02", severity: InvariantSeverity::Error, human: "Date shall be at least to day or, if not available, the Data Absent Reason extension shall be present", expression: "(($this is dateTime implies $this.toString().length() >= 10) and extension('http://hl7.org/fhir/StructureDefinition/data-absent-reason').value.exists().not()) xor ($this is dateTime implies ($this.hasValue().not() and extension('http://hl7.org/fhir/StructureDefinition/data-absent-reason').value.exists()))", types: &["dateTime"] },
         ProfileInvariant { path: "Observation.referenceRange", key: "obs-3", severity: InvariantSeverity::Error, human: "Must have at least a low or a high or text", expression: "low.exists() or high.exists() or text.exists()", types: &["BackboneElement"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Observation.category",
         "Observation.code",
@@ -80,5 +81,46 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Observation.status",
         "Observation.subject",
         "Observation.value[x]",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        ("category:socialHistory.coding.system", "http://terminology.hl7.org/CodeSystem/observation-category"),
+        ("category:socialHistory.coding.code", "social-history"),
+        ("code.coding.system", "http://snomed.info/sct"),
+        ("code.coding.code", "1747861000168109"),
+        ("code.coding:loincSmokingStatus.system", "http://loinc.org"),
+        ("code.coding:loincSmokingStatus.code", "72166-2"),
+    ],
+    slices: &[("category:socialHistory", 1), ("code.coding:loincSmokingStatus", 0)],
+    slots: &[
+        Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "effectiveDateTime",
+            ty: "dateTime",
+            choices: &[],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot {
+            path: "valueCodeableConcept",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot {
+            path: "dataAbsentReason",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
     ],
 };

@@ -36,11 +36,23 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "CareTeam", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["CareTeam"] },
         ProfileInvariant { path: "CareTeam.participant", key: "ctm-1", severity: InvariantSeverity::Error, human: "CareTeam.participant.onBehalfOf can only be populated when CareTeam.participant.member is a Practitioner", expression: "onBehalfOf.exists() implies (member.resolve().iif(empty(), true, ofType(Practitioner).exists()))", types: &["BackboneElement"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "CareTeam.participant",
         "CareTeam.participant.member",
         "CareTeam.participant.role",
         "CareTeam.status",
         "CareTeam.subject",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[],
+    slices: &[],
+    slots: &[
+        Slot { path: "status", ty: "code", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "participant", ty: "BackboneElement", choices: &[], min: 1, max: Max::Star, must_support: true },
     ],
 };

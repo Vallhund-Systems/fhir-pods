@@ -60,10 +60,37 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Immunization", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["Immunization"] },
         ProfileInvariant { path: "Immunization.education", key: "imm-1", severity: InvariantSeverity::Error, human: "One of documentType or reference SHALL be present", expression: "documentType.exists() or reference.exists()", types: &["BackboneElement"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Immunization.occurrence[x]",
         "Immunization.patient",
         "Immunization.status",
         "Immunization.vaccineCode",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[],
+    slices: &[],
+    slots: &[
+        Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "vaccineCode",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "patient", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "occurrence[x]",
+            ty: "choice",
+            choices: &["occurrenceDateTime", "occurrenceString"],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
     ],
 };

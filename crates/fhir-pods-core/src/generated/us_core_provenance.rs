@@ -61,6 +61,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Provenance", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["Provenance"] },
         ProfileInvariant { path: "Provenance.agent", key: "provenance-1", severity: InvariantSeverity::Error, human: "onBehalfOf SHALL be present when Provenance.agent.who is a Practitioner or Device", expression: "who.exists((resolve() is Practitioner) or (resolve() is Device)) implies onBehalfOf.exists()", types: &["BackboneElement"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Provenance.agent",
         "Provenance.agent.onBehalfOf",
@@ -69,5 +70,43 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Provenance.recorded",
         "Provenance.target",
         "Provenance.target.reference",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        (
+            "agent:ProvenanceAuthor.type.coding.system",
+            "http://terminology.hl7.org/CodeSystem/provenance-participant-type",
+        ),
+        ("agent:ProvenanceAuthor.type.coding.code", "author"),
+        (
+            "agent:ProvenanceTransmitter.type.coding.system",
+            "http://hl7.org/fhir/us/core/CodeSystem/us-core-provenance-participant-type",
+        ),
+        ("agent:ProvenanceTransmitter.type.coding.code", "transmitter"),
+    ],
+    slices: &[("agent:ProvenanceAuthor", 0), ("agent:ProvenanceTransmitter", 0)],
+    slots: &[
+        Slot { path: "target", ty: "Reference", choices: &[], min: 1, max: Max::Star, must_support: true },
+        Slot { path: "recorded", ty: "instant", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "agent", ty: "BackboneElement", choices: &[], min: 1, max: Max::Star, must_support: true },
+        Slot {
+            path: "agent:ProvenanceAuthor.who",
+            ty: "Reference",
+            choices: &[],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: false,
+        },
+        Slot {
+            path: "agent:ProvenanceTransmitter.who",
+            ty: "Reference",
+            choices: &[],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: false,
+        },
     ],
 };

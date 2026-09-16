@@ -31,5 +31,14 @@ class FhirPodsExpoModule : Module() {
     Function("mustSupport") { json: String ->
       String(FhirPodsNative.mustSupport(json.toByteArray(Charsets.UTF_8)), Charsets.UTF_8)
     }
+
+    // Lowering: a conformant resource from a profile URL and its variable inputs.
+    Function("lower") { profileUrl: String, inputsJson: String ->
+      String(FhirPodsNative.lower(profileUrl.toByteArray(Charsets.UTF_8), inputsJson.toByteArray(Charsets.UTF_8)), Charsets.UTF_8)
+    }
+
+    Function("slots") { profileUrl: String ->
+      String(FhirPodsNative.slots(profileUrl.toByteArray(Charsets.UTF_8)), Charsets.UTF_8)
+    }
   }
 }

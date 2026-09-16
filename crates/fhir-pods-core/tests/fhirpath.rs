@@ -276,10 +276,8 @@ fn type_tests_honour_the_hierarchy() {
     assert_eq!(fp("onset is Age", d), Pass);
     assert_eq!(fp("onset is CodeableConcept", d), Fail);
     assert_eq!(fp("$this is Resource and $this is DomainResource", r#"{"resourceType":"Condition"}"#), Pass);
-    assert_eq!(
-        fp("$this is DomainResource", r#"{"resourceType":"Bundle"}"#),
-        fhir_pods_core::path::Verdict::Unsupported
-    ); // Bundle is not in the table
+    assert_eq!(fp("$this is DomainResource", r#"{"resourceType":"Bundle"}"#), Fail); // a Resource, not a Domain one
+    assert_eq!(fp("$this is DomainResource", r#"{"resourceType":"Nope"}"#), fhir_pods_core::path::Verdict::Unsupported); // not in the table
     assert_eq!(fp("code is Element", d), Pass);
     assert_eq!(fp("id is id and id is string and id is String", d), Pass);
     assert_eq!(fp("subject.reference is string", d), Pass);

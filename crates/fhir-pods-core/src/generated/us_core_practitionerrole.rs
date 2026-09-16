@@ -45,6 +45,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "PractitionerRole", key: "pd-1", severity: InvariantSeverity::Error, human: "SHALL have contact information or a reference to an Endpoint", expression: "telecom or endpoint", types: &["PractitionerRole"] },
         ProfileInvariant { path: "PractitionerRole", key: "us-core-13", severity: InvariantSeverity::Error, human: "SHALL have a practitioner, an organization, a healthcare service, or a location.", expression: "practitioner or organization or healthcareService or location", types: &["PractitionerRole"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "PractitionerRole.code",
         "PractitionerRole.endpoint",
@@ -55,5 +56,20 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "PractitionerRole.telecom",
         "PractitionerRole.telecom.system",
         "PractitionerRole.telecom.value",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[],
+    slices: &[],
+    slots: &[
+        Slot { path: "practitioner", ty: "Reference", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "organization", ty: "Reference", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "code", ty: "CodeableConcept", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "specialty", ty: "CodeableConcept", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "location", ty: "Reference", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "telecom", ty: "ContactPoint", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "endpoint", ty: "Reference", choices: &[], min: 0, max: Max::Star, must_support: true },
     ],
 };

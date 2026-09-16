@@ -9,8 +9,8 @@
 extern "C" {
 #endif
 
-/* ABI version; a host refuses a mismatched module. This header is ABI 3. */
-#define FHIR_PODS_ABI_VERSION 3u
+/* ABI version; a host refuses a mismatched module. This header is ABI 4. */
+#define FHIR_PODS_ABI_VERSION 4u
 uint32_t fhir_pods_abi_version(void);
 
 /* Allocate `len` bytes in the module for the host to fill. */
@@ -39,6 +39,14 @@ uint8_t *fhir_pods_operation_outcome(const uint8_t *ptr, size_t len);
  * certifying against the IG — never part of the validation report. */
 uint8_t *fhir_pods_must_support(const uint8_t *ptr, size_t len);
 
+/* Lowering: build a conformant resource for the profile (a canonical URL)
+ * from its variable inputs (a JSON object keyed by slot path), validated on
+ * the way out: {"resource": {...}, "validation": {...}} — or {"error": "..."}
+ * when it could not start. `fhir_pods_slots` lists a profile's inputs:
+ * {"slots":[{"path","type","choices","min","max","mustSupport"}, ...]}. */
+uint8_t *fhir_pods_lower(const uint8_t *profile, size_t profile_len, const uint8_t *inputs, size_t inputs_len);
+uint8_t *fhir_pods_slots(const uint8_t *profile, size_t profile_len);
+
 /* The terminology seam. A host callback answering "is (system, code) in this
  * value set?" for the bindings the bundled value sets can't decide (the
  * bundled sets are always consulted first). Strings are UTF-8 (ptr, len),
@@ -52,6 +60,8 @@ typedef int32_t (*fhir_pods_tx_callback)(void *ctx,
 
 uint8_t *fhir_pods_validate_tx(const uint8_t *ptr, size_t len, fhir_pods_tx_callback cb, void *ctx);
 uint8_t *fhir_pods_operation_outcome_tx(const uint8_t *ptr, size_t len, fhir_pods_tx_callback cb, void *ctx);
+uint8_t *fhir_pods_lower_tx(const uint8_t *profile, size_t profile_len, const uint8_t *inputs, size_t inputs_len,
+                            fhir_pods_tx_callback cb, void *ctx);
 
 #ifdef __cplusplus
 }

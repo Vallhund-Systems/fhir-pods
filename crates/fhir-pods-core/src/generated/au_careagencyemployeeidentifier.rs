@@ -24,6 +24,18 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Identifier", key: "inv-caei-1", severity: InvariantSeverity::Error, human: "CAE identifier prefix shall be 900360", expression: "value.startsWith('900360')", types: &["Identifier"] },
         ProfileInvariant { path: "Identifier", key: "inv-caei-2", severity: InvariantSeverity::Error, human: "CAE identifier shall pass the Luhn algorithm check", expression: "(((select(value.substring(0,1).toInteger()).select(iif($this<5, $this*2, (($this*2)-9))))+(value.substring(1,1).toInteger())+(select(value.substring(2,1).toInteger()).select(iif($this<5, $this*2, (($this*2)-9))))+(value.substring(3,1).toInteger())+(select(value.substring(4,1).toInteger()).select(iif($this<5, $this*2, (($this*2)-9))))+(value.substring(5,1).toInteger())+(select(value.substring(6,1).toInteger()).select(iif($this<5, $this*2, (($this*2)-9))))+(value.substring(7,1).toInteger())+(select(value.substring(8,1).toInteger()).select(iif($this<5, $this*2, (($this*2)-9))))+(value.substring(9,1).toInteger())+(select(value.substring(10,1).toInteger()).select(iif($this<5, $this*2, (($this*2)-9))))+(value.substring(11,1).toInteger())+(select(value.substring(12,1).toInteger()).select(iif($this<5, $this*2, (($this*2)-9))))+(value.substring(13,1).toInteger())+(select(value.substring(14,1).toInteger()).select(iif($this<5, $this*2, (($this*2)-9))))+(value.substring(15,1).toInteger()))mod 10=0)", types: &["Identifier"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
     ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        ("type.coding.system", "http://terminology.hl7.org.au/CodeSystem/v2-0203"),
+        ("type.coding.code", "CAEI"),
+        ("system", "http://ns.electronichealth.net.au/id/pcehr/caei/1.0"),
+    ],
+    slices: &[],
+    slots: &[Slot { path: "value", ty: "string", choices: &[], min: 1, max: Max::Bounded(1), must_support: false }],
 };

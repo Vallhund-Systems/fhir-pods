@@ -5,22 +5,44 @@
 //! dateTime` work on arbitrary nodes without the document carrying types.
 //! Under a resource type the table doesn't cover, a node has no type and
 //! type-dependent FHIRPath is skipped, never guessed.
+//!
+//! The table (`typemap`) is packed: elements are grouped by their type and
+//! keyed by the path *relative* to it, so a lookup is two small binary
+//! searches (the type, then the element within it) and no string is built.
 
-use crate::typemap::{TABLE, TYPES};
+use crate::typemap::{CODES, RANGES, TABLE, TYPES};
 
-/// A resource or datatype name the table knows.
-pub fn known_type(name: &str) -> Option<&'static str> {
-    TYPES.binary_search(&name).ok().map(|i| TYPES[i])
+/// One element of the table: its type codes and whether it repeats.
+#[derive(Clone, Copy)]
+struct Entry {
+    codes: &'static str,
+    repeats: bool,
 }
 
-/// `p.cmp(&format!("{ctx}.{key}"))` without building the string.
-fn cmp_joined(p: &str, ctx: &str, key: &str) -> core::cmp::Ordering {
+/// `ctx` split into its type and the backbone path under it:
+/// `Observation.component` → (`Observation`, `component`); `Quantity` → (`Quantity`, ``).
+fn split_ctx(ctx: &str) -> (&str, &str) {
+    ctx.split_once('.').unwrap_or((ctx, ""))
+}
+
+/// The table's span for type `ty`.
+fn range_of(ty: &str) -> Option<&'static [(&'static str, u16, bool)]> {
+    let i = TYPES.binary_search(&ty).ok()?;
+    let (start, end) = RANGES[i];
+    Some(&TABLE[start as usize..end as usize])
+}
+
+/// `rel.cmp(&format!("{rest}.{key}"))` (or `rel.cmp(key)` when `rest` is
+/// empty) without building the string.
+fn cmp_rel(rel: &str, rest: &str, key: &str) -> core::cmp::Ordering {
     use core::cmp::Ordering::*;
-    let pb = p.as_bytes();
+    let rb = rel.as_bytes();
     let mut i = 0;
-    for part in [ctx.as_bytes(), b".", key.as_bytes()] {
+    let parts: [&[u8]; 3] =
+        if rest.is_empty() { [b"", b"", key.as_bytes()] } else { [rest.as_bytes(), b".", key.as_bytes()] };
+    for part in parts {
         for &x in part {
-            match pb.get(i) {
+            match rb.get(i) {
                 None => return Less,
                 Some(&y) if y != x => return y.cmp(&x),
                 _ => {}
@@ -28,15 +50,38 @@ fn cmp_joined(p: &str, ctx: &str, key: &str) -> core::cmp::Ordering {
             i += 1;
         }
     }
-    if pb.len() > i {
+    if rb.len() > i {
         Greater
     } else {
         Equal
     }
 }
 
-fn lookup2(ctx: &str, key: &str) -> Option<&'static (&'static str, &'static str)> {
-    TABLE.binary_search_by(|(p, _)| cmp_joined(p, ctx, key)).ok().map(|i| &TABLE[i])
+fn lookup(ctx: &str, key: &str) -> Option<Entry> {
+    let (ty, rest) = split_ctx(ctx);
+    let span = range_of(ty)?;
+    let i = span.binary_search_by(|(rel, _, _)| cmp_rel(rel, rest, key)).ok()?;
+    let (_, code, repeats) = span[i];
+    Some(Entry { codes: CODES[code as usize], repeats })
+}
+
+/// Does element `key` under `ctx` repeat (base cardinality `max` ≠ 1)? An
+/// element the table doesn't know is taken as single.
+pub fn repeats(ctx: &str, key: &str) -> bool {
+    // a slice label never changes the element; a primitive's extension
+    // carrier (`_name`) has the shape of the primitive it carries
+    let key = key.split(':').next().unwrap_or(key);
+    let key = key.strip_prefix('_').unwrap_or(key);
+    if matches!(key, "extension" | "modifierExtension" | "contained") {
+        return true;
+    }
+    // (a concrete choice key resolves to its `[x]` entry: choices never repeat)
+    lookup(ctx, key).is_some_and(|e| e.repeats)
+}
+
+/// A resource or datatype name the table knows.
+pub fn known_type(name: &str) -> Option<&'static str> {
+    TYPES.binary_search(&name).ok().map(|i| TYPES[i])
 }
 
 /// A child's typing: `ctx` is what its own children resolve against (a
@@ -65,20 +110,28 @@ pub fn child(ctx: &'static str, key: &str) -> Option<Child> {
         k if k.starts_with('_') => return Some(Child { ctx: "Element", ty: "Element" }),
         _ => {}
     }
-    let (path, ty) = match lookup2(ctx, key) {
-        Some((p, t)) => (*p, *t),
+    let codes = match lookup(ctx, key) {
+        Some(e) => e.codes,
         None => choice(ctx, key)?,
     };
-    Some(resolve(path, ty))
+    Some(resolve(codes))
 }
 
-/// `valueQuantity` under `Observation` → the `Observation.value[x]` entry
-/// with `Quantity` among its types.
-fn choice(ctx: &str, key: &str) -> Option<(&'static str, &'static str)> {
-    let start = TABLE.partition_point(|(p, _)| cmp_joined(p, ctx, "") == core::cmp::Ordering::Less);
-    for (path, tys) in &TABLE[start..] {
-        let Some(rest) = path.strip_prefix(ctx).and_then(|r| r.strip_prefix('.')) else { break };
-        let Some(stem) = rest.strip_suffix("[x]") else { continue };
+/// `valueQuantity` under `Observation` → the `Observation.value[x]` entry's
+/// `Quantity` alternative.
+fn choice(ctx: &str, key: &str) -> Option<&'static str> {
+    let (ty, rest) = split_ctx(ctx);
+    let span = range_of(ty)?;
+    // the entries directly under `rest`: those sorting at or after `rest.`
+    let start = span.partition_point(|(rel, _, _)| cmp_rel(rel, rest, "") == core::cmp::Ordering::Less);
+    for (rel, code, _) in &span[start..] {
+        let name = if rest.is_empty() {
+            *rel
+        } else {
+            let Some(r) = rel.strip_prefix(rest).and_then(|r| r.strip_prefix('.')) else { break };
+            r
+        };
+        let Some(stem) = name.strip_suffix("[x]") else { continue };
         if stem.contains('.') {
             continue;
         }
@@ -86,24 +139,27 @@ fn choice(ctx: &str, key: &str) -> Option<(&'static str, &'static str)> {
         if suffix.is_empty() {
             continue;
         }
-        for t in tys.split('|') {
+        for t in CODES[*code as usize].split('|') {
             let (first, tail) = t.split_at(1);
             if suffix.len() == t.len() && suffix[..1].eq_ignore_ascii_case(first) && &suffix[1..] == tail {
-                return Some((path, t));
+                return Some(t);
             }
         }
     }
     None
 }
 
-fn resolve(path: &'static str, ty: &'static str) -> Child {
-    if let Some(cref) = ty.strip_prefix('#') {
-        return Child { ctx: cref, ty: "BackboneElement" };
+fn resolve(codes: &'static str) -> Child {
+    // a backbone (or content reference): the path is the children's context
+    if let Some(path) = codes.strip_prefix('#') {
+        return Child { ctx: path, ty: "BackboneElement" };
+    }
+    if let Some(path) = codes.strip_prefix('~') {
+        return Child { ctx: path, ty: "Element" };
     }
     // a choice list that was not narrowed (path given with `[x]`): untypable
-    let ty = ty.split('|').next().unwrap_or(ty);
+    let ty = codes.split('|').next().unwrap_or(codes);
     match ty {
-        "BackboneElement" | "Element" => Child { ctx: path, ty },
         "Resource" | "DomainResource" => Child { ctx: "Resource", ty: "Resource" },
         t => Child { ctx: known_type(t).unwrap_or(t), ty: t },
     }

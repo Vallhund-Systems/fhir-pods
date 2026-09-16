@@ -93,5 +93,34 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ],
     }],
     invariants: &[],
+    lowering: &LOWERING,
     must_support: &[],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        ("extension:tribalAffiliation.url", "tribalAffiliation"),
+        ("extension:isEnrolled.url", "isEnrolled"),
+        ("url", "http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation"),
+    ],
+    slices: &[("extension:tribalAffiliation", 1), ("extension:isEnrolled", 0)],
+    slots: &[
+        Slot {
+            path: "extension:tribalAffiliation.valueCodeableConcept",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: false,
+        },
+        Slot {
+            path: "extension:isEnrolled.valueBoolean",
+            ty: "boolean",
+            choices: &[],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: false,
+        },
+    ],
 };

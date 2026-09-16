@@ -61,6 +61,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Observation.referenceRange", key: "obs-3", severity: InvariantSeverity::Error, human: "Must have at least a low or a high or text", expression: "low.exists() or high.exists() or text.exists()", types: &["BackboneElement"] },
         ProfileInvariant { path: "Observation.component", key: "au-core-obs-03", severity: InvariantSeverity::Error, human: "The component shall at least have a value or a data absent reason", expression: "value.exists() or dataAbsentReason.exists()", types: &["BackboneElement"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Observation.bodySite",
         "Observation.category",
@@ -76,5 +77,64 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Observation.status",
         "Observation.subject",
         "Observation.value[x]",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[("extension:bodyStructure.url", "http://hl7.org/fhir/StructureDefinition/bodySite")],
+    slices: &[("extension:bodyStructure", 0)],
+    slots: &[
+        Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "category", ty: "CodeableConcept", choices: &[], min: 1, max: Max::Star, must_support: true },
+        Slot { path: "code", ty: "CodeableConcept", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "effective[x]",
+            ty: "choice",
+            choices: &["effectiveDateTime", "effectivePeriod", "effectiveTiming", "effectiveInstant"],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "performer", ty: "Reference", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot {
+            path: "value[x]",
+            ty: "choice",
+            choices: &[
+                "valueQuantity",
+                "valueCodeableConcept",
+                "valueString",
+                "valueBoolean",
+                "valueInteger",
+                "valueRange",
+                "valueRatio",
+                "valueSampledData",
+                "valueTime",
+                "valueDateTime",
+                "valuePeriod",
+            ],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot {
+            path: "dataAbsentReason",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot {
+            path: "bodySite",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "hasMember", ty: "Reference", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "component", ty: "BackboneElement", choices: &[], min: 0, max: Max::Star, must_support: true },
     ],
 };

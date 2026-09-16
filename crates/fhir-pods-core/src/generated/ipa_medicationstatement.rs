@@ -48,6 +48,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "MedicationStatement", key: "dom-5", severity: InvariantSeverity::Error, human: "If a resource is contained in another resource, it SHALL NOT have a security label", expression: "contained.meta.security.empty()", types: &["MedicationStatement"] },
         ProfileInvariant { path: "MedicationStatement", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["MedicationStatement"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "MedicationStatement.context",
         "MedicationStatement.dosage",
@@ -58,5 +59,42 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "MedicationStatement.status",
         "MedicationStatement.statusReason",
         "MedicationStatement.subject",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[],
+    slices: &[],
+    slots: &[
+        Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "statusReason", ty: "CodeableConcept", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot {
+            path: "medication[x]",
+            ty: "choice",
+            choices: &["medicationCodeableConcept", "medicationReference"],
+            min: 1,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "context", ty: "Reference", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "effective[x]",
+            ty: "choice",
+            choices: &["effectiveDateTime", "effectivePeriod"],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot {
+            path: "informationSource",
+            ty: "Reference",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "dosage", ty: "Dosage", choices: &[], min: 0, max: Max::Star, must_support: true },
     ],
 };

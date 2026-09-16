@@ -49,6 +49,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Organization.telecom", key: "org-3", severity: InvariantSeverity::Error, human: "The telecom of an organization can never be of use 'home'", expression: "where(use = 'home').empty()", types: &["ContactPoint"] },
         ProfileInvariant { path: "Organization.address", key: "org-2", severity: InvariantSeverity::Error, human: "An address of an organization can never be of use 'home'", expression: "where(use = 'home').empty()", types: &["Address"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Organization.address",
         "Organization.identifier",
@@ -57,5 +58,32 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Organization.telecom.system",
         "Organization.telecom.value",
         "Organization.type",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        ("identifier:hpio.type.coding.system", "http://terminology.hl7.org.au/CodeSystem/v2-0203"),
+        ("identifier:hpio.type.coding.code", "NOI"),
+        ("identifier:hpio.system", "http://ns.electronichealth.net.au/id/hi/hpio/1.0"),
+        ("identifier:abn.system", "http://hl7.org.au/id/abn"),
+    ],
+    slices: &[("identifier:hpio", 0), ("identifier:abn", 0)],
+    slots: &[
+        Slot { path: "identifier", ty: "Identifier", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot {
+            path: "identifier:hpio",
+            ty: "Identifier",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "identifier:abn", ty: "Identifier", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "type", ty: "CodeableConcept", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "name", ty: "string", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "telecom", ty: "ContactPoint", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "address", ty: "Address", choices: &[], min: 0, max: Max::Star, must_support: true },
     ],
 };

@@ -543,6 +543,57 @@ fn check_validate(input: &[u8], seed: u64, iter: u64, kind: &str) {
     }
 }
 
+/// Lowering never panics, whatever the inputs; its output is well-formed
+/// JSON that validates deterministically.
+fn check_lower(profile_url: &str, inputs: &[u8], seed: u64, iter: u64) {
+    let r = catch_unwind(AssertUnwindSafe(|| {
+        if let Ok(l) = fhir_pods_core::lower_bytes(profile_url, inputs) {
+            json::parse(l.resource.as_bytes()).expect("lowered resource must be well-formed JSON");
+            let again = fhir_pods_core::lower_bytes(profile_url, inputs).unwrap();
+            assert_eq!(l, again, "non-deterministic lowering");
+        }
+    }));
+    if r.is_err() {
+        panic!(
+            "fuzz failure: kind=lower seed={seed} iter={iter}\nprofile={profile_url}\ninputs={:?}",
+            String::from_utf8_lossy(inputs)
+        );
+    }
+}
+
+/// Inputs shaped like a profile's slots — its own slot paths as keys (plus
+/// junk keys), with values of plausible and implausible kinds.
+fn lowering_inputs(rng: &mut Rng, profile: &fhir_pods_core::compiled::CompiledProfile) -> Vec<u8> {
+    let mut out = String::from("{");
+    let n = rng.below(8);
+    for i in 0..n {
+        if i > 0 {
+            out.push(',');
+        }
+        let key = if rng.chance(85) && !profile.lowering.slots.is_empty() {
+            let s = &profile.lowering.slots[rng.below(profile.lowering.slots.len())];
+            if s.ty == "choice" && !s.choices.is_empty() {
+                let prefix = s.path.rsplit_once('.').map(|(p, _)| format!("{p}.")).unwrap_or_default();
+                format!("{prefix}{}", s.choices[rng.below(s.choices.len())])
+            } else if rng.chance(15) {
+                format!("_{}", s.path)
+            } else {
+                s.path.to_string()
+            }
+        } else {
+            rng.pick(KEYS).to_string()
+        };
+        json_str(&mut out, &key);
+        out.push(':');
+        value(rng, &mut out, 2);
+    }
+    out.push('}');
+    if rng.chance(5) {
+        return mutate(rng, &out);
+    }
+    out.into_bytes()
+}
+
 fn check_path(expr: &str, doc: &str, seed: u64, iter: u64) {
     let r = catch_unwind(AssertUnwindSafe(|| {
         if let Ok(e) = path::parse(expr) {
@@ -568,7 +619,7 @@ fn seeded_fuzz_never_panics() {
         );
     }
     for iter in 0..iters {
-        match iter % 6 {
+        match iter % 7 {
             0 => check_validate(&byte_soup(&mut rng), seed, iter, "bytes"),
             1 => {
                 let base = resource(&mut rng);
@@ -580,6 +631,13 @@ fn seeded_fuzz_never_panics() {
             }
             3 => check_validate(&hostile_primitive(&mut rng), seed, iter, "hostile"),
             4 if !corpus.is_empty() => check_validate(&mutate_corpus(&mut rng, &corpus), seed, iter, "corpus"),
+            5 => {
+                let reg = fhir_pods_core::generated::REGISTRY;
+                let profile = reg[rng.below(reg.len())];
+                let url = if rng.chance(3) { rng.pick(STRS) } else { profile.url };
+                let inputs = lowering_inputs(&mut rng, profile);
+                check_lower(url, &inputs, seed, iter);
+            }
             _ => {
                 let expr = expression(&mut rng);
                 let doc = resource(&mut rng);

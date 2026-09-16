@@ -33,7 +33,15 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Practitioner", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["Practitioner"] },
         ProfileInvariant { path: "Practitioner.name", key: "ipa-pract-1", severity: InvariantSeverity::Warning, human: "To be usable for a wide range of internationally available applications, the Practitioner.name.text SHOULD be present.", expression: "text.exists()", types: &["HumanName"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Practitioner.name",
     ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[],
+    slices: &[],
+    slots: &[Slot { path: "name", ty: "HumanName", choices: &[], min: 1, max: Max::Star, must_support: true }],
 };

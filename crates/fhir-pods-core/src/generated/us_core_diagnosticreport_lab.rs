@@ -42,6 +42,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "DiagnosticReport", key: "us-core-8", severity: InvariantSeverity::Error, human: "effective[x] SHALL be present if the status is 'partial', 'preliminary', 'final', 'amended', 'corrected' or 'appended'", expression: "(status='partial' or status='preliminary' or status='final' or status='amended' or status='corrected' or status='appended' ) implies effective.exists()", types: &["DiagnosticReport"] },
         ProfileInvariant { path: "DiagnosticReport", key: "us-core-9", severity: InvariantSeverity::Error, human: "issued SHALL be present if the status is 'partial', 'preliminary', 'final', 'amended', 'corrected' or 'appended'", expression: "(status='partial' or status='preliminary' or status='final' or status='amended' or status='corrected' or status='appended' ) implies issued.exists()", types: &["DiagnosticReport"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "DiagnosticReport.category",
         "DiagnosticReport.code",
@@ -51,5 +52,30 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "DiagnosticReport.result",
         "DiagnosticReport.status",
         "DiagnosticReport.subject",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        ("category:LaboratorySlice.coding.system", "http://terminology.hl7.org/CodeSystem/v2-0074"),
+        ("category:LaboratorySlice.coding.code", "LAB"),
+    ],
+    slices: &[("category:LaboratorySlice", 1)],
+    slots: &[
+        Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "code", ty: "CodeableConcept", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "effective[x]",
+            ty: "choice",
+            choices: &["effectiveDateTime", "effectivePeriod"],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "issued", ty: "instant", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "performer", ty: "Reference", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "result", ty: "Reference", choices: &[], min: 0, max: Max::Star, must_support: true },
     ],
 };

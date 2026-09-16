@@ -60,6 +60,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "CarePlan.text.div", key: "txt-2", severity: InvariantSeverity::Error, human: "The narrative SHALL have some non-whitespace content", expression: "htmlChecks()", types: &["xhtml"] },
         ProfileInvariant { path: "CarePlan.activity", key: "cpl-3", severity: InvariantSeverity::Error, human: "Provide a reference or detail, not both", expression: "detail.empty() or reference.empty()", types: &["BackboneElement"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "CarePlan.category",
         "CarePlan.intent",
@@ -68,5 +69,19 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "CarePlan.text",
         "CarePlan.text.div",
         "CarePlan.text.status",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        ("category:AssessPlan.coding.system", "http://hl7.org/fhir/us/core/CodeSystem/careplan-category"),
+        ("category:AssessPlan.coding.code", "assess-plan"),
+    ],
+    slices: &[("category:AssessPlan", 1)],
+    slots: &[
+        Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "intent", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
     ],
 };

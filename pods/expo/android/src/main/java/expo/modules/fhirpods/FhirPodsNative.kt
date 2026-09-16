@@ -32,4 +32,10 @@ internal object FhirPodsNative {
 
   /** {"mustSupportGaps":[...]} — information, never part of the validation report. */
   external fun mustSupport(json: ByteArray): ByteArray
+
+  /** {"resource","validation"} from a profile URL and its variable inputs, or {"error"}. */
+  external fun lower(profile: ByteArray, inputs: ByteArray): ByteArray
+
+  /** {"slots":[...]} — the inputs a profile takes, or {"error"}. */
+  external fun slots(profile: ByteArray): ByteArray
 }

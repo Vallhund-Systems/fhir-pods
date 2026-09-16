@@ -59,9 +59,10 @@ the 294/294.
   FHIR type — the profile's declared type for the invariant's own element,
   the element-type table for everything else (root `resourceType`, then key
   by key through choice elements, backbone paths, content references and
-  contained resources) — never from the value's shape. A node under a
-  resource type the table doesn't cover has no type, and such an expression
-  is skipped.
+  contained resources) — never from the value's shape. The table covers
+  every R4 resource type and datatype; a node under a `resourceType` the
+  spec doesn't define has no type, and such an expression is skipped — and
+  reported as an `information` issue naming the invariant.
 - `matches(regex)` runs on a small linear-time engine (literals, classes,
   anchors, groups, alternation, bounded quantifiers). Backreferences,
   lookaround, flags, `\b` and unicode properties are refused →

@@ -63,6 +63,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "PractitionerRole", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["PractitionerRole"] },
         ProfileInvariant { path: "PractitionerRole.practitioner", key: "au-core-prarol-01", severity: InvariantSeverity::Error, human: "At least a reference, identifier or display shall be present, or, if neither is available, the Data Absent Reason extension shall be present", expression: "(reference.exists() or identifier.exists() or display.exists()) xor extension('http://hl7.org/fhir/StructureDefinition/data-absent-reason').exists()", types: &["Reference"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "PractitionerRole.code",
         "PractitionerRole.identifier",
@@ -72,5 +73,37 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "PractitionerRole.telecom",
         "PractitionerRole.telecom.system",
         "PractitionerRole.telecom.value",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        ("identifier:medicareProvider.type.coding.system", "http://terminology.hl7.org.au/CodeSystem/v2-0203"),
+        ("identifier:medicareProvider.type.coding.code", "UPIN"),
+        ("identifier:medicareProvider.system", "http://ns.electronichealth.net.au/id/medicare-provider-number"),
+        ("availableTime.availableStartTime.extension:timeZone.url", "http://hl7.org/fhir/StructureDefinition/timezone"),
+        ("availableTime.availableEndTime.extension:timeZone.url", "http://hl7.org/fhir/StructureDefinition/timezone"),
+    ],
+    slices: &[
+        ("identifier:medicareProvider", 0),
+        ("availableTime.availableStartTime.extension:timeZone", 0),
+        ("availableTime.availableEndTime.extension:timeZone", 0),
+    ],
+    slots: &[
+        Slot { path: "identifier", ty: "Identifier", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot {
+            path: "identifier:medicareProvider",
+            ty: "Identifier",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "practitioner", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "organization", ty: "Reference", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "code", ty: "CodeableConcept", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "specialty", ty: "CodeableConcept", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "telecom", ty: "ContactPoint", choices: &[], min: 0, max: Max::Star, must_support: true },
     ],
 };

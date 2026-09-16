@@ -39,7 +39,37 @@ public class FhirPodsExpoModule: Module {
     Function("mustSupport") { (json: String) -> String in
       call({ ptr, len, _, _ in fhir_pods_must_support(ptr, len) }, json)
     }
+
+    // Lowering: {"resource","validation"} from a profile URL and its variable
+    // inputs (a JSON object keyed by slot path), or {"error"}.
+    Function("lower") { (profileUrl: String, inputsJson: String) -> String in
+      call2(fhir_pods_lower_tx, profileUrl, inputsJson)
+    }
+
+    // The inputs a profile takes: {"slots":[…]} or {"error"}.
+    Function("slots") { (profileUrl: String) -> String in
+      call({ ptr, len, _, _ in fhir_pods_slots(ptr, len) }, profileUrl)
+    }
   }
+}
+
+/// A two-string call across the C ABI (profile + inputs), same contract.
+private func call2(
+  _ entry: (UnsafePointer<UInt8>?, Int, UnsafePointer<UInt8>?, Int, fhir_pods_tx_callback?, UnsafeMutableRawPointer?) -> UnsafeMutablePointer<UInt8>?,
+  _ a: String, _ b: String
+) -> String {
+  let ab = Array(a.utf8), bb = Array(b.utf8)
+  let cb: fhir_pods_tx_callback? = FhirPodsExpoModule.terminology == nil ? nil : terminologyTrampoline
+  let ret: UnsafeMutablePointer<UInt8>? = ab.withUnsafeBufferPointer { pa in
+    bb.withUnsafeBufferPointer { pb in entry(pa.baseAddress, pa.count, pb.baseAddress, pb.count, cb, nil) }
+  }
+  guard let ret = ret else { return "{\"error\":\"no result\"}" }
+  var lenLE: UInt32 = 0
+  withUnsafeMutableBytes(of: &lenLE) { $0.copyBytes(from: UnsafeRawBufferPointer(start: ret, count: 4)) }
+  let length = Int(UInt32(littleEndian: lenLE))
+  let document = String(decoding: UnsafeBufferPointer(start: ret.advanced(by: 4), count: length), as: UTF8.self)
+  pod_free(ret, 4 + length)
+  return document
 }
 
 /// The C trampoline for the terminology callback. `@convention(c)` closures

@@ -40,6 +40,25 @@ export interface OperationOutcomeIssue {
   expression?: string[];
 }
 
+/** One variable input of a profile. */
+export interface Slot {
+  /** Labelled, resource-relative path: `subject`, `component:SystolicBP.valueQuantity.value`. */
+  path: string;
+  /** The FHIR type the value is coerced to; `choice` for a `[x]` element (see `choices`). */
+  type: string;
+  /** For a choice slot, the concrete keys accepted as input keys (`effectiveDateTime`, …). */
+  choices: string[];
+  min: number;
+  /** `null` = unbounded. */
+  max: number | null;
+  mustSupport: boolean;
+}
+
+export interface Lowered {
+  resource: Record<string, unknown>;
+  validation: Validation;
+}
+
 export interface Pod {
   abiVersion: number;
   /** Validate a resource (JSON text or UTF-8 bytes); the ergonomic report. */
@@ -53,6 +72,15 @@ export interface Pod {
    * unparseable input or no applicable profile.
    */
   mustSupportGaps(json: string | Uint8Array): string[];
+  /**
+   * Build a conformant resource for the profile from its variable inputs (a
+   * JSON object keyed by slot path — see {@link Pod.slots}), validated on the
+   * way out. Throws only when lowering cannot start (unknown profile, inputs
+   * not an object); every other problem is an issue in `validation`.
+   */
+  lower(profileUrl: string, inputs: Record<string, unknown> | string): Lowered;
+  /** The inputs a profile takes. */
+  slots(profileUrl: string): Slot[];
   /** Same as {@link validate}, unparsed — for passing straight through. */
   validateText(json: string | Uint8Array): string;
   /** Same as {@link operationOutcome}, unparsed — for the wire. */

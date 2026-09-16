@@ -59,6 +59,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Observation.value[x]", key: "us-core-4", severity: InvariantSeverity::Warning, human: "SHOULD use Snomed CT for coded Results", expression: "value.ofType(CodeableConcept).coding.system.empty() or value.ofType(CodeableConcept).coding.system = 'http://snomed.info/sct'", types: &["Quantity", "CodeableConcept", "string", "boolean", "integer", "Range", "Ratio", "SampledData", "time", "dateTime", "Period"] },
         ProfileInvariant { path: "Observation.referenceRange", key: "obs-3", severity: InvariantSeverity::Error, human: "Must have at least a low or a high or text", expression: "low.exists() or high.exists() or text.exists()", types: &["BackboneElement"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Observation.category",
         "Observation.code",
@@ -68,5 +69,56 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Observation.status",
         "Observation.subject",
         "Observation.value[x]",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[
+        ("category:us-core.coding.system", "http://terminology.hl7.org/CodeSystem/observation-category"),
+        ("category:us-core.coding.code", "laboratory"),
+    ],
+    slices: &[("category:us-core", 1)],
+    slots: &[
+        Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "code", ty: "CodeableConcept", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "effective[x]",
+            ty: "choice",
+            choices: &["effectiveDateTime", "effectivePeriod", "effectiveTiming", "effectiveInstant"],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot {
+            path: "value[x]",
+            ty: "choice",
+            choices: &[
+                "valueQuantity",
+                "valueCodeableConcept",
+                "valueString",
+                "valueBoolean",
+                "valueInteger",
+                "valueRange",
+                "valueRatio",
+                "valueSampledData",
+                "valueTime",
+                "valueDateTime",
+                "valuePeriod",
+            ],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot {
+            path: "dataAbsentReason",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "specimen", ty: "Reference", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
     ],
 };

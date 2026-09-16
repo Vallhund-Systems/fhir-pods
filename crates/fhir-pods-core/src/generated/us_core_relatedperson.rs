@@ -33,6 +33,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "RelatedPerson", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["RelatedPerson"] },
         ProfileInvariant { path: "RelatedPerson", key: "us-core-14", severity: InvariantSeverity::Error, human: "Either a name or a relationship SHALL be provided (or both)", expression: "name.exists() or relationship.exists()", types: &["RelatedPerson"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "RelatedPerson.active",
         "RelatedPerson.address",
@@ -40,5 +41,19 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "RelatedPerson.patient",
         "RelatedPerson.relationship",
         "RelatedPerson.telecom",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[],
+    slices: &[],
+    slots: &[
+        Slot { path: "active", ty: "boolean", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "patient", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "relationship", ty: "CodeableConcept", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "name", ty: "HumanName", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "telecom", ty: "ContactPoint", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "address", ty: "Address", choices: &[], min: 0, max: Max::Star, must_support: true },
     ],
 };

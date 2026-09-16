@@ -3,7 +3,7 @@
 // WebAssembly does (browser, edge runtimes, Node, Bun, Deno).
 
 /** The ABI this wrapper speaks; a module reporting anything else is refused. */
-export const ABI_VERSION = 3;
+export const ABI_VERSION = 4;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -44,15 +44,18 @@ export async function instantiate(source, options = {}) {
     throw new Error(`fhir-pods: module speaks ABI ${abi}, this wrapper expects ${ABI_VERSION}`);
   }
 
-  // One call across the boundary: copy the input in, read the
-  // length-prefixed document out, free both. `memory.buffer` is re-read after
-  // the call because the call may have grown (and so detached) it.
-  function call(entry, json) {
-    const input = typeof json === "string" ? encoder.encode(json) : json;
-    const inPtr = ex.pod_alloc(input.byteLength);
-    new Uint8Array(ex.memory.buffer, inPtr, input.byteLength).set(input);
-    const ret = entry(inPtr, input.byteLength);
-    ex.pod_free(inPtr, input.byteLength);
+  // One call across the boundary: copy the inputs in, read the
+  // length-prefixed document out, free everything. `memory.buffer` is re-read
+  // after the call because the call may have grown (and so detached) it.
+  function call(entry, ...jsons) {
+    const buffers = jsons.map((j) => (typeof j === "string" ? encoder.encode(j) : j));
+    const ptrs = buffers.map((b) => {
+      const p = ex.pod_alloc(b.byteLength);
+      new Uint8Array(ex.memory.buffer, p, b.byteLength).set(b);
+      return p;
+    });
+    const ret = entry(...buffers.flatMap((b, i) => [ptrs[i], b.byteLength]));
+    buffers.forEach((b, i) => ex.pod_free(ptrs[i], b.byteLength));
     const len = new DataView(ex.memory.buffer).getUint32(ret, true);
     const text = decoder.decode(new Uint8Array(ex.memory.buffer, ret + 4, len));
     ex.pod_free(ret, 4 + len);
@@ -67,6 +70,16 @@ export async function instantiate(source, options = {}) {
     validate: (json) => JSON.parse(call(validate, json)),
     operationOutcome: (json) => JSON.parse(call(outcome, json)),
     mustSupportGaps: (json) => JSON.parse(call(ex.fhir_pods_must_support, json)).mustSupportGaps,
+    lower: (profileUrl, inputs) => {
+      const out = JSON.parse(call(ex.fhir_pods_lower, profileUrl, typeof inputs === "string" ? inputs : JSON.stringify(inputs)));
+      if (out.error) throw new Error(`fhir-pods: ${out.error}`);
+      return out;
+    },
+    slots: (profileUrl) => {
+      const out = JSON.parse(call(ex.fhir_pods_slots, profileUrl));
+      if (out.error) throw new Error(`fhir-pods: ${out.error}`);
+      return out.slots;
+    },
     validateText: (json) => call(validate, json),
     operationOutcomeText: (json) => call(outcome, json),
   };

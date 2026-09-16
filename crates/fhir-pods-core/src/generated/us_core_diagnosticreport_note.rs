@@ -36,6 +36,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "DiagnosticReport", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["DiagnosticReport"] },
         ProfileInvariant { path: "DiagnosticReport", key: "us-core-10", severity: InvariantSeverity::Error, human: "effective[x] SHALL be present if the status is 'partial', 'preliminary', 'final', 'amended', 'corrected' or 'appended'", expression: "(status='partial' or status='preliminary' or status='final' or status='amended' or status='corrected' or status='appended' ) implies effective.exists()", types: &["DiagnosticReport"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "DiagnosticReport.category",
         "DiagnosticReport.code",
@@ -49,5 +50,39 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "DiagnosticReport.result",
         "DiagnosticReport.status",
         "DiagnosticReport.subject",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[],
+    slices: &[("category:us-core", 0)],
+    slots: &[
+        Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "category", ty: "CodeableConcept", choices: &[], min: 1, max: Max::Star, must_support: true },
+        Slot {
+            path: "category:us-core",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 0,
+            max: Max::Star,
+            must_support: true,
+        },
+        Slot { path: "code", ty: "CodeableConcept", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
+        Slot { path: "encounter", ty: "Reference", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "effective[x]",
+            ty: "choice",
+            choices: &["effectiveDateTime", "effectivePeriod"],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot { path: "issued", ty: "instant", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "performer", ty: "Reference", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "result", ty: "Reference", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "media", ty: "BackboneElement", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "presentedForm", ty: "Attachment", choices: &[], min: 0, max: Max::Star, must_support: true },
     ],
 };

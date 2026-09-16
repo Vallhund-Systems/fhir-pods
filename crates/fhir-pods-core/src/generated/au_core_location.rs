@@ -45,11 +45,39 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Location", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["Location"] },
         ProfileInvariant { path: "Location", key: "au-core-loc-01", severity: InvariantSeverity::Error, human: "The location shall at least have a valid identifier or address or type", expression: "address.exists() or type.exists() or identifier.where(system.count() + value.count() >1).exists()", types: &["Location"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Location.address",
         "Location.managingOrganization",
         "Location.name",
         "Location.physicalType",
         "Location.type",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[],
+    slices: &[],
+    slots: &[
+        Slot { path: "name", ty: "string", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot { path: "type", ty: "CodeableConcept", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "address", ty: "Address", choices: &[], min: 0, max: Max::Bounded(1), must_support: true },
+        Slot {
+            path: "physicalType",
+            ty: "CodeableConcept",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
+        Slot {
+            path: "managingOrganization",
+            ty: "Reference",
+            choices: &[],
+            min: 0,
+            max: Max::Bounded(1),
+            must_support: true,
+        },
     ],
 };

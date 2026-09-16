@@ -54,30 +54,56 @@ pub(crate) fn validate_at<D: Document>(
         check_slicing(slicing, doc, root, tx, &mut r, depth, cache);
     }
     for inv in profile.invariants {
-        // Outside the supported FHIRPath core: skipped, never guessed.
+        // Outside the supported FHIRPath core: skipped, never guessed — and
+        // said so, once per invariant, so a silent gap never reads as a pass.
         let owned;
         let expr: &path::Expr = match cache {
             Some(v) => match v.expr(inv.expression) {
                 Some(e) => e,
-                None => continue,
+                None => {
+                    not_evaluated(inv, &mut r);
+                    continue;
+                }
             },
-            None => {
-                let Ok(e) = path::parse(inv.expression) else { continue };
-                owned = e;
-                &owned
-            }
+            None => match path::parse(inv.expression) {
+                Ok(e) => {
+                    owned = e;
+                    &owned
+                }
+                Err(_) => {
+                    not_evaluated(inv, &mut r);
+                    continue;
+                }
+            },
         };
+        let mut skipped = false;
         for (ctx, this_type) in invariant_contexts(inv, doc) {
-            if path::check_with(expr, &ctx, this_type, Some(root)) == Verdict::Fail {
-                let severity = match inv.severity {
-                    InvariantSeverity::Error => Severity::Error,
-                    InvariantSeverity::Warning => Severity::Warning,
-                };
-                r.push(severity, IssueType::Invariant, inv.path, format!("{}: {}", inv.key, inv.human));
+            match path::check_with(expr, &ctx, this_type, Some(root)) {
+                Verdict::Fail => {
+                    let severity = match inv.severity {
+                        InvariantSeverity::Error => Severity::Error,
+                        InvariantSeverity::Warning => Severity::Warning,
+                    };
+                    r.push(severity, IssueType::Invariant, inv.path, format!("{}: {}", inv.key, inv.human));
+                }
+                Verdict::Unsupported => skipped = true,
+                Verdict::Pass => {}
             }
+        }
+        if skipped {
+            not_evaluated(inv, &mut r);
         }
     }
     r
+}
+
+fn not_evaluated(inv: &ProfileInvariant, r: &mut Report) {
+    r.push(
+        Severity::Information,
+        IssueType::NotSupported,
+        inv.path,
+        format!("{} not evaluated: outside the supported FHIRPath core", inv.key),
+    );
 }
 
 /// The instances an invariant applies to, each with its FHIR type. A

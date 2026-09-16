@@ -83,6 +83,11 @@ pub struct TreeDoc<'v, 'a> {
 }
 
 impl<'v, 'a> TreeDoc<'v, 'a> {
+    /// The JSON node this view is rooted at.
+    pub fn value(&self) -> &'v Value<'a> {
+        self.root
+    }
+
     /// The typing context of a child reached by `key`; a `Resource` child
     /// takes its own `resourceType`.
     fn child_ctx(ctx: Option<&'static str>, key: &str, child: &'v Value<'a>) -> Option<&'static str> {

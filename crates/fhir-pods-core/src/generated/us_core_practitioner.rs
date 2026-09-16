@@ -67,6 +67,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Practitioner", key: "dom-5", severity: InvariantSeverity::Error, human: "If a resource is contained in another resource, it SHALL NOT have a security label", expression: "contained.meta.security.empty()", types: &["Practitioner"] },
         ProfileInvariant { path: "Practitioner", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()", types: &["Practitioner"] },
     ],
+    lowering: &LOWERING,
     must_support: &[
         "Practitioner.address",
         "Practitioner.address.city",
@@ -82,5 +83,17 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Practitioner.telecom",
         "Practitioner.telecom.system",
         "Practitioner.telecom.value",
+    ],
+};
+
+/// How to build a resource for this profile (see `compiled::Lowering`).
+pub static LOWERING: Lowering = Lowering {
+    fixed: &[("identifier:NPI.system", "http://hl7.org/fhir/sid/us-npi")],
+    slices: &[("identifier:NPI", 0)],
+    slots: &[
+        Slot { path: "identifier", ty: "Identifier", choices: &[], min: 1, max: Max::Star, must_support: true },
+        Slot { path: "name", ty: "HumanName", choices: &[], min: 1, max: Max::Star, must_support: true },
+        Slot { path: "telecom", ty: "ContactPoint", choices: &[], min: 0, max: Max::Star, must_support: true },
+        Slot { path: "address", ty: "Address", choices: &[], min: 0, max: Max::Star, must_support: true },
     ],
 };
