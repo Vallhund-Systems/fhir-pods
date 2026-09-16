@@ -304,7 +304,7 @@ pub mod json {
     }
 
     pub fn parse(input: &[u8]) -> Result<Value<'_>, ParseError> {
-        let mut p = Parser { b: input, i: 0 };
+        let mut p = Parser { b: input, i: 0, depth: 0 };
         p.parse_value()
     }
 
@@ -375,9 +375,15 @@ pub mod json {
         }
     }
 
+    /// Recursive descent must be bounded: past this, nesting is a `ParseError`
+    /// — never a stack overflow, which is an abort (not a panic) and fatal on
+    /// device. Real FHIR resources are ~10–20 deep.
+    const MAX_DEPTH: usize = 128;
+
     struct Parser<'a> {
         b: &'a [u8],
         i: usize,
+        depth: usize,
     }
 
     impl<'a> Parser<'a> {
@@ -449,8 +455,15 @@ pub mod json {
         fn parse_value(&mut self) -> Result<Value<'a>, ParseError> {
             self.skip_ws();
             match self.byte() {
-                Some(b'{') => self.parse_object(),
-                Some(b'[') => self.parse_array(),
+                Some(c @ (b'{' | b'[')) => {
+                    if self.depth >= MAX_DEPTH {
+                        return Err(ParseError { at: self.i, msg: "nesting too deep" });
+                    }
+                    self.depth += 1;
+                    let r = if c == b'{' { self.parse_object() } else { self.parse_array() };
+                    self.depth -= 1;
+                    r
+                }
                 Some(b'"') => Ok(Value::Str(self.string_raw()?)),
                 Some(b't') => {
                     self.literal(b"true")?;
@@ -526,7 +539,7 @@ pub mod json {
 
     /// Scan a resource's top-level object in a single pass (no DOM).
     pub fn scan_top_level(input: &[u8]) -> Result<TopLevel<'_>, ParseError> {
-        let mut p = Parser { b: input, i: 0 };
+        let mut p = Parser { b: input, i: 0, depth: 0 };
         p.skip_ws();
         p.expect(b'{')?;
         let mut out = TopLevel::default();
@@ -743,13 +756,21 @@ pub mod engine {
     use crate::path::{self, Verdict};
     use crate::validate::{IssueType, Report, Severity};
 
+    /// How many profiles a slice may inherit through, transitively. Bounds the
+    /// recursion so a registry cycle can never loop.
+    const MAX_INHERIT: usize = 8;
+
     pub fn validate(profile: &CompiledProfile, doc: &impl Document) -> Report {
+        validate_at(profile, doc, 0)
+    }
+
+    fn validate_at(profile: &CompiledProfile, doc: &impl Document, depth: usize) -> Report {
         let mut r = Report::default();
         for el in profile.elements {
             check_element(el, el.path, doc, &mut r);
         }
         for slicing in profile.slicings {
-            check_slicing(slicing, doc, &mut r);
+            check_slicing(slicing, doc, &mut r, depth);
         }
         for inv in profile.invariants {
             // Outside the supported FHIRPath core: skipped, never guessed.
@@ -825,7 +846,7 @@ pub mod engine {
     /// Evaluate a slicing per parent instance: assign instances to slices, check
     /// each slice's cardinality, validate its sub-constraints against every
     /// matched instance (re-rooted as `$this`), and enforce `closed`.
-    fn check_slicing(slicing: &Slicing, doc: &impl Document, r: &mut Report) {
+    fn check_slicing(slicing: &Slicing, doc: &impl Document, r: &mut Report, depth: usize) {
         let Some((parent_path, last)) = slicing.path.rsplit_once('.') else {
             return;
         };
@@ -856,9 +877,9 @@ pub mod engine {
                     // A slice that names a profile: matched instances must also
                     // conform to it. Recursive — the instance becomes the root,
                     // and the profile's own element paths resolve against it.
-                    if let Some(url) = slice.profile {
+                    if let Some(url) = slice.profile.filter(|_| depth < MAX_INHERIT) {
                         if let Some(profile) = crate::generated::REGISTRY.iter().find(|p| p.url == url) {
-                            for issue in validate(profile, inst).issues {
+                            for issue in validate_at(profile, inst, depth + 1).issues {
                                 let rel = issue
                                     .path
                                     .strip_prefix(profile.resource_type)
@@ -1195,9 +1216,14 @@ pub mod path {
         Ok(out)
     }
 
+    /// Expression nesting bound (parens, call arguments): past this the parse
+    /// is `Unsupported` rather than a stack overflow.
+    const MAX_DEPTH: usize = 64;
+
     struct P {
         toks: Vec<Tok>,
         i: usize,
+        depth: usize,
     }
 
     impl P {
@@ -1246,7 +1272,19 @@ pub mod path {
         }
 
         // Precedence, low to high: implies < or/xor < and < =/!= < path/call.
+        // `implies` is the entry of every nested expression (parens, call
+        // arguments), so the depth bound lives here.
         fn implies(&mut self) -> Result<Expr, Unsupported> {
+            if self.depth >= MAX_DEPTH {
+                return Err(Unsupported);
+            }
+            self.depth += 1;
+            let r = self.implies_inner();
+            self.depth -= 1;
+            r
+        }
+
+        fn implies_inner(&mut self) -> Result<Expr, Unsupported> {
             let l = self.or()?;
             if self.eat_kw("implies") {
                 let r = self.implies()?;
@@ -1334,7 +1372,7 @@ pub mod path {
     /// Parse an expression, or `Unsupported` if it uses anything outside the core.
     pub fn parse(src: &str) -> Result<Expr, Unsupported> {
         let toks = tokenize(src)?;
-        let mut p = P { toks, i: 0 };
+        let mut p = P { toks, i: 0, depth: 0 };
         let e = p.implies()?;
         if p.i != p.toks.len() {
             return Err(Unsupported);

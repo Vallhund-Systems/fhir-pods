@@ -8,6 +8,11 @@ conformance/validator_cli.jar
 conformance/corpus/
 conformance/package/
 __pycache__/
+# cargo-fuzz working dirs
+fuzz/target/
+fuzz/artifacts/
+fuzz/corpus/
+fuzz/Cargo.lock
 pods/expo/ios/Frameworks/
 pkg/
 node_modules/

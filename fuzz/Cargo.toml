@@ -1,0 +1,42 @@
+# Coverage-guided fuzzing (libFuzzer via cargo-fuzz). Needs nightly:
+#
+#     cargo install cargo-fuzz
+#     cargo +nightly fuzz run validate_bytes      # or json_parse / fhirpath_parse
+#
+# A standalone crate, deliberately outside the workspace: the core stays
+# zero-dependency; only this crate carries libfuzzer-sys.
+[package]
+name = "fhir-pods-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+fhir-pods-core = { path = "../crates/fhir-pods-core" }
+
+[[bin]]
+name = "validate_bytes"
+path = "fuzz_targets/validate_bytes.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "json_parse"
+path = "fuzz_targets/json_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fhirpath_parse"
+path = "fuzz_targets/fhirpath_parse.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]

@@ -113,3 +113,20 @@ content). The generator enforces this when it emits `Fixed` values.
 3. **Slicing** — discriminators + per-slice constraints (the last piece of `au-core-heartrate`: the LOINC/SNOMED code slices).
 4. **Generator** — emit the richer `ElementConstraint` tree (with the display-drop rule) from `snapshot.element`.
 5. **Conformance** — differential-test the whole thing against `validator_cli.jar`.
+
+## Hardening
+
+The core runs on device under `panic = "abort"`, fed untrusted bytes, so
+"never panics, never hangs" is a *held* property, not a hope:
+
+- **Depth-bounded parsers.** Both recursive-descent parsers (JSON, FHIRPath)
+  carry a depth budget: hostile nesting is a `ParseError` / `Unsupported`,
+  never a stack overflow — which is an abort, uncatchable, fatal on device.
+- **Bounded inheritance.** A slice may name a profile; the recursion is capped
+  (`MAX_INHERIT`) so a registry cycle can never loop.
+- **Seeded fuzzing under `cargo test`** (`tests/fuzz.rs`, zero deps): byte
+  soup, mutated documents, FHIR-shaped resources with real declared profiles
+  (so slicing, inheritance and invariants all run), and random FHIRPath —
+  asserting no panic, determinism, and well-formed wire output. Deterministic
+  under `FUZZ_SEED`, so a failure is a seed to paste back and replay.
+  libFuzzer targets in `fuzz/` for coverage-guided sessions (nightly).

@@ -54,6 +54,24 @@ audit-surface stance are in [`docs/architecture.md`](docs/architecture.md).
 - `scripts/` — native build (iOS XCFramework; Android `cargo-ndk` next).
 - `docs/architecture.md` — the design, delivery model, audit surface, and perf budget.
 
+## Testing
+
+```bash
+cargo test -p fhir-pods-core                 # unit tests + the seeded fuzz harness (50k iterations)
+FUZZ_ITERS=1000000 FUZZ_SEED=42 cargo test -p fhir-pods-core --test fuzz   # longer / different seed
+./scripts/check-no-std.sh                    # bare-metal build: nothing in the core touches std
+python3 conformance/run.py                   # differential test against the HL7 reference validator
+```
+
+Two fuzz layers. The **seeded harness** (`crates/fhir-pods-core/tests/fuzz.rs`)
+runs under plain `cargo test` with no dependencies: deterministic under
+`FUZZ_SEED`, so any failure is a seed you paste back to replay. It feeds byte
+soup, mutated documents, FHIR-shaped resources with real declared profiles, and
+random FHIRPath — holding *never panics, never hangs, deterministic, well-formed
+wire output*. The **libFuzzer targets** (`fuzz/`, needs nightly) are for
+coverage-guided sessions. Both parsers are depth-bounded, so hostile nesting is
+a `ParseError`, never a stack overflow.
+
 ## License
 
 MIT © 2026 Justin Grosvenor. See [`LICENSE`](LICENSE).

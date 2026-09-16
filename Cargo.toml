@@ -7,6 +7,8 @@ members = [
     "crates/fhir-pods-core",
     "crates/fhir-pods-ffi",
 ]
+# The libFuzzer crate is standalone (needs nightly; carries libfuzzer-sys).
+exclude = ["fuzz"]
 
 # Size-first release profile — for the WASM target, the payload is the product.
 [profile.release]
