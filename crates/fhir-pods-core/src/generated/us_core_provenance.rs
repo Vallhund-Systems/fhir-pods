@@ -4,7 +4,7 @@
 //! (nested slicing / undiscriminable slices / object patterns / mustSupport-only).
 //! Invariants outside the supported FHIRPath core are skipped at runtime.
 
-use crate::compiled::{CompiledProfile, ElementConstraint, Max, Discriminator, Slice, Slicing, InvariantSeverity, ProfileInvariant};
+use crate::compiled::{CompiledProfile, ElementConstraint, Max, Binding, BindingKind, Discriminator, Slice, Slicing, InvariantSeverity, ProfileInvariant};
 
 pub static PROFILE: CompiledProfile = CompiledProfile {
     url: "http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance",
@@ -19,7 +19,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Provenance.agent.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Provenance.agent.who", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Provenance.entity.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "Provenance.entity.role", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/provenance-entity-role|4.0.1") },
+        ElementConstraint { path: "Provenance.entity.role", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/provenance-entity-role|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "Provenance.entity.what", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Provenance.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Provenance.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },

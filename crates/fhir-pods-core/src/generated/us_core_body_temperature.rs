@@ -4,7 +4,7 @@
 //! (nested slicing / undiscriminable slices / object patterns / mustSupport-only).
 //! Invariants outside the supported FHIRPath core are skipped at runtime.
 
-use crate::compiled::{CompiledProfile, ElementConstraint, Max, Discriminator, Slice, Slicing, InvariantSeverity, ProfileInvariant};
+use crate::compiled::{CompiledProfile, ElementConstraint, Max, Binding, BindingKind, Discriminator, Slice, Slicing, InvariantSeverity, ProfileInvariant};
 
 pub static PROFILE: CompiledProfile = CompiledProfile {
     url: "http://hl7.org/fhir/us/core/StructureDefinition/us-core-body-temperature",
@@ -35,7 +35,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Observation.referenceRange.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Observation.referenceRange.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Observation.specimen", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "Observation.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/observation-status|4.0.1") },
+        ElementConstraint { path: "Observation.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/observation-status|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "Observation.subject", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Observation.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Observation.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
@@ -61,8 +61,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             Slice { name: "valueQuantity", min: 0, max: Max::Bounded(1), profile: None, discriminators: &[
                 Discriminator::Type { key: "valueQuantity" },
             ], elements: &[
-                ElementConstraint { path: "$this.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/ucum-bodytemp|4.0.1") },
-                ElementConstraint { path: "$this.comparator", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/quantity-comparator|4.0.1") },
+                ElementConstraint { path: "$this.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/ucum-bodytemp|4.0.1", kind: BindingKind::Code }) },
+                ElementConstraint { path: "$this.comparator", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/quantity-comparator|4.0.1", kind: BindingKind::Code }) },
                 ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.system", min: 1, max: Max::Bounded(1), fixed: Some("http://unitsofmeasure.org"), required_binding: None },
                 ElementConstraint { path: "$this.unit", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },

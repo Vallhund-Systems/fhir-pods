@@ -4,7 +4,7 @@
 //! (nested slicing / undiscriminable slices / object patterns / mustSupport-only).
 //! Invariants outside the supported FHIRPath core are skipped at runtime.
 
-use crate::compiled::{CompiledProfile, ElementConstraint, Max};
+use crate::compiled::{CompiledProfile, ElementConstraint, Max, Binding, BindingKind};
 
 pub static PROFILE: CompiledProfile = CompiledProfile {
     url: "http://hl7.org/fhir/us/core/StructureDefinition/us-core-sex",
@@ -14,7 +14,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     elements: &[
         ElementConstraint { path: "Extension.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Extension.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org/fhir/us/core/StructureDefinition/us-core-sex"), required_binding: None },
-        ElementConstraint { path: "Extension.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some("http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113762.1.4.1240.3") },
+        ElementConstraint { path: "Extension.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113762.1.4.1240.3", kind: BindingKind::Code }) },
     ],
     slicings: &[
     ],

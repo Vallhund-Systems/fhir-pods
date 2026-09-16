@@ -4,7 +4,7 @@
 //! (nested slicing / undiscriminable slices / object patterns / mustSupport-only).
 //! Invariants outside the supported FHIRPath core are skipped at runtime.
 
-use crate::compiled::{CompiledProfile, ElementConstraint, Max, Discriminator, Slice, Slicing, InvariantSeverity, ProfileInvariant};
+use crate::compiled::{CompiledProfile, ElementConstraint, Max, Binding, BindingKind, Discriminator, Slice, Slicing, InvariantSeverity, ProfileInvariant};
 
 pub static PROFILE: CompiledProfile = CompiledProfile {
     url: "http://hl7.org.au/fhir/core/StructureDefinition/au-core-practitioner",
@@ -14,7 +14,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     elements: &[
         ElementConstraint { path: "Practitioner.active", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Practitioner.birthDate", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "Practitioner.gender", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/administrative-gender|4.0.1") },
+        ElementConstraint { path: "Practitioner.gender", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/administrative-gender|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "Practitioner.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Practitioner.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Practitioner.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
@@ -24,7 +24,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Practitioner.name.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Practitioner.name.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Practitioner.name.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "Practitioner.name.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/name-use|4.0.1") },
+        ElementConstraint { path: "Practitioner.name.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/name-use|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "Practitioner.qualification.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Practitioner.qualification.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Practitioner.qualification.issuer", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },

@@ -4,7 +4,7 @@
 //! (nested slicing / undiscriminable slices / object patterns / mustSupport-only).
 //! Invariants outside the supported FHIRPath core are skipped at runtime.
 
-use crate::compiled::{CompiledProfile, ElementConstraint, Max, Discriminator, Slice, Slicing};
+use crate::compiled::{CompiledProfile, ElementConstraint, Max, Binding, BindingKind, Discriminator, Slice, Slicing};
 
 pub static PROFILE: CompiledProfile = CompiledProfile {
     url: "http://hl7.org.au/fhir/StructureDefinition/date-of-arrival",
@@ -25,7 +25,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             ], elements: &[
                 ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("date-accuracy-indicator"), required_binding: None },
-                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
+                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "https://healthterminologies.gov.au/fhir/ValueSet/date-accuracy-indicator-1", kind: BindingKind::Coding }) },
             ] },
         ] },
     ],

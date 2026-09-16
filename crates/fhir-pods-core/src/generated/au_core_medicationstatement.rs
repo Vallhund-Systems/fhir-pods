@@ -4,7 +4,7 @@
 //! (nested slicing / undiscriminable slices / object patterns / mustSupport-only).
 //! Invariants outside the supported FHIRPath core are skipped at runtime.
 
-use crate::compiled::{CompiledProfile, ElementConstraint, Max, Discriminator, Slice, Slicing, InvariantSeverity, ProfileInvariant};
+use crate::compiled::{CompiledProfile, ElementConstraint, Max, Binding, BindingKind, Discriminator, Slice, Slicing, InvariantSeverity, ProfileInvariant};
 
 pub static PROFILE: CompiledProfile = CompiledProfile {
     url: "http://hl7.org.au/fhir/core/StructureDefinition/au-core-medicationstatement",
@@ -38,7 +38,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "MedicationStatement.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "MedicationStatement.medication[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "MedicationStatement.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "MedicationStatement.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/medication-statement-status|4.0.1") },
+        ElementConstraint { path: "MedicationStatement.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/medication-statement-status|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "MedicationStatement.subject", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "MedicationStatement.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
     ],

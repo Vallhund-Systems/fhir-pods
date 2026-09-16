@@ -4,7 +4,7 @@
 //! (nested slicing / undiscriminable slices / object patterns / mustSupport-only).
 //! Invariants outside the supported FHIRPath core are skipped at runtime.
 
-use crate::compiled::{CompiledProfile, ElementConstraint, Max, InvariantSeverity, ProfileInvariant};
+use crate::compiled::{CompiledProfile, ElementConstraint, Max, Binding, BindingKind, InvariantSeverity, ProfileInvariant};
 
 pub static PROFILE: CompiledProfile = CompiledProfile {
     url: "http://hl7.org/fhir/us/core/StructureDefinition/us-core-servicerequest",
@@ -19,17 +19,17 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "ServiceRequest.encounter", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "ServiceRequest.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "ServiceRequest.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "ServiceRequest.intent", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/request-intent|4.0.1") },
+        ElementConstraint { path: "ServiceRequest.intent", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/request-intent|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "ServiceRequest.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "ServiceRequest.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "ServiceRequest.occurrence[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "ServiceRequest.patientInstruction", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "ServiceRequest.performerType", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "ServiceRequest.priority", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/request-priority|4.0.1") },
+        ElementConstraint { path: "ServiceRequest.priority", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/request-priority|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "ServiceRequest.quantity[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "ServiceRequest.requester", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "ServiceRequest.requisition", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "ServiceRequest.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/request-status|4.0.1") },
+        ElementConstraint { path: "ServiceRequest.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/request-status|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "ServiceRequest.subject", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "ServiceRequest.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
     ],

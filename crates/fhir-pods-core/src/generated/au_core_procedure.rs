@@ -4,7 +4,7 @@
 //! (nested slicing / undiscriminable slices / object patterns / mustSupport-only).
 //! Invariants outside the supported FHIRPath core are skipped at runtime.
 
-use crate::compiled::{CompiledProfile, ElementConstraint, Max, Discriminator, Slice, Slicing, InvariantSeverity, ProfileInvariant};
+use crate::compiled::{CompiledProfile, ElementConstraint, Max, Binding, BindingKind, Discriminator, Slice, Slicing, InvariantSeverity, ProfileInvariant};
 
 pub static PROFILE: CompiledProfile = CompiledProfile {
     url: "http://hl7.org.au/fhir/core/StructureDefinition/au-core-procedure",
@@ -31,7 +31,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Procedure.performer.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Procedure.performer.onBehalfOf", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Procedure.recorder", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "Procedure.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/event-status|4.0.1") },
+        ElementConstraint { path: "Procedure.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/event-status|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "Procedure.statusReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Procedure.subject", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Procedure.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },

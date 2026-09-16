@@ -4,7 +4,7 @@
 //! (nested slicing / undiscriminable slices / object patterns / mustSupport-only).
 //! Invariants outside the supported FHIRPath core are skipped at runtime.
 
-use crate::compiled::{CompiledProfile, ElementConstraint, Max, InvariantSeverity, ProfileInvariant};
+use crate::compiled::{CompiledProfile, ElementConstraint, Max, Binding, BindingKind, InvariantSeverity, ProfileInvariant};
 
 pub static PROFILE: CompiledProfile = CompiledProfile {
     url: "http://hl7.org/fhir/us/core/StructureDefinition/us-core-relatedperson",
@@ -17,7 +17,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "RelatedPerson.communication.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "RelatedPerson.communication.language", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "RelatedPerson.communication.preferred", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "RelatedPerson.gender", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/administrative-gender|4.0.1") },
+        ElementConstraint { path: "RelatedPerson.gender", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/administrative-gender|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "RelatedPerson.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "RelatedPerson.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "RelatedPerson.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },

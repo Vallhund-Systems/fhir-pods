@@ -4,7 +4,7 @@
 //! (nested slicing / undiscriminable slices / object patterns / mustSupport-only).
 //! Invariants outside the supported FHIRPath core are skipped at runtime.
 
-use crate::compiled::{CompiledProfile, ElementConstraint, Max, InvariantSeverity, ProfileInvariant};
+use crate::compiled::{CompiledProfile, ElementConstraint, Max, Binding, BindingKind, InvariantSeverity, ProfileInvariant};
 
 pub static PROFILE: CompiledProfile = CompiledProfile {
     url: "http://hl7.org/fhir/us/core/StructureDefinition/us-core-implantable-device",
@@ -15,7 +15,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Device.definition", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Device.deviceName.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Device.deviceName.name", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "Device.deviceName.type", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/device-nametype|4.0.1") },
+        ElementConstraint { path: "Device.deviceName.type", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/device-nametype|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "Device.distinctIdentifier", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Device.expirationDate", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Device.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
@@ -37,14 +37,14 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Device.specialization.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Device.specialization.systemType", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Device.specialization.version", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "Device.status", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/device-status|4.0.1") },
+        ElementConstraint { path: "Device.status", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/device-status|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "Device.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Device.type", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Device.udiCarrier", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Device.udiCarrier.carrierAIDC", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Device.udiCarrier.carrierHRF", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Device.udiCarrier.deviceIdentifier", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "Device.udiCarrier.entryType", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/udi-entry-type|4.0.1") },
+        ElementConstraint { path: "Device.udiCarrier.entryType", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/udi-entry-type|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "Device.udiCarrier.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Device.udiCarrier.issuer", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Device.udiCarrier.jurisdiction", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },

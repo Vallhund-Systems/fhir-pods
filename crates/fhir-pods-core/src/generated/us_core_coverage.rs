@@ -4,7 +4,7 @@
 //! (nested slicing / undiscriminable slices / object patterns / mustSupport-only).
 //! Invariants outside the supported FHIRPath core are skipped at runtime.
 
-use crate::compiled::{CompiledProfile, ElementConstraint, Max, Discriminator, Slice, Slicing, InvariantSeverity, ProfileInvariant};
+use crate::compiled::{CompiledProfile, ElementConstraint, Max, Binding, BindingKind, Discriminator, Slice, Slicing, InvariantSeverity, ProfileInvariant};
 
 pub static PROFILE: CompiledProfile = CompiledProfile {
     url: "http://hl7.org/fhir/us/core/StructureDefinition/us-core-coverage",
@@ -34,7 +34,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Coverage.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Coverage.policyHolder", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Coverage.relationship", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "Coverage.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/fm-status|4.0.1") },
+        ElementConstraint { path: "Coverage.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/fm-status|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "Coverage.subrogation", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Coverage.subscriber", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Coverage.subscriberId", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
@@ -51,7 +51,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.system", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-                ElementConstraint { path: "$this.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/identifier-use|4.0.1") },
+                ElementConstraint { path: "$this.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/identifier-use|4.0.1", kind: BindingKind::Code }) },
                 ElementConstraint { path: "$this.value", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
             ] },
         ] },

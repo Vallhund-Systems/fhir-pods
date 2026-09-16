@@ -4,7 +4,7 @@
 //! (nested slicing / undiscriminable slices / object patterns / mustSupport-only).
 //! Invariants outside the supported FHIRPath core are skipped at runtime.
 
-use crate::compiled::{CompiledProfile, ElementConstraint, Max};
+use crate::compiled::{CompiledProfile, ElementConstraint, Max, Binding, BindingKind};
 
 pub static PROFILE: CompiledProfile = CompiledProfile {
     url: "http://hl7.org.au/fhir/StructureDefinition/au-timezone-usage",
@@ -15,7 +15,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Extension.extension", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None },
         ElementConstraint { path: "Extension.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Extension.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org/fhir/StructureDefinition/timezone"), required_binding: None },
-        ElementConstraint { path: "Extension.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some("http://terminology.hl7.org.au/ValueSet/au-timezone") },
+        ElementConstraint { path: "Extension.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://terminology.hl7.org.au/ValueSet/au-timezone", kind: BindingKind::Code }) },
     ],
     slicings: &[
     ],

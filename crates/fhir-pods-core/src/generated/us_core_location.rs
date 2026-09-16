@@ -4,7 +4,7 @@
 //! (nested slicing / undiscriminable slices / object patterns / mustSupport-only).
 //! Invariants outside the supported FHIRPath core are skipped at runtime.
 
-use crate::compiled::{CompiledProfile, ElementConstraint, Max, InvariantSeverity, ProfileInvariant};
+use crate::compiled::{CompiledProfile, ElementConstraint, Max, Binding, BindingKind, InvariantSeverity, ProfileInvariant};
 
 pub static PROFILE: CompiledProfile = CompiledProfile {
     url: "http://hl7.org/fhir/us/core/StructureDefinition/us-core-location",
@@ -21,13 +21,13 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Location.address.postalCode", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Location.address.state", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Location.address.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "Location.address.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/address-type|4.0.1") },
-        ElementConstraint { path: "Location.address.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/address-use|4.0.1") },
+        ElementConstraint { path: "Location.address.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/address-type|4.0.1", kind: BindingKind::Code }) },
+        ElementConstraint { path: "Location.address.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/address-use|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "Location.availabilityExceptions", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Location.description", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Location.hoursOfOperation.allDay", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Location.hoursOfOperation.closingTime", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "Location.hoursOfOperation.daysOfWeek", min: 0, max: Max::Star, fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/days-of-week|4.0.1") },
+        ElementConstraint { path: "Location.hoursOfOperation.daysOfWeek", min: 0, max: Max::Star, fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/days-of-week|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "Location.hoursOfOperation.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Location.hoursOfOperation.openingTime", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Location.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
@@ -35,7 +35,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Location.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Location.managingOrganization", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Location.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "Location.mode", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/location-mode|4.0.1") },
+        ElementConstraint { path: "Location.mode", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/location-mode|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "Location.name", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Location.operationalStatus", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Location.partOf", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
@@ -45,7 +45,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Location.position.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Location.position.latitude", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Location.position.longitude", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "Location.status", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/location-status|4.0.1") },
+        ElementConstraint { path: "Location.status", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/location-status|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "Location.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
     ],
     slicings: &[

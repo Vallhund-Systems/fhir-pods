@@ -426,6 +426,23 @@ treat `$validate.profile` `uri`→`canonical` + R5's `usageContext` as additive.
   flags a *display-name* mismatch on a code we don't bundle displays for —
   consistent with the terminology stance). `.wasm` grew 170 → 262 KB (49 →
   66 KB gzipped) for the second IG.
+- **Pass 11 — scope note + the terminology seam (2026-09-15).** `docs/scope.md`
+  states what 271/271 means (error-level verdict + error paths) and, family by
+  family from the oracle's 868 non-error issues, what it checks that we don't:
+  terminology without a server (~700), display names, best-practice
+  recommendations, multiple matching profiles, advisories, attachment
+  fetching. Then the seam: `TerminologyProvider` is now real —
+  `Membership::{Member, NotMember, Unknown}`, `Bundled` first, a host provider
+  chained behind it and asked only what the bundle can't answer; `Unknown`
+  stays a warning. Bindings are compiled by kind (`code` / `Coding` /
+  `CodeableConcept`, 231 across the registry — before, only `code` elements
+  were bound). ABI 2 adds `fhir_pods_validate_tx` /
+  `fhir_pods_operation_outcome_tx` with a C callback; wasm takes the provider
+  as an import the wrapper supplies (JS closure); the expo pod takes a native
+  closure (Swift) / `fun interface` (Kotlin, via JNI `call_method`) installed
+  once by the app — never a JS callback, because the verifier is synchronous.
+  Proven from Rust, C, Swift (swiftc), JS (node suite 8/8), and on both
+  simulators. Oracle unchanged at 271/271.
 - **Inferno** (ONC g10) and **Touchstone** are **API-behavior** harnesses
   (SMART launch, Bulk Data, search, US Core over the wire) — relevant only if we
   later ship a *server* surface, not for the embeddable validator. Note them,

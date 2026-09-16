@@ -4,6 +4,13 @@ import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
 class FhirPodsExpoModule : Module() {
+  companion object {
+    /** The host's terminology provider, if any. Native-side by design: the
+     *  verifier runs synchronously and never calls back into JS. */
+    @JvmStatic
+    var terminology: FhirPodsTerminology? = null
+  }
+
   override fun definition() = ModuleDefinition {
     Name("FhirPodsExpo")
 
@@ -12,11 +19,11 @@ class FhirPodsExpoModule : Module() {
     // Synchronous: a FHIR resource (JSON string) in, a JSON document out. Each
     // is a straight JNI call into the Rust core — no bridge round-trip.
     Function("validate") { json: String ->
-      String(FhirPodsNative.validate(json.toByteArray(Charsets.UTF_8)), Charsets.UTF_8)
+      String(FhirPodsNative.validate(json.toByteArray(Charsets.UTF_8), terminology), Charsets.UTF_8)
     }
 
     Function("operationOutcome") { json: String ->
-      String(FhirPodsNative.operationOutcome(json.toByteArray(Charsets.UTF_8)), Charsets.UTF_8)
+      String(FhirPodsNative.operationOutcome(json.toByteArray(Charsets.UTF_8), terminology), Charsets.UTF_8)
     }
   }
 }

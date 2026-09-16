@@ -4,7 +4,7 @@
 //! (nested slicing / undiscriminable slices / object patterns / mustSupport-only).
 //! Invariants outside the supported FHIRPath core are skipped at runtime.
 
-use crate::compiled::{CompiledProfile, ElementConstraint, Max, Discriminator, Slice, Slicing, InvariantSeverity, ProfileInvariant};
+use crate::compiled::{CompiledProfile, ElementConstraint, Max, Binding, BindingKind, Discriminator, Slice, Slicing, InvariantSeverity, ProfileInvariant};
 
 pub static PROFILE: CompiledProfile = CompiledProfile {
     url: "http://hl7.org/fhir/us/core/StructureDefinition/us-core-careplan",
@@ -18,12 +18,12 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "CarePlan.activity.detail.description", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "CarePlan.activity.detail.doNotPerform", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "CarePlan.activity.detail.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "CarePlan.activity.detail.kind", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/care-plan-activity-kind|4.0.1") },
+        ElementConstraint { path: "CarePlan.activity.detail.kind", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/care-plan-activity-kind|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "CarePlan.activity.detail.location", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "CarePlan.activity.detail.product[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "CarePlan.activity.detail.quantity", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "CarePlan.activity.detail.scheduled[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "CarePlan.activity.detail.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/care-plan-activity-status|4.0.1") },
+        ElementConstraint { path: "CarePlan.activity.detail.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/care-plan-activity-status|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "CarePlan.activity.detail.statusReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "CarePlan.activity.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "CarePlan.activity.reference", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
@@ -34,16 +34,16 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "CarePlan.encounter", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "CarePlan.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "CarePlan.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "CarePlan.intent", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/care-plan-intent") },
+        ElementConstraint { path: "CarePlan.intent", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/care-plan-intent", kind: BindingKind::Code }) },
         ElementConstraint { path: "CarePlan.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "CarePlan.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "CarePlan.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "CarePlan.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/request-status") },
+        ElementConstraint { path: "CarePlan.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/request-status", kind: BindingKind::Code }) },
         ElementConstraint { path: "CarePlan.subject", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "CarePlan.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "CarePlan.text.div", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "CarePlan.text.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "CarePlan.text.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/us/core/ValueSet/us-core-narrative-status") },
+        ElementConstraint { path: "CarePlan.text.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/us/core/ValueSet/us-core-narrative-status", kind: BindingKind::Code }) },
         ElementConstraint { path: "CarePlan.title", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
     ],
     slicings: &[

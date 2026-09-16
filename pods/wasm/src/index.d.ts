@@ -50,7 +50,19 @@ export interface Pod {
 }
 
 /**
+ * The terminology seam: asked, synchronously, about the bindings the bundled
+ * value sets can't decide. `true` = member, `false` = not a member,
+ * `undefined` = unknown (a warning, never an error). `system` is "" for a
+ * bare `code` element.
+ */
+export type TerminologyProvider = (valueSet: string, system: string, code: string) => boolean | undefined;
+
+export interface Options {
+  terminology?: TerminologyProvider;
+}
+
+/**
  * Instantiate the pod from the `.wasm` bytes (or a precompiled module).
  * Loading the bytes is the host's job (`fetch` / `readFile`).
  */
-export function instantiate(source: BufferSource | WebAssembly.Module): Promise<Pod>;
+export function instantiate(source: BufferSource | WebAssembly.Module, options?: Options): Promise<Pod>;

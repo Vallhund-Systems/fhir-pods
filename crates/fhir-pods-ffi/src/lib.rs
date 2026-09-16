@@ -9,6 +9,10 @@
 //! - [`fhir_pods_validate`] — the ergonomic report (`valid`, `profile`, `issues[]`).
 //! - [`fhir_pods_operation_outcome`] — the spec resource, for the wire.
 //!
+//! Each has a `_tx` twin taking a host **terminology callback** — the seam
+//! through which NCTS / VSAC / an on-device cache answer the bindings the
+//! bundled value sets can't. The bundled sets are always consulted first.
+//!
 //! ## Memory contract
 //! - Buffers returned to the host are `[u32 little-endian length][UTF-8 bytes…]`.
 //! - The host frees any buffer (its own input, or a returned document) with
@@ -19,11 +23,28 @@
 //! `unsafe` is confined to this shim; `fhir-pods-core` forbids it.
 #![allow(clippy::missing_safety_doc)]
 
-use fhir_pods_core::{validate_bytes, wire};
+use core::ffi::c_void;
+
+use fhir_pods_core::terminology::{Bundled, Chain, Membership, TerminologyProvider};
+use fhir_pods_core::{validate_bytes_with, wire};
 
 /// Bump when the exported surface or the memory contract changes; the
 /// wrappers refuse a mismatched module.
-pub const ABI_VERSION: u32 = 1;
+pub const ABI_VERSION: u32 = 2;
+
+/// A host terminology callback: is (`system`, `code`) in `value_set`?
+/// Strings are UTF-8 `(ptr, len)`, valid only for the duration of the call;
+/// `system` is empty for a bare `code` element. Return `1` = member, `0` = not
+/// a member, anything else = unknown (degrades to a warning, never an error).
+pub type TxCallback = unsafe extern "C" fn(
+    ctx: *mut c_void,
+    value_set: *const u8,
+    value_set_len: usize,
+    system: *const u8,
+    system_len: usize,
+    code: *const u8,
+    code_len: usize,
+) -> i32;
 
 /// Allocate `len` bytes for the host to fill, then pass back via an entrypoint.
 #[no_mangle]
@@ -55,16 +76,71 @@ pub extern "C" fn fhir_pods_abi_version() -> u32 {
 /// issue in the report, not an error at the boundary.
 #[no_mangle]
 pub unsafe extern "C" fn fhir_pods_validate(ptr: *const u8, len: usize) -> *mut u8 {
-    let v = validate_bytes(input(ptr, len));
-    pack(wire::report(&v).as_bytes())
+    pack(wire::report(&validate_bytes_with(input(ptr, len), &Bundled)).as_bytes())
 }
 
 /// Validate a FHIR resource; returns a FHIR `OperationOutcome` resource — the
 /// `$validate` wire form. Same memory contract as [`fhir_pods_validate`].
 #[no_mangle]
 pub unsafe extern "C" fn fhir_pods_operation_outcome(ptr: *const u8, len: usize) -> *mut u8 {
-    let v = validate_bytes(input(ptr, len));
-    pack(v.to_operation_outcome().as_bytes())
+    pack(validate_bytes_with(input(ptr, len), &Bundled).to_operation_outcome().as_bytes())
+}
+
+/// [`fhir_pods_validate`] with a host terminology callback (`cb` may be null).
+#[no_mangle]
+pub unsafe extern "C" fn fhir_pods_validate_tx(ptr: *const u8, len: usize, cb: Option<TxCallback>, ctx: *mut c_void) -> *mut u8 {
+    with_tx(cb, ctx, |tx| pack(wire::report(&validate_bytes_with(input(ptr, len), tx)).as_bytes()))
+}
+
+/// [`fhir_pods_operation_outcome`] with a host terminology callback.
+#[no_mangle]
+pub unsafe extern "C" fn fhir_pods_operation_outcome_tx(
+    ptr: *const u8,
+    len: usize,
+    cb: Option<TxCallback>,
+    ctx: *mut c_void,
+) -> *mut u8 {
+    with_tx(cb, ctx, |tx| pack(validate_bytes_with(input(ptr, len), tx).to_operation_outcome().as_bytes()))
+}
+
+struct HostTx {
+    cb: TxCallback,
+    ctx: *mut c_void,
+}
+
+impl TerminologyProvider for HostTx {
+    fn validate_code(&self, value_set: &str, system: &str, code: &str) -> Membership {
+        let r = unsafe {
+            (self.cb)(
+                self.ctx,
+                value_set.as_ptr(),
+                value_set.len(),
+                system.as_ptr(),
+                system.len(),
+                code.as_ptr(),
+                code.len(),
+            )
+        };
+        membership(r)
+    }
+}
+
+fn membership(r: i32) -> Membership {
+    match r {
+        1 => Membership::Member,
+        0 => Membership::NotMember,
+        _ => Membership::Unknown,
+    }
+}
+
+fn with_tx<R>(cb: Option<TxCallback>, ctx: *mut c_void, f: impl FnOnce(&dyn TerminologyProvider) -> R) -> R {
+    match cb {
+        Some(cb) => {
+            let host = HostTx { cb, ctx };
+            f(&Chain(&[&Bundled, &host]))
+        }
+        None => f(&Bundled),
+    }
 }
 
 unsafe fn input<'a>(ptr: *const u8, len: usize) -> &'a [u8] {
@@ -83,18 +159,62 @@ fn pack(bytes: &[u8]) -> *mut u8 {
     Box::into_raw(v.into_boxed_slice()) as *mut u8
 }
 
+/// wasm: JS can't hand the module a function pointer, so the host terminology
+/// provider is an **import** (`env.fhir_pods_host_tx`) the JS wrapper always
+/// supplies (returning "unknown" when the host gave no provider), and these
+/// twins route through it.
+#[cfg(target_arch = "wasm32")]
+mod wasm_host {
+    use super::*;
+
+    extern "C" {
+        fn fhir_pods_host_tx(
+            value_set: *const u8,
+            value_set_len: usize,
+            system: *const u8,
+            system_len: usize,
+            code: *const u8,
+            code_len: usize,
+        ) -> i32;
+    }
+
+    struct ImportTx;
+
+    impl TerminologyProvider for ImportTx {
+        fn validate_code(&self, value_set: &str, system: &str, code: &str) -> Membership {
+            membership(unsafe {
+                fhir_pods_host_tx(value_set.as_ptr(), value_set.len(), system.as_ptr(), system.len(), code.as_ptr(), code.len())
+            })
+        }
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn fhir_pods_validate_host_tx(ptr: *const u8, len: usize) -> *mut u8 {
+        pack(wire::report(&validate_bytes_with(input(ptr, len), &Chain(&[&Bundled, &ImportTx]))).as_bytes())
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn fhir_pods_operation_outcome_host_tx(ptr: *const u8, len: usize) -> *mut u8 {
+        pack(validate_bytes_with(input(ptr, len), &Chain(&[&Bundled, &ImportTx])).to_operation_outcome().as_bytes())
+    }
+}
+
 /// Android: the JVM cannot call a C ABI directly, so the expo pod's Kotlin
-/// wrapper reaches the same two entrypoints through this JNI shim. Bytes in,
+/// wrapper reaches the same entrypoints through this JNI shim. Bytes in,
 /// bytes out (`ByteArray`), so no modified-UTF-8 surprises; the JVM owns both
-/// arrays, so there is no `pod_alloc`/`pod_free` dance across JNI.
+/// arrays, so there is no `pod_alloc`/`pod_free` dance across JNI. A host
+/// terminology provider is a Java object with
+/// `int validateCode(String valueSet, String system, String code)`.
 /// Symbol names bind to `expo.modules.fhirpods.FhirPodsNative`.
 #[cfg(target_os = "android")]
 mod android {
-    use jni::objects::{JByteArray, JObject};
+    use core::cell::RefCell;
+
+    use jni::objects::{JByteArray, JObject, JValue};
     use jni::sys::{jbyteArray, jint};
     use jni::JNIEnv;
 
-    use fhir_pods_core::{validate_bytes, wire};
+    use super::*;
 
     fn bytes_in(env: &mut JNIEnv, arr: &JByteArray) -> Vec<u8> {
         env.convert_byte_array(arr).unwrap_or_default()
@@ -107,9 +227,56 @@ mod android {
         }
     }
 
+    /// Calls back into the Java provider. The env is borrowed mutably per
+    /// call; the engine is single-threaded and never re-enters.
+    struct JavaTx<'a, 'l> {
+        env: RefCell<&'a mut JNIEnv<'l>>,
+        provider: &'a JObject<'l>,
+    }
+
+    impl TerminologyProvider for JavaTx<'_, '_> {
+        fn validate_code(&self, value_set: &str, system: &str, code: &str) -> Membership {
+            let mut env = self.env.borrow_mut();
+            let (Ok(vs), Ok(sys), Ok(cd)) = (env.new_string(value_set), env.new_string(system), env.new_string(code)) else {
+                return Membership::Unknown;
+            };
+            let r = env.call_method(
+                self.provider,
+                "validateCode",
+                "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)I",
+                &[JValue::Object(&vs), JValue::Object(&sys), JValue::Object(&cd)],
+            );
+            let m = match r.and_then(|v| v.i()) {
+                Ok(i) => membership(i),
+                Err(_) => {
+                    // A throwing provider is an unknown answer, not a crash.
+                    let _ = env.exception_clear();
+                    Membership::Unknown
+                }
+            };
+            let _ = env.delete_local_ref(vs);
+            let _ = env.delete_local_ref(sys);
+            let _ = env.delete_local_ref(cd);
+            m
+        }
+    }
+
+    fn run<'l>(env: &mut JNIEnv<'l>, json: &JByteArray<'l>, provider: &JObject<'l>, outcome: bool) -> jbyteArray {
+        let input = bytes_in(env, json);
+        let doc = if provider.is_null() {
+            let v = validate_bytes_with(&input, &Bundled);
+            if outcome { v.to_operation_outcome() } else { wire::report(&v) }
+        } else {
+            let host = JavaTx { env: RefCell::new(env), provider };
+            let v = validate_bytes_with(&input, &Chain(&[&Bundled, &host]));
+            if outcome { v.to_operation_outcome() } else { wire::report(&v) }
+        };
+        bytes_out(env, &doc)
+    }
+
     #[no_mangle]
     pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_abiVersion(_env: JNIEnv, _this: JObject) -> jint {
-        super::ABI_VERSION as jint
+        ABI_VERSION as jint
     }
 
     #[no_mangle]
@@ -117,9 +284,9 @@ mod android {
         mut env: JNIEnv<'l>,
         _this: JObject<'l>,
         json: JByteArray<'l>,
+        provider: JObject<'l>,
     ) -> jbyteArray {
-        let v = validate_bytes(&bytes_in(&mut env, &json));
-        bytes_out(&mut env, &wire::report(&v))
+        run(&mut env, &json, &provider, false)
     }
 
     #[no_mangle]
@@ -127,9 +294,9 @@ mod android {
         mut env: JNIEnv<'l>,
         _this: JObject<'l>,
         json: JByteArray<'l>,
+        provider: JObject<'l>,
     ) -> jbyteArray {
-        let v = validate_bytes(&bytes_in(&mut env, &json));
-        bytes_out(&mut env, &v.to_operation_outcome())
+        run(&mut env, &json, &provider, true)
     }
 }
 
@@ -143,6 +310,10 @@ mod tests {
         std::ptr::copy_nonoverlapping(json.as_ptr(), inp, json.len());
         let ret = f(inp, json.len());
         pod_free(inp, json.len());
+        unpack(ret)
+    }
+
+    unsafe fn unpack(ret: *mut u8) -> String {
         let len = u32::from_le_bytes(*(ret as *const [u8; 4])) as usize;
         let out = String::from_utf8(std::slice::from_raw_parts(ret.add(4), len).to_vec()).unwrap();
         pod_free(ret, 4 + len);
@@ -168,8 +339,34 @@ mod tests {
     fn null_input_is_empty_input() {
         unsafe {
             let ret = fhir_pods_validate(std::ptr::null(), 0);
-            let len = u32::from_le_bytes(*(ret as *const [u8; 4])) as usize;
-            pod_free(ret, 4 + len);
+            unpack(ret);
+        }
+    }
+
+    /// The host callback is asked only what the bundled sets can't answer,
+    /// sees UTF-8 strings, and its answer lands in the report.
+    #[test]
+    fn host_terminology_callback() {
+        struct Log(Vec<String>, i32);
+        unsafe extern "C" fn cb(ctx: *mut c_void, vs: *const u8, vsl: usize, sys: *const u8, sysl: usize, code: *const u8, cl: usize) -> i32 {
+            let log = &mut *(ctx as *mut Log);
+            let s = |p: *const u8, n: usize| String::from_utf8_lossy(std::slice::from_raw_parts(p, n)).into_owned();
+            log.0.push(format!("{} {} {}", s(vs, vsl), s(sys, sysl), s(code, cl)));
+            log.1
+        }
+        let json = r#"{"resourceType":"Patient","identifier":[{"system":"http://h.example.org/mrn","value":"1"}],"name":[{"family":"D"}],"gender":"male","birthDate":"1970-01-01","telecom":[{"system":"phone","value":"1"}]}"#;
+        unsafe {
+            let mut log = Log(Vec::new(), 0);
+            let r = unpack(fhir_pods_validate_tx(json.as_ptr(), json.len(), Some(cb), &mut log as *mut Log as *mut c_void));
+            assert_eq!(log.0, vec!["http://hl7.org/fhir/ValueSet/contact-point-system|4.0.1  phone"]);
+            assert!(r.contains("'phone' is not in the bound value set"), "{r}");
+
+            let mut log = Log(Vec::new(), 1);
+            let r = unpack(fhir_pods_validate_tx(json.as_ptr(), json.len(), Some(cb), &mut log as *mut Log as *mut c_void));
+            assert!(!r.contains("contact-point-system"), "{r}");
+
+            let r = unpack(fhir_pods_validate_tx(json.as_ptr(), json.len(), None, std::ptr::null_mut()));
+            assert!(r.contains("no bundled terminology for http://hl7.org/fhir/ValueSet/contact-point-system"), "{r}");
         }
     }
 }

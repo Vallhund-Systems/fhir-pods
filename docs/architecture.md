@@ -104,6 +104,19 @@ explicitly via `pod_alloc` / `pod_free`. wasm-bindgen (or hand-written JS) can
 wrap this for ergonomic TypeScript later — but the core never pays the glue cost.
 `unsafe` is confined to this shim; the core forbids it.
 
+## The terminology seam
+
+Bindings are checked through one trait — `terminology::TerminologyProvider`
+(`validate_code(value_set, system, code) -> Member | NotMember | Unknown`).
+`Bundled` answers from the value sets compiled into the core; `Chain` puts a
+host provider behind it, asked only what the bundle can't decide. `Unknown`
+is a warning, never an error, so an offline host degrades gracefully. Over the
+C ABI the provider is a callback (`fhir_pods_validate_tx`); in wasm it is an
+import the JS wrapper supplies; in the expo pod it is a native closure /
+`fun interface` the app installs once — the verifier never calls back into
+JS. Bindings are compiled by kind: a `code` is the code itself, a `Coding` is
+system + code, a `CodeableConcept` is a member if any of its codings is.
+
 ## Audit surface
 
 FHIR already models the audit trail as **data**, not as a byproduct of

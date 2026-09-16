@@ -42,6 +42,20 @@ const outcome = pod.operationOutcome(JSON.stringify(observation));
 the report. Both calls are synchronous — tens of microseconds for a profiled
 resource.
 
+### The terminology seam
+
+```js
+const pod = await instantiate(bytes, {
+  // asked, synchronously, only about bindings the bundled value sets can't decide
+  terminology: (valueSet, system, code) => myCache.has(valueSet, system, code), // true / false / undefined
+});
+```
+
+`true` = member, `false` = not a member (an error on a required binding),
+`undefined` or a throw = unknown (a warning, never an error). Without a
+provider, every such binding is a warning. SNOMED content never ships in the
+`.wasm`; it only ever arrives through this seam.
+
 ## Boundary
 
 A standalone package. It never imports the host; the host never imports the

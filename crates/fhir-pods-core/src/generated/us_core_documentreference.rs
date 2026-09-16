@@ -4,7 +4,7 @@
 //! (nested slicing / undiscriminable slices / object patterns / mustSupport-only).
 //! Invariants outside the supported FHIRPath core are skipped at runtime.
 
-use crate::compiled::{CompiledProfile, ElementConstraint, Max, InvariantSeverity, ProfileInvariant};
+use crate::compiled::{CompiledProfile, ElementConstraint, Max, Binding, BindingKind, InvariantSeverity, ProfileInvariant};
 
 pub static PROFILE: CompiledProfile = CompiledProfile {
     url: "http://hl7.org/fhir/us/core/StructureDefinition/us-core-documentreference",
@@ -16,7 +16,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "DocumentReference.category", min: 1, max: Max::Star, fixed: None, required_binding: None },
         ElementConstraint { path: "DocumentReference.content", min: 1, max: Max::Star, fixed: None, required_binding: None },
         ElementConstraint { path: "DocumentReference.content.attachment", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "DocumentReference.content.attachment.contentType", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/mimetypes|4.0.1") },
+        ElementConstraint { path: "DocumentReference.content.attachment.contentType", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/mimetypes|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "DocumentReference.content.attachment.creation", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "DocumentReference.content.attachment.data", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "DocumentReference.content.attachment.hash", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
@@ -37,19 +37,19 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "DocumentReference.custodian", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "DocumentReference.date", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "DocumentReference.description", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "DocumentReference.docStatus", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/composition-status|4.0.1") },
+        ElementConstraint { path: "DocumentReference.docStatus", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/composition-status|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "DocumentReference.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "DocumentReference.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "DocumentReference.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "DocumentReference.masterIdentifier", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "DocumentReference.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "DocumentReference.relatesTo.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/document-relationship-type|4.0.1") },
+        ElementConstraint { path: "DocumentReference.relatesTo.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/document-relationship-type|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "DocumentReference.relatesTo.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "DocumentReference.relatesTo.target", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "DocumentReference.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/document-reference-status") },
+        ElementConstraint { path: "DocumentReference.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/document-reference-status", kind: BindingKind::Code }) },
         ElementConstraint { path: "DocumentReference.subject", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "DocumentReference.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "DocumentReference.type", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
+        ElementConstraint { path: "DocumentReference.type", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/us/core/ValueSet/us-core-documentreference-type", kind: BindingKind::CodeableConcept }) },
     ],
     slicings: &[
     ],

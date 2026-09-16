@@ -59,6 +59,11 @@ impl Validation {
 /// `meta.profile` picks the generated profile; otherwise the resource type's
 /// default applies.
 pub fn validate_bytes(input: &[u8]) -> Validation {
+    validate_bytes_with(input, &terminology::Bundled)
+}
+
+/// [`validate_bytes`] with a host terminology provider behind the bundled sets.
+pub fn validate_bytes_with(input: &[u8], tx: &dyn terminology::TerminologyProvider) -> Validation {
     let fields = match json::scan_top_level(input) {
         Ok(f) => f,
         Err(e) => return parse_failure(e),
@@ -88,7 +93,7 @@ pub fn validate_bytes(input: &[u8]) -> Validation {
                     Some(profile) => Validation {
                         resource_type: rt.into(),
                         profile: Some(profile.name),
-                        report: engine::validate(profile, &doc),
+                        report: engine::validate_with(profile, &doc, tx),
                     },
                     None if rt == "Observation" => Validation {
                         resource_type: rt.into(),
@@ -682,8 +687,24 @@ pub mod compiled {
         /// A scalar the element must equal exactly (fixedUri / fixedCode / …).
         /// For a SNOMED coding this is only ever `system`/`code`, never `display`.
         pub fixed: Option<&'static str>,
-        /// A required-strength ValueSet binding on a code element.
-        pub required_binding: Option<&'static str>,
+        /// A required-strength ValueSet binding on a coded element.
+        pub required_binding: Option<Binding>,
+    }
+
+    /// How a binding reads the instance: a `code` is the code itself (the
+    /// set's implied system); a `Coding` is system + code; a `CodeableConcept`
+    /// is a member if any of its codings is.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum BindingKind {
+        Code,
+        Coding,
+        CodeableConcept,
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct Binding {
+        pub value_set: &'static str,
+        pub kind: BindingKind,
     }
 
     /// How an instance of a sliced element is assigned to a slice.
@@ -751,26 +772,36 @@ pub mod compiled {
 pub mod engine {
     use alloc::vec::Vec;
 
-    use crate::compiled::{CompiledProfile, Discriminator, ElementConstraint, InvariantSeverity, Max, Slice, Slicing};
+    use crate::compiled::{
+        BindingKind, CompiledProfile, Discriminator, ElementConstraint, InvariantSeverity, Max, Slice, Slicing,
+    };
     use crate::document::Document;
     use crate::path::{self, Verdict};
+    use crate::terminology::{Bundled, Membership, TerminologyProvider};
     use crate::validate::{IssueType, Report, Severity};
 
     /// How many profiles a slice may inherit through, transitively. Bounds the
     /// recursion so a registry cycle can never loop.
     const MAX_INHERIT: usize = 8;
 
+    /// Validate with the bundled terminology only.
     pub fn validate(profile: &CompiledProfile, doc: &impl Document) -> Report {
-        validate_at(profile, doc, 0)
+        validate_with(profile, doc, &Bundled)
     }
 
-    fn validate_at(profile: &CompiledProfile, doc: &impl Document, depth: usize) -> Report {
+    /// Validate with a host terminology provider answering the bindings the
+    /// bundled sets can't (see [`crate::terminology::Chain`]).
+    pub fn validate_with(profile: &CompiledProfile, doc: &impl Document, tx: &dyn TerminologyProvider) -> Report {
+        validate_at(profile, doc, tx, 0)
+    }
+
+    fn validate_at(profile: &CompiledProfile, doc: &impl Document, tx: &dyn TerminologyProvider, depth: usize) -> Report {
         let mut r = Report::default();
         for el in profile.elements {
-            check_element(el, el.path, doc, &mut r);
+            check_element(el, el.path, doc, tx, &mut r);
         }
         for slicing in profile.slicings {
-            check_slicing(slicing, doc, &mut r, depth);
+            check_slicing(slicing, doc, tx, &mut r, depth);
         }
         for inv in profile.invariants {
             // Outside the supported FHIRPath core: skipped, never guessed.
@@ -791,7 +822,7 @@ pub mod engine {
     /// Cardinality (per parent instance), fixed value, and required binding for
     /// one element. `label` is the path reported in issues — absolute at the top
     /// level, `Path:slice.sub` inside a slice.
-    fn check_element(el: &ElementConstraint, label: &str, doc: &impl Document, r: &mut Report) {
+    fn check_element(el: &ElementConstraint, label: &str, doc: &impl Document, tx: &dyn TerminologyProvider, r: &mut Report) {
         for count in doc.child_counts(el.path) {
             let count = count as u32;
             if count < el.min {
@@ -803,27 +834,72 @@ pub mod engine {
                 }
             }
         }
-        if el.fixed.is_none() && el.required_binding.is_none() {
-            return;
-        }
-        for s in doc.scalars(el.path) {
-            if let Some(f) = el.fixed {
+        if let Some(f) = el.fixed {
+            for s in doc.scalars(el.path) {
                 if s != f {
                     r.push(Severity::Error, IssueType::Value, label, format!("{label} must be '{f}' (found '{s}')"));
                 }
             }
-            if let Some(vs) = el.required_binding {
-                match crate::value_sets::in_value_set(vs, s) {
-                    Some(false) => r.push(Severity::Error, IssueType::CodeInvalid, label, format!("'{s}' is not in the bound value set")),
-                    None => r.push(
-                        Severity::Warning,
-                        IssueType::NotSupported,
-                        label,
-                        format!("no bundled terminology for {vs}; '{s}' not checked"),
-                    ),
-                    Some(true) => {}
+        }
+        let Some(b) = el.required_binding else { return };
+        let vs = b.value_set;
+        match b.kind {
+            BindingKind::Code => {
+                for code in doc.scalars(el.path) {
+                    report_membership(tx.validate_code(vs, "", code), vs, code, label, r);
                 }
             }
+            BindingKind::Coding => {
+                for inst in doc.instances(el.path) {
+                    if let Some((system, code)) = coding_of(&inst) {
+                        report_membership(tx.validate_code(vs, system, code), vs, code, label, r);
+                    }
+                }
+            }
+            BindingKind::CodeableConcept => {
+                for inst in doc.instances(el.path) {
+                    // A member if any coding is; unknown if none can be decided;
+                    // a text-only concept is not checked (the reference validator
+                    // only warns there).
+                    let mut verdict = None;
+                    for c in inst.instances("$this.coding") {
+                        if let Some((system, code)) = coding_of(&c) {
+                            match tx.validate_code(vs, system, code) {
+                                Membership::Member => {
+                                    verdict = Some(Membership::Member);
+                                    break;
+                                }
+                                Membership::Unknown => verdict = Some(Membership::Unknown),
+                                Membership::NotMember => verdict = verdict.or(Some(Membership::NotMember)),
+                            }
+                        }
+                    }
+                    if let Some(v) = verdict {
+                        report_membership(v, vs, "the codings", label, r);
+                    }
+                }
+            }
+        }
+    }
+
+    fn coding_of(inst: &impl Document) -> Option<(&str, &str)> {
+        let code = inst.scalars("$this.code").into_iter().next()?;
+        let system = inst.scalars("$this.system").into_iter().next().unwrap_or("");
+        Some((system, code))
+    }
+
+    fn report_membership(m: Membership, vs: &str, what: &str, label: &str, r: &mut Report) {
+        match m {
+            Membership::Member => {}
+            Membership::NotMember => {
+                r.push(Severity::Error, IssueType::CodeInvalid, label, format!("'{what}' is not in the bound value set"))
+            }
+            Membership::Unknown => r.push(
+                Severity::Warning,
+                IssueType::NotSupported,
+                label,
+                format!("no bundled terminology for {vs}; '{what}' not checked"),
+            ),
         }
     }
 
@@ -846,7 +922,7 @@ pub mod engine {
     /// Evaluate a slicing per parent instance: assign instances to slices, check
     /// each slice's cardinality, validate its sub-constraints against every
     /// matched instance (re-rooted as `$this`), and enforce `closed`.
-    fn check_slicing(slicing: &Slicing, doc: &impl Document, r: &mut Report, depth: usize) {
+    fn check_slicing(slicing: &Slicing, doc: &impl Document, tx: &dyn TerminologyProvider, r: &mut Report, depth: usize) {
         let Some((parent_path, last)) = slicing.path.rsplit_once('.') else {
             return;
         };
@@ -872,14 +948,14 @@ pub mod engine {
                 for inst in &insts {
                     for el in slice.elements {
                         let sub = format!("{label}.{}", el.path.trim_start_matches("$this."));
-                        check_element(el, &sub, inst, r);
+                        check_element(el, &sub, inst, tx, r);
                     }
                     // A slice that names a profile: matched instances must also
                     // conform to it. Recursive — the instance becomes the root,
                     // and the profile's own element paths resolve against it.
                     if let Some(url) = slice.profile.filter(|_| depth < MAX_INHERIT) {
                         if let Some(profile) = crate::generated::REGISTRY.iter().find(|p| p.url == url) {
-                            for issue in validate_at(profile, inst, depth + 1).issues {
+                            for issue in validate_at(profile, inst, tx, depth + 1).issues {
                                 let rel = issue
                                     .path
                                     .strip_prefix(profile.resource_type)
@@ -1855,9 +1931,53 @@ pub mod path {
     }
 }
 
+/// The terminology seam. Bundled sets answer what they can; a host provider
+/// (NCTS, VSAC, an on-device cache…) answers the rest. SNOMED content never
+/// ships in the core — it only ever arrives through this seam.
 pub mod terminology {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum Membership {
+        Member,
+        NotMember,
+        /// The provider cannot decide (unknown set, no data). The engine
+        /// degrades this to a warning, never an error.
+        Unknown,
+    }
+
     pub trait TerminologyProvider {
-        fn validate_code(&self, value_set_url: &str, system: &str, code: &str) -> bool;
+        /// Is (`system`, `code`) in the value set `value_set` (a canonical URL,
+        /// possibly `|version`)? `system` is empty for a bare `code` element —
+        /// the set's implied system.
+        fn validate_code(&self, value_set: &str, system: &str, code: &str) -> Membership;
+    }
+
+    /// The value sets compiled into the core (see [`crate::value_sets`]).
+    pub struct Bundled;
+
+    impl TerminologyProvider for Bundled {
+        fn validate_code(&self, value_set: &str, _system: &str, code: &str) -> Membership {
+            match crate::value_sets::in_value_set(value_set, code) {
+                Some(true) => Membership::Member,
+                Some(false) => Membership::NotMember,
+                None => Membership::Unknown,
+            }
+        }
+    }
+
+    /// Providers in order; the first definite answer wins. Put [`Bundled`]
+    /// first so the host is only asked what the core can't answer.
+    pub struct Chain<'a>(pub &'a [&'a dyn TerminologyProvider]);
+
+    impl TerminologyProvider for Chain<'_> {
+        fn validate_code(&self, value_set: &str, system: &str, code: &str) -> Membership {
+            for p in self.0 {
+                let m = p.validate_code(value_set, system, code);
+                if m != Membership::Unknown {
+                    return m;
+                }
+            }
+            Membership::Unknown
+        }
     }
 }
 
@@ -2245,6 +2365,58 @@ mod tests {
         ));
         assert!(r.contains("vs-2"), "{r}");
         assert!(r.contains("\"valid\":false"), "{r}");
+    }
+
+    // --- the terminology seam ---
+
+    #[test]
+    fn host_terminology_answers_what_the_bundled_sets_cannot() {
+        use super::terminology::{Bundled, Chain, Membership, TerminologyProvider};
+        use super::{validate_bytes, validate_bytes_with, wire};
+        // telecom.system is bound (required) to contact-point-system, which is not bundled.
+        let patient = PATIENT_OK.replace("\"gender\"", "\"telecom\":[{\"system\":\"phone\",\"value\":\"1\"}],\"gender\"");
+        let bundled = wire::report(&validate_bytes(patient.as_bytes()));
+        assert!(bundled.contains("no bundled terminology for http://hl7.org/fhir/ValueSet/contact-point-system"), "{bundled}");
+
+        struct Host(Membership, core::cell::Cell<usize>);
+        impl TerminologyProvider for Host {
+            fn validate_code(&self, vs: &str, system: &str, code: &str) -> Membership {
+                self.1.set(self.1.get() + 1);
+                assert!(vs.starts_with("http://hl7.org/fhir/ValueSet/contact-point-system"), "asked about {vs} {system} {code}");
+                self.0
+            }
+        }
+        let yes = Host(Membership::Member, Default::default());
+        let r = wire::report(&validate_bytes_with(patient.as_bytes(), &Chain(&[&Bundled, &yes])));
+        assert!(!r.contains("contact-point-system"), "{r}");
+        assert_eq!(yes.1.get(), 1, "asked once, only for the set the bundle lacks");
+
+        let no = Host(Membership::NotMember, Default::default());
+        let r = wire::report(&validate_bytes_with(patient.as_bytes(), &Chain(&[&Bundled, &no])));
+        assert!(r.contains("\"path\":\"Patient.telecom.system\",\"message\":\"'phone' is not in the bound value set\""), "{r}");
+        assert!(r.contains("\"valid\":false"), "{r}");
+    }
+
+    #[test]
+    fn codeable_concept_binding_is_member_if_any_coding_is() {
+        use super::terminology::{Membership, TerminologyProvider};
+        use super::{validate_bytes_with, wire};
+        struct Only(&'static str);
+        impl TerminologyProvider for Only {
+            fn validate_code(&self, _vs: &str, _system: &str, code: &str) -> Membership {
+                if code == self.0 { Membership::Member } else { Membership::NotMember }
+            }
+        }
+        // Condition.clinicalStatus: required binding, CodeableConcept.
+        let cond = |code: &str| {
+            format!(
+                r#"{{"resourceType":"Condition","meta":{{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-condition"]}},"clinicalStatus":{{"coding":[{{"system":"http://terminology.hl7.org/CodeSystem/condition-clinical","code":"{code}"}},{{"system":"http://example.org/other","code":"x"}}]}},"code":{{"text":"c"}},"subject":{{"reference":"Patient/1"}}}}"#
+            )
+        };
+        let ok = wire::report(&validate_bytes_with(cond("active").as_bytes(), &Only("active")));
+        assert!(!ok.contains("clinicalStatus"), "{ok}");
+        let bad = wire::report(&validate_bytes_with(cond("bogus").as_bytes(), &Only("active")));
+        assert!(bad.contains("Condition.clinicalStatus") && bad.contains("not in the bound value set"), "{bad}");
     }
 
     // --- wire: OperationOutcome ---

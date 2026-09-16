@@ -4,7 +4,7 @@
 //! (nested slicing / undiscriminable slices / object patterns / mustSupport-only).
 //! Invariants outside the supported FHIRPath core are skipped at runtime.
 
-use crate::compiled::{CompiledProfile, ElementConstraint, Max, InvariantSeverity, ProfileInvariant};
+use crate::compiled::{CompiledProfile, ElementConstraint, Max, Binding, BindingKind, InvariantSeverity, ProfileInvariant};
 
 pub static PROFILE: CompiledProfile = CompiledProfile {
     url: "http://hl7.org/fhir/us/core/StructureDefinition/us-core-allergyintolerance",
@@ -13,10 +13,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     deferred: 1,
     elements: &[
         ElementConstraint { path: "AllergyIntolerance.asserter", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "AllergyIntolerance.category", min: 0, max: Max::Star, fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/allergy-intolerance-category|4.0.1") },
-        ElementConstraint { path: "AllergyIntolerance.clinicalStatus", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
+        ElementConstraint { path: "AllergyIntolerance.category", min: 0, max: Max::Star, fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/allergy-intolerance-category|4.0.1", kind: BindingKind::Code }) },
+        ElementConstraint { path: "AllergyIntolerance.clinicalStatus", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/allergyintolerance-clinical", kind: BindingKind::CodeableConcept }) },
         ElementConstraint { path: "AllergyIntolerance.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "AllergyIntolerance.criticality", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/allergy-intolerance-criticality|4.0.1") },
+        ElementConstraint { path: "AllergyIntolerance.criticality", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/allergy-intolerance-criticality|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "AllergyIntolerance.encounter", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "AllergyIntolerance.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "AllergyIntolerance.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
@@ -30,13 +30,13 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "AllergyIntolerance.reaction.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "AllergyIntolerance.reaction.manifestation", min: 1, max: Max::Star, fixed: None, required_binding: None },
         ElementConstraint { path: "AllergyIntolerance.reaction.onset", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "AllergyIntolerance.reaction.severity", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/reaction-event-severity|4.0.1") },
+        ElementConstraint { path: "AllergyIntolerance.reaction.severity", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/reaction-event-severity|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "AllergyIntolerance.reaction.substance", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "AllergyIntolerance.recordedDate", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "AllergyIntolerance.recorder", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "AllergyIntolerance.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "AllergyIntolerance.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/allergy-intolerance-type|4.0.1") },
-        ElementConstraint { path: "AllergyIntolerance.verificationStatus", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
+        ElementConstraint { path: "AllergyIntolerance.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/allergy-intolerance-type|4.0.1", kind: BindingKind::Code }) },
+        ElementConstraint { path: "AllergyIntolerance.verificationStatus", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/allergyintolerance-verification", kind: BindingKind::CodeableConcept }) },
     ],
     slicings: &[
     ],

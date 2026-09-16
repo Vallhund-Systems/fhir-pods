@@ -4,7 +4,7 @@
 //! (nested slicing / undiscriminable slices / object patterns / mustSupport-only).
 //! Invariants outside the supported FHIRPath core are skipped at runtime.
 
-use crate::compiled::{CompiledProfile, ElementConstraint, Max, InvariantSeverity, ProfileInvariant};
+use crate::compiled::{CompiledProfile, ElementConstraint, Max, Binding, BindingKind, InvariantSeverity, ProfileInvariant};
 
 pub static PROFILE: CompiledProfile = CompiledProfile {
     url: "http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitionerrole",
@@ -17,7 +17,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "PractitionerRole.availableTime.allDay", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "PractitionerRole.availableTime.availableEndTime", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "PractitionerRole.availableTime.availableStartTime", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "PractitionerRole.availableTime.daysOfWeek", min: 0, max: Max::Star, fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/days-of-week|4.0.1") },
+        ElementConstraint { path: "PractitionerRole.availableTime.daysOfWeek", min: 0, max: Max::Star, fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/days-of-week|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "PractitionerRole.availableTime.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "PractitionerRole.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "PractitionerRole.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
@@ -32,8 +32,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "PractitionerRole.telecom.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "PractitionerRole.telecom.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "PractitionerRole.telecom.rank", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "PractitionerRole.telecom.system", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/contact-point-system|4.0.1") },
-        ElementConstraint { path: "PractitionerRole.telecom.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/contact-point-use|4.0.1") },
+        ElementConstraint { path: "PractitionerRole.telecom.system", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/contact-point-system|4.0.1", kind: BindingKind::Code }) },
+        ElementConstraint { path: "PractitionerRole.telecom.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/contact-point-use|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "PractitionerRole.telecom.value", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "PractitionerRole.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
     ],

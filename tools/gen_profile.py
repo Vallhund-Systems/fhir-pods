@@ -61,7 +61,15 @@ def constraint(e):
     fixed = scalar_fixed(e)
     binding = e.get("binding") or {}
     types = [t.get("code") for t in e.get("type", [])]
-    bind = binding.get("valueSet") if binding.get("strength") == "required" and "code" in types else None
+    # A required binding on a coded element. The kind says how the engine
+    # reads the instance: a `code` is the code itself; a Coding is
+    # system+code; a CodeableConcept is a member if any of its codings is.
+    bind = None
+    if binding.get("strength") == "required" and binding.get("valueSet"):
+        for kind in ("code", "Coding", "CodeableConcept"):
+            if kind in types:
+                bind = (binding["valueSet"], kind)
+                break
     enforceable = min_ >= 1 or bounded or fixed is not None or bind is not None
     return min_, (int(max_) if bounded else None), fixed, bind, enforceable
 
@@ -298,7 +306,11 @@ def rs(s):
 def el_line(path, r, indent):
     mx = f"Max::Bounded({r['max']})" if r["max"] is not None else "Max::Star"
     fx = f"Some({rs(r['fixed'])})" if r["fixed"] is not None else "None"
-    bd = f"Some({rs(r['binding'])})" if r["binding"] else "None"
+    if r["binding"]:
+        vs, kind = r["binding"]
+        bd = f"Some(Binding {{ value_set: {rs(vs)}, kind: BindingKind::{kind[0].upper() + kind[1:]} }})"
+    else:
+        bd = "None"
     return (
         " " * indent
         + f"ElementConstraint {{ path: {rs(path)}, min: {r['min']}, max: {mx}, fixed: {fx}, required_binding: {bd} }},"
@@ -311,6 +323,11 @@ def emit(sd, provenance, load=None):
     n_slices = sum(len(s[2]) for s in slicings)
     invariants = invariants_of(sd)
     imports = "CompiledProfile, ElementConstraint, Max"
+    has_binding = any(r["binding"] for r in elements.values()) or any(
+        r["binding"] for _, _, sl in slicings for _, spec, _ in sl for r in spec["subs"].values()
+    )
+    if has_binding:
+        imports += ", Binding, BindingKind"
     if slicings:
         imports += ", Discriminator, Slice, Slicing"
     if invariants:

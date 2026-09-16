@@ -50,8 +50,11 @@ with profile inheritance, and a FHIRPath core sufficient for every invariant
 in the registry bar four (type tests, `%resource`, `descendants`, `intersect`
 — skipped, never guessed). Agrees with the HL7 reference validator on
 **271/271** corpus instances (both IGs' own 238 published examples + 33
-broken ones). Delivered as a 262 KB `.wasm` (66 KB gzipped) and an Expo
-module (iOS + Android), each measured at tens of microseconds per resource.
+broken ones). Delivered as a ~275 KB `.wasm` (67 KB gzipped) and an Expo
+module (iOS + Android), each measured at tens of microseconds per resource;
+terminology beyond the bundled sets arrives through a host-provided seam
+(`TerminologyProvider`), never as shipped content. What "agrees" covers and
+excludes: [`docs/scope.md`](docs/scope.md).
 Zero dependencies, `no_std`, fuzzed. Design and decisions:
 [`docs/architecture.md`](docs/architecture.md),
 [`docs/incumbent-apis.md`](docs/incumbent-apis.md).
@@ -60,7 +63,7 @@ Zero dependencies, `no_std`, fuzzed. Design and decisions:
 
 - `crates/fhir-pods-core` — the Rust verifier + lowering core (zero deps, no `unsafe`).
 - `crates/fhir-pods-ffi` — the one lean C ABI, compiled per target (wasm32 / native staticlib).
-- `pods/wasm` — the wasm pod: a ~260 KB `.wasm` (66 KB gzipped) + a zero-dependency JS wrapper.
+- `pods/wasm` — the wasm pod: a ~275 KB `.wasm` (67 KB gzipped) + a zero-dependency JS wrapper.
 - `pods/expo` — the expo pod: the core as an Expo native module (iOS XCFramework + Android jniLibs).
 - `scripts/` — `build-wasm.sh`, `build-ios-xcframework.sh`, `build-android-jnilibs.sh`, `smoke-c.sh`, `check-no-std.sh`.
 - `docs/architecture.md` — the design, delivery model, audit surface, and perf budget.

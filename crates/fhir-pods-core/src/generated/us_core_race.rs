@@ -4,7 +4,7 @@
 //! (nested slicing / undiscriminable slices / object patterns / mustSupport-only).
 //! Invariants outside the supported FHIRPath core are skipped at runtime.
 
-use crate::compiled::{CompiledProfile, ElementConstraint, Max, Discriminator, Slice, Slicing};
+use crate::compiled::{CompiledProfile, ElementConstraint, Max, Binding, BindingKind, Discriminator, Slice, Slicing};
 
 pub static PROFILE: CompiledProfile = CompiledProfile {
     url: "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race",
@@ -24,14 +24,14 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             ], elements: &[
                 ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("ombCategory"), required_binding: None },
-                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
+                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/us/core/ValueSet/omb-race-category", kind: BindingKind::Coding }) },
             ] },
             Slice { name: "detailed", min: 0, max: Max::Star, profile: None, discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "detailed" },
             ], elements: &[
                 ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
                 ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("detailed"), required_binding: None },
-                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
+                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/us/core/ValueSet/detailed-race", kind: BindingKind::Coding }) },
             ] },
             Slice { name: "text", min: 1, max: Max::Bounded(1), profile: None, discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "text" },

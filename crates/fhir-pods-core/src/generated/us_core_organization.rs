@@ -4,7 +4,7 @@
 //! (nested slicing / undiscriminable slices / object patterns / mustSupport-only).
 //! Invariants outside the supported FHIRPath core are skipped at runtime.
 
-use crate::compiled::{CompiledProfile, ElementConstraint, Max, Discriminator, Slice, Slicing, InvariantSeverity, ProfileInvariant};
+use crate::compiled::{CompiledProfile, ElementConstraint, Max, Binding, BindingKind, Discriminator, Slice, Slicing, InvariantSeverity, ProfileInvariant};
 
 pub static PROFILE: CompiledProfile = CompiledProfile {
     url: "http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization",
@@ -22,8 +22,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Organization.address.postalCode", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Organization.address.state", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Organization.address.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "Organization.address.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/address-type|4.0.1") },
-        ElementConstraint { path: "Organization.address.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/address-use|4.0.1") },
+        ElementConstraint { path: "Organization.address.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/address-type|4.0.1", kind: BindingKind::Code }) },
+        ElementConstraint { path: "Organization.address.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/address-use|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "Organization.contact.address", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Organization.contact.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Organization.contact.name", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
@@ -34,7 +34,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Organization.identifier.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Organization.identifier.system", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Organization.identifier.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "Organization.identifier.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/identifier-use|4.0.1") },
+        ElementConstraint { path: "Organization.identifier.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/identifier-use|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "Organization.identifier.value", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Organization.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Organization.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
@@ -44,8 +44,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Organization.telecom.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Organization.telecom.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Organization.telecom.rank", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "Organization.telecom.system", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/contact-point-system|4.0.1") },
-        ElementConstraint { path: "Organization.telecom.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some("http://hl7.org/fhir/ValueSet/contact-point-use|4.0.1") },
+        ElementConstraint { path: "Organization.telecom.system", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/contact-point-system|4.0.1", kind: BindingKind::Code }) },
+        ElementConstraint { path: "Organization.telecom.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/contact-point-use|4.0.1", kind: BindingKind::Code }) },
         ElementConstraint { path: "Organization.telecom.value", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
         ElementConstraint { path: "Organization.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
     ],
