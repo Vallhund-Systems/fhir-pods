@@ -9,13 +9,21 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     name: "Medication Type",
     resource_type: "Extension",
     elements: &[
-        ElementConstraint { path: "Extension.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
+        ElementConstraint {
+            path: "Extension.id",
+            min: 0,
+            max: Max::Bounded(1),
+            fixed: None,
+            required_binding: None,
+            types: &[],
+        },
         ElementConstraint {
             path: "Extension.url",
             min: 1,
             max: Max::Bounded(1),
             fixed: Some("http://hl7.org.au/fhir/StructureDefinition/medication-type"),
             required_binding: None,
+            types: &[],
         },
         ElementConstraint {
             path: "Extension.value[x]",
@@ -26,6 +34,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 value_set: "http://terminology.hl7.org.au/ValueSet/medication-type",
                 kind: BindingKind::Coding,
             }),
+            types: &["Coding"],
         },
     ],
     slicings: &[],

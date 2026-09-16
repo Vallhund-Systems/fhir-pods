@@ -9,13 +9,21 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     name: "Closing the Gap Registration",
     resource_type: "Extension",
     elements: &[
-        ElementConstraint { path: "Extension.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
+        ElementConstraint {
+            path: "Extension.id",
+            min: 0,
+            max: Max::Bounded(1),
+            fixed: None,
+            required_binding: None,
+            types: &[],
+        },
         ElementConstraint {
             path: "Extension.url",
             min: 1,
             max: Max::Bounded(1),
             fixed: Some("http://hl7.org.au/fhir/StructureDefinition/closing-the-gap-registration"),
             required_binding: None,
+            types: &[],
         },
         ElementConstraint {
             path: "Extension.value[x]",
@@ -23,6 +31,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             max: Max::Bounded(1),
             fixed: None,
             required_binding: None,
+            types: &["boolean"],
         },
     ],
     slicings: &[],

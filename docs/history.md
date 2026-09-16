@@ -276,3 +276,20 @@ entries, 187 types), packed (relative paths, dictionary-encoded codes,
 repeat flag in the entry: 570 KB `.wasm`, 152 KB gzipped, versus 681 KB
 unpacked), and a skipped invariant is reported as an `information` issue
 rather than nothing. ~29 µs mean per corpus validate.
+- **Pass 19 — terminology wired (2026-09-16).** The hand-listed bundled
+sets became generated: every `required` binding in the registry whose
+compose expands from the packages (59 sets, 311 codes, licence-free by
+construction — SNOMED/LOINC/VSAC/NCTS sets are named as skipped). A compiled
+expansion table (`Expansions`, from `$expand` via `compile_valueset.py`),
+a recorder that turns validation into the list of unanswered questions
+(`terminology_needs`), and displays through the seam into lowering. The
+first test fixture for "a set the core does not bundle" — AU Core's
+date-accuracy extension on `_birthDate` — found that **extensions on
+primitives were never validated**: the port resolved `birthDate` to the
+scalar and `.extension` to nothing, so the slice, its inherited extension
+profile and its binding were all skipped; the publisher examples were valid
+either way and no probe existed. Fixed in the port (a primitive's children
+come from its `_name` carrier, paired by position), and the probe that then
+disagreed with the oracle exposed the next gap: a choice element's allowed
+types were not enforced (`value[x]` restricted to Coding accepted a
+`valueString`). The IR now carries `types` per choice element. **558/558.**

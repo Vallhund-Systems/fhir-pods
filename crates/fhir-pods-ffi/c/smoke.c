@@ -53,20 +53,37 @@ int main(void) {
     ok = ok && strstr(garbage, "\"severity\":\"fatal\"");
     free(garbage);
 
-    /* The terminology seam: telecom.system is bound to a set the core does not
-     * bundle, so the host is asked; its answer decides. */
+    /* The terminology seam: the date-accuracy coding is bound to an NCTS-hosted
+     * set the core does not bundle, so the host is asked; its answer decides.
+     * telecom.system is bundled and never asked about. */
     const char *tel = "{\"resourceType\":\"Patient\",\"meta\":{\"profile\":[\"http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient\"]},\"identifier\":[{\"system\":\"http://h.example.org/mrn\",\"value\":\"1\"}],"
                       "\"name\":[{\"family\":\"D\"}],\"gender\":\"male\",\"birthDate\":\"1970-01-01\","
+                      "\"_birthDate\":{\"extension\":[{\"url\":\"http://hl7.org.au/fhir/StructureDefinition/date-accuracy-indicator\","
+                      "\"valueCoding\":{\"system\":\"https://healthterminologies.gov.au/fhir/CodeSystem/date-accuracy-indicator-1\",\"code\":\"AAA\"}}]},"
                       "\"telecom\":[{\"system\":\"phone\",\"value\":\"1\"}]}";
-    struct tx yes = { "phone", 0 }, no = { "fax", 0 };
+    struct tx yes = { "AAA", 0 }, no = { "ZZZ", 0 };
     char *r_yes = unpack(fhir_pods_validate_tx((const uint8_t *)tel, strlen(tel), tx_cb, &yes));
     char *r_no = unpack(fhir_pods_validate_tx((const uint8_t *)tel, strlen(tel), tx_cb, &no));
     char *r_none = unpack(fhir_pods_validate_tx((const uint8_t *)tel, strlen(tel), NULL, NULL));
-    ok = ok && yes.asked == 1 && !strstr(r_yes, "contact-point-system")
-            && strstr(r_no, "'phone' is not in the bound value set")
-            && strstr(r_none, "no bundled terminology for http://hl7.org/fhir/ValueSet/contact-point-system");
+    ok = ok && yes.asked == 1 && !strstr(r_yes, "date-accuracy-indicator")
+            && strstr(r_no, "'AAA' is not in the bound value set")
+            && strstr(r_none, "no bundled terminology for https://healthterminologies.gov.au/fhir/ValueSet/date-accuracy-indicator-1");
     printf("tx: asked %d; with host=yes: %s\n", yes.asked, r_yes);
     free(r_yes); free(r_no); free(r_none);
+
+    /* A compiled table answers after the bundled sets; needs lists the rest. */
+    char *needs = unpack(fhir_pods_terminology_needs((const uint8_t *)tel, strlen(tel)));
+    ok = ok && strstr(needs, "\"code\":\"AAA\"");
+    const char *table = "fhir-pods-terminology 1\n= https://healthterminologies.gov.au/fhir/ValueSet/date-accuracy-indicator-1\n"
+                        "https://healthterminologies.gov.au/fhir/CodeSystem/date-accuracy-indicator-1\tAAA\tAccurate\n";
+    ok = ok && fhir_pods_terminology_load((const uint8_t *)table, strlen(table)) == 1;
+    char *r_table = unpack(fhir_pods_validate((const uint8_t *)tel, strlen(tel)));
+    char *needs_after = unpack(fhir_pods_terminology_needs((const uint8_t *)tel, strlen(tel)));
+    ok = ok && !strstr(r_table, "date-accuracy-indicator") && strcmp(needs_after, "{\"needs\":[]}") == 0
+            && fhir_pods_terminology_load((const uint8_t *)"nope", 4) == 0
+            && fhir_pods_terminology_load(NULL, 0) == 1;
+    printf("terminology: needs %s; after load: %s\n", needs, r_table);
+    free(needs); free(r_table); free(needs_after);
 
     /* Must-support: information, separate from validation. */
     const char *us = "{\"resourceType\":\"Patient\",\"meta\":{\"profile\":[\"http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient\"]},"

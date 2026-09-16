@@ -38,6 +38,8 @@ pub trait Document: Sized + Clone {
     /// The children of a choice element (`value` → `valueQuantity` /
     /// `valueString` / …), each typed by its concrete key.
     fn choice_children(&self, stem: &str) -> Vec<Self>;
+    /// The concrete keys present for a choice element (`valueQuantity`, …).
+    fn choice_keys(&self, stem: &str) -> Vec<&str>;
 }
 
 /// Owner of a parsed resource; hands out `TreeDoc` views.
@@ -51,7 +53,7 @@ impl<'a> Parsed<'a> {
         Ok(Self { value: json::parse(input)? })
     }
     pub fn doc(&self) -> TreeDoc<'_, 'a> {
-        TreeDoc { root: &self.value, ctx: resource_ctx(&self.value) }
+        TreeDoc { root: &self.value, ctx: resource_ctx(&self.value), carrier: None }
     }
     /// A top-level member by key (the JSON type tag lives here).
     pub fn top_member(&self, key: &str) -> Option<&Value<'a>> {
@@ -75,17 +77,33 @@ fn resource_ctx(v: &Value<'_>) -> Option<&'static str> {
 }
 
 /// The value-tree adapter: a view rooted at any node, carrying the typing
-/// context it was reached through (`None` when unknown).
+/// context it was reached through (`None` when unknown) and, for a
+/// primitive, its `_name` carrier — where the primitive's `extension` and
+/// `id` live in the JSON representation.
 #[derive(Debug, Clone, Copy)]
 pub struct TreeDoc<'v, 'a> {
     root: &'v Value<'a>,
     ctx: Option<&'static str>,
+    carrier: Option<&'v Value<'a>>,
 }
 
 impl<'v, 'a> TreeDoc<'v, 'a> {
     /// The JSON node this view is rooted at.
     pub fn value(&self) -> &'v Value<'a> {
         self.root
+    }
+
+    fn at(root: &'v Value<'a>, ctx: Option<&'static str>) -> Self {
+        TreeDoc { root, ctx, carrier: None }
+    }
+
+    /// The node whose members are this element's children: the node itself,
+    /// or a primitive's carrier.
+    fn container(&self) -> Option<&'v Value<'a>> {
+        match self.root {
+            Value::Object(_) | Value::Array(_) => Some(self.root),
+            _ => self.carrier,
+        }
     }
 
     /// The typing context of a child reached by `key`; a `Resource` child
@@ -106,7 +124,8 @@ impl<'v, 'a> Document for TreeDoc<'v, 'a> {
             return Vec::new();
         };
         let mut out = Vec::new();
-        json::resolve_each(self.root, parent, &mut |p| {
+        let Some(root) = self.container() else { return out };
+        json::resolve_containers(root, parent, &mut |p| {
             let mut n = 0usize;
             json::for_each_child(p, last, &mut |_| n += 1);
             out.push(n);
@@ -116,7 +135,8 @@ impl<'v, 'a> Document for TreeDoc<'v, 'a> {
 
     fn scalars(&self, path: &str) -> Vec<&str> {
         let mut out = Vec::new();
-        json::resolve_each(self.root, path, &mut |v| {
+        let Some(root) = self.container() else { return out };
+        json::resolve_each(root, path, &mut |v| {
             if let Value::Str(s) = v {
                 out.push(s.as_ref())
             }
@@ -141,9 +161,17 @@ impl<'v, 'a> Document for TreeDoc<'v, 'a> {
             };
         }
         let mut out = Vec::new();
-        json::resolve_each(self.root, path, &mut |n| {
-            out.push(TreeDoc { root: n, ctx: if ctx == Some("Resource") { resource_ctx(n) } else { ctx } })
-        });
+        let Some(root) = self.container() else { return out };
+        // a one-segment path (`$this.key`) keeps the primitive's carrier; a
+        // deeper one descends through carriers on the way
+        match path.split_once('.').map(|(_, rest)| rest) {
+            Some(key) if !key.contains('.') => json::for_each_child_ext(root, key, &mut |n, carrier| {
+                out.push(TreeDoc { root: n, ctx: if ctx == Some("Resource") { resource_ctx(n) } else { ctx }, carrier })
+            }),
+            _ => json::resolve_each(root, path, &mut |n| {
+                out.push(TreeDoc::at(n, if ctx == Some("Resource") { resource_ctx(n) } else { ctx }))
+            }),
+        }
         out
     }
 
@@ -153,8 +181,9 @@ impl<'v, 'a> Document for TreeDoc<'v, 'a> {
             _ => None,
         };
         let mut out = Vec::new();
-        json::for_each_child(self.root, key, &mut |n| {
-            out.push(TreeDoc { root: n, ctx: if ctx == Some("Resource") { resource_ctx(n) } else { ctx } })
+        let Some(root) = self.container() else { return out };
+        json::for_each_child_ext(root, key, &mut |n, carrier| {
+            out.push(TreeDoc { root: n, ctx: if ctx == Some("Resource") { resource_ctx(n) } else { ctx }, carrier })
         });
         out
     }
@@ -190,15 +219,15 @@ impl<'v, 'a> Document for TreeDoc<'v, 'a> {
         let mut out = Vec::new();
         let ctx = self.ctx;
         let mut push = |key: &str, v: &'v Value<'a>| match v {
-            Value::Array(xs) => out.extend(xs.iter().map(|x| TreeDoc { root: x, ctx: Self::child_ctx(ctx, key, x) })),
-            v => out.push(TreeDoc { root: v, ctx: Self::child_ctx(ctx, key, v) }),
+            Value::Array(xs) => out.extend(xs.iter().map(|x| TreeDoc::at(x, Self::child_ctx(ctx, key, x)))),
+            v => out.push(TreeDoc::at(v, Self::child_ctx(ctx, key, v))),
         };
-        match self.root {
+        match self.container() {
             // `resourceType` is the JSON type tag, not an element
-            Value::Object(kvs) => {
+            Some(Value::Object(kvs)) => {
                 kvs.iter().filter(|(k, _)| k.as_ref() != "resourceType").for_each(|(k, v)| push(k, v))
             }
-            Value::Array(xs) => xs.iter().for_each(|v| push("", v)),
+            Some(Value::Array(xs)) => xs.iter().for_each(|v| push("", v)),
             _ => {}
         }
         out
@@ -206,6 +235,14 @@ impl<'v, 'a> Document for TreeDoc<'v, 'a> {
 
     fn fhir_type(&self) -> Option<&'static str> {
         self.ctx.map(|c| if c.contains('.') { "BackboneElement" } else { c })
+    }
+
+    fn choice_keys(&self, stem: &str) -> Vec<&str> {
+        let Some(Value::Object(kvs)) = self.container() else { return Vec::new() };
+        kvs.iter()
+            .map(|(k, _)| k.as_ref())
+            .filter(|k| k.strip_prefix(stem).is_some_and(|rest| rest.starts_with(|c: char| c.is_ascii_uppercase())))
+            .collect()
     }
 
     fn choice_children(&self, stem: &str) -> Vec<Self> {
@@ -218,8 +255,8 @@ impl<'v, 'a> Document for TreeDoc<'v, 'a> {
             }
             let ctx = Self::child_ctx(self.ctx, k, v);
             match v {
-                Value::Array(xs) => out.extend(xs.iter().map(|x| TreeDoc { root: x, ctx })),
-                v => out.push(TreeDoc { root: v, ctx }),
+                Value::Array(xs) => out.extend(xs.iter().map(|x| TreeDoc::at(x, ctx))),
+                v => out.push(TreeDoc::at(v, ctx)),
             }
         }
         out

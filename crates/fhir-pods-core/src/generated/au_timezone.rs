@@ -9,13 +9,21 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     name: "Australian Time Zone",
     resource_type: "Extension",
     elements: &[
-        ElementConstraint { path: "Extension.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
+        ElementConstraint {
+            path: "Extension.id",
+            min: 0,
+            max: Max::Bounded(1),
+            fixed: None,
+            required_binding: None,
+            types: &[],
+        },
         ElementConstraint {
             path: "Extension.url",
             min: 1,
             max: Max::Bounded(1),
             fixed: Some("http://hl7.org.au/fhir/StructureDefinition/au-timezone"),
             required_binding: None,
+            types: &[],
         },
         ElementConstraint {
             path: "Extension.value[x]",
@@ -26,6 +34,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 value_set: "http://terminology.hl7.org.au/ValueSet/au-timezone",
                 kind: BindingKind::CodeableConcept,
             }),
+            types: &["CodeableConcept"],
         },
     ],
     slicings: &[],

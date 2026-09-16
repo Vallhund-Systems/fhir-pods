@@ -138,7 +138,7 @@ pub fn report(v: &Validation) -> String {
 }
 
 /// Append `s` to `out`, escaping the characters JSON requires.
-pub(crate) fn escape(out: &mut String, s: &str) {
+pub fn escape(out: &mut String, s: &str) {
     let mut start = 0;
     for (i, b) in s.bytes().enumerate() {
         let rep = match b {

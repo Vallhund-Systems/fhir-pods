@@ -34,8 +34,14 @@ internal object FhirPodsNative {
   external fun mustSupport(json: ByteArray): ByteArray
 
   /** {"resource","validation"} from a profile URL and its variable inputs, or {"error"}. */
-  external fun lower(profile: ByteArray, inputs: ByteArray): ByteArray
+  external fun lower(profile: ByteArray, inputs: ByteArray, terminology: FhirPodsTerminology?): ByteArray
 
   /** {"slots":[...]} — the inputs a profile takes, or {"error"}. */
   external fun slots(profile: ByteArray): ByteArray
+
+  /** Load a compiled terminology table: 1 = loaded, 0 = unparseable (the old one stays). */
+  external fun terminologyLoad(table: ByteArray): Int
+
+  /** {"needs":[...]} — the bindings neither the bundled sets nor the table could decide. */
+  external fun terminologyNeeds(json: ByteArray): ByteArray
 }

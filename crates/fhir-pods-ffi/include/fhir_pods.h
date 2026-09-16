@@ -9,8 +9,8 @@
 extern "C" {
 #endif
 
-/* ABI version; a host refuses a mismatched module. This header is ABI 4. */
-#define FHIR_PODS_ABI_VERSION 4u
+/* ABI version; a host refuses a mismatched module. This header is ABI 5. */
+#define FHIR_PODS_ABI_VERSION 5u
 uint32_t fhir_pods_abi_version(void);
 
 /* Allocate `len` bytes in the module for the host to fill. */
@@ -62,6 +62,20 @@ uint8_t *fhir_pods_validate_tx(const uint8_t *ptr, size_t len, fhir_pods_tx_call
 uint8_t *fhir_pods_operation_outcome_tx(const uint8_t *ptr, size_t len, fhir_pods_tx_callback cb, void *ctx);
 uint8_t *fhir_pods_lower_tx(const uint8_t *profile, size_t profile_len, const uint8_t *inputs, size_t inputs_len,
                             fhir_pods_tx_callback cb, void *ctx);
+
+/* Compiled terminology. Load a table (the line format tools/compile_valueset.py
+ * writes from $expand responses): it answers after the bundled sets and before
+ * any callback, for every call that follows, for the module's lifetime. A set
+ * in the table is complete — a code not listed is not a member. Returns 1 when
+ * loaded, 0 when the text could not be parsed (the previous table stays);
+ * empty input clears it. */
+int32_t fhir_pods_terminology_load(const uint8_t *ptr, size_t len);
+
+/* What a host must resolve for this resource to validate without terminology
+ * warnings — the bindings neither the bundled sets nor the loaded table could
+ * decide: {"needs":[{"valueSet","system","code"}, ...]}. Same output contract
+ * as the validators. */
+uint8_t *fhir_pods_terminology_needs(const uint8_t *ptr, size_t len);
 
 #ifdef __cplusplus
 }

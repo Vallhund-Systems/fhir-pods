@@ -62,43 +62,92 @@ pub fn resolve_each<'v, 'a>(root: &'v Value<'a>, path: &str, f: &mut dyn FnMut(&
 fn walk<'v, 'a>(node: &'v Value<'a>, rest: &str, f: &mut dyn FnMut(&'v Value<'a>)) {
     match rest.split_once('.') {
         None => for_each_child(node, rest, f),
-        Some((seg, tail)) => for_each_child(node, seg, &mut |c| walk(c, tail, f)),
+        Some((seg, tail)) => for_each_container(node, seg, &mut |c| walk(c, tail, f)),
+    }
+}
+
+/// Visit the nodes `path` resolves to *as containers of further children*:
+/// an object as is; a primitive stands in for its `_name` carrier (where its
+/// `extension` and `id` live), and is skipped when it has none.
+pub fn resolve_containers<'v, 'a>(root: &'v Value<'a>, path: &str, f: &mut dyn FnMut(&'v Value<'a>)) {
+    match path.split_once('.') {
+        None => f(root),
+        Some((_, rest)) => match rest.rsplit_once('.') {
+            None => for_each_container(root, rest, f),
+            Some((head, last)) => walk(root, head, &mut |c| for_each_container(c, last, f)),
+        },
     }
 }
 
 /// The children of `node` at `seg` (arrays expanded), in document order.
 pub fn for_each_child<'v, 'a>(node: &'v Value<'a>, seg: &str, f: &mut dyn FnMut(&'v Value<'a>)) {
+    for_each_child_ext(node, seg, &mut |v, _| f(v))
+}
+
+/// [`for_each_child`] for descending further: a primitive child yields its
+/// `_name` carrier instead (paired by position in an array), or nothing.
+pub fn for_each_container<'v, 'a>(node: &'v Value<'a>, seg: &str, f: &mut dyn FnMut(&'v Value<'a>)) {
+    for_each_child_ext(node, seg, &mut |v, carrier| match v {
+        Value::Object(_) | Value::Array(_) => f(v),
+        _ => {
+            if let Some(c) = carrier {
+                f(c)
+            }
+        }
+    })
+}
+
+fn is_primitive(v: &Value<'_>) -> bool {
+    !matches!(v, Value::Object(_) | Value::Array(_))
+}
+
+/// The children of `node` at `seg`, each with its `_name` carrier element
+/// when it is a primitive that has one. A child present only through the
+/// carrier (`_name` with no `name`) is yielded as the carrier itself; the
+/// carrier array's `null`s are placeholders, not elements.
+pub fn for_each_child_ext<'v, 'a>(
+    node: &'v Value<'a>,
+    seg: &str,
+    f: &mut dyn FnMut(&'v Value<'a>, Option<&'v Value<'a>>),
+) {
     match node {
         Value::Object(members) => {
-            let mut found = false;
-            match seg.strip_suffix("[x]") {
+            let matches = |k: &str| match seg.strip_suffix("[x]") {
                 Some(prefix) => {
-                    for (k, v) in members {
-                        if k.len() > prefix.len()
-                            && k.starts_with(prefix)
-                            && k.as_bytes()[prefix.len()].is_ascii_uppercase()
-                        {
-                            expand(v, f);
-                        }
-                    }
+                    k.len() > prefix.len() && k.starts_with(prefix) && k.as_bytes()[prefix.len()].is_ascii_uppercase()
                 }
-                None => {
-                    for (k, v) in members {
-                        if k.as_ref() == seg {
-                            found = true;
-                            expand(v, f);
+                None => k == seg,
+            };
+            let mut found = false;
+            for (k, v) in members {
+                if !matches(k) {
+                    continue;
+                }
+                found = true;
+                let carrier = members.iter().find(|(ck, _)| ck.strip_prefix('_') == Some(k.as_ref())).map(|(_, c)| c);
+                match v {
+                    Value::Array(items) => {
+                        let carriers = match carrier {
+                            Some(Value::Array(cs)) => Some(cs),
+                            _ => None,
+                        };
+                        for (i, x) in items.iter().enumerate() {
+                            let c = carriers.and_then(|cs| cs.get(i)).filter(|c| !matches!(c, Value::Null));
+                            f(x, if is_primitive(x) { c } else { None });
                         }
                     }
-                    if !found {
-                        // the `_name` form alone: its array's `null`s are placeholders, not elements
-                        for (k, v) in members {
-                            if k.strip_prefix('_') == Some(seg) {
-                                expand(v, &mut |x| {
-                                    if !matches!(x, Value::Null) {
-                                        f(x)
-                                    }
-                                });
-                            }
+                    x => f(x, if is_primitive(x) { carrier.filter(|c| matches!(c, Value::Object(_))) } else { None }),
+                }
+            }
+            if !found {
+                for (k, v) in members {
+                    if let Some(bare) = k.strip_prefix('_') {
+                        if matches(bare) {
+                            expand(v, &mut |x| {
+                                if !matches!(x, Value::Null) {
+                                    f(x, None)
+                                }
+                            });
                         }
                     }
                 }
@@ -106,7 +155,7 @@ pub fn for_each_child<'v, 'a>(node: &'v Value<'a>, seg: &str, f: &mut dyn FnMut(
         }
         Value::Array(items) => {
             for item in items {
-                for_each_child(item, seg, f);
+                for_each_child_ext(item, seg, f);
             }
         }
         _ => {}

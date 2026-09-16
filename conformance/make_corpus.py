@@ -145,6 +145,15 @@ def drop(key):
     return lambda d: d.pop(key, None)
 
 
+def birthdate_accuracy_wrong_type(d):
+    """The date-accuracy extension on `_birthDate` with a valueString — the
+    extension profile allows only valueCoding. Probes that extensions carried
+    on a primitive are validated at all."""
+    d["_birthDate"] = {"extension": [
+        {"url": "http://hl7.org.au/fhir/StructureDefinition/date-accuracy-indicator", "valueString": "AAA"},
+    ]}
+
+
 def drop_diastolic(d):
     """Remove the diastolic component (LOINC 8462-4) — probes nested component slicing."""
     d["component"] = [
@@ -352,6 +361,7 @@ MUTATIONS = [
     ("Patient-ronny-irvine.json", "patient-ihi-wrong-system", wrong_system_ihi, False),
     ("Patient-ronny-irvine.json", "patient-ihi-15-digits", short_ihi, False),
     ("Patient-ronny-irvine.json", "patient-split-type-codings", split_type_codings, True),
+    ("Patient-ronny-irvine.json", "patient-birthdate-accuracy-wrong-type", birthdate_accuracy_wrong_type, False),
     ("Observation-heartrate-1.json", "heartrate-escaped-slashes", escaped_slashes, True),
     ("Observation-heartrate-1.json", "heartrate-no-value-no-dar", drop_value_keep_no_dar, False),
     ("Observation-heartrate-1.json", "heartrate-subject-wrong-type", subject_wrong_type, True),

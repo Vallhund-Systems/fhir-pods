@@ -56,16 +56,18 @@ Rust-shaped. (See [`docs/architecture.md`](docs/architecture.md).)
 - **Agreement with the HL7 reference validator: 294/294** corpus instances
   (the three IGs' own 253 published examples + 41 probes). What that
   covers and excludes: [`docs/scope.md`](docs/scope.md).
-- **Terminology** beyond the bundled base sets arrives through a
-  host-provided seam (`TerminologyProvider`), never as shipped content.
-- **Delivery:** a ~570 KB `.wasm` (152 KB gzipped) with a dependency-free JS
+- **Terminology:** every licence-free set the registry binds is bundled
+  (generated from the packages); the rest arrives through a host seam — a
+  compiled expansion table loaded at run time, an ask-then-answer loop
+  (`terminology_needs`), or a synchronous provider — never as shipped content.
+- **Delivery:** a ~645 KB `.wasm` (168 KB gzipped) with a dependency-free JS
   wrapper, and an Expo module (iOS XCFramework + Android jniLibs) — each
   measured at tens of microseconds per profiled resource.
 - Zero dependencies, `no_std`, `#![forbid(unsafe_code)]`, fuzzed.
 - **Boundary:** the pods know FHIR; a host knows its data. Domain-specific
   maps (a host's records → FHIR) live in the host, never here.
-- **Next:** terminology, de-identification, documents, audit — the pod
-  family in [`docs/roadmap.md`](docs/roadmap.md).
+- **Next:** de-identification, documents, audit — the pod family in
+  [`docs/roadmap.md`](docs/roadmap.md).
 
 Design: [`docs/architecture.md`](docs/architecture.md) ·
 decisions: [`docs/incumbent-apis.md`](docs/incumbent-apis.md) ·
@@ -83,7 +85,7 @@ how it got here: [`docs/history.md`](docs/history.md).
 
 - `crates/fhir-pods-core` — the Rust verifier core (zero deps, no `unsafe`, `no_std`).
 - `crates/fhir-pods-ffi` — the one lean C ABI, compiled per target (wasm32 / native staticlib).
-- `pods/wasm` — the wasm pod: a ~570 KB `.wasm` (152 KB gzipped) + a zero-dependency JS wrapper.
+- `pods/wasm` — the wasm pod: a ~645 KB `.wasm` (168 KB gzipped) + a zero-dependency JS wrapper.
 - `pods/expo` — the expo pod: the core as an Expo native module (iOS XCFramework + Android jniLibs).
 - `scripts/` — `gen-profiles.sh`, `build-wasm.sh`, `build-ios-xcframework.sh`, `build-android-jnilibs.sh`, `smoke-c.sh`, `check-no-std.sh`, `release.sh`.
 - `docs/architecture.md` — the design, delivery model, audit surface, and perf budget.

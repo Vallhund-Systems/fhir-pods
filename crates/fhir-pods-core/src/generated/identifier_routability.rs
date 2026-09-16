@@ -9,33 +9,33 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     name: "Identifier Routability",
     resource_type: "Extension",
     elements: &[
-        ElementConstraint { path: "Extension.extension", min: 2, max: Max::Star, fixed: None, required_binding: None },
-        ElementConstraint { path: "Extension.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-        ElementConstraint { path: "Extension.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org.au/fhir/StructureDefinition/identifier-routability"), required_binding: None },
-        ElementConstraint { path: "Extension.value[x]", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None },
+        ElementConstraint { path: "Extension.extension", min: 2, max: Max::Star, fixed: None, required_binding: None, types: &[] },
+        ElementConstraint { path: "Extension.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
+        ElementConstraint { path: "Extension.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org.au/fhir/StructureDefinition/identifier-routability"), required_binding: None, types: &[] },
+        ElementConstraint { path: "Extension.value[x]", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: &["base64Binary", "boolean", "canonical", "code", "date", "dateTime", "decimal", "id", "instant", "integer", "markdown", "oid", "positiveInt", "string", "time", "unsignedInt", "uri", "url", "uuid", "Address", "Age", "Annotation", "Attachment", "CodeableConcept", "Coding", "ContactPoint", "Count", "Distance", "Duration", "HumanName", "Identifier", "Money", "Period", "Quantity", "Range", "Ratio", "Reference", "SampledData", "Signature", "Timing", "ContactDetail", "Contributor", "DataRequirement", "Expression", "ParameterDefinition", "RelatedArtifact", "TriggerDefinition", "UsageContext", "Dosage", "Meta"] },
     ],
     slicings: &[
         Slicing { path: "Extension.extension", closed: false, slices: &[
             Slice { name: "routability-flag", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "routability-flag" },
             ], min: 1, max: Max::Bounded(1), elements: &[
-                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("routability-flag"), required_binding: None },
-                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
+                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
+                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("routability-flag"), required_binding: None, types: &[] },
+                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["boolean"] },
             ], profile: None },
             Slice { name: "routability-preference", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "routability-preference" },
             ], min: 0, max: Max::Bounded(1), elements: &[
-                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("routability-preference"), required_binding: None },
-                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
+                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
+                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("routability-preference"), required_binding: None, types: &[] },
+                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["unsignedInt"] },
             ], profile: None },
             Slice { name: "routability-asserter", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "routability-asserter" },
             ], min: 1, max: Max::Star, elements: &[
-                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
-                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("routability-asserter"), required_binding: None },
-                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None },
+                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[] },
+                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("routability-asserter"), required_binding: None, types: &[] },
+                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["uri"] },
             ], profile: None },
         ] },
     ],

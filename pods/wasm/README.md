@@ -70,19 +70,59 @@ pod.mustSupportGaps(JSON.stringify(patient));
 // the selected profile expects a client to populate when it has the data
 ```
 
-### The terminology seam
+### Terminology
+
+The `.wasm` bundles every licence-free value set the registry binds (the
+FHIR and HL7 v2/v3 sets, generated from the packages). What it cannot decide
+— SNOMED CT, LOINC answer lists, VSAC and NCTS-hosted sets — is a warning,
+never an error, until the host answers. Three ways to answer:
+
+**1. Compiled expansions (offline, the on-device route).** Expand the sets
+you are licensed for on a terminology server, compile them, load the table
+once; it answers for every call after that.
+
+```sh
+# NCTS (Australia; free, needs a client credential) — or any FHIR terminology server
+curl -s -H "Authorization: Bearer $NCTS_TOKEN" \
+  'https://api.healthterminologies.gov.au/integration/R4/fhir/ValueSet/$expand?url=https://healthterminologies.gov.au/fhir/ValueSet/date-accuracy-indicator-1' > dai.json
+# Ontoserver's public R4 endpoint works the same way for licence-free sets
+curl -s 'https://r4.ontoserver.csiro.au/fhir/ValueSet/$expand?url=http://hl7.org/fhir/ValueSet/mimetypes' > mime.json
+python3 tools/compile_valueset.py dai.json mime.json > terminology.txt
+```
+
+```js
+pod.loadTerminology(await readFile("terminology.txt", "utf8")); // true; false = unparseable, old table kept
+```
+
+A set in the table is complete: a code not listed is not a member. Displays
+in the table reach `lower()` — a `{system, code}` input comes out as a full
+coding. Keep the licence of what you compile: a SNOMED expansion belongs in
+your build, never in this package.
+
+**2. Ask, then answer.** `terminologyNeeds(json)` lists exactly what the
+bundled sets and the loaded table could not decide; resolve those with
+`$validate-code` (or `$expand` the sets and load them) and validate again.
+
+```js
+for (const { valueSet, system, code } of pod.terminologyNeeds(json)) {
+  const r = await fetch(`${tx}/ValueSet/$validate-code?url=${valueSet}&system=${system}&code=${code}`);
+  cache.set(`${valueSet}|${system}|${code}`, (await r.json()).parameter.find((p) => p.name === "result").valueBoolean);
+}
+```
+
+**3. A synchronous provider.** For a host that already holds the answers
+(a cache like the one above):
 
 ```js
 const pod = await instantiate(bytes, {
-  // asked, synchronously, only about bindings the bundled value sets can't decide
-  terminology: (valueSet, system, code) => myCache.has(valueSet, system, code), // true / false / undefined
+  // asked, synchronously, only about bindings the bundled sets and the loaded table can't decide
+  terminology: (valueSet, system, code) => cache.get(`${valueSet}|${system}|${code}`), // true / false / undefined
 });
 ```
 
 `true` = member, `false` = not a member (an error on a required binding),
-`undefined` or a throw = unknown (a warning, never an error). Without a
-provider, every such binding is a warning. SNOMED content never ships in the
-`.wasm`; it only ever arrives through this seam.
+`undefined` or a throw = unknown (a warning, never an error). SNOMED content
+never ships in the `.wasm`; it only ever arrives through this seam.
 
 ## Boundary
 

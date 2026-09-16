@@ -20,6 +20,9 @@ pub struct ElementConstraint {
     pub fixed: Option<&'static str>,
     /// A required-strength ValueSet binding on a coded element.
     pub required_binding: Option<Binding>,
+    /// For a choice element (`value[x]`): the types it allows. A concrete
+    /// key of any other type is a structure error.
+    pub types: &'static [&'static str],
 }
 
 /// How a binding reads the instance: a `code` is the code itself (the

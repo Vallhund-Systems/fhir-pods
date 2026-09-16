@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.3.1 — 2026-09-16
+
+**Terminology, wired for real.** ABI 5.
+
+- **Bundled sets are generated, not hand-listed**: every value set the
+  registry binds with `required` strength that expands offline from the
+  packages' own compose — the FHIR and HL7 v2/v3 sets, 59 sets / 311 codes
+  (`tools/gen_valuesets.py` → `src/value_sets_table.rs`). Licensed or
+  hosted-elsewhere sets (SNOMED, LOINC, VSAC, NCTS) are skipped, never
+  approximated, and listed in the generated file. Displays for the codings
+  the registry fixes travel with them (licence-free code systems only).
+- **Compiled expansions**: `terminology::Expansions` reads the line table
+  `tools/compile_valueset.py` writes from `$expand` responses; a set in the
+  table is complete. ABI: `fhir_pods_terminology_load` installs one for every
+  call after; wasm `loadTerminology`, Expo `loadTerminology`.
+- **Ask, then answer**: `terminology_needs` (core), `fhir_pods_terminology_needs`
+  (ABI), `terminologyNeeds` (pods) — the bindings neither the bundled sets
+  nor the table could decide, deduplicated, for a host to resolve against
+  NCTS / Ontoserver / VSAC. The `Recorder` provider behind it.
+- **Displays through the seam**: `TerminologyProvider::display`; lowering
+  fills `display` on a `{system, code}` input and on the profile's fixed
+  codings when the seam knows one. `Validator::lower_with(url, inputs, tx)`.
+- The provider chain on every entrypoint is bundled → loaded table → host
+  callback; `fhir_pods_lower_tx` now lowers through the callback directly
+  (displays included) instead of re-validating afterwards. wasm gains
+  `fhir_pods_lower_host_tx`; Android's `lower` takes the provider.
+- `.wasm`: 645 KB (168 KB gzipped) — the bundled sets, their displays and
+  every choice element's type list.
+
+**Verifier**
+- **Extensions on primitives are validated.** `_birthDate.extension` and
+  every other `_name` carrier were invisible to the engine: a profile's
+  slicing on `Patient.birthDate.extension` never saw an instance. The
+  document port now reads a primitive's children from its carrier (paired by
+  position in arrays), so AU Core's date-accuracy slice, the inherited
+  extension profile and its binding are checked. Oracle probe:
+  `patient-birthdate-accuracy-wrong-type`.
+- **A choice element only takes the types its profile allows.** `value[x]`
+  restricted to `Coding` rejects a `valueString` (structure error), as the
+  reference validator does — the IR carries each choice element's `types`.
+
 ## 0.3.0 — 2026-09-16
 
 **Lowering — the transformer.** Build a conformant resource from its

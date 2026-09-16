@@ -157,6 +157,27 @@ fn check_element(
             }
         }
     }
+    // a choice element only takes the types the profile allows
+    if let Some((parent, stem)) = el.path.rsplit_once('.').and_then(|(p, l)| l.strip_suffix("[x]").map(|s| (p, s))) {
+        if !el.types.is_empty() {
+            for inst in doc.instances(parent) {
+                for key in inst.choice_keys(stem) {
+                    let suffix = &key[stem.len()..];
+                    let allowed = el.types.iter().any(|t| {
+                        suffix.len() == t.len() && suffix[..1].eq_ignore_ascii_case(&t[..1]) && suffix[1..] == t[1..]
+                    });
+                    if !allowed {
+                        r.push(
+                            Severity::Error,
+                            IssueType::Structure,
+                            label,
+                            format!("{label} allows the types [{}]; found {key}", el.types.join(", ")),
+                        );
+                    }
+                }
+            }
+        }
+    }
     if let Some(f) = el.fixed {
         for s in doc.scalars(el.path) {
             if s != f {

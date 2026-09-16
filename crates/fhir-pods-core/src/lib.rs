@@ -161,7 +161,17 @@ pub fn lower_bytes(url: &str, inputs: &[u8]) -> Result<lower::Lowered, lower::Lo
     let url = url.split('|').next().unwrap_or(url);
     let profile = generated::REGISTRY.iter().find(|p| p.url == url).ok_or(lower::LowerError::UnknownProfile)?;
     let parsed = json::parse(inputs).map_err(|_| lower::LowerError::InputsNotAnObject)?;
-    lower::lower(profile, &parsed, None)
+    lower::lower_with(profile, &parsed, None, &terminology::Bundled)
+}
+
+/// What a host must resolve for `input` to get a verdict free of terminology
+/// warnings: every binding the bundled sets could not decide, deduplicated.
+/// Resolve them (`$validate-code`, or `$expand` and compile the sets — see
+/// [`terminology::Expansions`]) and validate again with the answers.
+pub fn terminology_needs(input: &[u8]) -> Vec<terminology::Need> {
+    let rec = terminology::Recorder::new();
+    validate_bytes_with(input, &terminology::Chain(&[&terminology::Bundled, &rec]));
+    rec.needs()
 }
 
 /// `wire::report(&validate_bytes(input))` — the `Validation` JSON, as text.
@@ -276,10 +286,29 @@ impl Validator {
     /// inputs (a JSON object keyed by slot path), and validate it. See
     /// [`lower`](crate::lower).
     pub fn lower(&self, url: &str, inputs: &[u8]) -> Result<lower::Lowered, lower::LowerError> {
+        self.lower_with(url, inputs, &terminology::Bundled)
+    }
+
+    /// [`Validator::lower`] with a terminology provider: the validation asks
+    /// it about bindings, and a coding given as `{system, code}` gets its
+    /// `display` from it when it knows one.
+    pub fn lower_with(
+        &self,
+        url: &str,
+        inputs: &[u8],
+        tx: &dyn terminology::TerminologyProvider,
+    ) -> Result<lower::Lowered, lower::LowerError> {
         let url = url.split('|').next().unwrap_or(url);
         let profile = generated::REGISTRY.iter().find(|p| p.url == url).ok_or(lower::LowerError::UnknownProfile)?;
         let parsed = json::parse(inputs).map_err(|_| lower::LowerError::InputsNotAnObject)?;
-        lower::lower(profile, &parsed, Some(self))
+        lower::lower_with(profile, &parsed, Some(self), tx)
+    }
+
+    /// [`terminology_needs`], with the invariants already parsed.
+    pub fn terminology_needs(&self, input: &[u8]) -> Vec<terminology::Need> {
+        let rec = terminology::Recorder::new();
+        self.validate_with(input, &terminology::Chain(&[&terminology::Bundled, &rec]));
+        rec.needs()
     }
 
     /// [`must_support_gaps`], honouring this validator's default profiles.
@@ -302,6 +331,9 @@ impl Validator {
 pub mod engine;
 
 pub mod value_sets;
+
+/// The bundled value sets, generated from the packages (`tools/gen_valuesets.py`).
+mod value_sets_table;
 
 pub mod validate;
 

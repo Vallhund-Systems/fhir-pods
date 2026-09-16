@@ -34,11 +34,22 @@ class FhirPodsExpoModule : Module() {
 
     // Lowering: a conformant resource from a profile URL and its variable inputs.
     Function("lower") { profileUrl: String, inputsJson: String ->
-      String(FhirPodsNative.lower(profileUrl.toByteArray(Charsets.UTF_8), inputsJson.toByteArray(Charsets.UTF_8)), Charsets.UTF_8)
+      String(FhirPodsNative.lower(profileUrl.toByteArray(Charsets.UTF_8), inputsJson.toByteArray(Charsets.UTF_8), terminology), Charsets.UTF_8)
     }
 
     Function("slots") { profileUrl: String ->
       String(FhirPodsNative.slots(profileUrl.toByteArray(Charsets.UTF_8)), Charsets.UTF_8)
+    }
+
+    // Compiled terminology: load a table for every call that follows
+    // (1 = loaded, 0 = unparseable; "" clears).
+    Function("terminologyLoad") { table: String ->
+      FhirPodsNative.terminologyLoad(table.toByteArray(Charsets.UTF_8))
+    }
+
+    // {"needs":[{"valueSet","system","code"},…]} — what a host must resolve.
+    Function("terminologyNeeds") { json: String ->
+      String(FhirPodsNative.terminologyNeeds(json.toByteArray(Charsets.UTF_8)), Charsets.UTF_8)
     }
   }
 }

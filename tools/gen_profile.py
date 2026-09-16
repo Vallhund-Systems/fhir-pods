@@ -85,19 +85,28 @@ class Rule:
     max: int | None = None      # None = unbounded
     fixed: str | None = None
     binding: tuple | None = None
+    types: tuple = ()               # a choice element's allowed types
 
     @staticmethod
     def of(e):
         mx = e.get("max")
+        # a choice element's allowed types (the profile's list, which the
+        # snapshot narrows from the base); a type slice element carries none
+        types = ()
+        if e.get("path", "").endswith("[x]") and ":" not in e.get("id", "").rsplit(".", 1)[-1]:
+            types = tuple(dict.fromkeys(t["code"] for t in e.get("type", []) if t.get("code")))
         return Rule(
             min=e.get("min", 0) or 0,
             max=int(mx) if mx not in (None, "*") else None,
             fixed=scalar_fixed(e),
             binding=binding_of(e),
+            types=types,
         )
 
     def enforceable(self):
-        return self.min >= 1 or self.max is not None or self.fixed is not None or self.binding is not None
+        return (
+            self.min >= 1 or self.max is not None or self.fixed is not None or self.binding is not None or bool(self.types)
+        )
 
     def merge(self, other):
         """Tighten with another rule on the same path (the stricter of each)."""
@@ -108,6 +117,8 @@ class Rule:
             self.fixed = other.fixed
         if other.binding:
             self.binding = other.binding
+        if other.types:
+            self.types = other.types
 
 
 @dataclass
@@ -643,9 +654,10 @@ def el_line(path, r, indent):
         bd = f"Some(Binding {{ value_set: {rs(vs)}, kind: BindingKind::{kind[0].upper() + kind[1:]} }})"
     else:
         bd = "None"
+    ty = "&[" + ", ".join(rs(t) for t in r.types) + "]"
     return (
         " " * indent
-        + f"ElementConstraint {{ path: {rs(path)}, min: {r.min}, max: {max_rs(r.max)}, fixed: {fx}, required_binding: {bd} }},"
+        + f"ElementConstraint {{ path: {rs(path)}, min: {r.min}, max: {max_rs(r.max)}, fixed: {fx}, required_binding: {bd}, types: {ty} }},"
     )
 
 

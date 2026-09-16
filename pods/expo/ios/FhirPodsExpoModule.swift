@@ -50,6 +50,18 @@ public class FhirPodsExpoModule: Module {
     Function("slots") { (profileUrl: String) -> String in
       call({ ptr, len, _, _ in fhir_pods_slots(ptr, len) }, profileUrl)
     }
+
+    // Compiled terminology: load a table for every call that follows
+    // (1 = loaded, 0 = unparseable; "" clears).
+    Function("terminologyLoad") { (table: String) -> Int in
+      let bytes = Array(table.utf8)
+      return Int(bytes.withUnsafeBufferPointer { buf in fhir_pods_terminology_load(buf.baseAddress, buf.count) })
+    }
+
+    // {"needs":[{"valueSet","system","code"},…]} — what a host must resolve.
+    Function("terminologyNeeds") { (json: String) -> String in
+      call({ ptr, len, _, _ in fhir_pods_terminology_needs(ptr, len) }, json)
+    }
   }
 }
 

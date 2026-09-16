@@ -23,7 +23,7 @@ fn a_heart_rate_from_four_inputs_is_a_conformant_observation() {
     for expected in [
         r#""resourceType":"Observation""#,
         r#""meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate"]}"#,
-        r#""category":[{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/observation-category","code":"vital-signs"}]}]"#,
+        r#""category":[{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/observation-category","code":"vital-signs","display":"Vital Signs"}]}]"#,
         r#"{"system":"http://loinc.org","code":"8867-4"}"#,
         r#"{"system":"http://snomed.info/sct","code":"364075005"}"#,
         r#""subject":{"reference":"Patient/1"}"#,

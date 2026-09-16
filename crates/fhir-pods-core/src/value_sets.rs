@@ -1,41 +1,53 @@
-//! Offline membership for the small base-FHIR value sets we can legally bundle.
-//! `None` for a set we don't ship — the engine degrades that to a warning.
-//! SNOMED-bound sets are intentionally absent: they resolve at runtime against
-//! a licensed seam.
+//! Offline membership for the value sets we can legally bundle — generated
+//! from the packages' own compose into `value_sets_table` (every FHIR / HL7
+//! v2 / v3 set the registry binds). `None` for a set we don't ship — the
+//! engine degrades that to a warning. SNOMED- and LOINC-bound sets are
+//! intentionally absent: they resolve at runtime through the terminology seam.
 
-pub fn in_value_set(url: &str, code: &str) -> Option<bool> {
+use crate::value_sets_table::{DISPLAYS, SETS};
+
+/// A bundled set's codes: sorted (system, code, display).
+pub type Codes = &'static [(&'static str, &'static str, &'static str)];
+
+/// Every bundled set: (URL, codes), sorted by URL.
+pub fn sets() -> &'static [(&'static str, Codes)] {
+    SETS
+}
+
+fn set(url: &str) -> Option<Codes> {
     let base = url.split('|').next().unwrap_or(url);
-    match base {
-        "http://hl7.org/fhir/ValueSet/administrative-gender" => {
-            Some(matches!(code, "male" | "female" | "other" | "unknown"))
-        }
-        "http://hl7.org/fhir/ValueSet/observation-status" => Some(matches!(
-            code,
-            "registered"
-                | "preliminary"
-                | "final"
-                | "amended"
-                | "corrected"
-                | "cancelled"
-                | "entered-in-error"
-                | "unknown"
-        )),
-        "http://hl7.org/fhir/ValueSet/name-use" => {
-            Some(matches!(code, "usual" | "official" | "temp" | "nickname" | "anonymous" | "old" | "maiden"))
-        }
-        "http://hl7.org/fhir/ValueSet/link-type" => {
-            Some(matches!(code, "replaced-by" | "replaces" | "refer" | "seealso"))
-        }
-        "http://hl7.org/fhir/ValueSet/quantity-comparator" => Some(matches!(code, "<" | "<=" | ">=" | ">")),
-        // The vital-signs UCUM unit sets, concept lists taken verbatim from
-        // hl7.fhir.r4.core#4.0.1 (CC0). UCUM is freely embeddable.
-        "http://hl7.org/fhir/ValueSet/ucum-vitals-common" => Some(matches!(
-            code,
-            "%" | "cm" | "[in_i]" | "kg" | "g" | "[lb_av]" | "Cel" | "[degF]" | "mm[Hg]" | "/min" | "kg/m2" | "m2"
-        )),
-        "http://hl7.org/fhir/ValueSet/ucum-bodyweight" => Some(matches!(code, "kg" | "[lb_av]" | "g")),
-        "http://hl7.org/fhir/ValueSet/ucum-bodylength" => Some(matches!(code, "cm" | "[in_i]")),
-        "http://hl7.org/fhir/ValueSet/ucum-bodytemp" => Some(matches!(code, "Cel" | "[degF]")),
-        _ => None,
+    SETS.binary_search_by(|(u, _)| u.cmp(&base)).ok().map(|i| SETS[i].1)
+}
+
+/// Is (`system`, `code`) in the bundled set at `url`? An empty `system` (a
+/// bare `code` element) matches the code in any of the set's systems.
+pub fn membership(url: &str, system: &str, code: &str) -> Option<bool> {
+    let codes = set(url)?;
+    Some(if system.is_empty() {
+        codes.iter().any(|(_, c, _)| *c == code)
+    } else {
+        codes.binary_search_by(|(s, c, _)| (*s, *c).cmp(&(system, code))).is_ok()
+    })
+}
+
+/// [`membership`] for a bare code.
+pub fn in_value_set(url: &str, code: &str) -> Option<bool> {
+    membership(url, "", code)
+}
+
+/// The display the bundled code systems give (`system`, `code`), if any:
+/// the codings the registry fixes, then the bundled sets' codes.
+pub fn display(system: &str, code: &str) -> Option<&'static str> {
+    if let Ok(i) = DISPLAYS.binary_search_by(|(s, c, _)| (*s, *c).cmp(&(system, code))) {
+        return Some(DISPLAYS[i].2);
     }
+    for (_, codes) in SETS {
+        if let Ok(i) = codes.binary_search_by(|(s, c, _)| (*s, *c).cmp(&(system, code))) {
+            let d = codes[i].2;
+            if !d.is_empty() {
+                return Some(d);
+            }
+        }
+    }
+    None
 }

@@ -15,14 +15,23 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             max: Max::Bounded(1),
             fixed: None,
             required_binding: None,
+            types: &[],
         },
-        ElementConstraint { path: "Identifier.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
+        ElementConstraint {
+            path: "Identifier.id",
+            min: 0,
+            max: Max::Bounded(1),
+            fixed: None,
+            required_binding: None,
+            types: &[],
+        },
         ElementConstraint {
             path: "Identifier.period",
             min: 0,
             max: Max::Bounded(1),
             fixed: None,
             required_binding: None,
+            types: &[],
         },
         ElementConstraint {
             path: "Identifier.period.end",
@@ -30,6 +39,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             max: Max::Bounded(1),
             fixed: None,
             required_binding: None,
+            types: &[],
         },
         ElementConstraint {
             path: "Identifier.period.id",
@@ -37,6 +47,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             max: Max::Bounded(1),
             fixed: None,
             required_binding: None,
+            types: &[],
         },
         ElementConstraint {
             path: "Identifier.period.start",
@@ -44,6 +55,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             max: Max::Bounded(1),
             fixed: None,
             required_binding: None,
+            types: &[],
         },
         ElementConstraint {
             path: "Identifier.system",
@@ -51,6 +63,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             max: Max::Bounded(1),
             fixed: Some("http://ns.electronichealth.net.au/id/medicare-number"),
             required_binding: None,
+            types: &[],
         },
         ElementConstraint {
             path: "Identifier.type",
@@ -58,6 +71,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             max: Max::Bounded(1),
             fixed: None,
             required_binding: None,
+            types: &[],
         },
         ElementConstraint {
             path: "Identifier.use",
@@ -68,6 +82,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 value_set: "http://hl7.org/fhir/ValueSet/identifier-use|4.0.1",
                 kind: BindingKind::Code,
             }),
+            types: &[],
         },
         ElementConstraint {
             path: "Identifier.value",
@@ -75,6 +90,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             max: Max::Bounded(1),
             fixed: None,
             required_binding: None,
+            types: &[],
         },
     ],
     slicings: &[],

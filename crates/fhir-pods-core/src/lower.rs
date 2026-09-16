@@ -18,6 +18,7 @@ use alloc::vec::Vec;
 
 use crate::compiled::{CompiledProfile, Max, Slot};
 use crate::json::Value;
+use crate::terminology::TerminologyProvider;
 use crate::validate::{IssueType, Report, Severity};
 use crate::wire::escape;
 use crate::{Validation, Validator};
@@ -335,11 +336,57 @@ fn coerce(ty: &str, v: &Value<'_>) -> Option<Node> {
     })
 }
 
-/// Build the resource for `profile` from `inputs`, and validate it.
+/// Build the resource for `profile` from `inputs`, and validate it (with the
+/// bundled terminology).
 pub fn lower(
     profile: &CompiledProfile,
     inputs: &Value<'_>,
     validator: Option<&Validator>,
+) -> Result<Lowered, LowerError> {
+    lower_with(profile, inputs, validator, &crate::terminology::Bundled)
+}
+
+/// A coding given as `{system, code}` without a display gets the one the
+/// seam knows. Only for a node that *is* a coding — never inferred from shape.
+fn fill_display(coding: &mut Node, tx: &dyn TerminologyProvider) {
+    let Node::Object(kvs) = coding else { return };
+    if kvs.iter().any(|(k, _)| k == "display") {
+        return;
+    }
+    let text = |name: &str| match kvs.iter().find(|(k, _)| k == name) {
+        Some((_, Node::Str(s))) => Some(s.clone()),
+        _ => None,
+    };
+    if let (Some(system), Some(code)) = (text("system"), text("code")) {
+        if let Some(d) = tx.display(&system, &code) {
+            kvs.push(("display".into(), Node::Str(d)));
+        }
+    }
+}
+
+/// Every coding under a `CodeableConcept` / `Coding` typed input.
+fn fill_displays(node: &mut Node, ty: &str, tx: &dyn TerminologyProvider) {
+    match ty {
+        "Coding" => fill_display(node, tx),
+        "CodeableConcept" => {
+            if let Node::Object(kvs) = node {
+                if let Some((_, Node::Array(codings))) = kvs.iter_mut().find(|(k, _)| k == "coding") {
+                    for c in codings {
+                        fill_display(c, tx);
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+/// [`lower`] with a terminology provider for the validation and for displays.
+pub fn lower_with(
+    profile: &CompiledProfile,
+    inputs: &Value<'_>,
+    validator: Option<&Validator>,
+    tx: &dyn TerminologyProvider,
 ) -> Result<Lowered, LowerError> {
     let Value::Object(members) = inputs else { return Err(LowerError::InputsNotAnObject) };
     let l = profile.lowering;
@@ -443,6 +490,11 @@ pub fn lower(
                 }
             },
         };
+        let mut node = node;
+        match &mut node {
+            Node::Array(items) => items.iter_mut().for_each(|n| fill_displays(n, target.ty, tx)),
+            n => fill_displays(n, target.ty, tx),
+        }
         let (parent, leaf) = match target.key.rsplit_once('.') {
             Some((p, l)) => (Some(p), l),
             None => (None, target.key),
@@ -522,6 +574,12 @@ pub fn lower(
                 if let Node::Object(kvs) = holder {
                     kvs.push((leaf_name.into(), Node::Str((*value).into())));
                 }
+                // a fixed coding (`….coding.code`, `….coding:label.code`) may
+                // carry the display the seam knows
+                let in_coding = parent.rsplit('.').next().is_some_and(|seg| unlabelled(seg) == "coding");
+                if leaf_name == "code" && in_coding {
+                    fill_display(holder, tx);
+                }
             }
         }
     }
@@ -529,8 +587,8 @@ pub fn lower(
     let mut resource = String::new();
     root.write(&mut resource);
     let mut validation = match validator {
-        Some(v) => v.validate(resource.as_bytes()),
-        None => crate::validate_bytes(resource.as_bytes()),
+        Some(v) => v.validate_with(resource.as_bytes(), tx),
+        None => crate::validate_bytes_with(resource.as_bytes(), tx),
     };
     // input problems come first; the conformance findings follow
     let conformance = core::mem::take(&mut validation.report.issues);

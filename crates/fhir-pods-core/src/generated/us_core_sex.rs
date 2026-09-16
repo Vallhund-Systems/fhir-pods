@@ -9,13 +9,21 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     name: "US Core Sex Extension",
     resource_type: "Extension",
     elements: &[
-        ElementConstraint { path: "Extension.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
+        ElementConstraint {
+            path: "Extension.id",
+            min: 0,
+            max: Max::Bounded(1),
+            fixed: None,
+            required_binding: None,
+            types: &[],
+        },
         ElementConstraint {
             path: "Extension.url",
             min: 1,
             max: Max::Bounded(1),
             fixed: Some("http://hl7.org/fhir/us/core/StructureDefinition/us-core-sex"),
             required_binding: None,
+            types: &[],
         },
         ElementConstraint {
             path: "Extension.value[x]",
@@ -26,6 +34,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 value_set: "http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113762.1.4.1240.3",
                 kind: BindingKind::Code,
             }),
+            types: &["code"],
         },
     ],
     slicings: &[],

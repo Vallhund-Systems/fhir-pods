@@ -100,6 +100,36 @@ export function lower(profileUrl: string, inputs: Record<string, unknown>): Lowe
   return out;
 }
 
+/** One binding the bundled sets (and any loaded table) could not decide. */
+export interface Need {
+  valueSet: string;
+  /** "" for a bare `code` element. */
+  system: string;
+  code: string;
+}
+
+/**
+ * Load a compiled terminology table (the line format
+ * `tools/compile_valueset.py` writes from `$expand` responses). It answers
+ * after the bundled sets and before the native provider, for every call that
+ * follows, for the process's lifetime. A set in the table is complete: a code
+ * not listed is not a member. Returns `false` when the text could not be
+ * parsed (the previous table stays); "" clears the table.
+ */
+export function loadTerminology(table: string): boolean {
+  return FhirPodsExpoModule.terminologyLoad(table) === 1;
+}
+
+/**
+ * What to resolve for this resource to validate without terminology warnings:
+ * the bindings neither the bundled sets nor the loaded table could decide.
+ * Resolve them against a terminology server (`$validate-code`, or `$expand`
+ * and compile the sets) and validate again.
+ */
+export function terminologyNeeds(json: string): Need[] {
+  return (JSON.parse(FhirPodsExpoModule.terminologyNeeds(json)) as { needs: Need[] }).needs;
+}
+
 /** The inputs a profile takes. */
 export function slots(profileUrl: string): Slot[] {
   const out = JSON.parse(FhirPodsExpoModule.slots(profileUrl)) as { slots?: Slot[]; error?: string };

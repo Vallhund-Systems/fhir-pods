@@ -52,17 +52,23 @@ Swift / Kotlin.
 values at its slots (`examples/lower_corpus.rs`, run by the harness) and the
 result is put in front of the reference validator alongside the corpus.
 
-## 0.3.x — Terminology, wired for real
+## 0.3.1 — Terminology, wired for real — shipped
 
-- A reference host provider for **NCTS / Ontoserver** (`$validate-code`,
-  `$lookup` for displays) in the wasm README and the Expo README — free to
-  operate in Australia; the pod never ships the content.
-- **Compiled expansions**: `tools/compile_valueset.py` turns a ValueSet
-  expansion the host is licensed for into a compact lookup table; a
-  `TerminologyProvider` that reads it, so a device answers the bindings
-  offline. LOINC / UCUM displays for the codes the registry fixes are
-  bundled (licence-free).
-- Lowering asks the seam for displays; the verifier asks it for membership.
+- **Bundled base sets, generated.** Every value set the registry binds with
+  `required` strength that expands offline from the packages' own compose
+  (the FHIR and HL7 v2/v3 sets: 59 sets, 311 codes) — `tools/gen_valuesets.py`.
+  Licensed or hosted-elsewhere sets (SNOMED, LOINC, VSAC, NCTS) are skipped,
+  never approximated, and named in the generated file.
+- **Compiled expansions**: `tools/compile_valueset.py` turns `$expand`
+  responses into a line table; `terminology::Expansions` reads it; the ABI
+  loads one (`fhir_pods_terminology_load`) for every call after.
+- **Ask, then answer**: `terminology_needs` / `fhir_pods_terminology_needs`
+  lists what the bundled sets and the table could not decide — the loop a
+  host runs against NCTS / Ontoserver (`$validate-code` or `$expand`), with
+  the reference calls in the wasm and Expo READMEs.
+- Lowering asks the seam for displays (the bundled code systems' displays
+  for the codings the registry fixes; a table's displays for the rest); the
+  verifier asks it for membership.
 
 ## 0.4 — Documents (IPS / AU PS)
 

@@ -9,13 +9,21 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     name: "Date of Arrival in Australia",
     resource_type: "Extension",
     elements: &[
-        ElementConstraint { path: "Extension.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None },
+        ElementConstraint {
+            path: "Extension.id",
+            min: 0,
+            max: Max::Bounded(1),
+            fixed: None,
+            required_binding: None,
+            types: &[],
+        },
         ElementConstraint {
             path: "Extension.url",
             min: 1,
             max: Max::Bounded(1),
             fixed: Some("http://hl7.org.au/fhir/StructureDefinition/date-of-arrival"),
             required_binding: None,
+            types: &[],
         },
         ElementConstraint {
             path: "Extension.value[x]",
@@ -23,6 +31,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             max: Max::Bounded(1),
             fixed: None,
             required_binding: None,
+            types: &["date"],
         },
         ElementConstraint {
             path: "Extension.value[x].id",
@@ -30,6 +39,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             max: Max::Bounded(1),
             fixed: None,
             required_binding: None,
+            types: &[],
         },
         ElementConstraint {
             path: "Extension.value[x].value",
@@ -37,6 +47,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             max: Max::Bounded(1),
             fixed: None,
             required_binding: None,
+            types: &[],
         },
     ],
     slicings: &[Slicing {
@@ -54,6 +65,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                     max: Max::Bounded(1),
                     fixed: None,
                     required_binding: None,
+                    types: &[],
                 },
                 ElementConstraint {
                     path: "$this.url",
@@ -61,6 +73,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                     max: Max::Bounded(1),
                     fixed: Some("date-accuracy-indicator"),
                     required_binding: None,
+                    types: &[],
                 },
                 ElementConstraint {
                     path: "$this.value[x]",
@@ -71,6 +84,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                         value_set: "https://healthterminologies.gov.au/fhir/ValueSet/date-accuracy-indicator-1",
                         kind: BindingKind::Coding,
                     }),
+                    types: &["Coding"],
                 },
             ],
             profile: Some("http://hl7.org.au/fhir/StructureDefinition/date-accuracy-indicator"),

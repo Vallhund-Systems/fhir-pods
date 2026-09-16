@@ -59,6 +59,14 @@ export interface Lowered {
   validation: Validation;
 }
 
+/** One binding the bundled sets (and any loaded table) could not decide. */
+export interface Need {
+  valueSet: string;
+  /** "" for a bare `code` element. */
+  system: string;
+  code: string;
+}
+
 export interface Pod {
   abiVersion: number;
   /** Validate a resource (JSON text or UTF-8 bytes); the ergonomic report. */
@@ -81,6 +89,21 @@ export interface Pod {
   lower(profileUrl: string, inputs: Record<string, unknown> | string): Lowered;
   /** The inputs a profile takes. */
   slots(profileUrl: string): Slot[];
+  /**
+   * Load a compiled terminology table (the line format `tools/compile_valueset.py`
+   * writes from `$expand` responses). It answers after the bundled sets and
+   * before `options.terminology`, for every call that follows. A set in the
+   * table is complete: a code not listed is not a member. `false` when the
+   * text could not be parsed (the previous table stays); "" clears the table.
+   */
+  loadTerminology(table: string): boolean;
+  /**
+   * What to resolve for this resource to validate without terminology
+   * warnings: the bindings neither the bundled sets nor the loaded table
+   * could decide. Resolve them (`$validate-code`, or `$expand` and compile
+   * the sets) and validate again.
+   */
+  terminologyNeeds(json: string | Uint8Array): Need[];
   /** Same as {@link validate}, unparsed — for passing straight through. */
   validateText(json: string | Uint8Array): string;
   /** Same as {@link operationOutcome}, unparsed — for the wire. */

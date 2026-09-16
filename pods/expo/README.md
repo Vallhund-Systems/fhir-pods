@@ -73,13 +73,31 @@ mustSupportGaps(JSON.stringify(patient));
 // ["Patient.telecom.system", "Patient.birthDate", …]
 ```
 
-## The terminology seam
+## Terminology
 
-Bindings the bundled value sets can't decide (SNOMED, LOINC answer lists,
-VSAC…) are answered by a **host provider you install from native code** — the
-verifier runs synchronously and never calls back into JS, so the provider is
-native by design (an on-device cache, NCTS/Ontoserver, VSAC…). Without one,
-such bindings are warnings, never errors.
+The pod bundles every licence-free value set the registry binds (the FHIR and
+HL7 v2/v3 sets). What it cannot decide — SNOMED CT, LOINC answer lists, VSAC
+and NCTS-hosted sets — is a warning, never an error, until the host answers.
+
+**Compiled expansions (the on-device route).** Expand the sets you are
+licensed for on a terminology server (NCTS in Australia, Ontoserver, VSAC…),
+compile them with `tools/compile_valueset.py`, ship the text with the app and
+load it once at startup — from JS, no native code:
+
+```ts
+import { loadTerminology, terminologyNeeds } from "fhir-pods-expo";
+loadTerminology(await FileSystem.readAsStringAsync(tableUri)); // true; false = unparseable, old table kept
+terminologyNeeds(json); // [{ valueSet, system, code }] — what is still unanswered for this resource
+```
+
+A set in the table is complete: a code not listed is not a member. Displays
+in the table reach `lower()`. `terminologyNeeds` is the ask-then-answer loop:
+resolve what it lists with `$validate-code` (or `$expand` the sets and load
+them) and validate again.
+
+**A native provider.** For a host that already holds the answers, install a
+synchronous provider from native code — the verifier never calls back into
+JS, so the provider is native by design (an on-device cache, NCTS…):
 
 ```swift
 // iOS — e.g. in AppDelegate
@@ -95,8 +113,8 @@ FhirPodsExpoModule.terminology = FhirPodsTerminology { valueSet, system, code ->
 }
 ```
 
-The bundled sets are always consulted first; the host is only asked what they
-can't answer. `system` is "" for a bare `code` element.
+The bundled sets are consulted first, then the loaded table; the host is only
+asked what they can't answer. `system` is "" for a bare `code` element.
 
 ## Status
 

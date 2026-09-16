@@ -28,9 +28,9 @@
 
 use core::ffi::c_void;
 
-use std::sync::OnceLock;
+use std::sync::{OnceLock, RwLock};
 
-use fhir_pods_core::terminology::{Bundled, Chain, Membership, TerminologyProvider};
+use fhir_pods_core::terminology::{Bundled, Chain, Expansions, Membership, Recorder, TerminologyProvider};
 use fhir_pods_core::{must_support_gaps, wire, Validator};
 
 /// One validator per process: the registry's invariants are parsed once, on
@@ -44,7 +44,23 @@ fn validator() -> &'static Validator {
 
 /// Bump when the exported surface or the memory contract changes; the
 /// wrappers refuse a mismatched module.
-pub const ABI_VERSION: u32 = 4;
+pub const ABI_VERSION: u32 = 5;
+
+/// The compiled terminology table the host loaded (`fhir_pods_terminology_load`),
+/// consulted after the bundled sets and before any host callback.
+static TABLE: RwLock<Option<Expansions>> = RwLock::new(None);
+
+/// Run `f` with the providers in order: bundled sets, the loaded table, the
+/// host's callback.
+fn with_providers<R>(host: Option<&dyn TerminologyProvider>, f: impl FnOnce(&dyn TerminologyProvider) -> R) -> R {
+    let table = TABLE.read().unwrap_or_else(|e| e.into_inner());
+    match (table.as_ref(), host) {
+        (Some(t), Some(h)) => f(&Chain(&[&Bundled, t, h])),
+        (Some(t), None) => f(&Chain(&[&Bundled, t])),
+        (None, Some(h)) => f(&Chain(&[&Bundled, h])),
+        (None, None) => f(&Bundled),
+    }
+}
 
 /// A host terminology callback: is (`system`, `code`) in `value_set`?
 /// Strings are UTF-8 `(ptr, len)`, valid only for the duration of the call;
@@ -90,14 +106,14 @@ pub extern "C" fn fhir_pods_abi_version() -> u32 {
 /// issue in the report, not an error at the boundary.
 #[no_mangle]
 pub unsafe extern "C" fn fhir_pods_validate(ptr: *const u8, len: usize) -> *mut u8 {
-    pack(wire::report(&validator().validate_with(input(ptr, len), &Bundled)).as_bytes())
+    with_providers(None, |tx| pack(wire::report(&validator().validate_with(input(ptr, len), tx)).as_bytes()))
 }
 
 /// Validate a FHIR resource; returns a FHIR `OperationOutcome` resource — the
 /// `$validate` wire form. Same memory contract as [`fhir_pods_validate`].
 #[no_mangle]
 pub unsafe extern "C" fn fhir_pods_operation_outcome(ptr: *const u8, len: usize) -> *mut u8 {
-    pack(validator().validate_with(input(ptr, len), &Bundled).to_operation_outcome().as_bytes())
+    with_providers(None, |tx| pack(validator().validate_with(input(ptr, len), tx).to_operation_outcome().as_bytes()))
 }
 
 /// [`fhir_pods_validate`] with a host terminology callback (`cb` may be null).
@@ -141,10 +157,11 @@ pub unsafe extern "C" fn fhir_pods_lower(
     inputs: *const u8,
     inputs_len: usize,
 ) -> *mut u8 {
-    pack(lower_json(input(profile, profile_len), input(inputs, inputs_len)).as_bytes())
+    with_providers(None, |tx| pack(lower_json(input(profile, profile_len), input(inputs, inputs_len), tx).as_bytes()))
 }
 
-/// [`fhir_pods_lower`] with a host terminology callback for the validation.
+/// [`fhir_pods_lower`] with a host terminology callback: it answers the
+/// bindings and supplies displays for `{system, code}` inputs.
 #[no_mangle]
 pub unsafe extern "C" fn fhir_pods_lower_tx(
     profile: *const u8,
@@ -154,32 +171,58 @@ pub unsafe extern "C" fn fhir_pods_lower_tx(
     cb: Option<TxCallback>,
     ctx: *mut c_void,
 ) -> *mut u8 {
-    // The validation inside `lower` uses the bundled sets; re-validate the
-    // resource through the callback so the host's terminology counts.
-    let out = lower_json(input(profile, profile_len), input(inputs, inputs_len));
-    if cb.is_none() {
-        return pack(out.as_bytes());
+    with_tx(cb, ctx, |tx| pack(lower_json(input(profile, profile_len), input(inputs, inputs_len), tx).as_bytes()))
+}
+
+/// Load a compiled terminology table (the line format `tools/compile_valueset.py`
+/// writes; see `Expansions` in the core). It answers, after the bundled sets
+/// and before any host callback, for every call that follows — on this
+/// module, for its lifetime. Returns 1 when loaded, 0 when the text could not
+/// be parsed (the previous table stays). Empty input clears the table.
+#[no_mangle]
+pub unsafe extern "C" fn fhir_pods_terminology_load(ptr: *const u8, len: usize) -> i32 {
+    let text = input(ptr, len);
+    let mut slot = TABLE.write().unwrap_or_else(|e| e.into_inner());
+    if text.is_empty() {
+        *slot = None;
+        return 1;
     }
-    match validator().lower(core::str::from_utf8(input(profile, profile_len)).unwrap_or(""), input(inputs, inputs_len))
-    {
-        Ok(l) => with_tx(cb, ctx, |tx| {
-            let mut v = validator().validate_with(l.resource.as_bytes(), tx);
-            // keep the input-level issues lowering found first
-            let mut issues: Vec<_> = l
-                .validation
-                .report
-                .issues
-                .iter()
-                .filter(|i| i.code == fhir_pods_core::validate::IssueType::Structure || i.path.contains('\''))
-                .cloned()
-                .collect();
-            issues.retain(|i| !v.report.issues.contains(i));
-            issues.append(&mut v.report.issues);
-            v.report.issues = issues;
-            pack(lowered_json(&l.resource, &v).as_bytes())
-        }),
-        Err(_) => pack(out.as_bytes()),
+    match core::str::from_utf8(text).ok().and_then(|t| Expansions::parse(t).ok()) {
+        Some(t) => {
+            *slot = Some(t);
+            1
+        }
+        None => 0,
     }
+}
+
+/// What a host must resolve for this resource to validate without
+/// terminology warnings — every binding the bundled sets and the loaded
+/// table could not decide: `{"needs":[{"valueSet","system","code"},…]}`.
+/// Resolve them (`$validate-code`, or `$expand` + `compile_valueset.py` +
+/// `fhir_pods_terminology_load`) and validate again.
+#[no_mangle]
+pub unsafe extern "C" fn fhir_pods_terminology_needs(ptr: *const u8, len: usize) -> *mut u8 {
+    let needs = with_providers(None, |tx| {
+        let rec = Recorder::new();
+        validator().validate_with(input(ptr, len), &Chain(&[tx, &rec]));
+        rec.needs()
+    });
+    let mut out = String::from("{\"needs\":[");
+    for (i, n) in needs.iter().enumerate() {
+        if i > 0 {
+            out.push(',');
+        }
+        out.push_str("{\"valueSet\":\"");
+        wire::escape(&mut out, &n.value_set);
+        out.push_str("\",\"system\":\"");
+        wire::escape(&mut out, &n.system);
+        out.push_str("\",\"code\":\"");
+        wire::escape(&mut out, &n.code);
+        out.push_str("\"}");
+    }
+    out.push_str("]}");
+    pack(out.as_bytes())
 }
 
 /// The inputs a profile takes: `{"slots":[{"path","type","choices","min","max","mustSupport"}]}`,
@@ -213,9 +256,9 @@ pub unsafe extern "C" fn fhir_pods_slots(profile: *const u8, profile_len: usize)
     pack(out.as_bytes())
 }
 
-fn lower_json(profile: &[u8], inputs: &[u8]) -> String {
+fn lower_json(profile: &[u8], inputs: &[u8], tx: &dyn TerminologyProvider) -> String {
     let url = core::str::from_utf8(profile).unwrap_or("");
-    match validator().lower(url, inputs) {
+    match validator().lower_with(url, inputs, tx) {
         Ok(l) => lowered_json(&l.resource, &l.validation),
         Err(e) => {
             let mut s = String::from("{\"error\":\"");
@@ -284,9 +327,9 @@ fn with_tx<R>(cb: Option<TxCallback>, ctx: *mut c_void, f: impl FnOnce(&dyn Term
     match cb {
         Some(cb) => {
             let host = HostTx { cb, ctx };
-            f(&Chain(&[&Bundled, &host]))
+            with_providers(Some(&host), f)
         }
-        None => f(&Bundled),
+        None => with_providers(None, f),
     }
 }
 
@@ -344,17 +387,28 @@ mod wasm_host {
 
     #[no_mangle]
     pub unsafe extern "C" fn fhir_pods_validate_host_tx(ptr: *const u8, len: usize) -> *mut u8 {
-        pack(wire::report(&validator().validate_with(input(ptr, len), &Chain(&[&Bundled, &ImportTx]))).as_bytes())
+        with_providers(Some(&ImportTx), |tx| {
+            pack(wire::report(&validator().validate_with(input(ptr, len), tx)).as_bytes())
+        })
     }
 
     #[no_mangle]
     pub unsafe extern "C" fn fhir_pods_operation_outcome_host_tx(ptr: *const u8, len: usize) -> *mut u8 {
-        pack(
-            validator()
-                .validate_with(input(ptr, len), &Chain(&[&Bundled, &ImportTx]))
-                .to_operation_outcome()
-                .as_bytes(),
-        )
+        with_providers(Some(&ImportTx), |tx| {
+            pack(validator().validate_with(input(ptr, len), tx).to_operation_outcome().as_bytes())
+        })
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn fhir_pods_lower_host_tx(
+        profile: *const u8,
+        profile_len: usize,
+        inputs: *const u8,
+        inputs_len: usize,
+    ) -> *mut u8 {
+        with_providers(Some(&ImportTx), |tx| {
+            pack(lower_json(input(profile, profile_len), input(inputs, inputs_len), tx).as_bytes())
+        })
     }
 }
 
@@ -421,24 +475,31 @@ mod android {
         }
     }
 
-    fn run<'l>(env: &mut JNIEnv<'l>, json: &JByteArray<'l>, provider: &JObject<'l>, outcome: bool) -> jbyteArray {
-        let input = bytes_in(env, json);
-        let doc = if provider.is_null() {
-            let v = validator().validate_with(&input, &Bundled);
-            if outcome {
-                v.to_operation_outcome()
-            } else {
-                wire::report(&v)
-            }
+    /// The providers for a call: bundled, the loaded table, then the Java
+    /// provider when one was passed.
+    fn with_java<'l, R>(
+        env: &mut JNIEnv<'l>,
+        provider: &JObject<'l>,
+        f: impl FnOnce(&dyn TerminologyProvider) -> R,
+    ) -> R {
+        if provider.is_null() {
+            with_providers(None, f)
         } else {
             let host = JavaTx { env: RefCell::new(env), provider };
-            let v = validator().validate_with(&input, &Chain(&[&Bundled, &host]));
+            with_providers(Some(&host), f)
+        }
+    }
+
+    fn run<'l>(env: &mut JNIEnv<'l>, json: &JByteArray<'l>, provider: &JObject<'l>, outcome: bool) -> jbyteArray {
+        let input = bytes_in(env, json);
+        let doc = with_java(env, provider, |tx| {
+            let v = validator().validate_with(&input, tx);
             if outcome {
                 v.to_operation_outcome()
             } else {
                 wire::report(&v)
             }
-        };
+        });
         bytes_out(env, &doc)
     }
 
@@ -474,9 +535,31 @@ mod android {
         _this: JObject<'l>,
         profile: JByteArray<'l>,
         inputs: JByteArray<'l>,
+        provider: JObject<'l>,
     ) -> jbyteArray {
         let (p, i) = (bytes_in(&mut env, &profile), bytes_in(&mut env, &inputs));
-        let doc = lower_json(&p, &i);
+        let doc = with_java(&mut env, &provider, |tx| lower_json(&p, &i, tx));
+        bytes_out(&mut env, &doc)
+    }
+
+    #[no_mangle]
+    pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_terminologyLoad<'l>(
+        mut env: JNIEnv<'l>,
+        _this: JObject<'l>,
+        table: JByteArray<'l>,
+    ) -> jint {
+        let t = bytes_in(&mut env, &table);
+        unsafe { fhir_pods_terminology_load(t.as_ptr(), t.len()) as jint }
+    }
+
+    #[no_mangle]
+    pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_terminologyNeeds<'l>(
+        mut env: JNIEnv<'l>,
+        _this: JObject<'l>,
+        json: JByteArray<'l>,
+    ) -> jbyteArray {
+        let j = bytes_in(&mut env, &json);
+        let doc = unsafe { unpack_owned(fhir_pods_terminology_needs(j.as_ptr(), j.len())) };
         bytes_out(&mut env, &doc)
     }
 
@@ -582,6 +665,42 @@ mod tests {
         }
     }
 
+    /// A loaded table answers after the bundled sets; `needs` lists what
+    /// neither could decide; an unparseable table is refused and the old
+    /// one kept.
+    #[test]
+    fn compiled_table_and_needs_over_the_abi() {
+        // date-accuracy-indicator is bound to an NCTS-hosted set the core does not bundle
+        let json = r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},"identifier":[{"system":"http://h.example.org/mrn","value":"1"}],"name":[{"family":"D"}],"gender":"male","birthDate":"1970-01-01","_birthDate":{"extension":[{"url":"http://hl7.org.au/fhir/StructureDefinition/date-accuracy-indicator","valueCoding":{"system":"https://healthterminologies.gov.au/fhir/CodeSystem/date-accuracy-indicator-1","code":"AAA"}}]}}"#;
+        unsafe {
+            let needs = call(fhir_pods_terminology_needs, json);
+            assert!(
+                needs.contains(
+                    "\"valueSet\":\"https://healthterminologies.gov.au/fhir/ValueSet/date-accuracy-indicator-1\""
+                ) && needs.contains("\"code\":\"AAA\""),
+                "{needs}"
+            );
+            let r = call(fhir_pods_validate, json);
+            assert!(r.contains("no bundled terminology for https://healthterminologies.gov.au/fhir/ValueSet/date-accuracy-indicator-1"), "{r}");
+
+            let table = "fhir-pods-terminology 1\n= https://healthterminologies.gov.au/fhir/ValueSet/date-accuracy-indicator-1\nhttps://healthterminologies.gov.au/fhir/CodeSystem/date-accuracy-indicator-1\tAAA\tAccurate\n";
+            assert_eq!(fhir_pods_terminology_load(table.as_ptr(), table.len()), 1);
+            let r = call(fhir_pods_validate, json);
+            assert!(!r.contains("date-accuracy-indicator-1"), "{r}");
+            assert_eq!(call(fhir_pods_terminology_needs, json), "{\"needs\":[]}");
+            // a code outside a loaded (complete) set is an error
+            let bad = json.replace("\"AAA\"", "\"ZZZ\"");
+            let r = call(fhir_pods_validate, &bad);
+            assert!(r.contains("'ZZZ' is not in the bound value set"), "{r}");
+            // garbage is refused, the table stays
+            assert_eq!(fhir_pods_terminology_load(b"nope".as_ptr(), 4), 0);
+            assert!(!call(fhir_pods_validate, json).contains("date-accuracy-indicator-1"));
+            // cleared
+            assert_eq!(fhir_pods_terminology_load(std::ptr::null(), 0), 1);
+            assert!(call(fhir_pods_validate, json).contains("no bundled terminology"));
+        }
+    }
+
     #[test]
     fn null_input_is_empty_input() {
         unsafe {
@@ -609,21 +728,23 @@ mod tests {
             log.0.push(format!("{} {} {}", s(vs, vsl), s(sys, sysl), s(code, cl)));
             log.1
         }
-        let json = r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},"identifier":[{"system":"http://h.example.org/mrn","value":"1"}],"name":[{"family":"D"}],"gender":"male","birthDate":"1970-01-01","telecom":[{"system":"phone","value":"1"}]}"#;
+        // telecom.system is bundled and never asked about; the date-accuracy
+        // coding is bound to an NCTS-hosted set the core leaves to the seam
+        let json = r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},"identifier":[{"system":"http://h.example.org/mrn","value":"1"}],"name":[{"family":"D"}],"gender":"male","birthDate":"1970-01-01","_birthDate":{"extension":[{"url":"http://hl7.org.au/fhir/StructureDefinition/date-accuracy-indicator","valueCoding":{"system":"https://healthterminologies.gov.au/fhir/CodeSystem/date-accuracy-indicator-1","code":"AAA"}}]},"telecom":[{"system":"phone","value":"1"}]}"#;
         unsafe {
             let mut log = Log(Vec::new(), 0);
             let r =
                 unpack(fhir_pods_validate_tx(json.as_ptr(), json.len(), Some(cb), &mut log as *mut Log as *mut c_void));
-            assert_eq!(log.0, vec!["http://hl7.org/fhir/ValueSet/contact-point-system|4.0.1  phone"]);
-            assert!(r.contains("'phone' is not in the bound value set"), "{r}");
+            assert_eq!(log.0, vec!["https://healthterminologies.gov.au/fhir/ValueSet/date-accuracy-indicator-1 https://healthterminologies.gov.au/fhir/CodeSystem/date-accuracy-indicator-1 AAA"]);
+            assert!(r.contains("'AAA' is not in the bound value set"), "{r}");
 
             let mut log = Log(Vec::new(), 1);
             let r =
                 unpack(fhir_pods_validate_tx(json.as_ptr(), json.len(), Some(cb), &mut log as *mut Log as *mut c_void));
-            assert!(!r.contains("contact-point-system"), "{r}");
+            assert!(!r.contains("date-accuracy-indicator"), "{r}");
 
             let r = unpack(fhir_pods_validate_tx(json.as_ptr(), json.len(), None, std::ptr::null_mut()));
-            assert!(r.contains("no bundled terminology for http://hl7.org/fhir/ValueSet/contact-point-system"), "{r}");
+            assert!(r.contains("no bundled terminology for https://healthterminologies.gov.au/fhir/ValueSet/date-accuracy-indicator-1"), "{r}");
         }
     }
 }
