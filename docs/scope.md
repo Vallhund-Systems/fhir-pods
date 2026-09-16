@@ -63,6 +63,23 @@ the 294/294.
   every R4 resource type and datatype; a node under a `resourceType` the
   spec doesn't define has no type, and such an expression is skipped — and
   reported as an `information` issue naming the invariant.
+- **Documents.** A `Bundle` is validated against its declared Bundle
+  profile: entries discriminated by resource type and by conformance to a
+  profile (a validation pass in the same bundle), section entries by what
+  their references resolve to, an element matching more than one slice an
+  error (the reference validator's rule), the Composition's references
+  resolved inside the bundle, every entry reachable from the Composition.
+  Not checked: `Bundle.signature` (cryptographic verification is not a
+  validation concern here), slicings nested three levels deep (none in
+  IPS / AU PS carry a verdict), and references that do not resolve outside
+  the Composition (the reference validator warns; so would a stricter
+  reading — neither fails the document).
+- `pattern[x]` and `fixed[x]` objects on an element are enforced as
+  patterns: every instance carries the leaves, one instance of a repeating
+  element carrying each group. A `fixed[x]` object's "nothing else" clause
+  is not enforced (the reference validator is stricter there).
+- The base spec's minimums inside datatypes (`Narrative.status`,
+  `Extension.url`…) are checked whenever a profile applies.
 - An Observation carrying a base vital-sign profile's LOINC code (or the
   vital-signs category) is validated against that base profile as well as
   what it declares — the spec's rule, and the reference validator's.

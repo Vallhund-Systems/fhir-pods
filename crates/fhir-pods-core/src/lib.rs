@@ -116,8 +116,17 @@ fn validate_bytes_impl(
         return Validation { resource_type: rt.into(), profile: None, profiles: Vec::new(), report: Report::default() };
     }
     let mut report = Report::default();
+    // the base spec's minimums inside datatypes, which no profile restates
+    for (path, what) in parsed.datatype_gaps() {
+        report.push(Severity::Error, IssueType::Required, &path, format!("{what} is required (min 1, found 0)"));
+    }
+    let bundle = (rt == "Bundle").then_some(&doc);
+    if let Some(b) = bundle {
+        engine::check_document(b, &mut report);
+    }
+    let evaluated = engine::Evaluated::default();
     for profile in &profiles {
-        let rep = engine::validate_at(profile, &doc, &doc, tx, 0, cache);
+        let rep = engine::validate_at_with(profile, &doc, &doc, tx, 0, cache, bundle, Some(&evaluated));
         for issue in rep.issues {
             if !report.issues.contains(&issue) {
                 report.issues.push(issue);
@@ -157,6 +166,21 @@ fn select_profiles(
     // that carries a base vital-sign profile's LOINC code (or, for the
     // generic profile, the vital-signs category) conforms to that profile.
     if resource_type == "Observation" {
+        // does an applied profile derive from `url` (its snapshot already carries it)?
+        let derives_from = |mut from: &'static CompiledProfile, url: &str| -> bool {
+            for _ in 0..16 {
+                match from.base {
+                    Some(b) if b == url => return true,
+                    Some(b) => match generated::REGISTRY.iter().find(|q| q.url == b) {
+                        Some(q) => from = q,
+                        None => return false,
+                    },
+                    None => return false,
+                }
+            }
+            false
+        };
+        let mut implied: Vec<&'static CompiledProfile> = Vec::new();
         for p in generated::IMPLIED {
             if out.iter().any(|q| q.url == p.url) {
                 continue;
@@ -179,9 +203,13 @@ fn select_profiles(
                 }),
             };
             if carries {
-                out.push(p);
+                implied.push(p);
             }
         }
+        // the most specific only: a base profile an applied (or implied)
+        // profile derives from is already carried by that profile's snapshot
+        let all: Vec<&'static CompiledProfile> = out.iter().chain(implied.iter()).copied().collect();
+        out.extend(implied.iter().filter(|p| !all.iter().any(|q| derives_from(q, p.url))).copied());
     }
     out
 }
@@ -249,6 +277,9 @@ pub mod hash;
 
 /// De-identification under a data policy (Safe Harbor by default).
 pub mod deidentify;
+
+/// Documents: IPS / AU Patient Summary bundles assembled from resources.
+pub mod assemble;
 
 pub mod json;
 pub mod lower;

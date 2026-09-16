@@ -39,7 +39,7 @@ fn fhirpath_unsupported_is_skipped_not_guessed() {
     );
     // decimal division, string concatenation `&`, equivalence `~`: outside the core
     assert!(parse("1 / 2").is_err());
-    assert!(parse("a & b").is_err());
+    assert!(parse("a ~ b").is_err());
     assert!(parse("a ~ b").is_err());
     assert!(parse("1.5 < 2").is_err());
     assert!(parse("-x").is_err());
@@ -419,6 +419,18 @@ fn fhirpath_type_functions_on_typed_nodes() {
     assert_eq!(fp("subject is Reference and subject.reference is string", d), Pass);
     // untyped resource: skipped, not guessed
     assert_eq!(fp("descendants().as(canonical).empty()", r#"{"resourceType":"Nope","a":"b"}"#), Unsupported);
+}
+
+#[test]
+fn document_bundle_functions_is_tail_and_string_contains() {
+    use fhir_pods_core::path::Verdict::{Fail, Pass};
+    let b = r#"{"resourceType":"Bundle","type":"document","entry":[{"fullUrl":"urn:uuid:a","resource":{"resourceType":"Composition","id":"a"}},{"fullUrl":"urn:uuid:b","resource":{"resourceType":"Patient","id":"b"}}]}"#;
+    assert_eq!(fp("entry.first().resource.is(Composition)", b), Pass);
+    assert_eq!(fp("entry.tail().where(resource is Composition).empty()", b), Pass);
+    assert_eq!(fp("entry.tail().resource.is(Composition)", b), Fail);
+    assert_eq!(fp("entry.all(fullUrl.contains('/_history/').not())", b), Pass);
+    assert_eq!(fp("'abc'.contains('bc') and 'abc'.contains('x').not()", b), Pass);
+    assert_eq!(fp("entry.first().resource.is(Patient)", b), Fail);
 }
 
 #[test]

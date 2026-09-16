@@ -1,5 +1,80 @@
 # Changelog
 
+## 0.5.0 — 2026-09-16
+
+**Documents.** ABI 7: `fhir_pods_document(kind, inputs)`; wasm
+`document(kind, inputs)`, Expo `document(kind, inputs)`; core
+`Validator::document` / `assemble::{assemble, Kind}`.
+
+- An IPS (2.0.1) or AU Patient Summary (1.0.0) `Bundle` from a patient and
+  their resources: sections read from the kind's compiled Composition
+  profile (the section slices' LOINC codes), each resource placed by what
+  it is, a plain xhtml table per section generated from what the resource
+  carries, references rewritten to the entries they name (`Type/id`, a
+  host's own `fullUrl`s when resources arrive as Bundle entries,
+  `urn:uuid:id`), resources nothing reaches left out and reported
+  (`omitted`), a required section with nothing in it marked `emptyReason:
+  unavailable` (no clinical fact is invented), deterministic entry UUIDs
+  (the same inputs make the same document), and the document validated
+  against the kind's Bundle profile on the way out.
+- IG #4: `hl7.fhir.uv.ips` 2.0.1 and `hl7.fhir.au.ps` 1.0.0 in the
+  registry (218 profiles), with `hl7.fhir.uv.extensions.r4` 5.3.0 for the
+  extensions their slices inherit — a dependency package now contributes
+  only the datatype profiles a compiled profile references.
+- Proof: the IGs' twelve document examples, and every one of them taken
+  apart and assembled again by the pod, in front of the reference
+  validator (`examples/document_corpus.rs`, run by the harness). 967/967
+  across corpus, lowered, de-identified and assembled fixtures.
+
+**Verifier**
+- **Bundle entries are discriminated** by their resource's type
+  (`Discriminator::ResourceType`) and by conformance to a profile
+  (`Discriminator::Profile` — a validation pass inside the same bundle);
+  a slice's sub-element may have to conform to one of some profiles
+  (`Slice.profiles`), checked when every one is compiled.
+- **Slicings declared inside a slice** (`section:sectionProblems.entry`)
+  are compiled and evaluated one level down (`Slice.slicings`); their
+  entries are discriminated by what a reference resolves to
+  (`ResolvedType`, `ResolvedProfile`). Three levels deep stays deferred.
+- **`resolve()`, `&`, `is()`, `tail()` and string `contains()`** in FHIRPath
+  — the Bundle invariants (`bdl-8`, `bdl-11`, `bdl-12`, `bdl-ips-1`) are
+  evaluated now, not skipped — `resolve()` inside a document
+  Bundle (by `fullUrl`, `Type/id`, `#contained`), never fetched.
+- **An element matching more than one slice is an error**, as the reference
+  has it. This is why four published IPS / AU PS examples are expected
+  invalid in the corpus: without a terminology server the two pregnancy
+  profiles are indistinguishable, and both validators say so.
+- **`pattern[x]` / `fixed[x]` objects are enforced** on plain elements and
+  slice sub-elements (`ElementConstraint.patterns`): every instance must
+  carry the pattern's leaves, one instance of a repeating element carrying
+  each group. They were discriminators only — a laboratory Observation
+  passed IPS's tobacco-use profile and matched six entry slices.
+- **The base spec's minimums inside datatypes** (`Narrative.status`,
+  `Narrative.div`, `Extension.url`, `Annotation.text`…) are checked, profile
+  or no profile, from the element-type table's new `required` flag.
+- **Document rules**: the Composition's references must resolve inside the
+  bundle, and every entry must be reachable from the Composition by
+  following references forward or backward — the reference validator's
+  errors, now ours.
+- Lowering's slots also include the optional elements a profile's own
+  invariants reach (`ips-2`: value, dataAbsentReason, hasMember,
+  component), so a resource a constraint requires one of can be lowered.
+- De-identification: masked stubs are typed (`Narrative` → a generated
+  "Masked" narrative, `Annotation` → its text), `instant`s keep their year
+  as `YYYY-01-01T00:00:00Z`, Bundle entries are top-level resources with
+  `fullUrl`s pseudonymised consistently with the references to them, and
+  hex tokens (UUIDs) stay hex.
+- Corpus: `Bundle.signature` verification is out of scope (one AU PS
+  example skipped, with the reason); the reference validator does not fail
+  a document over a reference that does not resolve inside it (a probe
+  guards against over-enforcing).
+- Speed: an invariant is evaluated once per resource across the profiles
+  applied to it, and an implied base profile is skipped when an applied
+  profile derives from it (the IR carries each profile's `base`) — an AU
+  Core heart rate went from 120 µs (three profiles, `dom-3` three times)
+  to 66 µs native; a Patient is 37 µs; ~80 µs in wasm.
+- `.wasm`: 951 KB (242 KB gzipped) — the two document IGs and the assembler.
+
 ## 0.4.0 — 2026-09-16
 
 **De-identification.** ABI 6: `fhir_pods_deidentify(resource, policy)`;

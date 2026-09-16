@@ -44,7 +44,7 @@ fn validator() -> &'static Validator {
 
 /// Bump when the exported surface or the memory contract changes; the
 /// wrappers refuse a mismatched module.
-pub const ABI_VERSION: u32 = 6;
+pub const ABI_VERSION: u32 = 7;
 
 /// The compiled terminology table the host loaded (`fhir_pods_terminology_load`),
 /// consulted after the bundled sets and before any host callback.
@@ -232,6 +232,61 @@ fn deidentify_json(resource: &[u8], policy: &[u8]) -> String {
         s.push_str("\"}");
     }
     s.push_str("]}");
+    s
+}
+
+/// Assemble a patient summary document: `kind` is `ips` or `au-ps`, `inputs`
+/// a JSON object — `{"resources": [Patient, …], "author": "Practitioner/x",
+/// "date": "…", "title"?, "custodian"?, "identifier"?, "timestamp"?}`. Returns
+/// `{"document": {…Bundle…}, "placed": [{"fullUrl", "section"}], "validation": {…}}`,
+/// or `{"error": "…"}` when it could not start.
+#[no_mangle]
+pub unsafe extern "C" fn fhir_pods_document(
+    kind: *const u8,
+    kind_len: usize,
+    inputs: *const u8,
+    inputs_len: usize,
+) -> *mut u8 {
+    pack(document_json(input(kind, kind_len), input(inputs, inputs_len)).as_bytes())
+}
+
+fn document_json(kind: &[u8], inputs: &[u8]) -> String {
+    let kind = core::str::from_utf8(kind).unwrap_or("");
+    let a = match validator().document(kind, inputs) {
+        Ok(a) => a,
+        Err(e) => {
+            let mut s = String::from("{\"error\":\"");
+            wire::escape(&mut s, &e.to_string());
+            s.push_str("\"}");
+            return s;
+        }
+    };
+    let mut s = String::with_capacity(a.document.len() + 512);
+    s.push_str("{\"document\":");
+    s.push_str(&a.document);
+    s.push_str(",\"placed\":[");
+    for (i, (full, section)) in a.placed.iter().enumerate() {
+        if i > 0 {
+            s.push(',');
+        }
+        s.push_str("{\"fullUrl\":\"");
+        wire::escape(&mut s, full);
+        s.push_str("\",\"section\":\"");
+        wire::escape(&mut s, section);
+        s.push_str("\"}");
+    }
+    s.push_str("],\"omitted\":[");
+    for (i, key) in a.omitted.iter().enumerate() {
+        if i > 0 {
+            s.push(',');
+        }
+        s.push('"');
+        wire::escape(&mut s, key);
+        s.push('"');
+    }
+    s.push_str("],\"validation\":");
+    s.push_str(&wire::report(&a.validation));
+    s.push('}');
     s
 }
 
@@ -616,6 +671,18 @@ mod android {
     }
 
     #[no_mangle]
+    pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_document<'l>(
+        mut env: JNIEnv<'l>,
+        _this: JObject<'l>,
+        kind: JByteArray<'l>,
+        inputs: JByteArray<'l>,
+    ) -> jbyteArray {
+        let (k, i) = (bytes_in(&mut env, &kind), bytes_in(&mut env, &inputs));
+        let doc = document_json(&k, &i);
+        bytes_out(&mut env, &doc)
+    }
+
+    #[no_mangle]
     pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_terminologyLoad<'l>(
         mut env: JNIEnv<'l>,
         _this: JObject<'l>,
@@ -795,6 +862,24 @@ mod tests {
             assert_eq!(bad, "{\"error\":\"policy needs a non-empty salt\"}");
             let nope = unpack(fhir_pods_deidentify(b"[]".as_ptr(), 2, policy.as_ptr(), policy.len()));
             assert!(nope.contains("\"error\""), "{nope}");
+        }
+    }
+
+    #[test]
+    fn document_over_the_abi() {
+        unsafe {
+            let inputs = r#"{"resources":[{"resourceType":"Patient","id":"p1","identifier":[{"system":"http://h.example.org/mrn","value":"1"}],"name":[{"family":"Doe"}],"gender":"female","birthDate":"1970"}],"author":"Practitioner/x","date":"2026-09-16T10:00:00+10:00"}"#;
+            let kind = "ips";
+            let out = unpack(fhir_pods_document(kind.as_ptr(), kind.len(), inputs.as_ptr(), inputs.len()));
+            assert!(
+                out.starts_with("{\"document\":{\"resourceType\":\"Bundle\"")
+                    && out.contains("\"placed\":[")
+                    && out.contains("\"validation\":"),
+                "{out}"
+            );
+            let bad = "cda";
+            let err = unpack(fhir_pods_document(bad.as_ptr(), bad.len(), inputs.as_ptr(), inputs.len()));
+            assert_eq!(err, "{\"error\":\"kind must be ips or au-ps\"}");
         }
     }
 

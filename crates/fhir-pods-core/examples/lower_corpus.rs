@@ -113,6 +113,14 @@ fn in_slice(slice: &Slice, inst: &TreeDoc<'_, '_>) -> bool {
             })
         }),
         Discriminator::Type { .. } => true,
+        Discriminator::ResourceType { path, ty } => {
+            inst.instances(path).iter().any(|r| r.scalars("$this.resourceType") == [*ty])
+        }
+        // a Bundle entry or a section entry discriminated by profile or by what a
+        // reference resolves to: documents are assembled, not lowered
+        Discriminator::Profile { .. } | Discriminator::ResolvedType { .. } | Discriminator::ResolvedProfile { .. } => {
+            false
+        }
     })
 }
 
@@ -186,8 +194,9 @@ fn main() {
         else {
             continue;
         };
-        // only publisher-valid examples are lowered: a broken probe's slots are broken too
-        if !validator.validate(&bytes).is_valid() {
+        // only publisher-valid examples are lowered: a broken probe's slots are broken too;
+        // a document (Bundle, Composition) is assembled by the document pod, not lowered from slots
+        if !validator.validate(&bytes).is_valid() || matches!(profile.resource_type, "Bundle" | "Composition") {
             continue;
         }
         let mut inputs = String::from("{");

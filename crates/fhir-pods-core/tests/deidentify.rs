@@ -145,7 +145,7 @@ fn safe_harbor_strips_the_eighteen_and_keeps_the_copy_conformant() {
         "Attachment present",
         "address below state",
         "date finer than a year",
-        "instant",
+        "instant finer than a year",
         "reference display",
     ] {
         assert!(before.iter().any(|f| f.what == what), "missing {what} in {before:?}");

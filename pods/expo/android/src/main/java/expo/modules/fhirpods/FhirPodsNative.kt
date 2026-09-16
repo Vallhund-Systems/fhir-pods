@@ -39,6 +39,9 @@ internal object FhirPodsNative {
   /** {"slots":[...]} — the inputs a profile takes, or {"error"}. */
   external fun slots(profile: ByteArray): ByteArray
 
+  /** {"document","placed","validation"} — an assembled patient summary, or {"error"}. */
+  external fun document(kind: ByteArray, inputs: ByteArray): ByteArray
+
   /** {"resource","applied","validation","remaining"} — the de-identified copy, or {"error"}. */
   external fun deidentify(resource: ByteArray, policy: ByteArray): ByteArray
 

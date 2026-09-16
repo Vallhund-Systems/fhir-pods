@@ -3,7 +3,7 @@
 // WebAssembly does (browser, edge runtimes, Node, Bun, Deno).
 
 /** The ABI this wrapper speaks; a module reporting anything else is refused. */
-export const ABI_VERSION = 6;
+export const ABI_VERSION = 7;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -91,6 +91,12 @@ export async function instantiate(source, options = {}) {
       const out = JSON.parse(call(ex.fhir_pods_slots, profileUrl));
       if (out.error) throw new Error(`fhir-pods: ${out.error}`);
       return out.slots;
+    },
+    // Documents: an IPS / AU Patient Summary bundle from a patient and their resources.
+    document: (kind, inputs) => {
+      const out = JSON.parse(call(ex.fhir_pods_document, kind, typeof inputs === "string" ? inputs : JSON.stringify(inputs)));
+      if (out.error) throw new Error(`fhir-pods: ${out.error}`);
+      return out;
     },
     // De-identification: a Safe Harbor copy (by default) under a policy object.
     deidentify: (json, policy = {}) => {

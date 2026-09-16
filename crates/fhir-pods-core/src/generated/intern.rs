@@ -209,3 +209,34 @@ pub static S42: &[&str] = &[
     "valuePeriod",
 ];
 pub static S43: &[&str] = &["CodeableConcept", "Duration"];
+pub static S44: &[&str] = &["Identifier", "Reference"];
+pub static S45: &[&str] = &[
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/MedicationStatement-uv-ips",
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/MedicationRequest-uv-ips",
+];
+pub static S46: &[&str] = &["timingPeriod", "timingDateTime"];
+pub static S47: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-pregnancy-edd-uv-ips",
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-pregnancy-outcome-uv-ips",
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-pregnancy-status-uv-ips",
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-alcoholuse-uv-ips",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-smokingstatus",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-diagnosticresult-path",
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-results-radiology-uv-ips",
+    "http://hl7.org/fhir/StructureDefinition/vitalsigns",
+    "http://hl7.org.au/fhir/core/StructureDefinition/au-core-bloodpressure",
+    "http://hl7.org.au/fhir/core/StructureDefinition/au-core-bodyheight",
+    "http://hl7.org.au/fhir/core/StructureDefinition/au-core-bodytemp",
+    "http://hl7.org.au/fhir/core/StructureDefinition/au-core-bodyweight",
+    "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate",
+    "http://hl7.org.au/fhir/core/StructureDefinition/au-core-resprate",
+    "http://hl7.org.au/fhir/core/StructureDefinition/au-core-waistcircum",
+];
+pub static S48: &[&str] = &[
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-medicationstatement",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-medicationrequest",
+];
+pub static S49: &[&str] = &["valueDateTime", "valueAge", "valuePeriod", "valueRange", "valueString"];
+pub static S50: &[&str] = &["string", "markdown"];
+pub static S51: &[&str] = &["valueString", "valueMarkdown"];

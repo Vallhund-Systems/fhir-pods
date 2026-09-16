@@ -59,6 +59,35 @@ export interface Lowered {
   validation: Validation;
 }
 
+/** Which patient summary a document is. */
+export type DocumentKind = "ips" | "au-ps";
+
+/** What a document is assembled from. */
+export interface DocumentInputs {
+  /** The Patient and the resources to place, bare or as Bundle entries `{fullUrl, resource}`. */
+  resources: Record<string, unknown>[];
+  /** A reference (or references) to the author, resolved among the resources. */
+  author: string | string[];
+  /** `Composition.date`; also the Bundle timestamp when it is an instant. */
+  date: string;
+  title?: string;
+  custodian?: string;
+  /** The document's identifier (derived from the inputs otherwise). */
+  identifier?: string;
+  /** An instant, needed when `date` is not one. */
+  timestamp?: string;
+}
+
+export interface AssembledDocument {
+  document: Record<string, unknown>;
+  /** Where each resource went: its entry's fullUrl and the section's LOINC code ("" for a supporting entry). */
+  placed: { fullUrl: string; section: string }[];
+  /** Resources left out because nothing in the document reaches them (`Type/id`). */
+  omitted: string[];
+  /** The document's conformance to the kind's Bundle profile. */
+  validation: Validation;
+}
+
 /** What de-identification does to an element. */
 export type DeidAction = "keep" | "remove" | "mask" | "year" | "pseudonym";
 
@@ -115,6 +144,13 @@ export interface Pod {
   lower(profileUrl: string, inputs: Record<string, unknown> | string): Lowered;
   /** The inputs a profile takes. */
   slots(profileUrl: string): Slot[];
+  /**
+   * An IPS or AU Patient Summary document from a patient and their resources:
+   * sections from the kind's Composition profile, each resource placed by what
+   * it is, narrative generated, references rewritten to the entries, and the
+   * Bundle validated on the way out. Throws only when it cannot start.
+   */
+  document(kind: DocumentKind, inputs: DocumentInputs | string): AssembledDocument;
   /**
    * A de-identified copy under `policy` (Safe Harbor by default): names,
    * contact details, addresses below state, exact dates, ages over 89,

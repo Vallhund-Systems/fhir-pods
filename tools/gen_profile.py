@@ -36,6 +36,7 @@ Usage:
     gen_profile.py <StructureDefinition.json> <out.rs> "<package id version>"
 """
 import json
+import re
 import os
 import sys
 from dataclasses import dataclass, field
@@ -86,6 +87,7 @@ class Rule:
     fixed: str | None = None
     binding: tuple | None = None
     types: tuple = ()               # a choice element's allowed types
+    patterns: tuple = ()            # a pattern / fixed object: [(anchor, [(rel, value)])] every instance must carry
 
     @staticmethod
     def of(e):
@@ -105,7 +107,12 @@ class Rule:
 
     def enforceable(self):
         return (
-            self.min >= 1 or self.max is not None or self.fixed is not None or self.binding is not None or bool(self.types)
+            self.min >= 1
+            or self.max is not None
+            or self.fixed is not None
+            or self.binding is not None
+            or bool(self.types)
+            or bool(self.patterns)
         )
 
     def merge(self, other):
@@ -119,6 +126,8 @@ class Rule:
             self.binding = other.binding
         if other.types:
             self.types = other.types
+        if other.patterns:
+            self.patterns = tuple(dict.fromkeys(self.patterns + other.patterns))
 
 
 @dataclass
@@ -131,6 +140,10 @@ class SliceSpec:
     deep: dict = field(default_factory=dict)       # relative path -> [scalar fixed in a nested slice]
     objpat: dict = field(default_factory=dict)     # relative path ("" = the slice itself) -> pattern object
     invariants: list = field(default_factory=list) # (rel path or "", key, severity, human, expr, types)
+    sub_profiles: dict = field(default_factory=dict)  # relative path -> [profile urls] (a Bundle entry's resource)
+    target_profiles: list = field(default_factory=list)  # a Reference slice's targetProfile urls (for `resolve()` discriminators)
+    slicings: dict = field(default_factory=dict)   # relative path -> SlicingSpec (a slicing inside this slice)
+    compiled_slicings: list = field(default_factory=list)  # [(rel path, closed, [(name, SliceSpec, discs)])]
 
 
 @dataclass
@@ -344,6 +357,7 @@ def lowering_of(sd, load=None):
     """(fixed, slices, slots) — see `compiled::Lowering`."""
     els = (sd.get("snapshot") or {}).get("element", [])
     by_id = {e.get("id", ""): e for e in els}
+    by_path = {e.get("path", "") for e in els if ":" not in e.get("id", "")}
     fixed, slices, slots = [], [], []
     has_fixed_below = set()   # labelled paths that have a fixed leaf beneath them
     fixed_decl_sites = []     # the elements fixed / pattern values are declared on (for gates)
@@ -425,6 +439,21 @@ def lowering_of(sd, load=None):
     }
     slot_paths = set()
 
+    # elements the profile's own invariants reach (`value.exists() or
+    # dataAbsentReason.exists() …`): optional on their own, but one of them
+    # has to be there, so each is an input
+    reached = set()
+    for e in els:
+        base = e.get("path", "")
+        for c in e.get("constraint", []):
+            src = (c.get("source") or "").split("|")[0]
+            if src and src != sd.get("url"):
+                continue
+            for name in re.findall(r"(?<![\w.$%'])([a-z][A-Za-z0-9]*)(?![\w(])", c.get("expression", "")):
+                child = base + "." + name
+                if child in by_path or child + "[x]" in by_path:
+                    reached.add(child.split(".", 1)[1] + ("[x]" if child + "[x]" in by_path else ""))
+
     def add_slot(lp, ty, choices, mn, mx, ms):
         if lp not in slot_paths:
             slot_paths.add(lp)
@@ -467,7 +496,7 @@ def lowering_of(sd, load=None):
                 continue
         required = (e.get("min", 0) or 0) >= 1
         ms = bool(e.get("mustSupport"))
-        if not (required or ms):
+        if not (required or ms or unlabelled(lp) in reached):
             continue
         mx = e.get("max")
         mx = int(mx) if mx not in (None, "*") else None
@@ -541,14 +570,23 @@ def collect(sd):
         if "." not in path:
             continue
         if "slicing" in e:
-            sg = slicings.setdefault(path, SlicingSpec())
-            sg.closed = e["slicing"].get("rules") == "closed"
-            sg.disc = [(d.get("type"), d.get("path")) for d in e["slicing"].get("discriminator", [])]
+            if ":" in eid and eid.count(":") == 1 and "." in eid.split(":", 1)[1]:
+                # a slicing declared inside a slice (`section:sectionProblems.entry`)
+                head, tail = eid.split(":", 1)
+                outer_name, rel = tail.split(".", 1)
+                nsg = slicings.setdefault(head, SlicingSpec()).slices.setdefault(outer_name, SliceSpec()).slicings.setdefault(rel, SlicingSpec())
+                nsg.closed = e["slicing"].get("rules") == "closed"
+                nsg.disc = [(d.get("type"), d.get("path")) for d in e["slicing"].get("discriminator", [])]
+            elif ":" not in eid:
+                sg = slicings.setdefault(path, SlicingSpec())
+                sg.closed = e["slicing"].get("rules") == "closed"
+                sg.disc = [(d.get("type"), d.get("path")) for d in e["slicing"].get("discriminator", [])]
         if ":" not in eid:
-            # a plain element: an object pattern is not enforced, but the cardinality is
-            if object_fixed(e) is not None:
-                deferred.append(("object pattern", eid))
+            # a plain element: a pattern / fixed object is what every instance must carry
             rule = Rule.of(e)
+            obj = object_fixed(e)
+            if obj is not None:
+                rule.patterns = tuple((a, tuple(p)) for a, p in groups_of(obj))
             if rule.enforceable():
                 elements.setdefault(path, Rule()).merge(rule)
             elif e.get("mustSupport") or (e.get("binding") or {}).get("strength") in ("required", "extensible"):
@@ -558,17 +596,38 @@ def collect(sd):
         head, tail = eid.split(":", 1)
         sg = slicings.setdefault(head, SlicingSpec())
         if ":" in tail:
-            # Nested slicing is not enforced — but a nested slice's scalar
-            # fixed values are what an OUTER slice's `value` discriminator
-            # resolves to (BP: component:SystolicBP is discriminated by
-            # code.coding.code, whose value lives in
+            # A slice inside a slice (`section:sectionProblems.entry:problem`):
+            # compiled one level down. Deeper nesting is deferred. Either way a
+            # nested slice's scalar fixed values are what an OUTER slice's
+            # `value` discriminator resolves to (BP: component:SystolicBP is
+            # discriminated by code.coding.code, whose value lives in
             # component:SystolicBP.code.coding:SBPCode.code).
-            deferred.append(("nested slicing", eid))
-            name = tail.split(".", 1)[0].split(":", 1)[0]
-            sl = sg.slices.setdefault(name, SliceSpec())
+            outer_name, rest = tail.split(".", 1)
+            sl = sg.slices.setdefault(outer_name, SliceSpec())
             fixed = scalar_fixed(e)
             if fixed is not None and path.startswith(head + "."):
                 sl.deep.setdefault(path[len(head) + 1:], []).append(fixed)
+            nested_path, nested_tail = rest.split(":", 1)
+            if ":" in nested_tail:
+                deferred.append(("nested slicing (three levels)", eid))
+                continue
+            nsg = sl.slicings.setdefault(nested_path, SlicingSpec())
+            types = e.get("type", [])
+            if "." not in nested_tail:
+                nsl = nsg.slices.setdefault(nested_tail, SliceSpec())
+                rule = Rule.of(e)
+                nsl.min, nsl.max = rule.min, rule.max
+                nsl.type = types[0].get("code") if types else None
+                nsl.profile = (types[0].get("profile") or [None])[0] if types else None
+                nsl.target_profiles = [p.split("|")[0] for t in types for p in t.get("targetProfile", [])]
+                nsl.invariants += slice_invariants(e, "")
+            else:
+                nname, nrel = nested_tail.split(".", 1)
+                nsl = nsg.slices.setdefault(nname, SliceSpec())
+                rule = Rule.of(e)
+                if rule.enforceable():
+                    nsl.subs.setdefault(nrel, Rule()).merge(rule)
+                nsl.invariants += slice_invariants(e, nrel)
             continue
         if "." not in tail:
             # the slice element itself
@@ -581,6 +640,7 @@ def collect(sd):
             obj = object_fixed(e)
             if obj is not None:
                 sl.objpat[""] = obj      # what a `pattern $this` discriminator resolves to
+                sl.subs.setdefault("", Rule()).patterns = tuple((a, tuple(p)) for a, p in groups_of(obj))
             sl.invariants += slice_invariants(e, "")
             continue
         # a slice sub-element
@@ -591,11 +651,14 @@ def collect(sd):
             continue
         rel = path[len(head) + 1:]
         sl.invariants += slice_invariants(e, rel)
+        profs = [p.split("|")[0] for t in e.get("type", []) for p in t.get("profile", [])]
+        if profs:
+            sl.sub_profiles[rel] = profs
+        rule = Rule.of(e)
         obj = object_fixed(e)
         if obj is not None:
-            sl.objpat[rel] = obj         # discriminable by, not enforced; cardinality kept
-            deferred.append(("object pattern", eid))
-        rule = Rule.of(e)
+            sl.objpat[rel] = obj         # discriminable by, and enforced on the slice's instances
+            rule.patterns = tuple((a, tuple(p)) for a, p in groups_of(obj))
         if rule.enforceable():
             sl.subs.setdefault(rel, Rule()).merge(rule)
         elif e.get("mustSupport"):
@@ -610,11 +673,41 @@ def resolve_discriminators(sliced_path, sg, sl, load):
     if not sg.disc:
         return None
     for dtype, dpath in sg.disc:
+        if dpath == "resolve()" and load:
+            # a Reference slice discriminated by what it points at: the
+            # target's type, or its conformance to a profile (base types
+            # are not compiled, so they discriminate by type alone)
+            sds = [(u, load(u)) for u in sl.target_profiles]
+            if not sds or any(s is None for _, s in sds):
+                return None
+            if dtype == "type":
+                discs.append(("resolved-type", sorted({s["type"] for _, s in sds})))
+                continue
+            if dtype == "profile":
+                profs = [u for u, s in sds if s.get("derivation") == "constraint"]
+                if profs:
+                    discs.append(("resolved-profile", profs))
+                elif not any(d[0] == "resolved-type" for d in discs):
+                    discs.append(("resolved-type", sorted({s["type"] for _, s in sds})))
+                continue
+            return None
         if dtype == "type" and dpath == "$this":
             if not sl.type:
                 return None
             discs.append(("type", choice_key(sliced_path, sl.type)))
             continue
+        if dtype in ("type", "profile") and dpath in sl.sub_profiles and load:
+            # a Bundle entry's resource: its type, or conformance to its profile
+            sds = [load(u) for u in sl.sub_profiles[dpath]]
+            if dtype == "type":
+                types = {s.get("type") for s in sds if s}
+                if len(types) == 1 and all(sds):
+                    discs.append(("rtype", "$this." + dpath, types.pop()))
+                    continue
+            elif len(sds) == 1 and sds[0]:
+                discs.append(("profile", "$this." + dpath, sl.sub_profiles[dpath][0]))
+                continue
+            return None
         if dtype not in ("value", "pattern"):
             return None
         sub = sl.subs.get(dpath)
@@ -643,15 +736,24 @@ def build(sd, load=None):
     """`load(url)` resolves a referenced profile's StructureDefinition (or None)
     so a slice can be discriminated by, and inherit, an external profile."""
     elements, slicings, deferred = collect(sd)
-    out_slicings = []
-    for sliced_path, sg in slicings.items():
+
+    def compile_slicing(sliced_path, sg, label):
         emitted = []
         for name, sl in sg.slices.items():
             discs = resolve_discriminators(sliced_path, sg, sl, load)
             if discs is None:
-                deferred.append(("undiscriminable slice", f"{sliced_path}:{name}"))
+                deferred.append(("undiscriminable slice", f"{label}:{name}"))
                 continue
+            for rel, nsg in sl.slicings.items():
+                nested = compile_slicing(sliced_path + "." + rel, nsg, f"{label}:{name}.{rel}")
+                if nested:
+                    sl.compiled_slicings.append((rel, nsg.closed, nested))
             emitted.append((name, sl, discs))
+        return emitted
+
+    out_slicings = []
+    for sliced_path, sg in slicings.items():
+        emitted = compile_slicing(sliced_path, sg, sliced_path)
         if emitted:
             out_slicings.append((sliced_path, sg.closed, emitted))
     return Compiled(sd["type"], elements, out_slicings, deferred)
@@ -699,10 +801,58 @@ def el_line(path, r, indent):
     else:
         bd = "None"
     ty = strs(r.types)
+    pats = ", ".join(f"({rs(a)}, &[" + ", ".join(f"({rs(rel)}, {rs(v)})" for rel, v in pairs) + "])" for a, pairs in r.patterns)
+    path = path[:-1] if path.endswith("$this.") else path
     return (
         " " * indent
-        + f"ElementConstraint {{ path: {rs(path)}, min: {r.min}, max: {max_rs(r.max)}, fixed: {fx}, required_binding: {bd}, types: {ty} }},"
+        + f"ElementConstraint {{ path: {rs(path)}, min: {r.min}, max: {max_rs(r.max)}, fixed: {fx}, required_binding: {bd}, "
+        f"types: {ty}, patterns: &[{pats}] }},"
     )
+
+
+def emit_slicing(path, closed, slices, indent):
+    """The lines of one `Slicing { … }` literal — its slices' nested slicings recursively."""
+    pad = " " * indent
+    out = [f"{pad}Slicing {{ path: {rs(path)}, closed: {str(closed).lower()}, slices: &["]
+    for sname, sl, discs in slices:
+        out.append(f"{pad}    Slice {{ name: {rs(sname)}, discriminators: &[")
+        for d in discs:
+            if d[0] == "type":
+                out.append(f"{pad}        Discriminator::Type {{ key: {rs(d[1])} }},")
+            elif d[0] == "pattern":
+                pairs = ", ".join(f"({rs(rel)}, {rs(v)})" for rel, v in d[2])
+                out.append(f"{pad}        Discriminator::Pattern {{ path: {rs(d[1])}, pairs: &[{pairs}] }},")
+            elif d[0] == "rtype":
+                out.append(f"{pad}        Discriminator::ResourceType {{ path: {rs(d[1])}, ty: {rs(d[2])} }},")
+            elif d[0] == "profile":
+                out.append(f"{pad}        Discriminator::Profile {{ path: {rs(d[1])}, url: {rs(d[2])} }},")
+            elif d[0] == "resolved-type":
+                out.append(f"{pad}        Discriminator::ResolvedType {{ types: {strs(d[1])} }},")
+            elif d[0] == "resolved-profile":
+                out.append(f"{pad}        Discriminator::ResolvedProfile {{ urls: {strs(d[1])} }},")
+            else:
+                out.append(f"{pad}        Discriminator::Value {{ path: {rs(d[1])}, value: {rs(d[2])} }},")
+        prof = f"Some({rs(sl.profile)})" if sl.profile else "None"
+        out.append(f"{pad}    ], min: {sl.min}, max: {max_rs(sl.max)}, elements: &[")
+        for rel in sorted(sl.subs):
+            out.append(el_line("$this." + rel, sl.subs[rel], indent + 8))
+        out.append(f"{pad}    ], invariants: &[")
+        for rel, key, severity, human, expr, types in sl.invariants:
+            sev = "InvariantSeverity::Error" if severity == "error" else "InvariantSeverity::Warning"
+            ipath = "$this" if not rel else "$this." + rel
+            out.append(
+                f"{pad}        ProfileInvariant {{ path: {rs(ipath)}, key: {rs(key)}, severity: {sev}, "
+                f"human: {rs(human)}, expression: {rs(expr)}, types: {strs(types)} }},"
+            )
+        out.append(f"{pad}    ], profiles: &[")
+        for rel in sorted(sl.sub_profiles):
+            out.append(f"{pad}        ({rs('$this.' + rel)}, {strs(sl.sub_profiles[rel])}),")
+        out.append(f"{pad}    ], slicings: &[")
+        for rel, nclosed, nslices in sl.compiled_slicings:
+            out += emit_slicing("$this." + rel, nclosed, nslices, indent + 8)
+        out.append(f"{pad}    ], profile: {prof} }},")
+    out.append(f"{pad}] }},")
+    return out
 
 
 def emit(sd, provenance, load=None):
@@ -721,6 +871,7 @@ def emit(sd, provenance, load=None):
         "",
         "pub static PROFILE: CompiledProfile = CompiledProfile {",
         f"    url: {rs(sd.get('url'))},",
+        f"    base: {'Some(' + rs(sd['baseDefinition'].split('|')[0]) + ')' if sd.get('baseDefinition') else 'None'},",
         f"    name: {rs(name)},",
         f"    resource_type: {rs(c.resource_type)},",
         "    elements: &[",
@@ -729,31 +880,7 @@ def emit(sd, provenance, load=None):
         out.append(el_line(path, c.elements[path], 8))
     out += ["    ],", "    slicings: &["]
     for sliced_path, closed, slices in c.slicings:
-        out.append(f"        Slicing {{ path: {rs(sliced_path)}, closed: {str(closed).lower()}, slices: &[")
-        for sname, sl, discs in slices:
-            out.append(f"            Slice {{ name: {rs(sname)}, discriminators: &[")
-            for d in discs:
-                if d[0] == "type":
-                    out.append(f"                Discriminator::Type {{ key: {rs(d[1])} }},")
-                elif d[0] == "pattern":
-                    pairs = ", ".join(f"({rs(rel)}, {rs(v)})" for rel, v in d[2])
-                    out.append(f"                Discriminator::Pattern {{ path: {rs(d[1])}, pairs: &[{pairs}] }},")
-                else:
-                    out.append(f"                Discriminator::Value {{ path: {rs(d[1])}, value: {rs(d[2])} }},")
-            prof = f"Some({rs(sl.profile)})" if sl.profile else "None"
-            out.append(f"            ], min: {sl.min}, max: {max_rs(sl.max)}, elements: &[")
-            for rel in sorted(sl.subs):
-                out.append(el_line("$this." + rel, sl.subs[rel], 16))
-            out.append("            ], invariants: &[")
-            for rel, key, severity, human, expr, types in sl.invariants:
-                sev = "InvariantSeverity::Error" if severity == "error" else "InvariantSeverity::Warning"
-                ipath = "$this" if not rel else "$this." + rel
-                out.append(
-                    f"                ProfileInvariant {{ path: {rs(ipath)}, key: {rs(key)}, severity: {sev}, "
-                    f"human: {rs(human)}, expression: {rs(expr)}, types: {strs(types)} }},"
-                )
-            out.append(f"            ], profile: {prof} }},")
-        out.append("        ] },")
+        out += emit_slicing(sliced_path, closed, slices, 8)
     out += ["    ],", "    invariants: &["]
     for path, key, severity, human, expr, types in invariants:
         sev = "InvariantSeverity::Error" if severity == "error" else "InvariantSeverity::Warning"

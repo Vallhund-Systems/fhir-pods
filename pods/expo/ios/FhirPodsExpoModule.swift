@@ -51,6 +51,11 @@ public class FhirPodsExpoModule: Module {
       call({ ptr, len, _, _ in fhir_pods_slots(ptr, len) }, profileUrl)
     }
 
+    // Documents: {"document","placed","validation"} or {"error"}.
+    Function("document") { (kind: String, inputsJson: String) -> String in
+      call2({ a, al, b, bl, _, _ in fhir_pods_document(a, al, b, bl) }, kind, inputsJson)
+    }
+
     // De-identification: {"resource","applied","validation","remaining"} or {"error"}.
     Function("deidentify") { (json: String, policyJson: String) -> String in
       call2({ a, al, b, bl, _, _ in fhir_pods_deidentify(a, al, b, bl) }, json, policyJson)

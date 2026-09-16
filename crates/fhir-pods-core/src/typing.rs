@@ -26,7 +26,7 @@ fn split_ctx(ctx: &str) -> (&str, &str) {
 }
 
 /// The table's span for type `ty`.
-fn range_of(ty: &str) -> Option<&'static [(&'static str, u16, bool)]> {
+fn range_of(ty: &str) -> Option<&'static [(&'static str, u16, bool, bool)]> {
     let i = TYPES.binary_search(&ty).ok()?;
     let (start, end) = RANGES[i];
     Some(&TABLE[start as usize..end as usize])
@@ -60,8 +60,8 @@ fn cmp_rel(rel: &str, rest: &str, key: &str) -> core::cmp::Ordering {
 fn lookup(ctx: &str, key: &str) -> Option<Entry> {
     let (ty, rest) = split_ctx(ctx);
     let span = range_of(ty)?;
-    let i = span.binary_search_by(|(rel, _, _)| cmp_rel(rel, rest, key)).ok()?;
-    let (_, code, repeats) = span[i];
+    let i = span.binary_search_by(|(rel, _, _, _)| cmp_rel(rel, rest, key)).ok()?;
+    let (_, code, repeats, _) = span[i];
     Some(Entry { codes: CODES[code as usize], repeats })
 }
 
@@ -77,6 +77,15 @@ pub fn repeats(ctx: &str, key: &str) -> bool {
     }
     // (a concrete choice key resolves to its `[x]` entry: choices never repeat)
     lookup(ctx, key).is_some_and(|e| e.repeats)
+}
+
+/// The direct children a complex datatype requires (`Narrative.status`,
+/// `Extension.url`, `Annotation.text`): what every instance of the type
+/// must carry, profile or no profile. Empty for a resource type — a
+/// resource's required elements come with its profile.
+pub fn required_children(ty: &str) -> impl Iterator<Item = &'static str> {
+    let span = if crate::typemap::RESOURCES.binary_search(&ty).is_ok() { &[][..] } else { range_of(ty).unwrap_or(&[]) };
+    span.iter().filter(|(rel, _, _, required)| *required && !rel.contains('.')).map(|(rel, _, _, _)| *rel)
 }
 
 /// A resource or datatype name the table knows.
@@ -123,8 +132,8 @@ fn choice(ctx: &str, key: &str) -> Option<&'static str> {
     let (ty, rest) = split_ctx(ctx);
     let span = range_of(ty)?;
     // the entries directly under `rest`: those sorting at or after `rest.`
-    let start = span.partition_point(|(rel, _, _)| cmp_rel(rel, rest, "") == core::cmp::Ordering::Less);
-    for (rel, code, _) in &span[start..] {
+    let start = span.partition_point(|(rel, _, _, _)| cmp_rel(rel, rest, "") == core::cmp::Ordering::Less);
+    for (rel, code, _, _) in &span[start..] {
         let name = if rest.is_empty() {
             *rel
         } else {

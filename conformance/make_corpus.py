@@ -33,10 +33,14 @@ HR, PT = AU + "au-core-heartrate", AU + "au-core-patient"
 # fixture-name prefix). Each package's own examples are its valid fixtures.
 # The oracle (run.py) is handed the same list.
 IPA = "http://hl7.org/fhir/uv/ipa/StructureDefinition/"
+IPS = "http://hl7.org/fhir/uv/ips/StructureDefinition/"
+AUPS = "http://hl7.org.au/fhir/ps/StructureDefinition/"
 IGS = [
     ("hl7.fhir.au.core", "2.0.0", AU, "package", "example-"),
     ("hl7.fhir.us.core", "6.1.0", US, "package-us", "us-"),
     ("hl7.fhir.uv.ipa", "1.1.0", IPA, "package-ipa", "ipa-"),
+    ("hl7.fhir.uv.ips", "2.0.1", IPS, "package-ips", "ips-"),
+    ("hl7.fhir.au.ps", "1.0.0", AUPS, "package-au-ps", "aups-"),
 ]
 
 # Dependency packages whose datatype profiles slices inherit (no examples
@@ -44,6 +48,7 @@ IGS = [
 # (scripts/gen-profiles.sh) never depends on another tool's package cache.
 DEPS = [
     ("hl7.fhir.au.base", "6.0.0", "package-au-base"),
+    ("hl7.fhir.uv.extensions.r4", "5.3.0", "package-ext"),   # extensions IPS / AU PS slices inherit
     ("hl7.fhir.r4.core", "4.0.1", "package-r4"),   # the element-type table (tools/gen_typemap.py)
 ]
 
@@ -143,6 +148,16 @@ HAND_WRITTEN = [
 
 def drop(key):
     return lambda d: d.pop(key, None)
+
+
+def dangling_reference(d):
+    """A document whose Condition points at a Patient that is not in the
+    Bundle — a document must be self-contained."""
+    for e in d.get("entry", []):
+        r = e.get("resource") or {}
+        if r.get("resourceType") == "Condition":
+            r["subject"] = {"reference": "Patient/not-in-this-document"}
+            return
 
 
 def birthdate_accuracy_wrong_type(d):
@@ -351,6 +366,9 @@ US_MUTATIONS = [
     ("Encounter-example-1.json", "us-encounter-missing-type", drop("type"), False),
     ("Immunization-imm-1.json", "us-immunization-missing-vaccinecode", drop("vaccineCode"), False),
     ("AllergyIntolerance-example.json", "us-allergy-missing-patient", drop("patient"), False),
+    # the reference validator does not fail a document over a reference that does
+    # not resolve inside it (a warning) — kept as a guard against over-enforcing
+    ("Bundle-aups-basicsummary.json", "aups-dangling-reference", dangling_reference, True),
 ]
 
 
@@ -398,7 +416,24 @@ def main():
 
     # Every IG's own examples that declare one of its profiles: valid by
     # publication. Examples that declare no profile of the IG are left out —
-    # neither side would apply the IG to them.
+    # neither side would apply the IG to them. A few are outside what a
+    # library can check, and are named here with the reason.
+    SKIP = {
+        # the reference validator verifies Bundle.signature against its certificate;
+        # cryptographic verification is not a validation concern the pods take on
+        "aups-Bundle-aups-referral-endoconsult-autogen": "Bundle.signature verification is out of scope",
+    }
+    # Published examples the reference validator itself rejects when run without
+    # a terminology server, as the oracle is: IPS's pregnancy-status and
+    # pregnancy-outcome profiles differ only by value-set membership, so an
+    # Observation matches both slices — "matches more than one slice". Expected
+    # invalid here, for the same reason, on both sides.
+    INVALID_WITHOUT_TERMINOLOGY = {
+        "ips-Bundle-IPS-examples-Bundle-01",
+        "ips-Bundle-IPS-examples-Bundle-with-immunization",
+        "ips-Bundle-bundle-ips-all-sections",
+        "aups-Bundle-aups-referral-endoconsult-curated",
+    }
     au_examples, us_examples = {}, {}
     for pkg_id, pkg_ver, prefix, cache_dir, name_prefix in IGS:
         examples_dir = ensure_package(pkg_id, pkg_ver, cache_dir)
@@ -409,7 +444,11 @@ def main():
             if not profile:
                 continue
             (au_examples if prefix == AU else us_examples)[os.path.basename(path)] = d
-            emit(name_prefix + os.path.basename(path)[:-5], d, profile, True, ig)
+            name = name_prefix + os.path.basename(path)[:-5]
+            if name in SKIP:
+                print(f"   skipping {name}: {SKIP[name]}")
+                continue
+            emit(name, d, profile, name not in INVALID_WITHOUT_TERMINOLOGY, ig)
 
     us_ig = f"{IGS[1][0]}#{IGS[1][1]}"
     for pattern, name, fn, expect in US_MUTATIONS:

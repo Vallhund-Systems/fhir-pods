@@ -1,6 +1,6 @@
 {
   "name": "fhir-pods-wasm",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Embeddable FHIR verifier — the fhir-pods Rust core as a ~385 KB WebAssembly module with a zero-dependency JS wrapper. Browser, edge, Node.",
   "license": "MIT",
   "author": "Justin Grosvenor",

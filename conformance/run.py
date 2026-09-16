@@ -22,7 +22,7 @@ HERE = os.path.join(ROOT, "conformance")
 CORPUS = os.path.join(HERE, "corpus")
 JAR = os.path.join(HERE, "validator_cli.jar")
 JAR_URL = "https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar"
-IGS = ["hl7.fhir.au.core#2.0.0", "hl7.fhir.us.core#6.1.0", "hl7.fhir.uv.ipa#1.1.0"]  # keep in step with make_corpus.IGS
+IGS = ["hl7.fhir.au.core#2.0.0", "hl7.fhir.us.core#6.1.0", "hl7.fhir.uv.ipa#1.1.0", "hl7.fhir.uv.ips#2.0.1", "hl7.fhir.au.ps#1.0.0"]  # keep in step with make_corpus.IGS
 FILE_EXT = "operationoutcome-file"
 
 
@@ -135,9 +135,14 @@ def main():
         ["cargo", "run", "-q", "-p", "fhir-pods-core", "--example", "deid_corpus", "--", CORPUS],
         cwd=ROOT, stdout=subprocess.DEVNULL,
     )
+    subprocess.check_call(
+        ["cargo", "run", "-q", "-p", "fhir-pods-core", "--example", "document_corpus", "--", CORPUS],
+        cwd=ROOT, stdout=subprocess.DEVNULL,
+    )
     manifest = json.load(open(os.path.join(CORPUS, "manifest.json")))
     manifest += json.load(open(os.path.join(CORPUS, "lowered-manifest.json")))
     manifest += json.load(open(os.path.join(CORPUS, "deid-manifest.json")))
+    manifest += json.load(open(os.path.join(CORPUS, "doc-manifest.json")))
     paths = [os.path.join(CORPUS, c["file"]) for c in manifest]
     oracle = oracle_batch(paths) if have_java else {}
 

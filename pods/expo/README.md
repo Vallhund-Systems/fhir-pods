@@ -73,6 +73,23 @@ mustSupportGaps(JSON.stringify(patient));
 // ["Patient.telecom.system", "Patient.birthDate", …]
 ```
 
+## Documents
+
+```ts
+import { document } from "fhir-pods-expo";
+const { document: bundle, placed, omitted, validation } = document("au-ps", {
+  resources: [patient, ...conditions, ...allergies, ...medications, ...observations, practitioner],
+  author: "Practitioner/gp1",
+  date: new Date().toISOString(),
+});
+```
+
+`ips` or `au-ps`: sections from the kind's Composition profile, each resource
+placed by what it is, narrative generated, references rewritten to the
+entries, resources nothing reaches left out (`omitted`), required sections
+with nothing in them marked `emptyReason: unavailable`, and the Bundle
+validated on the way out (`validation`).
+
 ## De-identification
 
 ```ts

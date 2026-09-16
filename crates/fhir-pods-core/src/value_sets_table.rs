@@ -6,13 +6,21 @@
 //!
 //! Not bundled (answered through the terminology seam):
 //! - `http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113762.1.4.1240.3` — no ValueSet http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113762.1.4.1240.3
+//! - `http://hl7.org/fhir/ValueSet/all-languages` — no complete CodeSystem urn:ietf:bcp:47
 //! - `http://hl7.org/fhir/ValueSet/mimetypes` — no complete CodeSystem urn:ietf:bcp:13
+//! - `http://hl7.org/fhir/ValueSet/timezones` — no complete CodeSystem https://www.iana.org/time-zones
 //! - `http://hl7.org/fhir/us/core/ValueSet/birthsex` — no ValueSet http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113762.1.4.1
 //! - `http://hl7.org/fhir/us/core/ValueSet/detailed-ethnicity` — no ValueSet http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.114222.4.11.877
 //! - `http://hl7.org/fhir/us/core/ValueSet/detailed-race` — no ValueSet http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.1.11.14914
 //! - `http://hl7.org/fhir/us/core/ValueSet/omb-ethnicity-category` — no ValueSet http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.114222.4.11.837
 //! - `http://hl7.org/fhir/us/core/ValueSet/omb-race-category` — no ValueSet http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.114222.4.11.836
 //! - `http://hl7.org/fhir/us/core/ValueSet/us-core-documentreference-type` — licensed http://loinc.org
+//! - `http://hl7.org/fhir/uv/ips/ValueSet/diagnostics-report-status-uv-ips` — exclude form
+//! - `http://hl7.org/fhir/uv/ips/ValueSet/edd-method-uv-ips` — licensed http://loinc.org
+//! - `http://hl7.org/fhir/uv/ips/ValueSet/imaging-study-status-uv-ips` — exclude form
+//! - `http://hl7.org/fhir/uv/ips/ValueSet/pregnancies-summary-uv-ips` — licensed http://loinc.org
+//! - `http://hl7.org/fhir/uv/ips/ValueSet/results-status-uv-ips` — exclude form
+//! - `http://terminology.hl7.org/ValueSet/sex-parameter-for-clinical-use` — no ValueSet http://terminology.hl7.org/ValueSet/sex-parameter-for-clinical-use
 //! - `https://healthterminologies.gov.au/fhir/ValueSet/australian-indigenous-status-1` — no ValueSet https://healthterminologies.gov.au/fhir/ValueSet/australian-indigenous-status-1
 //! - `https://healthterminologies.gov.au/fhir/ValueSet/australian-veteran-status-1` — no ValueSet https://healthterminologies.gov.au/fhir/ValueSet/australian-veteran-status-1
 //! - `https://healthterminologies.gov.au/fhir/ValueSet/concurrent-supply-grounds-1` — no ValueSet https://healthterminologies.gov.au/fhir/ValueSet/concurrent-supply-grounds-1
@@ -95,6 +103,20 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
         ],
     ),
     (
+        "http://hl7.org/fhir/ValueSet/bundle-type",
+        &[
+            ("http://hl7.org/fhir/bundle-type", "batch", "Batch"),
+            ("http://hl7.org/fhir/bundle-type", "batch-response", "Batch Response"),
+            ("http://hl7.org/fhir/bundle-type", "collection", "Collection"),
+            ("http://hl7.org/fhir/bundle-type", "document", "Document"),
+            ("http://hl7.org/fhir/bundle-type", "history", "History List"),
+            ("http://hl7.org/fhir/bundle-type", "message", "Message"),
+            ("http://hl7.org/fhir/bundle-type", "searchset", "Search Results"),
+            ("http://hl7.org/fhir/bundle-type", "transaction", "Transaction"),
+            ("http://hl7.org/fhir/bundle-type", "transaction-response", "Transaction Response"),
+        ],
+    ),
+    (
         "http://hl7.org/fhir/ValueSet/care-plan-activity-kind",
         &[
             ("http://hl7.org/fhir/resource-types", "Appointment", "Appointment"),
@@ -138,6 +160,15 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
             ("http://hl7.org/fhir/care-team-status", "inactive", "Inactive"),
             ("http://hl7.org/fhir/care-team-status", "proposed", "Proposed"),
             ("http://hl7.org/fhir/care-team-status", "suspended", "Suspended"),
+        ],
+    ),
+    (
+        "http://hl7.org/fhir/ValueSet/composition-attestation-mode",
+        &[
+            ("http://hl7.org/fhir/composition-attestation-mode", "legal", "Legal"),
+            ("http://hl7.org/fhir/composition-attestation-mode", "official", "Official"),
+            ("http://hl7.org/fhir/composition-attestation-mode", "personal", "Personal"),
+            ("http://hl7.org/fhir/composition-attestation-mode", "professional", "Professional"),
         ],
     ),
     (
@@ -214,6 +245,17 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
             ("http://hl7.org/fhir/device-nametype", "patient-reported-name", "Patient Reported name"),
             ("http://hl7.org/fhir/device-nametype", "udi-label-name", "UDI Label name"),
             ("http://hl7.org/fhir/device-nametype", "user-friendly-name", "User Friendly name"),
+        ],
+    ),
+    (
+        "http://hl7.org/fhir/ValueSet/device-statement-status",
+        &[
+            ("http://hl7.org/fhir/device-statement-status", "active", "Active"),
+            ("http://hl7.org/fhir/device-statement-status", "completed", "Completed"),
+            ("http://hl7.org/fhir/device-statement-status", "entered-in-error", "Entered in Error"),
+            ("http://hl7.org/fhir/device-statement-status", "intended", "Intended"),
+            ("http://hl7.org/fhir/device-statement-status", "on-hold", "On Hold"),
+            ("http://hl7.org/fhir/device-statement-status", "stopped", "Stopped"),
         ],
     ),
     (
@@ -294,6 +336,14 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
         ],
     ),
     (
+        "http://hl7.org/fhir/ValueSet/flag-status",
+        &[
+            ("http://hl7.org/fhir/flag-status", "active", "Active"),
+            ("http://hl7.org/fhir/flag-status", "entered-in-error", "Entered in Error"),
+            ("http://hl7.org/fhir/flag-status", "inactive", "Inactive"),
+        ],
+    ),
+    (
         "http://hl7.org/fhir/ValueSet/fm-status",
         &[
             ("http://hl7.org/fhir/fm-status", "active", "Active"),
@@ -314,6 +364,17 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
             ("http://hl7.org/fhir/goal-status", "planned", "Planned"),
             ("http://hl7.org/fhir/goal-status", "proposed", "Proposed"),
             ("http://hl7.org/fhir/goal-status", "rejected", "Rejected"),
+        ],
+    ),
+    (
+        "http://hl7.org/fhir/ValueSet/http-verb",
+        &[
+            ("http://hl7.org/fhir/http-verb", "DELETE", "DELETE"),
+            ("http://hl7.org/fhir/http-verb", "GET", "GET"),
+            ("http://hl7.org/fhir/http-verb", "HEAD", "HEAD"),
+            ("http://hl7.org/fhir/http-verb", "PATCH", "PATCH"),
+            ("http://hl7.org/fhir/http-verb", "POST", "POST"),
+            ("http://hl7.org/fhir/http-verb", "PUT", "PUT"),
         ],
     ),
     (
@@ -341,6 +402,14 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
             ("http://hl7.org/fhir/link-type", "replaced-by", "Replaced-by"),
             ("http://hl7.org/fhir/link-type", "replaces", "Replaces"),
             ("http://hl7.org/fhir/link-type", "seealso", "See also"),
+        ],
+    ),
+    (
+        "http://hl7.org/fhir/ValueSet/list-mode",
+        &[
+            ("http://hl7.org/fhir/list-mode", "changes", "Change List"),
+            ("http://hl7.org/fhir/list-mode", "snapshot", "Snapshot List"),
+            ("http://hl7.org/fhir/list-mode", "working", "Working List"),
         ],
     ),
     (
@@ -474,6 +543,14 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
         ],
     ),
     (
+        "http://hl7.org/fhir/ValueSet/questionnaireresponse-mode",
+        &[
+            ("http://terminology.hl7.org/CodeSystem/v3-ParticipationMode", "ELECTRONIC", "electronic data"),
+            ("http://terminology.hl7.org/CodeSystem/v3-ParticipationMode", "VERBAL", "verbal"),
+            ("http://terminology.hl7.org/CodeSystem/v3-ParticipationMode", "WRITTEN", "written"),
+        ],
+    ),
+    (
         "http://hl7.org/fhir/ValueSet/reaction-event-severity",
         &[
             ("http://hl7.org/fhir/reaction-event-severity", "mild", "Mild"),
@@ -514,6 +591,14 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
             ("http://hl7.org/fhir/request-status", "on-hold", "On Hold"),
             ("http://hl7.org/fhir/request-status", "revoked", "Revoked"),
             ("http://hl7.org/fhir/request-status", "unknown", "Unknown"),
+        ],
+    ),
+    (
+        "http://hl7.org/fhir/ValueSet/search-entry-mode",
+        &[
+            ("http://hl7.org/fhir/search-entry-mode", "include", "Include"),
+            ("http://hl7.org/fhir/search-entry-mode", "match", "Match"),
+            ("http://hl7.org/fhir/search-entry-mode", "outcome", "Outcome"),
         ],
     ),
     (
@@ -584,31 +669,6 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
         ],
     ),
     (
-        "http://terminology.hl7.org.au/ValueSet/accession-number-type",
-        &[
-            ("http://terminology.hl7.org/CodeSystem/v2-0203", "ACSN", "Accession ID"),
-            ("http://terminology.hl7.org/CodeSystem/v2-0203", "LACSN", "Laboratory Accession ID"),
-        ],
-    ),
-    (
-        "http://terminology.hl7.org.au/ValueSet/au-timezone",
-        &[
-            ("https://www.iana.org/time-zones", "Australia/Adelaide", "Australia/Adelaide"),
-            ("https://www.iana.org/time-zones", "Australia/Brisbane", "Australia/Brisbane"),
-            ("https://www.iana.org/time-zones", "Australia/Broken_Hill", "Australia/Broken_Hill"),
-            ("https://www.iana.org/time-zones", "Australia/Darwin", "Australia/Darwin"),
-            ("https://www.iana.org/time-zones", "Australia/Eucla", "Australia/Eucla"),
-            ("https://www.iana.org/time-zones", "Australia/Hobart", "Australia/Hobart"),
-            ("https://www.iana.org/time-zones", "Australia/Lord_Howe", "Australia/Lord_Howe"),
-            ("https://www.iana.org/time-zones", "Australia/Melbourne", "Australia/Melbourne"),
-            ("https://www.iana.org/time-zones", "Australia/Perth", "Australia/Perth"),
-            ("https://www.iana.org/time-zones", "Australia/Sydney", "Australia/Sydney"),
-            ("https://www.iana.org/time-zones", "Indian/Christmas", "Indian/Christmas"),
-            ("https://www.iana.org/time-zones", "Indian/Cocos", "Indian/Cocos"),
-            ("https://www.iana.org/time-zones", "Pacific/Norfolk", "Pacific/Norfolk"),
-        ],
-    ),
-    (
         "http://terminology.hl7.org.au/ValueSet/dva-entitlement",
         &[
             ("http://terminology.hl7.org.au/CodeSystem/v2-0203", "DVAU", "DVA Number"),
@@ -667,12 +727,14 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
         ],
     ),
     (
-        "http://terminology.hl7.org.au/ValueSet/order-identifier-type",
+        "http://terminology.hl7.org/ValueSet/v3-ConfidentialityClassification",
         &[
-            ("http://terminology.hl7.org/CodeSystem/v2-0203", "FGN", ""),
-            ("http://terminology.hl7.org/CodeSystem/v2-0203", "FILL", "Filler Identifier"),
-            ("http://terminology.hl7.org/CodeSystem/v2-0203", "PGN", ""),
-            ("http://terminology.hl7.org/CodeSystem/v2-0203", "PLAC", "Placer Identifier"),
+            ("http://terminology.hl7.org/CodeSystem/v3-Confidentiality", "L", "low"),
+            ("http://terminology.hl7.org/CodeSystem/v3-Confidentiality", "M", "moderate"),
+            ("http://terminology.hl7.org/CodeSystem/v3-Confidentiality", "N", "normal"),
+            ("http://terminology.hl7.org/CodeSystem/v3-Confidentiality", "R", "restricted"),
+            ("http://terminology.hl7.org/CodeSystem/v3-Confidentiality", "U", "unrestricted"),
+            ("http://terminology.hl7.org/CodeSystem/v3-Confidentiality", "V", "very restricted"),
         ],
     ),
 ];
@@ -692,13 +754,10 @@ pub static DISPLAYS: &[(&str, &str, &str)] = &[
     ("http://terminology.hl7.org.au/CodeSystem/v2-0203", "DPID", "Australia Post Delivery Point Identifier"),
     ("http://terminology.hl7.org.au/CodeSystem/v2-0203", "ETP", "Electronic Transfer of Prescription Identifier"),
     ("http://terminology.hl7.org.au/CodeSystem/v2-0203", "GNAF", "Geocoded National Address File Identifier"),
-    ("http://terminology.hl7.org.au/CodeSystem/v2-0203", "LDI", "Local Dispense Identifier"),
     ("http://terminology.hl7.org.au/CodeSystem/v2-0203", "LPN", "Local Prescription Number"),
-    ("http://terminology.hl7.org.au/CodeSystem/v2-0203", "LRI", "Local Report Identifier"),
     ("http://terminology.hl7.org.au/CodeSystem/v2-0203", "LSPN", "Location Specific Practice Number"),
     ("http://terminology.hl7.org.au/CodeSystem/v2-0203", "NATAA", "NATA Accreditation Number"),
     ("http://terminology.hl7.org.au/CodeSystem/v2-0203", "NATAS", "NATA Site Number"),
-    ("http://terminology.hl7.org.au/CodeSystem/v2-0203", "NDI", "National Device Identifier"),
     ("http://terminology.hl7.org.au/CodeSystem/v2-0203", "NOI", "National Organisation Identifier"),
     ("http://terminology.hl7.org.au/CodeSystem/v2-0203", "NPIO", "National provider at organisation identifier"),
     ("http://terminology.hl7.org.au/CodeSystem/v2-0203", "PAN", "Pharmacy Approval Number"),
@@ -710,6 +769,7 @@ pub static DISPLAYS: &[(&str, &str, &str)] = &[
     ("http://terminology.hl7.org/CodeSystem/condition-category", "problem-list-item", "Problem List Item"),
     ("http://terminology.hl7.org/CodeSystem/coverage-class", "group", "Group"),
     ("http://terminology.hl7.org/CodeSystem/coverage-class", "plan", "Plan"),
+    ("http://terminology.hl7.org/CodeSystem/observation-category", "imaging", "Imaging"),
     ("http://terminology.hl7.org/CodeSystem/observation-category", "laboratory", "Laboratory"),
     ("http://terminology.hl7.org/CodeSystem/observation-category", "social-history", "Social History"),
     ("http://terminology.hl7.org/CodeSystem/observation-category", "survey", "Survey"),
@@ -727,4 +787,5 @@ pub static DISPLAYS: &[(&str, &str, &str)] = &[
     ("http://terminology.hl7.org/CodeSystem/v2-0203", "PI", "Patient internal identifier"),
     ("http://terminology.hl7.org/CodeSystem/v2-0443", "AP", "Administering Provider"),
     ("http://terminology.hl7.org/CodeSystem/v2-0443", "OP", "Ordering Provider"),
+    ("http://terminology.hl7.org/CodeSystem/v3-ActClass", "PCPR", "care provision"),
 ];

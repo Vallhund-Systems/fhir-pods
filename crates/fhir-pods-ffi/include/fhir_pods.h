@@ -9,8 +9,8 @@
 extern "C" {
 #endif
 
-/* ABI version; a host refuses a mismatched module. This header is ABI 6. */
-#define FHIR_PODS_ABI_VERSION 6u
+/* ABI version; a host refuses a mismatched module. This header is ABI 7. */
+#define FHIR_PODS_ABI_VERSION 7u
 uint32_t fhir_pods_abi_version(void);
 
 /* Allocate `len` bytes in the module for the host to fill. */
@@ -72,6 +72,16 @@ uint8_t *fhir_pods_lower_tx(const uint8_t *profile, size_t profile_len, const ui
  * a Safe Harbor check still finds (empty under the default policy) — or
  * {"error": "..."} when it could not start. */
 uint8_t *fhir_pods_deidentify(const uint8_t *resource, size_t resource_len, const uint8_t *policy, size_t policy_len);
+
+/* Documents: an IPS ("ips") or AU Patient Summary ("au-ps") Bundle assembled
+ * from a patient and their resources — inputs are a JSON object
+ * {"resources": [...], "author": "Practitioner/x", "date": "...", "title"?,
+ *  "custodian"?, "identifier"?, "timestamp"?}. Sections come from the kind's
+ * Composition profile, each resource is placed by what it is, the narrative is
+ * generated, references are rewritten to the entries, and the document is
+ * validated against the kind's Bundle profile: {"document": {...}, "placed":
+ * [{"fullUrl","section"}], "validation": {...}} — or {"error": "..."}. */
+uint8_t *fhir_pods_document(const uint8_t *kind, size_t kind_len, const uint8_t *inputs, size_t inputs_len);
 
 /* Compiled terminology. Load a table (the line format tools/compile_valueset.py
  * writes from $expand responses): it answers after the bundled sets and before

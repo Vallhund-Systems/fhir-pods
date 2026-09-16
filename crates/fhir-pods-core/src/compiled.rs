@@ -23,6 +23,11 @@ pub struct ElementConstraint {
     /// For a choice element (`value[x]`): the types it allows. A concrete
     /// key of any other type is a structure error.
     pub types: &'static [&'static str],
+    /// A `pattern[x]` / `fixed[x]` object, as leaf groups: for each
+    /// (anchor, pairs), some ONE instance at `anchor` (relative; `""` is
+    /// the element itself) must carry every pair. A `patternCodeableConcept`
+    /// with one coding is one group anchored at `coding`.
+    pub patterns: &'static [(&'static str, &'static [(&'static str, &'static str)])],
 }
 
 /// How a binding reads the instance: a `code` is the code itself (the
@@ -53,6 +58,17 @@ pub enum Discriminator {
     /// A choice-type slice: the instance is the member under this concrete
     /// key (`valueQuantity`).
     Type { key: &'static str },
+    /// The resource at `path` (`$this.resource` of a Bundle entry) is of
+    /// this resource type.
+    ResourceType { path: &'static str, ty: &'static str },
+    /// The resource at `path` conforms to the registry profile at `url` —
+    /// the discriminator is a validation pass.
+    Profile { path: &'static str, url: &'static str },
+    /// The slice instance is a Reference whose target (resolved inside the
+    /// document) is of one of these resource types.
+    ResolvedType { types: &'static [&'static str] },
+    /// … whose target conforms to one of these registry profiles.
+    ResolvedProfile { urls: &'static [&'static str] },
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -66,6 +82,13 @@ pub struct Slice {
     /// Invariants declared on the slice itself (`$this`) or its sub-elements
     /// (`$this.…`) — evaluated on the slice's instances only.
     pub invariants: &'static [ProfileInvariant],
+    /// Profiles a sub-element must conform to one of (`$this.resource` of a
+    /// Bundle entry). Checked only when every listed profile is compiled;
+    /// a list naming one that is not is skipped, never guessed.
+    pub profiles: &'static [(&'static str, &'static [&'static str])],
+    /// Slicings declared inside this slice (`section:sectionProblems.entry`),
+    /// paths relative as `$this.…`, evaluated on the slice's instances.
+    pub slicings: &'static [Slicing],
     /// A profile (by canonical URL, looked up in the registry) that matched
     /// instances must also conform to — how a slice inherits an external
     /// datatype profile's constraints, e.g. `au-ihi` on `Patient.identifier:ihi`.
@@ -135,6 +158,10 @@ pub struct Lowering {
 #[derive(Debug, PartialEq, Eq)]
 pub struct CompiledProfile {
     pub url: &'static str,
+    /// The profile this one derives from (`baseDefinition`, versionless):
+    /// its snapshot carries the base's constraints, so a base profile need
+    /// not be applied alongside it.
+    pub base: Option<&'static str>,
     pub name: &'static str,
     pub resource_type: &'static str,
     pub elements: &'static [ElementConstraint],

@@ -53,23 +53,27 @@ Rust-shaped. (See [`docs/architecture.md`](docs/architecture.md).)
   (as information), and a FHIRPath engine with typed traversal and a
   linear-time `matches()` that evaluates every invariant in the registry
   except `htmlChecks()` and `resolve()` — skipped, never guessed.
-- **Agreement with the HL7 reference validator: 294/294** corpus instances
-  (the three IGs' own 253 published examples + 41 probes). What that
+- **Agreement with the HL7 reference validator: 967/967** fixtures
+  (five IGs' published examples and probes, every lowered resource, every
+  de-identified copy, every assembled document). What that
   covers and excludes: [`docs/scope.md`](docs/scope.md).
 - **Terminology:** every licence-free set the registry binds is bundled
   (generated from the packages); the rest arrives through a host seam — a
   compiled expansion table loaded at run time, an ask-then-answer loop
   (`terminology_needs`), or a synchronous provider — never as shipped content.
-- **Delivery:** a ~715 KB `.wasm` (198 KB gzipped) with a dependency-free JS
-  wrapper, and an Expo module (iOS XCFramework + Android jniLibs) — each
-  measured at tens of microseconds per profiled resource.
+- **Delivery:** a ~950 KB `.wasm` (242 KB gzipped) with a dependency-free JS
+  wrapper, and an Expo module (iOS XCFramework + Android jniLibs) — 40–70 µs
+  per profiled resource native, about 80 µs in wasm.
 - Zero dependencies, `no_std`, `#![forbid(unsafe_code)]`, fuzzed.
 - **Boundary:** the pods know FHIR; a host knows its data. Domain-specific
   maps (a host's records → FHIR) live in the host, never here.
 - **De-identification:** a Safe Harbor copy under a data policy — typed
   walk, pseudonyms keyed by the host's salt, masked stubs where a profile
   requires what was removed, a checker that proves the copy clean.
-- **Next:** documents (IPS / AU PS), audit — the pod family in
+- **Documents:** an IPS or AU Patient Summary from a patient and their
+  resources — sections from the profile, narrative generated, references
+  rewritten, the Bundle validated on the way out.
+- **Next:** audit and provenance — the pod family in
   [`docs/roadmap.md`](docs/roadmap.md).
 
 Design: [`docs/architecture.md`](docs/architecture.md) ·
@@ -88,7 +92,7 @@ how it got here: [`docs/history.md`](docs/history.md).
 
 - `crates/fhir-pods-core` — the Rust verifier core (zero deps, no `unsafe`, `no_std`).
 - `crates/fhir-pods-ffi` — the one lean C ABI, compiled per target (wasm32 / native staticlib).
-- `pods/wasm` — the wasm pod: a ~715 KB `.wasm` (198 KB gzipped) + a zero-dependency JS wrapper.
+- `pods/wasm` — the wasm pod: a ~950 KB `.wasm` (242 KB gzipped) + a zero-dependency JS wrapper.
 - `pods/expo` — the expo pod: the core as an Expo native module (iOS XCFramework + Android jniLibs).
 - `scripts/` — `gen-profiles.sh`, `build-wasm.sh`, `build-ios-xcframework.sh`, `build-android-jnilibs.sh`, `smoke-c.sh`, `check-no-std.sh`, `release.sh`.
 - `docs/architecture.md` — the design, delivery model, audit surface, and perf budget.

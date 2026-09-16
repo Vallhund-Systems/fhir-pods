@@ -43,7 +43,7 @@ def main():
 
     # canonical URL -> file, across every package (the resolver's index)
     index, cache = {}, {}
-    for pkg in pkg_dirs:
+    for pkg in pkg_dirs + ([base_dir] if base_dir else []):
         for path in glob.glob(os.path.join(pkg, "StructureDefinition-*.json")):
             sd = json.load(open(path))
             if sd.get("resourceType") == "StructureDefinition" and sd.get("url"):
@@ -56,18 +56,36 @@ def main():
             cache[url] = json.load(open(index[url]))
         return cache[url]
 
+    def is_profile(sd):
+        return sd.get("derivation") == "constraint" and (sd.get("snapshot") or {}).get("element")
+
+    # Datatype profiles a slice can inherit — Identifier (AU Base's IHI,
+    # Medicare, DVA…) and complex Extensions (US Core's race / ethnicity…,
+    # whose sub-extensions carry their own cardinality). From a primary IG,
+    # all of them; from a dependency, only those a compiled profile
+    # references (transitively), so a big extension package costs nothing.
+    def datatype_profile(sd):
+        return sd.get("kind") == "complex-type" and sd.get("type") in ("Identifier", "Extension")
+
     targets = []
-    for i, pkg in enumerate(pkg_dirs):
+    for i, pkg in enumerate(pkg_dirs[:primaries]):
         for path in sorted(glob.glob(os.path.join(pkg, "StructureDefinition-*.json"))):
             sd = json.load(open(path))
-            if sd.get("derivation") != "constraint" or not (sd.get("snapshot") or {}).get("element"):
-                continue
-            primary_resource = i < primaries and sd.get("kind") == "resource"
-            # Datatype profiles a slice can inherit: Identifier (AU Base's IHI,
-            # Medicare, DVA…) and complex Extensions (US Core's race /
-            # ethnicity…, whose sub-extensions carry their own cardinality).
-            datatype_profile = sd.get("kind") == "complex-type" and sd.get("type") in ("Identifier", "Extension")
-            if primary_resource or datatype_profile:
+            if is_profile(sd) and (sd.get("kind") == "resource" or datatype_profile(sd)):
+                targets.append(sd)
+    referenced, stack = set(), list(targets)
+    while stack:
+        for e in (stack.pop().get("snapshot") or {}).get("element", []):
+            for t in e.get("type", []):
+                for url in t.get("profile", []):
+                    url = url.split("|")[0]
+                    if url not in referenced and load(url):
+                        referenced.add(url)
+                        stack.append(load(url))
+    for pkg in pkg_dirs[primaries:]:
+        for path in sorted(glob.glob(os.path.join(pkg, "StructureDefinition-*.json"))):
+            sd = json.load(open(path))
+            if is_profile(sd) and datatype_profile(sd) and sd.get("url") in referenced:
                 targets.append(sd)
 
     # The base spec's vital-sign profiles: the reference validator applies

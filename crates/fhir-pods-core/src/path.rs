@@ -44,6 +44,8 @@ pub enum Op {
     Mod,
     /// `|` — union of two collections, distinct.
     Union,
+    /// `&` — string concatenation, an empty operand reading as `''`.
+    Concat,
     /// `x in coll` (and `coll contains x`, reversed at parse time).
     In,
 }
@@ -100,6 +102,7 @@ enum Tok {
     Star,
     /// `|` — union.
     Pipe,
+    Amp,
     /// Anything we don't support (`/`, `&`, `~`, …) — makes the parse fail.
     Other,
 }
@@ -160,6 +163,10 @@ fn tokenize(src: &str) -> Result<Vec<Tok>, Unsupported> {
             }
             b'|' => {
                 out.push(Tok::Pipe);
+                i += 1;
+            }
+            b'&' => {
+                out.push(Tok::Amp);
                 i += 1;
             }
             b'`' => {
@@ -458,6 +465,7 @@ impl P {
             let op = match self.peek() {
                 Some(Tok::Plus) => Op::Add,
                 Some(Tok::Minus) => Op::Sub,
+                Some(Tok::Amp) => Op::Concat,
                 _ => return Ok(l),
             };
             self.i += 1;
@@ -591,13 +599,46 @@ fn truth<D: Document>(c: &[Item<D>]) -> Result<Option<bool>, Unsupported> {
 /// whose type is unknown, so `is`/`as` there are unsupported.
 pub(crate) struct Env<'e, D> {
     pub this_type: Option<&'e str>,
+    /// `%resource` — the resource the expression runs in.
     pub root: Option<&'e Item<D>>,
+    /// The document `Bundle` that resource sits in, when it does: what
+    /// `resolve()` looks references up in.
+    pub bundle: Option<&'e Item<D>>,
 }
 
 impl<'e, D> Env<'e, D> {
     fn inner(&self) -> Env<'e, D> {
-        Env { this_type: None, root: self.root }
+        Env { this_type: None, root: self.root, bundle: self.bundle }
     }
+}
+
+/// The target of `reference` inside the bundle / resource the expression
+/// runs in: `#id` in `%resource.contained`; a Bundle entry by `fullUrl`, or
+/// by `Type/id` against a `fullUrl` ending so or the entry's resource type
+/// and id. `None` when it is not there — never fetched.
+pub fn resolve_reference<D: Document>(reference: &str, resource: Option<&D>, bundle: Option<&D>) -> Option<D> {
+    if let Some(local) = reference.strip_prefix('#') {
+        return resource?.child_instances("contained").into_iter().find(|c| c.scalars("$this.id") == [local]);
+    }
+    let bundle = bundle?;
+    let relative = reference.split_once('/').filter(|(ty, id)| !ty.is_empty() && !id.contains('/'));
+    for entry in bundle.child_instances("entry") {
+        let full = entry.scalars("$this.fullUrl");
+        let resource = entry.child_instances("resource").into_iter().next();
+        if full.contains(&reference) {
+            return resource;
+        }
+        if let (Some((ty, id)), Some(res)) = (relative, resource.as_ref()) {
+            let ends = full
+                .iter()
+                .any(|f| f.strip_suffix(id).and_then(|s| s.strip_suffix('/')).is_some_and(|s| s.ends_with(ty)));
+            let same = res.scalars("$this.resourceType") == [ty] && res.scalars("$this.id") == [id];
+            if ends || same {
+                return resource;
+            }
+        }
+    }
+    None
 }
 
 /// `where(cond)`: each item becomes `$this` for its own test.
@@ -957,6 +998,41 @@ fn eval<D: Document>(e: &Expr, ctx: &Item<D>, env: &Env<'_, D>) -> Result<Vec<It
                 },
                 ("count", 0) => vec![Item::Int(coll.len() as i64)],
                 ("first", 0) => coll.into_iter().take(1).collect(),
+                // `resolve()`: references to what sits alongside — contained,
+                // or in the document Bundle. Anything else cannot be fetched
+                // here, and is not guessed.
+                ("resolve", 0) => {
+                    let (resource, bundle) = (
+                        match env.root {
+                            Some(Item::Node(d)) => Some(d),
+                            _ => None,
+                        },
+                        match env.bundle {
+                            Some(Item::Node(d)) => Some(d),
+                            _ => None,
+                        },
+                    );
+                    let mut out = Vec::new();
+                    for it in &coll {
+                        let reference = match it {
+                            Item::Str(s) => s.clone(),
+                            Item::Node(d) => match d.as_scalar() {
+                                Some(s) => s.into(),
+                                None => match d.scalars("$this.reference").first() {
+                                    Some(s) => (*s).into(),
+                                    None => continue,
+                                },
+                            },
+                            _ => return Err(Unsupported),
+                        };
+                        match resolve_reference(&reference, resource, bundle) {
+                            Some(target) => out.push(Item::Node(target)),
+                            None if reference.starts_with('#') || bundle.is_some() => {}
+                            None => return Err(Unsupported),
+                        }
+                    }
+                    out
+                }
                 ("hasValue", 0) => vec![Item::Bool(match coll.as_slice() {
                     [Item::Node(d)] => d.as_scalar().is_some(),
                     [_] => true,
@@ -986,6 +1062,29 @@ fn eval<D: Document>(e: &Expr, ctx: &Item<D>, env: &Env<'_, D>) -> Result<Vec<It
                 ("intersect", 1) => {
                     let other = eval(&args[0], ctx, env)?;
                     coll.into_iter().filter(|a| other.iter().any(|b| items_equal(a, b))).collect()
+                }
+                // `is(T)` as a function: the type test on a single item.
+                ("is", 1) => {
+                    let Some((ns, ty)) = type_arg(&args[0]) else {
+                        return Err(Unsupported);
+                    };
+                    match single(&coll)? {
+                        None => vec![],
+                        Some(it) => vec![Item::Bool(type_matches_ns(item_type(it, &args[0], &env.inner())?, ns, ty))],
+                    }
+                }
+                ("tail", 0) => coll.into_iter().skip(1).collect(),
+                // `contains(substring)` on a string (the `contains` operator on
+                // collections is parsed as `in`, reversed)
+                ("contains", 1) => {
+                    let sub = eval(&args[0], ctx, env)?;
+                    match (single(&coll)?, single(&sub)?) {
+                        (Some(s), Some(t)) if is_text(s) && is_text(t) => {
+                            vec![Item::Bool(text_of(s)?.contains(&text_of(t)?))]
+                        }
+                        (None, _) | (_, None) => vec![],
+                        _ => return Err(Unsupported),
+                    }
                 }
                 // `as(T)` / `ofType(T)` as functions: the items of that type.
                 // (`as` on a collection is treated as a filter, as the
@@ -1163,6 +1262,17 @@ fn eval<D: Document>(e: &Expr, ctx: &Item<D>, env: &Env<'_, D>) -> Result<Vec<It
                 _ => return Err(Unsupported),
             }
         }
+        Expr::Bin(l, Op::Concat, r) => {
+            let (a, b) = (eval(l, ctx, env)?, eval(r, ctx, env)?);
+            let text = |coll: &[Item<D>]| -> Result<String, Unsupported> {
+                match single(coll)? {
+                    None => Ok(String::new()),
+                    Some(it) if is_text(it) => text_of(it),
+                    Some(_) => Err(Unsupported),
+                }
+            };
+            vec![Item::Str(text(&a)? + &text(&b)?)]
+        }
         Expr::Bin(l, Op::Union, r) => {
             let mut out = eval(l, ctx, env)?;
             for it in eval(r, ctx, env)? {
@@ -1234,8 +1344,20 @@ pub fn check<D: Document>(expr: &Expr, ctx: &D) -> Verdict {
 /// [`check`] with the element's FHIR type (for `$this is …`) and the
 /// resource root (for `%resource`).
 pub fn check_with<D: Document>(expr: &Expr, ctx: &D, this_type: Option<&str>, root: Option<&D>) -> Verdict {
+    check_in(expr, ctx, this_type, root, None)
+}
+
+/// [`check_with`] inside a document `Bundle`, which `resolve()` looks up in.
+pub fn check_in<D: Document>(
+    expr: &Expr,
+    ctx: &D,
+    this_type: Option<&str>,
+    root: Option<&D>,
+    bundle: Option<&D>,
+) -> Verdict {
     let root_item = root.map(|r| Item::Node(r.clone()));
-    let env = Env { this_type, root: root_item.as_ref() };
+    let bundle_item = bundle.map(|b| Item::Node(b.clone()));
+    let env = Env { this_type, root: root_item.as_ref(), bundle: bundle_item.as_ref() };
     match eval(expr, &Item::Node(ctx.clone()), &env).and_then(|coll| truth(&coll)) {
         Err(Unsupported) => Verdict::Unsupported,
         Ok(Some(false)) => Verdict::Fail,

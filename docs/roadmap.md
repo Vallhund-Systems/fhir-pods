@@ -70,25 +70,42 @@ result is put in front of the reference validator alongside the corpus.
   for the codings the registry fixes; a table's displays for the rest); the
   verifier asks it for membership.
 
-## 0.5 — Documents (IPS / AU PS)
+## 0.5 — Documents (IPS / AU PS) — shipped
 
-**What.** `fhir_pods_document(kind, resources[])` → a document `Bundle`:
-`Composition` with the standard sections (problems, medications, allergies,
-results, vital signs, procedures, immunizations, plan of care…), each
-resource in its section, narrative generated (a plain xhtml table per
-section, since `Composition` and `dom-6` want it), validated against the
-IPS / AU PS Bundle profile.
+**What.** `fhir_pods_document(kind, inputs)` → a document `Bundle`: a
+`Composition` whose sections come from the kind's compiled Composition
+profile (the section slices' LOINC codes), each resource placed by what it
+is, a plain xhtml table per section generated from what the resource
+carries, references rewritten to the entries they name (`Type/id`, a
+host's own `fullUrl`s, `urn:uuid:id`), resources nothing reaches left out
+and reported, a required section with nothing in it marked `emptyReason:
+unavailable` (no clinical fact is ever invented), and the document
+validated against the kind's Bundle profile on the way out. Kinds: `ips`
+(IPS 2.0.1) and `au-ps` (AU Patient Summary 1.0.0).
 
-**Needs.** IG #4 — `hl7.fhir.uv.ips` + `hl7.fhir.au.ps` — in the registry,
-and two engine features: `Bundle.entry` slicing by *profile* (a slice whose
-discriminator is "conforms to profile X" — the verifier already validates
-against a profile, so the discriminator is a validation pass), and
-intra-document reference checks (`Composition.section.entry` must resolve
-inside the Bundle — the `resolve()` we could not do for a lone resource is
-well-defined inside a document).
+**What it took in the verifier.** IG #4 (IPS 2.0.1 + AU PS 1.0.0, with the
+extensions package for what their slices inherit; registry 218 profiles);
+Bundle entries discriminated by resource type and by conformance to a
+profile (a validation pass inside the same bundle); slicings declared
+inside a slice (`section:sectionProblems.entry`) compiled and evaluated
+one level down, their entries discriminated by what a reference resolves
+to; `resolve()` and `&` in FHIRPath; the reference validator's "matches
+more than one slice" error; `pattern[x]` / `fixed[x]` objects on plain
+elements and slice sub-elements enforced (they were only discriminators
+before — a laboratory Observation passed IPS's tobacco-use profile); the
+base spec's minimums inside datatypes (`Narrative.status`,
+`Extension.url`) checked profile or no profile; and the document rules the
+reference applies — the Composition's references resolve in the bundle,
+every entry is reachable from the Composition.
 
-**Proof.** The IGs' own document examples, plus assembled documents from the
-registry's examples, against the oracle.
+**Proof.** The IGs' twelve document examples against the oracle (four of
+them the reference itself rejects without a terminology server, and so do
+we: IPS's two pregnancy profiles differ only by value-set membership), and
+every one of them taken apart and assembled again by the pod, the result
+in front of the oracle with our verdict — `examples/document_corpus.rs`,
+run by the harness. Out of scope, stated: `Bundle.signature`
+verification; slicings nested three levels deep (none in these IGs carry
+a verdict).
 
 ## 0.4 — De-identification — shipped
 
@@ -140,7 +157,7 @@ are plumbing, correlated by id).
 ## Sequence
 
 lowering → terminology → de-identification → documents (+ IG #4) → audit
-(the first three shipped 0.3.0 → 0.4.0).
+(the first four shipped 0.3.0 → 0.5.0).
 Lowering first because it is what makes the verifier pay for itself; de-id
 before documents because it is small and it is a policy commitment a host
 can point at. Each pod ships as a minor version with its own release notes,

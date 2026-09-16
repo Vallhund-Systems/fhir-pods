@@ -322,3 +322,28 @@ profiles were never implied — the reference applies `bodyweight` to any
 Observation with LOINC 29463-7 because the spec says so. Both fixed:
 registry 179 profiles. **819/819** across corpus, lowered and
 de-identified copies.
+- **Pass 22 — documents (2026-09-16).** IG #4 (IPS 2.0.1 + AU PS 1.0.0)
+compiled first try but its Bundle and section-entry slices were all
+"undiscriminable": entries discriminated by type/profile of the resource,
+section entries by `profile` at `resolve()`. Both landed in the IR
+(`ResourceType`, `Profile`, `ResolvedType`, `ResolvedProfile`), with
+nested slicings compiled one level down, `resolve()` and `&` in FHIRPath,
+and the bundle threaded through the engine as the scope a resource
+validates in. First oracle run 953/959; what was left taught the most:
+the reference errors on an element matching more than one slice, and
+rejects four of the IGs' own examples that way — without a terminology
+server IPS's pregnancy-status and pregnancy-outcome profiles cannot be told
+apart — which we now match and record in the corpus as expected-invalid.
+The assembler's round trip of the twelve document examples then exposed
+that `pattern[x]` objects on plain elements had never been enforced (a lab
+Observation passed the tobacco-use profile; six-way slice matches), that
+datatypes' own minimums were unchecked (a masked Narrative without a
+status), and that the reference demands every document entry be reachable
+from the Composition and the Composition's references resolve. All in.
+**967/967**: 346 fixtures, 300 lowered, 309 de-identified, 12 assembled.
+Cost showed up in the node throughput line: 45 → 139 µs per profiled
+Observation, because the implied base profiles validated a heart rate three
+times over. Two fixes, both structural: an invariant runs once per resource
+across the applied profiles, and a base profile an applied profile derives
+from is not applied again (the IR now carries `base`). 66 µs native, ~80 in
+wasm.

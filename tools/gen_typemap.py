@@ -64,12 +64,13 @@ def main():
             elif codes == ["Element"]:
                 codes = ["~" + path]
             repeats = e.get("max") not in (None, "1", "0")
-            rows.append((path.split(".", 1)[1], "|".join(codes), repeats))
+            required = (e.get("min") or 0) >= 1
+            rows.append((path.split(".", 1)[1], "|".join(codes), repeats, required))
         rows.sort()
         groups[t] = rows
         n += len(rows)
     for t in types:
-        for _, code, _ in groups[t]:
+        for _, code, _, _ in groups[t]:
             dict_index(code)
 
     with open(out_path, "w") as f:
@@ -102,11 +103,11 @@ def main():
         for code in dictionary:
             f.write(f'    "{code}",\n')
         f.write("];\n\n")
-        f.write("/// (relative path, `CODES` index, repeats).\n")
-        f.write("pub static TABLE: &[(&str, u16, bool)] = &[\n")
+        f.write("/// (relative path, `CODES` index, repeats, required).\n")
+        f.write("pub static TABLE: &[(&str, u16, bool, bool)] = &[\n")
         for t in types:
-            for rel, code, repeats in groups[t]:
-                f.write(f'    ("{rel}", {dictionary[code]}, {str(repeats).lower()}),\n')
+            for rel, code, repeats, required in groups[t]:
+                f.write(f'    ("{rel}", {dictionary[code]}, {str(repeats).lower()}, {str(required).lower()}),\n')
         f.write("];\n")
     print(f"wrote {out_path}: {n} entries, {len(types)} types, {len(dictionary)} codes")
 

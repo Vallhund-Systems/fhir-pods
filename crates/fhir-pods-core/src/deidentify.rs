@@ -25,7 +25,8 @@ pub enum Action {
     Remove,
     /// Replace with a `data-absent-reason: masked` stub.
     Mask,
-    /// A date keeps its year only (an `instant` cannot, and is removed).
+    /// A date keeps its year only; an `instant` becomes the first instant
+    /// of its year (`YYYY-01-01T00:00:00Z`) — the same information.
     Year,
     /// A string is replaced by a keyed hash of itself (references keep
     /// their type; contained references keep their `#`).
@@ -102,7 +103,9 @@ impl Policy {
             ("Signature", Action::Remove),
             ("date", Action::Year),
             ("dateTime", Action::Year),
-            ("instant", Action::Remove),
+            ("instant", Action::Year),
+            ("Meta.lastUpdated", Action::Remove),
+            ("Bundle.entry.fullUrl", Action::Pseudonym),
             ("id", Action::Pseudonym),
             ("Meta.versionId", Action::Remove),
             ("Device.serialNumber", Action::Remove),
@@ -239,6 +242,23 @@ pub struct Deidentified {
 
 const DAR: &str = "http://hl7.org/fhir/StructureDefinition/data-absent-reason";
 
+const MASKED_DIV: &str = "<div xmlns=\"http://www.w3.org/1999/xhtml\">Masked</div>";
+
+/// What stands in for a required element that went: a `data-absent-reason:
+/// masked` extension — or, for the datatypes whose own elements are
+/// required, the smallest valid value that says so (a `Narrative` needs a
+/// status and a div; an `Annotation` its text).
+fn masked_stub_for(ty: &str) -> Node {
+    match ty {
+        "Narrative" => Node::Object(alloc::vec![
+            ("status".into(), Node::Str("generated".into())),
+            ("div".into(), Node::Str(MASKED_DIV.into())),
+        ]),
+        "Annotation" => Node::Object(alloc::vec![("text".into(), Node::Str("Masked".into()))]),
+        _ => masked_stub(),
+    }
+}
+
 fn masked_stub() -> Node {
     Node::Object(alloc::vec![(
         "extension".into(),
@@ -283,11 +303,15 @@ impl Walker<'_> {
             }
             stream.pop().unwrap_or(0)
         };
+        // a hex token (a UUID, a hash) stays hex
+        let hex =
+            value.chars().all(|c| c.is_ascii_hexdigit() || c == '-') && value.chars().any(|c| c.is_ascii_alphabetic());
+        let letters = if hex { 6 } else { 26 };
         for c in value.chars() {
             out.push(match c {
                 '0'..='9' => (b'0' + next(&mut stream) % 10) as char,
-                'a'..='z' => (b'a' + next(&mut stream) % 26) as char,
-                'A'..='Z' => (b'A' + next(&mut stream) % 26) as char,
+                'a'..='z' => (b'a' + next(&mut stream) % letters) as char,
+                'A'..='Z' => (b'A' + next(&mut stream) % letters) as char,
                 c => c,
             });
         }
@@ -295,12 +319,24 @@ impl Walker<'_> {
         out
     }
 
-    /// `Patient/123` → `Patient/<h>`; `#med` → `#<h>`; an absolute URL keeps
-    /// its base; anything else is hashed whole.
+    /// The one pseudonym an id gets wherever it appears — as a resource's
+    /// `id`, in `Type/id`, `#id`, `urn:uuid:id` or a Bundle entry's `fullUrl`.
+    fn pseudonym_id(&self, id: &str) -> String {
+        self.pseudonym("id", id)
+    }
+
+    /// `Patient/123` → `Patient/<h>`; `#med` → `#<h>`; `urn:uuid:x` →
+    /// `urn:uuid:<h>`; an absolute URL keeps its base; anything else is
+    /// hashed whole.
     fn pseudonym_reference(&self, r: &str) -> String {
         if let Some(local) = r.strip_prefix('#') {
             let mut s = String::from("#");
-            s.push_str(&self.pseudonym("contained", local));
+            s.push_str(&self.pseudonym_id(local));
+            return s;
+        }
+        if let Some(uuid) = r.strip_prefix("urn:uuid:") {
+            let mut s = String::from("urn:uuid:");
+            s.push_str(&self.pseudonym_id(uuid));
             return s;
         }
         let (r, _history) = r.split_once("/_history/").unwrap_or((r, ""));
@@ -313,7 +349,7 @@ impl Walker<'_> {
             if typing::known_type(ty).is_some() {
                 let base = &r[..r.len() - id.len()];
                 let mut s = String::from(base);
-                s.push_str(&self.pseudonym(&alloc::format!("id:{ty}"), id));
+                s.push_str(&self.pseudonym_id(id));
                 return s;
             }
         }
@@ -385,9 +421,9 @@ impl Walker<'_> {
                 Action::Mask => {
                     self.note(&child_path, Action::Mask);
                     let stub = if matches!(value, Node::Array(_)) {
-                        Node::Array(alloc::vec![masked_stub()])
+                        Node::Array(alloc::vec![masked_stub_for(ty)])
                     } else {
-                        masked_stub()
+                        masked_stub_for(ty)
                     };
                     if is_primitive_type(ty) {
                         // a primitive is masked through its carrier: no value, the extension on `_key`
@@ -399,9 +435,12 @@ impl Walker<'_> {
                 }
                 Action::Year => {
                     let mut all_ok = true;
+                    let instant = ty == "instant";
                     let mut apply = |n: &mut Node| match n {
                         Node::Str(s) => match year_of(s) {
-                            Some(y) if !self.over_89(&child_path, y) => *s = y.to_string(),
+                            Some(y) if !self.over_89(&child_path, y) => {
+                                *s = if instant { alloc::format!("{y:04}-01-01T00:00:00Z") } else { y.to_string() }
+                            }
                             _ => all_ok = false,
                         },
                         _ => all_ok = false,
@@ -457,22 +496,18 @@ impl Walker<'_> {
     /// Which pseudonym domain a string gets, so the same thing maps to the
     /// same pseudonym wherever it appears. `None` = it is a reference.
     fn pseudonym_domain(&self, ctx: &str, key: &str, path: &str, siblings: &[(String, Node)]) -> Option<String> {
-        if ctx == "Reference" && key == "reference" {
+        if (ctx == "Reference" && key == "reference") || (ctx == "Bundle.entry" && key == "fullUrl") {
             return None;
         }
         if key == "id" && !path.contains('.') {
-            // a resource's own id: the domain a reference to it uses
-            return Some(if self.in_contained(path) { "contained".into() } else { alloc::format!("id:{path}") });
+            // a resource's own id: the domain every reference to it uses
+            return Some("id".into());
         }
         if ctx == "Identifier" && key == "value" {
             let system = siblings.iter().find(|(k, _)| k == "system").and_then(|(_, v)| v.as_str()).unwrap_or("");
             return Some(alloc::format!("identifier:{system}"));
         }
         Some(alloc::format!("text:{ctx}.{key}"))
-    }
-
-    fn in_contained(&self, path: &str) -> bool {
-        path.starts_with("contained:")
     }
 
     fn over_89(&self, path: &str, year: i64) -> bool {
@@ -495,13 +530,12 @@ impl Walker<'_> {
     fn keep_one(&mut self, value: &mut Node, child: typing::Child, path: &str) {
         let Node::Object(kvs) = value else { return };
         if child.ty == "Resource" {
-            // a contained resource: typed by its own resourceType, its own path space
+            // a contained resource, or a Bundle entry's: typed by its own
+            // resourceType, in its own path space
             let rt = kvs.iter().find(|(k, _)| k == "resourceType").and_then(|(_, v)| v.as_str());
             match rt.and_then(typing::known_type) {
                 Some(rt) if crate::typemap::RESOURCES.binary_search(&rt).is_ok() => {
-                    let inner = alloc::format!("contained:{rt}");
-                    // the contained resource's own `id` is what `#id` references point at
-                    self.walk_object(kvs, rt, &inner);
+                    self.walk_object(kvs, rt, rt);
                 }
                 _ => {
                     self.note(path, Action::Remove);
@@ -721,7 +755,11 @@ fn check_object(v: &Value<'_>, ctx: &'static str, path: &str, out: &mut Vec<Find
                     out.push(Finding { path: child_path.clone(), what: "date finer than a year".into() });
                 }
             }),
-            "instant" => out.push(Finding { path: child_path.clone(), what: "instant".into() }),
+            "instant" => each(&mut |x| {
+                if matches!(x, Value::Str(s) if !(s.len() == 20 && s.ends_with("-01-01T00:00:00Z"))) {
+                    out.push(Finding { path: child_path.clone(), what: "instant finer than a year".into() });
+                }
+            }),
             _ => {}
         }
         if child.ty == "Age" {
@@ -771,6 +809,14 @@ fn check_object(v: &Value<'_>, ctx: &'static str, path: &str, out: &mut Vec<Find
 
 fn is_masked_value(v: &Value<'_>) -> bool {
     let Value::Object(kvs) = v else { return false };
+    let member = |k: &str| kvs.iter().find(|(m, _)| m.as_ref() == k).map(|(_, v)| v);
+    // a masked Narrative / Annotation stub
+    if kvs.len() == 2 && matches!(member("div"), Some(Value::Str(d)) if d.as_ref() == MASKED_DIV) {
+        return true;
+    }
+    if kvs.len() == 1 && matches!(member("text"), Some(Value::Str(t)) if t.as_ref() == "Masked") {
+        return true;
+    }
     kvs.len() == 1
         && kvs[0].0.as_ref() == "extension"
         && matches!(&kvs[0].1, Value::Array(xs) if xs.iter().any(|x| matches!(x, Value::Object(e) if e.iter().any(|(k, v)| k.as_ref() == "url" && matches!(v, Value::Str(u) if u.as_ref() == DAR)))))

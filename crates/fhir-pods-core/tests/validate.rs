@@ -291,10 +291,8 @@ fn an_observation_with_a_vital_sign_loinc_code_is_held_to_the_base_profile() {
     let obs = r#"{"resourceType":"Observation","status":"final","category":[{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/observation-category","code":"vital-signs"}]}],"code":{"coding":[{"system":"http://loinc.org","code":"29463-7"}]},"subject":{"reference":"Patient/1"},"effectiveDateTime":"2026","valueString":"heavy"}"#;
     let r = fhir_pods_core::validate_bytes(obs.as_bytes());
     let text = fhir_pods_core::wire::report(&r);
-    assert!(
-        r.profiles.iter().any(|p| p.contains("Body Weight")) && r.profiles.iter().any(|p| p.contains("Vital Signs")),
-        "{text}"
-    );
+    // the most specific base profile applies; the generic vital-signs one it derives from is carried by it
+    assert_eq!(r.profiles, vec!["Observation Body Weight Profile"], "{text}");
     assert!(text.contains("vs-1") && text.contains("allows the types"), "{text}");
     // a code that is not a vital sign implies nothing
     let other = obs.replace("29463-7", "2339-0").replace("vital-signs", "laboratory");

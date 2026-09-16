@@ -59,11 +59,66 @@ impl<'a> Parsed<'a> {
     pub fn doc(&self) -> TreeDoc<'_, 'a> {
         TreeDoc { root: &self.value, ctx: resource_ctx(&self.value), carrier: None }
     }
+    /// The base spec's own minimums inside datatypes — a `Narrative` without
+    /// `status`, an `Extension` without `url` — anywhere in the resource:
+    /// `(element path, "Type.child")`. Profiles restate a resource's
+    /// required elements but not its datatypes' internals; this is the walk
+    /// that checks those.
+    pub fn datatype_gaps(&self) -> Vec<(alloc::string::String, alloc::string::String)> {
+        let mut out = Vec::new();
+        if let Some(rt) = resource_ctx(&self.value) {
+            datatype_gaps_in(&self.value, rt, rt, &mut out);
+        }
+        out
+    }
+
     /// A top-level member by key (the JSON type tag lives here).
     pub fn top_member(&self, key: &str) -> Option<&Value<'a>> {
         match &self.value {
             Value::Object(kvs) => kvs.iter().find(|(k, _)| k.as_ref() == key).map(|(_, v)| v),
             _ => None,
+        }
+    }
+}
+
+fn datatype_gaps_in(
+    v: &Value<'_>,
+    ctx: &'static str,
+    path: &str,
+    out: &mut Vec<(alloc::string::String, alloc::string::String)>,
+) {
+    let Value::Object(kvs) = v else { return };
+    let has = |name: &str| kvs.iter().any(|(k, _)| k.as_ref() == name || k.strip_prefix('_') == Some(name));
+    for child in crate::typing::required_children(ctx) {
+        if !has(child) {
+            out.push((alloc::string::String::from(path), alloc::format!("{ctx}.{child}")));
+        }
+    }
+    for (key, value) in kvs {
+        if key.as_ref() == "resourceType" {
+            continue;
+        }
+        let name = key.strip_prefix('_').unwrap_or(key);
+        let (child_ctx, child_path) = match key.strip_prefix('_') {
+            // a primitive's carrier is an Element holding extensions
+            Some(_) => ("Element", alloc::format!("{path}.{name}")),
+            None => match crate::typing::child(ctx, name) {
+                Some(ch) => (ch.ctx, alloc::format!("{path}.{name}")),
+                None => continue,
+            },
+        };
+        let each = |x: &Value<'_>, out: &mut Vec<_>| {
+            if child_ctx == "Resource" {
+                if let Some(rt) = resource_ctx(x) {
+                    datatype_gaps_in(x, rt, &child_path, out);
+                }
+            } else {
+                datatype_gaps_in(x, child_ctx, &child_path, out);
+            }
+        };
+        match value {
+            Value::Array(xs) => xs.iter().for_each(|x| each(x, out)),
+            x => each(x, out),
         }
     }
 }

@@ -12,7 +12,7 @@ JS  ──validate(json)──►  hand-written wrapper  ──C ABI──►  R
 No wasm-bindgen, no glue runtime: the wrapper is ~70 lines over `pod_alloc` /
 `pod_free` and the entrypoints. The `.wasm` carries the 168 compiled
 AU Core + US Core + IPA profiles (and the datatypes they inherit),
-the bundled value sets and the FHIRPath engine — ~715 KB, 198 KB gzipped.
+the bundled value sets and the FHIRPath engine — ~950 KB, 242 KB gzipped.
 
 ## Build
 
@@ -69,6 +69,29 @@ pod.mustSupportGaps(JSON.stringify(patient));
 // ["Patient.telecom.system", "Patient.birthDate", …] — must-support elements
 // the selected profile expects a client to populate when it has the data
 ```
+
+### Documents
+
+```js
+const { document, placed, omitted, validation } = pod.document("au-ps", {
+  resources: [patient, condition, allergy, medicationStatement, heartRate, practitioner],
+  author: "Practitioner/gp1",
+  date: "2026-09-16T10:00:00+10:00",
+  title: "Patient Summary",
+});
+```
+
+`ips` (IPS 2.0.1) or `au-ps` (AU Patient Summary 1.0.0). The sections come
+from the kind's Composition profile; each resource is placed by what it is
+(a Condition in Problems, or History of Past Illness when inactive; a
+vital-signs Observation in Vital Signs; a laboratory one in Results…), the
+narrative is a plain table per section built from what the resource
+carries, references are rewritten to the entries they name (`Type/id`,
+your own `fullUrl` when a resource arrives as a Bundle entry, `urn:uuid:id`),
+resources nothing reaches are left out and listed in `omitted`, a required
+section with nothing in it says `emptyReason: unavailable` — no clinical
+fact is invented — and the Bundle is validated against the kind's profile:
+`validation` is the verdict. The same inputs make the same document.
 
 ### De-identification
 
