@@ -53,7 +53,7 @@ Rust-shaped. (See [`docs/architecture.md`](docs/architecture.md).)
   covers and excludes: [`docs/scope.md`](docs/scope.md).
 - **Terminology** beyond the bundled base sets arrives through a
   host-provided seam (`TerminologyProvider`), never as shipped content.
-- **Delivery:** a ~370 KB `.wasm` (96 KB gzipped) with a dependency-free JS
+- **Delivery:** a ~385 KB `.wasm` (101 KB gzipped) with a dependency-free JS
   wrapper, and an Expo module (iOS XCFramework + Android jniLibs) — each
   measured at tens of microseconds per profiled resource.
 - Zero dependencies, `no_std`, `#![forbid(unsafe_code)]`, fuzzed.
@@ -73,7 +73,7 @@ how it got here: [`docs/history.md`](docs/history.md).
 
 - `crates/fhir-pods-core` — the Rust verifier core (zero deps, no `unsafe`, `no_std`).
 - `crates/fhir-pods-ffi` — the one lean C ABI, compiled per target (wasm32 / native staticlib).
-- `pods/wasm` — the wasm pod: a ~370 KB `.wasm` (96 KB gzipped) + a zero-dependency JS wrapper.
+- `pods/wasm` — the wasm pod: a ~385 KB `.wasm` (101 KB gzipped) + a zero-dependency JS wrapper.
 - `pods/expo` — the expo pod: the core as an Expo native module (iOS XCFramework + Android jniLibs).
 - `scripts/` — `gen-profiles.sh`, `build-wasm.sh`, `build-ios-xcframework.sh`, `build-android-jnilibs.sh`, `smoke-c.sh`, `check-no-std.sh`, `release.sh`.
 - `docs/architecture.md` — the design, delivery model, audit surface, and perf budget.
