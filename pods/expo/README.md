@@ -44,10 +44,15 @@ the report.
 
 ## Status
 
-Wired end to end: Rust → C ABI → Swift → JS, with the real verifier behind it
-(AU Core 2.0.0, 61 compiled profiles, FHIRPath invariants; 84/84 agreement with
-the HL7 reference validator). The bridge is the same two calls the wasm pod
-makes — the ABI never changes per target.
+Wired end to end and proven on the simulator: the pod, packed with `npm pack`
+and installed into a fresh Expo SDK 57 app as a vendored tarball, autolinks
+(`FhirPodsExpo` in `Podfile.lock`, deployment target raised to 16.4 by Expo),
+builds, and answers from JS — ABI 1, correct findings at the right paths,
+garbage in → `fatal` out, and **~22,000 validations/s (45 µs each, including
+`JSON.parse` of the report) on an iPhone 17 simulator**. The real verifier is
+behind it (AU Core 2.0.0, 61 compiled profiles, FHIRPath invariants; 84/84
+agreement with the HL7 reference validator). The bridge is the same two calls
+the wasm pod makes — the ABI never changes per target.
 
 ## Boundary
 

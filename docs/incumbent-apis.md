@@ -392,6 +392,17 @@ treat `$validate.profile` `uri`→`canonical` + R5's `usageContext` as additive.
   moved: **84/84 with zero issue-path differences**. Side effect: `dom-6`
   (narrative) now evaluates and warns, matching the reference validator's
   best-practice warning.
+- **Pass 9 — the pods (2026-09-15).** ABI 1 (`fhir_pods_validate` /
+  `fhir_pods_operation_outcome`, the two API layers over one memory
+  contract), driven from Rust, from C, from Swift (`swiftc` against the C
+  module + host staticlib) and from JS. **wasm pod:** 170 KB (49 KB gzipped)
+  with all 61 profiles, a ~40-line dependency-free wrapper, all 84 corpus
+  files through it, ~30k validations/s in Node (33 µs). **expo pod:** packed
+  and installed as a vendored tarball into a fresh Expo SDK 57 app —
+  autolinks, builds, answers on an iPhone 17 simulator at ~22k validations/s
+  (45 µs incl. `JSON.parse`). The "almost free" thesis is now a measured
+  number on both delivery targets, not a hope. Android (`cargo-ndk` + Kotlin
+  over the same two calls) is the remaining pod.
 - **Inferno** (ONC g10) and **Touchstone** are **API-behavior** harnesses
   (SMART launch, Bulk Data, search, US Core over the wire) — relevant only if we
   later ship a *server* surface, not for the embeddable validator. Note them,
