@@ -1104,6 +1104,16 @@ pub mod path {
         Implies,
         Eq,
         Ne,
+        Lt,
+        Le,
+        Gt,
+        Ge,
+        Add,
+        Sub,
+        Mul,
+        /// Integer division (`div`). `/` yields decimals and is outside the core.
+        Div,
+        Mod,
     }
 
     #[derive(Debug, Clone, PartialEq)]
@@ -1132,7 +1142,14 @@ pub mod path {
         Comma,
         Eq,
         Ne,
-        /// Anything we don't support (`<`, `+`, `%`, …) — makes the parse fail.
+        Lt,
+        Le,
+        Gt,
+        Ge,
+        Plus,
+        Minus,
+        Star,
+        /// Anything we don't support (`/`, `|`, `%`, …) — makes the parse fail.
         Other,
     }
 
@@ -1167,6 +1184,42 @@ pub mod path {
                 b'!' if b.get(i + 1) == Some(&b'=') => {
                     out.push(Tok::Ne);
                     i += 2;
+                }
+                b'<' | b'>' => {
+                    let eq = b.get(i + 1) == Some(&b'=');
+                    out.push(match (c, eq) {
+                        (b'<', false) => Tok::Lt,
+                        (b'<', true) => Tok::Le,
+                        (_, false) => Tok::Gt,
+                        (_, true) => Tok::Ge,
+                    });
+                    i += if eq { 2 } else { 1 };
+                }
+                b'+' => {
+                    out.push(Tok::Plus);
+                    i += 1;
+                }
+                b'-' => {
+                    out.push(Tok::Minus);
+                    i += 1;
+                }
+                b'*' => {
+                    out.push(Tok::Star);
+                    i += 1;
+                }
+                b'`' => {
+                    // A delimited identifier: an element named like a keyword (`text.`div``).
+                    let start = i + 1;
+                    let mut j = start;
+                    while j < b.len() && b[j] != b'`' {
+                        j += 1;
+                    }
+                    if j >= b.len() || j == start {
+                        return Err(Unsupported);
+                    }
+                    let s = core::str::from_utf8(&b[start..j]).map_err(|_| Unsupported)?;
+                    out.push(Tok::Ident(s.into()));
+                    i = j + 1;
                 }
                 b'\'' => {
                     let start = i + 1;
@@ -1271,9 +1324,10 @@ pub mod path {
             Ok(args)
         }
 
-        // Precedence, low to high: implies < or/xor < and < =/!= < path/call.
-        // `implies` is the entry of every nested expression (parens, call
-        // arguments), so the depth bound lives here.
+        // Precedence, low to high (the spec's table, minus what's outside the
+        // core): implies < or/xor < and < =/!= < comparison < +/- < * div mod
+        // < unary - < path/call. `implies` is the entry of every nested
+        // expression (parens, call arguments), so the depth bound lives here.
         fn implies(&mut self) -> Result<Expr, Unsupported> {
             if self.depth >= MAX_DEPTH {
                 return Err(Unsupported);
@@ -1318,15 +1372,81 @@ pub mod path {
         }
 
         fn eq(&mut self) -> Result<Expr, Unsupported> {
-            let l = self.postfix()?;
+            let l = self.cmp()?;
             let op = match self.peek() {
                 Some(Tok::Eq) => Op::Eq,
                 Some(Tok::Ne) => Op::Ne,
                 _ => return Ok(l),
             };
             self.i += 1;
-            let r = self.postfix()?;
+            let r = self.cmp()?;
             Ok(Expr::Bin(Box::new(l), op, Box::new(r)))
+        }
+
+        fn cmp(&mut self) -> Result<Expr, Unsupported> {
+            let l = self.add()?;
+            let op = match self.peek() {
+                Some(Tok::Lt) => Op::Lt,
+                Some(Tok::Le) => Op::Le,
+                Some(Tok::Gt) => Op::Gt,
+                Some(Tok::Ge) => Op::Ge,
+                _ => return Ok(l),
+            };
+            self.i += 1;
+            let r = self.add()?;
+            Ok(Expr::Bin(Box::new(l), op, Box::new(r)))
+        }
+
+        fn add(&mut self) -> Result<Expr, Unsupported> {
+            let mut l = self.mul()?;
+            loop {
+                let op = match self.peek() {
+                    Some(Tok::Plus) => Op::Add,
+                    Some(Tok::Minus) => Op::Sub,
+                    _ => return Ok(l),
+                };
+                self.i += 1;
+                let r = self.mul()?;
+                l = Expr::Bin(Box::new(l), op, Box::new(r));
+            }
+        }
+
+        fn mul(&mut self) -> Result<Expr, Unsupported> {
+            let mut l = self.unary()?;
+            loop {
+                let op = if matches!(self.peek(), Some(Tok::Star)) {
+                    self.i += 1;
+                    Op::Mul
+                } else if self.eat_kw("div") {
+                    Op::Div
+                } else if self.eat_kw("mod") {
+                    Op::Mod
+                } else {
+                    return Ok(l);
+                };
+                let r = self.unary()?;
+                l = Expr::Bin(Box::new(l), op, Box::new(r));
+            }
+        }
+
+        fn unary(&mut self) -> Result<Expr, Unsupported> {
+            match self.peek() {
+                Some(Tok::Minus) => {
+                    self.i += 1;
+                    match self.next() {
+                        Some(Tok::Int(n)) => Ok(Expr::Lit(Lit::Int(n.checked_neg().ok_or(Unsupported)?))),
+                        _ => Err(Unsupported),
+                    }
+                }
+                Some(Tok::Plus) => {
+                    self.i += 1;
+                    match self.next() {
+                        Some(Tok::Int(n)) => Ok(Expr::Lit(Lit::Int(n))),
+                        _ => Err(Unsupported),
+                    }
+                }
+                _ => self.postfix(),
+            }
         }
 
         fn postfix(&mut self) -> Result<Expr, Unsupported> {
@@ -1409,17 +1529,110 @@ pub mod path {
         }
     }
 
+    /// `where(cond)`: each item becomes `$this` for its own test.
     fn filter<D: Document>(coll: &[Item<D>], cond: &Expr) -> Result<Vec<Item<D>>, Unsupported> {
         let mut out = Vec::new();
         for it in coll {
-            let Item::Node(d) = it else {
-                return Err(Unsupported);
-            };
-            if truth(&eval(cond, d)?) == Some(true) {
-                out.push(Item::Node(d.clone()));
+            if truth(&eval(cond, it)?) == Some(true) {
+                out.push(it.clone());
             }
         }
         Ok(out)
+    }
+
+    /// A collection that must be empty or a single item; more is unsupported
+    /// (the spec raises an error — we skip rather than guess).
+    fn single<D: Document>(coll: &[Item<D>]) -> Result<Option<&Item<D>>, Unsupported> {
+        match coll {
+            [] => Ok(None),
+            [one] => Ok(Some(one)),
+            _ => Err(Unsupported),
+        }
+    }
+
+    /// The text of a string-valued item. Integers and booleans are not
+    /// strings: string functions on them are an error in the spec.
+    fn text_of<D: Document>(it: &Item<D>) -> Result<String, Unsupported> {
+        match it {
+            Item::Str(s) => Ok(s.clone()),
+            Item::Node(d) if d.as_bool().is_none() => d.as_scalar().map(String::from).ok_or(Unsupported),
+            _ => Err(Unsupported),
+        }
+    }
+
+    fn int_of<D: Document>(it: &Item<D>) -> Result<i64, Unsupported> {
+        match it {
+            Item::Int(n) => Ok(*n),
+            _ => Err(Unsupported),
+        }
+    }
+
+    /// `toInteger()`: an integer stays; a boolean is 1/0; text matching
+    /// `[+-]?\d+` converts; anything else is empty.
+    fn to_integer<D: Document>(it: &Item<D>) -> Option<i64> {
+        match it {
+            Item::Int(n) => Some(*n),
+            Item::Bool(b) => Some(*b as i64),
+            Item::Node(d) if d.as_bool().is_some() => d.as_bool().map(|b| b as i64),
+            Item::Node(d) => d.as_scalar().and_then(parse_int),
+            Item::Str(s) => parse_int(s),
+        }
+    }
+
+    fn parse_int(s: &str) -> Option<i64> {
+        let digits = s.strip_prefix(['+', '-']).unwrap_or(s);
+        if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+            return None;
+        }
+        s.parse().ok()
+    }
+
+    /// `substring(start[, length])`, in characters; a start outside the
+    /// string (or a negative length) is empty, not an error.
+    fn substring(s: &str, start: i64, len: Option<i64>) -> Option<String> {
+        let chars: Vec<char> = s.chars().collect();
+        if start < 0 || start as usize >= chars.len() {
+            return None;
+        }
+        let start = start as usize;
+        let end = match len {
+            None => chars.len(),
+            Some(l) if l < 0 => return None,
+            Some(l) => (start + l as usize).min(chars.len()),
+        };
+        Some(chars[start..end].iter().collect())
+    }
+
+    fn arith(op: Op, x: i64, y: i64) -> Result<Option<i64>, Unsupported> {
+        let r = match op {
+            Op::Add => x.checked_add(y),
+            Op::Sub => x.checked_sub(y),
+            Op::Mul => x.checked_mul(y),
+            // Division by zero is empty in the spec, not an error.
+            Op::Div if y == 0 => return Ok(None),
+            Op::Mod if y == 0 => return Ok(None),
+            Op::Div => x.checked_div(y),
+            Op::Mod => x.checked_rem(y),
+            _ => return Err(Unsupported),
+        };
+        // Overflow: the spec's integers are 32-bit and overflow is an error.
+        r.map(Some).ok_or(Unsupported)
+    }
+
+    fn compare<D: Document>(op: Op, a: &Item<D>, b: &Item<D>) -> Result<bool, Unsupported> {
+        let ord = match (a, b) {
+            (Item::Int(x), Item::Int(y)) => x.cmp(y),
+            (Item::Int(_), _) | (_, Item::Int(_)) | (Item::Bool(_), _) | (_, Item::Bool(_)) => return Err(Unsupported),
+            // Strings compare by code point, which is what `str`'s order is.
+            _ => text_of(a)?.cmp(&text_of(b)?),
+        };
+        Ok(match op {
+            Op::Lt => ord.is_lt(),
+            Op::Le => ord.is_le(),
+            Op::Gt => ord.is_gt(),
+            Op::Ge => ord.is_ge(),
+            _ => return Err(Unsupported),
+        })
     }
 
     fn logic(op: Op, a: Option<bool>, b: Option<bool>) -> Option<bool> {
@@ -1444,13 +1657,15 @@ pub mod path {
                 (None, Some(true)) => Some(true),
                 (None, _) => None,
             },
-            Op::Eq | Op::Ne => None,
+            _ => None,
         }
     }
 
-    fn eval<D: Document>(e: &Expr, ctx: &D) -> Result<Vec<Item<D>>, Unsupported> {
+    /// Evaluate with `ctx` as `$this` — a node, or a scalar item when inside
+    /// `select`/`where` over scalars (the Luhn invariants iterate digits).
+    fn eval<D: Document>(e: &Expr, ctx: &Item<D>) -> Result<Vec<Item<D>>, Unsupported> {
         Ok(match e {
-            Expr::This => vec![Item::Node(ctx.clone())],
+            Expr::This => vec![ctx.clone()],
             Expr::Lit(Lit::Str(s)) => vec![Item::Str(s.clone())],
             Expr::Lit(Lit::Int(n)) => vec![Item::Int(*n)],
             Expr::Lit(Lit::Bool(b)) => vec![Item::Bool(*b)],
@@ -1483,8 +1698,114 @@ pub mod path {
                     ("first", 0) => coll.into_iter().take(1).collect(),
                     ("hasValue", 0) => vec![Item::Bool(coll.iter().any(|it| scalar_of(it).is_some()))],
                     ("where", 1) => filter(&coll, &args[0])?,
+                    ("last", 0) => coll.into_iter().last().into_iter().collect(),
+                    ("select", 1) => {
+                        let mut out = Vec::new();
+                        for it in &coll {
+                            out.extend(eval(&args[0], it)?);
+                        }
+                        out
+                    }
+                    ("all", 1) => {
+                        let mut all = true;
+                        for it in &coll {
+                            all &= truth(&eval(&args[0], it)?) == Some(true);
+                        }
+                        vec![Item::Bool(all)]
+                    }
+                    // `extension(url)` — the extensions of each node with that URL.
+                    ("extension", 1) => {
+                        let url = match single(&eval(&args[0], ctx)?)? {
+                            Some(u) => text_of(u)?,
+                            None => return Ok(vec![]),
+                        };
+                        let mut out = Vec::new();
+                        for it in &coll {
+                            let Item::Node(d) = it else {
+                                return Err(Unsupported);
+                            };
+                            for ext in d.instances("$this.extension") {
+                                let matches = ext.instances("$this.url").iter().any(|u| u.as_scalar() == Some(url.as_str()));
+                                if matches {
+                                    out.push(Item::Node(ext));
+                                }
+                            }
+                        }
+                        out
+                    }
+                    // `iif(cond, then[, else])` — the input item is `$this` for all three.
+                    ("iif", 2 | 3) => {
+                        let Some(this) = single(&coll)? else {
+                            return Ok(vec![]);
+                        };
+                        match truth(&eval(&args[0], this)?) {
+                            Some(true) => eval(&args[1], this)?,
+                            _ if args.len() == 3 => eval(&args[2], this)?,
+                            _ => vec![],
+                        }
+                    }
+                    ("toInteger", 0) => match single(&coll)? {
+                        Some(it) => to_integer(it).map(Item::Int).into_iter().collect(),
+                        None => vec![],
+                    },
+                    ("toString", 0) => match single(&coll)? {
+                        Some(it) => vec![Item::Str(scalar_of(it).ok_or(Unsupported)?)],
+                        None => vec![],
+                    },
+                    ("length", 0) => match single(&coll)? {
+                        Some(it) => vec![Item::Int(text_of(it)?.chars().count() as i64)],
+                        None => vec![],
+                    },
+                    ("startsWith", 1) => match single(&coll)? {
+                        Some(it) => {
+                            let s = text_of(it)?;
+                            match single(&eval(&args[0], ctx)?)? {
+                                Some(p) => vec![Item::Bool(s.starts_with(text_of(p)?.as_str()))],
+                                None => vec![],
+                            }
+                        }
+                        None => vec![],
+                    },
+                    ("substring", 1 | 2) => match single(&coll)? {
+                        Some(it) => {
+                            let s = text_of(it)?;
+                            let Some(start) = single(&eval(&args[0], ctx)?)?.map(int_of).transpose()? else {
+                                return Ok(vec![]);
+                            };
+                            let len = match args.get(1) {
+                                Some(a) => match single(&eval(a, ctx)?)? {
+                                    Some(n) => Some(int_of(n)?),
+                                    None => return Ok(vec![]),
+                                },
+                                None => None,
+                            };
+                            substring(&s, start, len).map(Item::Str).into_iter().collect()
+                        }
+                        None => vec![],
+                    },
                     _ => return Err(Unsupported),
                 }
+            }
+            Expr::Bin(l, op @ (Op::Add | Op::Sub | Op::Mul | Op::Div | Op::Mod), r) => {
+                let (a, b) = (eval(l, ctx)?, eval(r, ctx)?);
+                let (Some(a), Some(b)) = (single(&a)?, single(&b)?) else {
+                    return Ok(vec![]);
+                };
+                match (a, b, op) {
+                    (Item::Int(x), Item::Int(y), _) => arith(*op, *x, *y)?.map(Item::Int).into_iter().collect(),
+                    // `+` on strings concatenates.
+                    (Item::Str(_) | Item::Node(_), Item::Str(_) | Item::Node(_), Op::Add) => {
+                        vec![Item::Str(text_of(a)? + &text_of(b)?)]
+                    }
+                    _ => return Err(Unsupported),
+                }
+            }
+            Expr::Bin(l, op @ (Op::Lt | Op::Le | Op::Gt | Op::Ge), r) => {
+                let (a, b) = (eval(l, ctx)?, eval(r, ctx)?);
+                let (Some(a), Some(b)) = (single(&a)?, single(&b)?) else {
+                    return Ok(vec![]);
+                };
+                vec![Item::Bool(compare(*op, a, b)?)]
             }
             Expr::Bin(l, op @ (Op::Eq | Op::Ne), r) => {
                 let (a, b) = (eval(l, ctx)?, eval(r, ctx)?);
@@ -1521,7 +1842,7 @@ pub mod path {
     /// Evaluate an invariant with `ctx` as `$this`. Empty is unknown and passes;
     /// only a definite `false` fails.
     pub fn check<D: Document>(expr: &Expr, ctx: &D) -> Verdict {
-        match eval(expr, ctx) {
+        match eval(expr, &Item::Node(ctx.clone())) {
             Err(Unsupported) => Verdict::Unsupported,
             Ok(coll) => {
                 if truth(&coll) == Some(false) {
@@ -1602,7 +1923,8 @@ mod tests {
         probe(s.as_bytes())
     }
 
-    const PATIENT_OK: &str = r#"{"resourceType":"Patient","identifier":[{"value":"1"}],"name":[{"family":"Doe","use":"official"}],"gender":"male","birthDate":"1970-01-01"}"#;
+    const PATIENT_ID: &str = r#""identifier":[{"system":"http://hospital.example.org/mrn","value":"1"}]"#;
+    const PATIENT_OK: &str = r#"{"resourceType":"Patient","identifier":[{"system":"http://hospital.example.org/mrn","value":"1"}],"name":[{"family":"Doe","use":"official"}],"gender":"male","birthDate":"1970-01-01"}"#;
 
     // --- Observation, default checks (no declared profile) ---
 
@@ -1712,7 +2034,7 @@ mod tests {
         // with the issue relabelled onto the slice.
         let ni = |system: &str| {
             PATIENT_OK.replace(
-                r#""identifier":[{"value":"1"}]"#,
+                PATIENT_ID,
                 &format!(
                     r#""identifier":[{{"type":{{"coding":[{{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"NI"}}]}},"system":"{system}","value":"8003608833357361"}}]"#
                 ),
@@ -1812,10 +2134,107 @@ mod tests {
     #[test]
     fn fhirpath_unsupported_is_skipped_not_guessed() {
         use super::path::parse;
-        // per-1: comparison operators are outside the core
-        assert!(parse("start.hasValue().not() or end.hasValue().not() or (start <= end)").is_err());
         // obs-7: %resource and intersect() are outside the core
         assert!(parse("value.empty() or component.code.where(coding.intersect(%resource.code.coding).exists()).empty()").is_err());
+        // type tests, union, decimal division, regex: outside the core
+        assert!(parse("$this is dateTime implies $this.toString().length() >= 10").is_err());
+        assert!(parse("a | b").is_err());
+        assert!(parse("1 / 2").is_err());
+        assert!(parse("1.5 < 2").is_err());
+        assert!(parse("-x").is_err());
+    }
+
+    fn fp(expr: &str, doc: &str) -> super::path::Verdict {
+        use super::document::Parsed;
+        use super::path::{check, parse};
+        let e = parse(expr).unwrap_or_else(|_| panic!("should parse: {expr}"));
+        let d = Parsed::parse(doc.as_bytes()).unwrap();
+        check(&e, &d.doc())
+    }
+
+    #[test]
+    fn fhirpath_arithmetic_and_precedence() {
+        use super::path::Verdict::{Fail, Pass};
+        let d = r#"{"a":"x"}"#;
+        assert_eq!(fp("1 + 2 * 3 = 7", d), Pass);
+        assert_eq!(fp("(1 + 2) * 3 = 9", d), Pass);
+        assert_eq!(fp("7 mod 3 = 1", d), Pass);
+        assert_eq!(fp("7 div 2 = 3", d), Pass);
+        assert_eq!(fp("10 - 2 - 3 = 5", d), Pass); // left-assoc
+        assert_eq!(fp("-3 + 5 = 2", d), Pass);
+        assert_eq!(fp("2 < 3 and 3 <= 3 and 4 > 3 and 3 >= 3", d), Pass);
+        assert_eq!(fp("3 < 2", d), Fail);
+        assert_eq!(fp("1 + 2 > 2 and 2 * 2 = 4", d), Pass); // + binds tighter than >, = looser than <
+        assert_eq!(fp("'b' > 'a'", d), Pass);
+        assert_eq!(fp("'ab' + 'c' = 'abc'", d), Pass);
+        // empty propagates; division by zero is empty; both pass an invariant
+        assert_eq!(fp("(nope + 1) = 1", d), Pass);
+        assert_eq!(fp("(1 div 0).empty()", d), Pass);
+        assert_eq!(fp("(1 mod 0).empty()", d), Pass);
+    }
+
+    #[test]
+    fn fhirpath_string_and_conversion_functions() {
+        use super::path::Verdict::{Fail, Pass, Unsupported};
+        let d = r#"{"value":"800360","n":"42","b":true,"list":["a","bb"]}"#;
+        assert_eq!(fp("value.length() = 6", d), Pass);
+        assert_eq!(fp("value.substring(0,3) = '800'", d), Pass);
+        assert_eq!(fp("value.substring(4) = '60'", d), Pass);
+        assert_eq!(fp("value.substring(9).empty()", d), Pass);
+        assert_eq!(fp("value.substring(2,-1).empty()", d), Pass);
+        assert_eq!(fp("value.startsWith('8003')", d), Pass);
+        assert_eq!(fp("value.startsWith('9')", d), Fail);
+        assert_eq!(fp("n.toInteger() + 1 = 43", d), Pass);
+        assert_eq!(fp("value.toInteger() = 800360", d), Pass);
+        assert_eq!(fp("'x'.toInteger().empty()", d), Pass);
+        assert_eq!(fp("b.toInteger() = 1", d), Pass);
+        assert_eq!(fp("n.toString() = '42'", d), Pass);
+        assert_eq!(fp("(42).toString().length() = 2", d), Pass);
+        assert_eq!(fp("list.last() = 'bb'", d), Pass);
+        // a string function on a non-string, or on a multi-item collection: unsupported
+        assert_eq!(fp("(1).length() = 1", d), Unsupported);
+        assert_eq!(fp("list.length() = 1", d), Unsupported);
+        assert_eq!(fp("list < 'c'", d), Unsupported);
+        // an unknown function parses (it is a call) but evaluates as unsupported
+        assert_eq!(fp("value.matches('^([0-9]{16})$')", d), Unsupported);
+        assert_eq!(fp("value.memberOf('http://x/vs')", d), Unsupported);
+    }
+
+    #[test]
+    fn fhirpath_iif_select_all_extension() {
+        use super::path::Verdict::{Fail, Pass};
+        let d = r#"{"digits":["1","7"],"name":[{"family":"A"},{"family":"B"}],"extension":[{"url":"http://x/dar","valueCode":"unknown"},{"url":"http://x/other"}]}"#;
+        assert_eq!(fp("digits.select($this.toInteger()).select(iif($this < 5, $this * 2, $this * 2 - 9)).first() = 2", d), Pass);
+        assert_eq!(fp("digits.select($this.toInteger()).select(iif($this < 5, $this * 2, $this * 2 - 9)).last() = 5", d), Pass);
+        assert_eq!(fp("iif(true, 'y', 'n') = 'y'", d), Pass);
+        assert_eq!(fp("iif(nope.exists(), 'y', 'n') = 'n'", d), Pass);
+        assert_eq!(fp("iif(false, 'y').empty()", d), Pass);
+        assert_eq!(fp("name.all(family.exists())", d), Pass);
+        assert_eq!(fp("name.all(given.exists())", d), Fail);
+        assert_eq!(fp("nope.all(given.exists())", d), Pass);
+        assert_eq!(fp("extension('http://x/dar').exists()", d), Pass);
+        assert_eq!(fp("extension('http://x/dar').value.exists()", d), Pass);
+        assert_eq!(fp("extension('http://x/none').exists()", d), Fail);
+        assert_eq!(fp("name.count() + digits.count() > 3", d), Pass);
+        // an element named like a keyword is written delimited
+        assert_eq!(fp("text.`div`.exists()", r#"{"text":{"div":"<div/>"}}"#), Pass);
+    }
+
+    #[test]
+    fn ihi_luhn_invariant_fires_through_the_slice_profile() {
+        let ihi = |value: &str| {
+            PATIENT_OK.replace(
+                PATIENT_ID,
+                &format!(
+                    r#""identifier":[{{"type":{{"coding":[{{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"NI"}}]}},"system":"http://ns.electronichealth.net.au/id/hi/ihi/1.0","value":"{value}"}}]"#
+                ),
+            )
+        };
+        let good = probe_str(&ihi("8003608833357361"));
+        assert!(good.contains("\"valid\":true"), "{good}");
+        let bad = probe_str(&ihi("8003608833357362"));
+        assert!(bad.contains("Luhn"), "{bad}");
+        assert!(bad.contains("\"valid\":false"), "{bad}");
     }
 
     #[test]
@@ -1842,7 +2261,12 @@ mod tests {
 
     #[test]
     fn operation_outcome_success_carries_one_informational_issue() {
-        let v = validate_bytes(PATIENT_OK.as_bytes());
+        // With narrative, so dom-6 (a warning) is quiet and the outcome is clean.
+        let with_text = PATIENT_OK.replace(
+            "\"gender\"",
+            "\"text\":{\"status\":\"generated\",\"div\":\"<div xmlns=\\\"http://www.w3.org/1999/xhtml\\\"/>\"},\"gender\"",
+        );
+        let v = validate_bytes(with_text.as_bytes());
         assert!(v.is_valid());
         let o = v.to_operation_outcome();
         assert!(o.contains("\"severity\":\"information\",\"code\":\"informational\""), "{o}");

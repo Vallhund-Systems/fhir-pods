@@ -296,7 +296,7 @@ const EXPR_TOKS: &[&str] = &[
     "value", "status", "code", "coding", "system", "component", "dataAbsentReason", "identifier", "extension",
     "exists()", "empty()", "not()", "count()", "first()", "hasValue()", "where(", "exists(", "and", "or", "xor",
     "implies", "=", "!=", "(", ")", ".", ",", "'final'", "'x'", "''", "0", "1", "42", "$this", "true", "false",
-    // tier two (must parse to Unsupported today, must evaluate tomorrow)
+    // tier two (arithmetic, comparison, string/conversion functions) + still-unsupported (types, union, regex)
     "<", "<=", ">", ">=", "+", "-", "*", "/", "mod", "div", "&", "|", "in", "contains", "is", "as",
     "substring(", "toInteger()", "length()", "iif(", "select(", "ofType(", "matches(", "startsWith(", "all(",
     "single()", "last()", "tail()", "skip(", "take(", "distinct()", "union(", "combine(", "trace(",

@@ -374,6 +374,24 @@ treat `$validate.profile` `uri`→`canonical` + R5's `usageContext` as additive.
   still disagrees *correctly* — its invariant parses `Unsupported` and is
   skipped. **The last gap is FHIRPath tier two** (`substring`, `toInteger`,
   arithmetic, `mod`, `iif`, `select`).
+- **Pass 8 — FHIRPath tier two → 84/84 (2026-09-15).** Hardened first
+  (depth-bounded parsers, bounded slice→profile inheritance, a seeded
+  zero-dep fuzz harness under `cargo test` plus libFuzzer targets; 14M
+  iterations clean across byte soup, hostile primitives, mutated real IG
+  examples and random FHIRPath), then widened the evaluator: comparison
+  (`< <= > >=`, integers and strings), integer arithmetic (`+ - * div mod`,
+  checked; `/` stays out — decimals), unary minus, string `+`, and
+  `substring`, `length`, `startsWith`, `toInteger`, `toString`, `select`,
+  `all`, `iif`, `last`, `extension(url)`, and delimited identifiers
+  (`` text.`div` ``). `$this` may now be a scalar, which is what the Luhn
+  invariants need (`select(value.substring(n,1).toInteger()).select(iif($this<5,
+  …))`). **53 of the 57 distinct invariant expressions in the registry now
+  parse**; the four that don't (`is dateTime`, `%resource`, `descendants()`,
+  `intersect`) stay skipped, as do `matches`, `memberOf`, `ofType` at
+  evaluation. `patient-ihi-bad-luhn` flipped to agreement and nothing else
+  moved: **84/84 with zero issue-path differences**. Side effect: `dom-6`
+  (narrative) now evaluates and warns, matching the reference validator's
+  best-practice warning.
 - **Inferno** (ONC g10) and **Touchstone** are **API-behavior** harnesses
   (SMART launch, Bulk Data, search, US Core over the wire) — relevant only if we
   later ship a *server* surface, not for the embeddable validator. Note them,

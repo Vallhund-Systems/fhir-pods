@@ -42,9 +42,16 @@ Rust-shaped. (See [`docs/architecture.md`](docs/architecture.md).)
 
 ## Status
 
-Commit zero — architecture and module skeleton. Nothing implemented yet; the
-core builds with zero external dependencies. Design, conformance target, and the
-audit-surface stance are in [`docs/architecture.md`](docs/architecture.md).
+Working verifier for **AU Core 2.0.0** (61 compiled profiles incl. the
+`hl7.fhir.au.base` identifier types): per-parent cardinality, fixed values,
+required bindings, slicing with profile inheritance, and a FHIRPath core
+sufficient for every invariant in the registry bar four (type tests,
+`%resource`, `descendants`, `intersect` — skipped, never guessed). Agrees with
+the HL7 reference validator on **84/84** corpus instances (the IG's own 64
+examples + 20 broken ones) with zero issue-path differences. Zero
+dependencies, `no_std`, fuzzed. Design and decisions:
+[`docs/architecture.md`](docs/architecture.md),
+[`docs/incumbent-apis.md`](docs/incumbent-apis.md).
 
 ## Layout
 
