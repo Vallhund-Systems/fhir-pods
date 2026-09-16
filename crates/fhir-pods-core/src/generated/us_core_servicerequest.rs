@@ -43,4 +43,14 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "ServiceRequest", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()" },
         ProfileInvariant { path: "ServiceRequest", key: "prr-1", severity: InvariantSeverity::Error, human: "orderDetail SHALL only be present if code is present", expression: "orderDetail.empty() or code.exists()" },
     ],
+    must_support: &[
+        "ServiceRequest.status",
+        "ServiceRequest.intent",
+        "ServiceRequest.category",
+        "ServiceRequest.code",
+        "ServiceRequest.subject",
+        "ServiceRequest.occurrence[x]",
+        "ServiceRequest.authoredOn",
+        "ServiceRequest.requester",
+    ],
 };

@@ -25,4 +25,6 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Identifier", key: "inv-npio-0", severity: InvariantSeverity::Error, human: "NPIO shall be 33 characters", expression: "value.length() = 33" },
         ProfileInvariant { path: "Identifier", key: "inv-npio-1", severity: InvariantSeverity::Error, human: "NPIO shall start with '800361', then 10 digits, then '@', then '800362', then 10 digits", expression: "value.matches('^(800361)([0-9]{10})(@)(800362)([0-9]{10})$')" },
     ],
+    must_support: &[
+    ],
 };

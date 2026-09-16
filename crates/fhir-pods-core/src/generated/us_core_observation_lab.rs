@@ -64,4 +64,14 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Observation.value[x]", key: "us-core-4", severity: InvariantSeverity::Warning, human: "SHOULD use Snomed CT for coded Results", expression: "value.ofType(CodeableConcept).coding.system.empty() or value.ofType(CodeableConcept).coding.system = 'http://snomed.info/sct'" },
         ProfileInvariant { path: "Observation.referenceRange", key: "obs-3", severity: InvariantSeverity::Error, human: "Must have at least a low or a high or text", expression: "low.exists() or high.exists() or text.exists()" },
     ],
+    must_support: &[
+        "Observation.status",
+        "Observation.category",
+        "Observation.code",
+        "Observation.subject",
+        "Observation.effective[x]",
+        "Observation.value[x]",
+        "Observation.dataAbsentReason",
+        "Observation.specimen",
+    ],
 };

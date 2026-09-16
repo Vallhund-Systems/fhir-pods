@@ -25,4 +25,6 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     invariants: &[
         ProfileInvariant { path: "Identifier", key: "inv-arbn-0", severity: InvariantSeverity::Error, human: "ARBN shall be 9 digits", expression: "value.matches('^([0-9]{9})$')" },
     ],
+    must_support: &[
+    ],
 };

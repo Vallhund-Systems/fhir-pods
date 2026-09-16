@@ -63,4 +63,16 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Device", key: "dom-5", severity: InvariantSeverity::Error, human: "If a resource is contained in another resource, it SHALL NOT have a security label", expression: "contained.meta.security.empty()" },
         ProfileInvariant { path: "Device", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()" },
     ],
+    must_support: &[
+        "Device.udiCarrier",
+        "Device.udiCarrier.deviceIdentifier",
+        "Device.udiCarrier.carrierHRF",
+        "Device.distinctIdentifier",
+        "Device.manufactureDate",
+        "Device.expirationDate",
+        "Device.lotNumber",
+        "Device.serialNumber",
+        "Device.type",
+        "Device.patient",
+    ],
 };

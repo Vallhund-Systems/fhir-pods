@@ -58,4 +58,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Observation", key: "us-core-2", severity: InvariantSeverity::Error, human: "If there is no component or hasMember element then either a value[x] or a data absent reason must be present", expression: "(component.empty() and hasMember.empty()) implies (dataAbsentReason.exists() or value.exists())" },
         ProfileInvariant { path: "Observation.referenceRange", key: "obs-3", severity: InvariantSeverity::Error, human: "Must have at least a low or a high or text", expression: "low.exists() or high.exists() or text.exists()" },
     ],
+    must_support: &[
+        "Observation.status",
+        "Observation.code",
+        "Observation.subject",
+        "Observation.effective[x]",
+    ],
 };

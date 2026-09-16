@@ -56,4 +56,13 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Observation.value[x]", key: "us-core-3", severity: InvariantSeverity::Error, human: "SHALL use UCUM for coded quantity units.", expression: "value.ofType(Quantity).system.empty() or value.ofType(Quantity).system = 'http://unitsofmeasure.org'" },
         ProfileInvariant { path: "Observation.referenceRange", key: "obs-3", severity: InvariantSeverity::Error, human: "Must have at least a low or a high or text", expression: "low.exists() or high.exists() or text.exists()" },
     ],
+    must_support: &[
+        "Observation.status",
+        "Observation.category",
+        "Observation.code",
+        "Observation.subject",
+        "Observation.effective[x]",
+        "Observation.value[x]",
+        "Observation.dataAbsentReason",
+    ],
 };

@@ -159,6 +159,18 @@ def invariants_of(sd):
     return out
 
 
+def must_support_of(sd):
+    """Paths of plain (unsliced) elements flagged mustSupport. Not a validation
+    rule — validators don't check it — but a client conforming to the IG is
+    expected to populate them, so the engine can report gaps as information."""
+    out = []
+    for e in (sd.get("snapshot") or {}).get("element", []):
+        path, eid = e.get("path", ""), e.get("id", "")
+        if "." in path and ":" not in eid and e.get("mustSupport"):
+            out.append(path)
+    return out
+
+
 def build(sd, load=None):
     """`load(url)` resolves a referenced profile's StructureDefinition (or None)
     so a slice can be discriminated by, and inherit, an external profile."""
@@ -374,6 +386,9 @@ def emit(sd, provenance, load=None):
             f"        ProfileInvariant {{ path: {rs(path)}, key: {rs(key)}, severity: {sev}, "
             f"human: {rs(human)}, expression: {rs(expr)} }},"
         )
+    out += ["    ],", "    must_support: &["]
+    for path in must_support_of(sd):
+        out.append(f"        {rs(path)},")
     out += ["    ],", "};", ""]
     return "\n".join(out)
 

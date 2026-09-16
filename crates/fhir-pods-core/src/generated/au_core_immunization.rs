@@ -87,4 +87,13 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Immunization", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()" },
         ProfileInvariant { path: "Immunization.education", key: "imm-1", severity: InvariantSeverity::Error, human: "One of documentType or reference SHALL be present", expression: "documentType.exists() or reference.exists()" },
     ],
+    must_support: &[
+        "Immunization.status",
+        "Immunization.vaccineCode",
+        "Immunization.patient",
+        "Immunization.occurrence[x]",
+        "Immunization.primarySource",
+        "Immunization.lotNumber",
+        "Immunization.note",
+    ],
 };

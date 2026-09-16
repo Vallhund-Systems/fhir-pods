@@ -47,4 +47,14 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "DiagnosticReport", key: "us-core-8", severity: InvariantSeverity::Error, human: "effective[x] SHALL be present if the status is 'partial', 'preliminary', 'final', 'amended', 'corrected' or 'appended'", expression: "(status='partial' or status='preliminary' or status='final' or status='amended' or status='corrected' or status='appended' ) implies effective.exists()" },
         ProfileInvariant { path: "DiagnosticReport", key: "us-core-9", severity: InvariantSeverity::Error, human: "issued SHALL be present if the status is 'partial', 'preliminary', 'final', 'amended', 'corrected' or 'appended'", expression: "(status='partial' or status='preliminary' or status='final' or status='amended' or status='corrected' or status='appended' ) implies issued.exists()" },
     ],
+    must_support: &[
+        "DiagnosticReport.status",
+        "DiagnosticReport.category",
+        "DiagnosticReport.code",
+        "DiagnosticReport.subject",
+        "DiagnosticReport.effective[x]",
+        "DiagnosticReport.issued",
+        "DiagnosticReport.performer",
+        "DiagnosticReport.result",
+    ],
 };

@@ -64,4 +64,12 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Immunization", key: "us-core-5", severity: InvariantSeverity::Warning, human: "SHOULD have a translation to the NDC value set", expression: "vaccineCode.coding.where(system='http://hl7.org/fhir/sid/ndc').empty()" },
         ProfileInvariant { path: "Immunization.education", key: "imm-1", severity: InvariantSeverity::Error, human: "One of documentType or reference SHALL be present", expression: "documentType.exists() or reference.exists()" },
     ],
+    must_support: &[
+        "Immunization.status",
+        "Immunization.statusReason",
+        "Immunization.vaccineCode",
+        "Immunization.patient",
+        "Immunization.occurrence[x]",
+        "Immunization.primarySource",
+    ],
 };

@@ -54,4 +54,13 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Organization.telecom", key: "org-3", severity: InvariantSeverity::Error, human: "The telecom of an organization can never be of use 'home'", expression: "where(use = 'home').empty()" },
         ProfileInvariant { path: "Organization.address", key: "org-2", severity: InvariantSeverity::Error, human: "An address of an organization can never be of use 'home'", expression: "where(use = 'home').empty()" },
     ],
+    must_support: &[
+        "Organization.identifier",
+        "Organization.type",
+        "Organization.name",
+        "Organization.telecom",
+        "Organization.telecom.system",
+        "Organization.telecom.value",
+        "Organization.address",
+    ],
 };

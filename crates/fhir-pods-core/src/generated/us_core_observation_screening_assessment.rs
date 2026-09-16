@@ -63,4 +63,16 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Observation.effective[x]", key: "us-core-1", severity: InvariantSeverity::Error, human: "Datetime must be at least to day.", expression: "$this is DateTime implies $this.toString().length() >= 10" },
         ProfileInvariant { path: "Observation.referenceRange", key: "obs-3", severity: InvariantSeverity::Error, human: "Must have at least a low or a high or text", expression: "low.exists() or high.exists() or text.exists()" },
     ],
+    must_support: &[
+        "Observation.status",
+        "Observation.category",
+        "Observation.code",
+        "Observation.subject",
+        "Observation.effective[x]",
+        "Observation.performer",
+        "Observation.value[x]",
+        "Observation.dataAbsentReason",
+        "Observation.hasMember",
+        "Observation.derivedFrom",
+    ],
 };

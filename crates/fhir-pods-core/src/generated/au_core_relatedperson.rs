@@ -62,4 +62,15 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "RelatedPerson", key: "au-core-relper-01", severity: InvariantSeverity::Error, human: "Either a name or a relationship shall be provided (or both)", expression: "name.exists() or relationship.exists()" },
         ProfileInvariant { path: "RelatedPerson", key: "au-core-relper-02", severity: InvariantSeverity::Error, human: "Names shall have at least text, family name, or given name present, or if neither is available, the Data Absent Reason extension shall be present", expression: "name.exists() implies name.extension('http://hl7.org/fhir/StructureDefinition/data-absent-reason').exists() xor name.all(text.exists() or family.exists() or given.exists())" },
     ],
+    must_support: &[
+        "RelatedPerson.patient",
+        "RelatedPerson.relationship",
+        "RelatedPerson.name",
+        "RelatedPerson.name.use",
+        "RelatedPerson.name.text",
+        "RelatedPerson.name.family",
+        "RelatedPerson.name.given",
+        "RelatedPerson.telecom",
+        "RelatedPerson.address",
+    ],
 };

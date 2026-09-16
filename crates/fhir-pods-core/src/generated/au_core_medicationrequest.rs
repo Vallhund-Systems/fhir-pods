@@ -105,4 +105,17 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "MedicationRequest", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()" },
         ProfileInvariant { path: "MedicationRequest.authoredOn", key: "au-core-medreq-01", severity: InvariantSeverity::Error, human: "Date shall be precise to the day or, if not available, the Data Absent Reason extension shall be present", expression: "$this.hasValue() implies (extension('http://hl7.org/fhir/StructureDefinition/data-absent-reason').value.exists().not() and $this.toString().length() >= 10)" },
     ],
+    must_support: &[
+        "MedicationRequest.status",
+        "MedicationRequest.intent",
+        "MedicationRequest.medication[x]",
+        "MedicationRequest.subject",
+        "MedicationRequest.encounter",
+        "MedicationRequest.authoredOn",
+        "MedicationRequest.requester",
+        "MedicationRequest.reasonCode",
+        "MedicationRequest.reasonReference",
+        "MedicationRequest.dosageInstruction",
+        "MedicationRequest.dosageInstruction.text",
+    ],
 };

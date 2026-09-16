@@ -443,6 +443,16 @@ treat `$validate.profile` `uri`→`canonical` + R5's `usageContext` as additive.
   once by the app — never a JS callback, because the verifier is synchronous.
   Proven from Rust, C, Swift (swiftc), JS (node suite 8/8), and on both
   simulators. Oracle unchanged at 271/271.
+- **Pass 12 — must-support as information, not conformance (2026-09-15).**
+  Each compiled profile now carries its `mustSupport` element paths (plain
+  elements; slice-internal ones are deferred). `must_support_gaps(resource)`
+  returns the ones the resource leaves empty *where the parent is present* (a
+  child under an absent parent is not a gap — the parent is). Deliberately
+  outside the validation report and the FFI for now: no validator fails on
+  must-support, so folding it into `issues` would break bug-for-bug agreement;
+  it is the client-side completeness check (what US Core / AU Core certify a
+  *sender* on), reachable from Rust and `probe --must-support`. Promote to the
+  ABI when a host wants it.
 - **Inferno** (ONC g10) and **Touchstone** are **API-behavior** harnesses
   (SMART launch, Bulk Data, search, US Core over the wire) — relevant only if we
   later ship a *server* surface, not for the embeddable validator. Note them,

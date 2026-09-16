@@ -70,4 +70,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Observation", key: "obs-7", severity: InvariantSeverity::Error, human: "If Observation.code is the same as an Observation.component.code then the value element associated with the code SHALL NOT be present", expression: "value.empty() or component.code.where(coding.intersect(%resource.code.coding).exists()).empty()" },
         ProfileInvariant { path: "Observation.referenceRange", key: "obs-3", severity: InvariantSeverity::Error, human: "Must have at least a low or a high or text", expression: "low.exists() or high.exists() or text.exists()" },
     ],
+    must_support: &[
+        "Observation.status",
+        "Observation.category",
+        "Observation.code",
+        "Observation.subject",
+    ],
 };

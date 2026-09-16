@@ -36,4 +36,12 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "RelatedPerson", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()" },
         ProfileInvariant { path: "RelatedPerson", key: "us-core-14", severity: InvariantSeverity::Error, human: "Either a name or a relationship SHALL be provided (or both)", expression: "name.exists() or relationship.exists()" },
     ],
+    must_support: &[
+        "RelatedPerson.active",
+        "RelatedPerson.patient",
+        "RelatedPerson.relationship",
+        "RelatedPerson.name",
+        "RelatedPerson.telecom",
+        "RelatedPerson.address",
+    ],
 };

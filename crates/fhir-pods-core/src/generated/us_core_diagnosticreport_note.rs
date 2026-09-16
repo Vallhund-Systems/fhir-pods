@@ -39,4 +39,18 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "DiagnosticReport", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()" },
         ProfileInvariant { path: "DiagnosticReport", key: "us-core-10", severity: InvariantSeverity::Error, human: "effective[x] SHALL be present if the status is 'partial', 'preliminary', 'final', 'amended', 'corrected' or 'appended'", expression: "(status='partial' or status='preliminary' or status='final' or status='amended' or status='corrected' or status='appended' ) implies effective.exists()" },
     ],
+    must_support: &[
+        "DiagnosticReport.status",
+        "DiagnosticReport.category",
+        "DiagnosticReport.code",
+        "DiagnosticReport.subject",
+        "DiagnosticReport.encounter",
+        "DiagnosticReport.effective[x]",
+        "DiagnosticReport.issued",
+        "DiagnosticReport.performer",
+        "DiagnosticReport.result",
+        "DiagnosticReport.media",
+        "DiagnosticReport.media.link",
+        "DiagnosticReport.presentedForm",
+    ],
 };

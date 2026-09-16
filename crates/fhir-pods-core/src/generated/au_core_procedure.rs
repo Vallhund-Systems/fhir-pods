@@ -56,4 +56,13 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Procedure", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()" },
         ProfileInvariant { path: "Procedure.bodySite", key: "au-core-pro-01", severity: InvariantSeverity::Error, human: "If a coded body site is provided, at least one coding shall be from SNOMED CT", expression: "coding.exists() implies coding.where(system='http://snomed.info/sct').exists()" },
     ],
+    must_support: &[
+        "Procedure.status",
+        "Procedure.code",
+        "Procedure.subject",
+        "Procedure.encounter",
+        "Procedure.performed[x]",
+        "Procedure.reasonCode",
+        "Procedure.reasonReference",
+    ],
 };

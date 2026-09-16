@@ -82,4 +82,15 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Coverage", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()" },
         ProfileInvariant { path: "Coverage", key: "us-core-15", severity: InvariantSeverity::Error, human: "Member Id in Coverage.identifier or Coverage.subscriberId SHALL be present", expression: "identifier.type.coding.where(system='http://terminology.hl7.org/CodeSystem/v2-0203' and code='MB').exists() or subscriberId.exists()" },
     ],
+    must_support: &[
+        "Coverage.identifier",
+        "Coverage.status",
+        "Coverage.type",
+        "Coverage.subscriberId",
+        "Coverage.beneficiary",
+        "Coverage.relationship",
+        "Coverage.period",
+        "Coverage.payor",
+        "Coverage.class",
+    ],
 };

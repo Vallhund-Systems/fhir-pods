@@ -46,4 +46,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Procedure", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()" },
         ProfileInvariant { path: "Procedure", key: "us-core-7", severity: InvariantSeverity::Error, human: "Performed SHALL be present if the status is 'completed' or 'in-progress'", expression: "(status='completed' or status='in-progress') implies performed.exists()" },
     ],
+    must_support: &[
+        "Procedure.status",
+        "Procedure.code",
+        "Procedure.subject",
+        "Procedure.performed[x]",
+    ],
 };

@@ -75,6 +75,7 @@ cargo test -p fhir-pods-core                 # unit tests + the seeded fuzz harn
 FUZZ_ITERS=1000000 FUZZ_SEED=42 cargo test -p fhir-pods-core --test fuzz   # longer / different seed
 ./scripts/check-no-std.sh                    # bare-metal build: nothing in the core touches std
 python3 conformance/run.py                   # differential test vs the HL7 reference validator (AU Core + US Core)
+cargo run -p fhir-pods-core --example probe -- [--outcome|--must-support] resource.json   # one resource, by hand
 ./scripts/smoke-c.sh                         # the C ABI, driven from C against the host staticlib
 ./scripts/build-wasm.sh && (cd pods/wasm && npm test)   # the wasm pod, end to end through the JS wrapper
 ```

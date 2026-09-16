@@ -54,4 +54,14 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Condition.stage", key: "con-1", severity: InvariantSeverity::Error, human: "Stage SHALL have summary or assessment", expression: "summary.exists() or assessment.exists()" },
         ProfileInvariant { path: "Condition.evidence", key: "con-2", severity: InvariantSeverity::Error, human: "evidence SHALL have code or details", expression: "code.exists() or detail.exists()" },
     ],
+    must_support: &[
+        "Condition.clinicalStatus",
+        "Condition.verificationStatus",
+        "Condition.category",
+        "Condition.code",
+        "Condition.subject",
+        "Condition.onset[x]",
+        "Condition.abatement[x]",
+        "Condition.recordedDate",
+    ],
 };

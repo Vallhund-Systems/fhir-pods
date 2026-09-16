@@ -75,4 +75,15 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "MedicationStatement", key: "dom-5", severity: InvariantSeverity::Error, human: "If a resource is contained in another resource, it SHALL NOT have a security label", expression: "contained.meta.security.empty()" },
         ProfileInvariant { path: "MedicationStatement", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()" },
     ],
+    must_support: &[
+        "MedicationStatement.status",
+        "MedicationStatement.medication[x]",
+        "MedicationStatement.subject",
+        "MedicationStatement.effective[x]",
+        "MedicationStatement.dateAsserted",
+        "MedicationStatement.reasonCode",
+        "MedicationStatement.reasonReference",
+        "MedicationStatement.dosage",
+        "MedicationStatement.dosage.text",
+    ],
 };

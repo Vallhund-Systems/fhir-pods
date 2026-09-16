@@ -24,4 +24,6 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     invariants: &[
         ProfileInvariant { path: "Identifier", key: "inv-ahpra-0", severity: InvariantSeverity::Error, human: "Ahpra identifier shall be 3 uppercase letters, followed by 10 digits", expression: "value.matches('^[A-Z]{3}[0-9]{10}$')" },
     ],
+    must_support: &[
+    ],
 };

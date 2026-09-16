@@ -45,4 +45,6 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     invariants: &[
         ProfileInvariant { path: "Extension", key: "inv-idrout-0", severity: InvariantSeverity::Error, human: "preference is required when flag is true", expression: "extension.where(url='routability-flag').value.single()=true implies extension.where(url='routability-preference').exists()" },
     ],
+    must_support: &[
+    ],
 };

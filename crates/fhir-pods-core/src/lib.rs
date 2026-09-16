@@ -27,7 +27,8 @@
 #[macro_use]
 extern crate alloc;
 
-use alloc::string::String;
+use alloc::{string::String, vec::Vec};
+use compiled::CompiledProfile;
 use document::Document;
 use validate::{IssueType, Report, Severity};
 
@@ -78,18 +79,7 @@ pub fn validate_bytes_with(input: &[u8], tx: &dyn terminology::TerminologyProvid
         Some(rt) => match document::Parsed::parse(input) {
             Ok(parsed) => {
                 let doc = parsed.doc();
-                // A declared meta.profile selects the generated profile (spec behavior).
-                let declared = doc.scalars("$this.meta.profile");
-                let selected = generated::REGISTRY
-                    .iter()
-                    .find(|p| p.resource_type == rt && declared.iter().any(|u| *u == p.url))
-                    .copied();
-                // Resource-type defaults when nothing is declared.
-                let default = match rt {
-                    "Patient" => Some(&generated::au_core_patient::PROFILE),
-                    _ => None,
-                };
-                match selected.or(default) {
+                match select_profile(rt, &doc) {
                     Some(profile) => Validation {
                         resource_type: rt.into(),
                         profile: Some(profile.name),
@@ -108,9 +98,40 @@ pub fn validate_bytes_with(input: &[u8], tx: &dyn terminology::TerminologyProvid
     }
 }
 
+/// Profile selection, as the spec has it: a declared `meta.profile` picks the
+/// compiled profile; otherwise the resource type's default, if any.
+fn select_profile(resource_type: &str, doc: &impl Document) -> Option<&'static CompiledProfile> {
+    let declared = doc.scalars("$this.meta.profile");
+    let selected = generated::REGISTRY
+        .iter()
+        .find(|p| p.resource_type == resource_type && declared.iter().any(|u| *u == p.url))
+        .copied();
+    // Resource-type defaults when nothing is declared.
+    let default = match resource_type {
+        "Patient" => Some(&generated::au_core_patient::PROFILE),
+        _ => None,
+    };
+    selected.or(default)
+}
+
 /// The pods' JSON report — the ergonomic shape, stable for the FFI.
 pub fn probe(input: &[u8]) -> String {
     wire::report(&validate_bytes(input))
+}
+
+/// The selected profile's must-support elements this resource leaves empty
+/// (where their parent is present). Not conformance — no validator fails on
+/// must-support — but what a client certifying against the IG must populate
+/// when it has the data. Empty for unparseable input or no applicable profile.
+pub fn must_support_gaps(input: &[u8]) -> Vec<&'static str> {
+    let Ok(fields) = json::scan_top_level(input) else { return Vec::new() };
+    let Some(rt) = fields.scalar("resourceType") else { return Vec::new() };
+    let Ok(parsed) = document::Parsed::parse(input) else { return Vec::new() };
+    let doc = parsed.doc();
+    match select_profile(rt, &doc) {
+        Some(profile) => engine::must_support_gaps(profile, &doc),
+        None => Vec::new(),
+    }
 }
 
 fn parse_failure(e: json::ParseError) -> Validation {
@@ -764,6 +785,11 @@ pub mod compiled {
         pub invariants: &'static [ProfileInvariant],
         /// Constraints not yet enforced (nested slicing / non-scalar patterns / mustSupport-only).
         pub deferred: u32,
+        /// Elements the IG flags `mustSupport`. Not a validation rule (no
+        /// validator fails on it) — a conforming *client* is expected to
+        /// populate them when it has the data, so gaps are reported separately
+        /// as information (see [`crate::must_support_gaps`]).
+        pub must_support: &'static [&'static str],
     }
 }
 
@@ -793,6 +819,17 @@ pub mod engine {
     /// bundled sets can't (see [`crate::terminology::Chain`]).
     pub fn validate_with(profile: &CompiledProfile, doc: &impl Document, tx: &dyn TerminologyProvider) -> Report {
         validate_at(profile, doc, tx, 0)
+    }
+
+    /// Must-support elements that are absent where their parent is present.
+    /// A child under an absent parent is not a gap — the parent is.
+    pub fn must_support_gaps(profile: &CompiledProfile, doc: &impl Document) -> Vec<&'static str> {
+        profile
+            .must_support
+            .iter()
+            .copied()
+            .filter(|path| doc.child_counts(path).iter().any(|&n| n == 0))
+            .collect()
     }
 
     fn validate_at(profile: &CompiledProfile, doc: &impl Document, tx: &dyn TerminologyProvider, depth: usize) -> Report {
@@ -2417,6 +2454,29 @@ mod tests {
         assert!(!ok.contains("clinicalStatus"), "{ok}");
         let bad = wire::report(&validate_bytes_with(cond("bogus").as_bytes(), &Only("active")));
         assert!(bad.contains("Condition.clinicalStatus") && bad.contains("not in the bound value set"), "{bad}");
+    }
+
+    // --- must-support (information, not conformance) ---
+
+    #[test]
+    fn must_support_gaps_are_reported_where_the_parent_is_present() {
+        use super::must_support_gaps;
+        let us = r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"]},"identifier":[{"system":"http://h.example.org/mrn","value":"1"}],"name":[{"family":"D"}],"gender":"male"}"#;
+        let gaps = must_support_gaps(us.as_bytes());
+        // absent must-support elements at the top level… (US Core flags
+        // telecom's children MS but not telecom itself, so it is not a gap)
+        assert!(!gaps.contains(&"Patient.telecom"), "{gaps:?}");
+        assert!(gaps.contains(&"Patient.birthDate"), "{gaps:?}");
+        assert!(gaps.contains(&"Patient.address"), "{gaps:?}");
+        // …and under a present parent — but not under an absent one
+        assert!(gaps.contains(&"Patient.name.given"), "{gaps:?}");
+        assert!(!gaps.contains(&"Patient.address.line"), "{gaps:?}");
+        assert!(!gaps.contains(&"Patient.telecom.system"), "{gaps:?}");
+        // populated ones are not gaps
+        assert!(!gaps.contains(&"Patient.identifier.value"), "{gaps:?}");
+        // it is not validation: the same resource validates independently
+        assert!(must_support_gaps(b"not json").is_empty());
+        assert!(must_support_gaps(br#"{"resourceType":"Encounter"}"#).is_empty());
     }
 
     // --- wire: OperationOutcome ---

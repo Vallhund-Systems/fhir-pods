@@ -67,4 +67,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Practitioner", key: "inv-pra-4", severity: InvariantSeverity::Warning, human: "Recorded sex or gender jurisdiction shall be a member of the Jurisdiction ValueSet - AU Extended value set if any codes within that value set can apply", expression: "extension('http://hl7.org/fhir/StructureDefinition/individual-recordedSexOrGender').extension('jurisdiction').empty() or extension('http://hl7.org/fhir/StructureDefinition/individual-recordedSexOrGender').extension('jurisdiction').value.all(memberOf('http://terminology.hl7.org.au/ValueSet/jurisdiction-extended'))" },
         ProfileInvariant { path: "Practitioner", key: "inv-pra-5", severity: InvariantSeverity::Warning, human: "Recorded sex or gender source shall be a member of the AU Recorded Sex or Gender (RSG) Source value set if any codes within that value set can apply", expression: "extension('http://hl7.org/fhir/StructureDefinition/individual-recordedSexOrGender').extension('source').empty() or extension('http://hl7.org/fhir/StructureDefinition/individual-recordedSexOrGender').extension('source').value.ofType(CodeableConcept).all(memberOf('http://terminology.hl7.org.au/ValueSet/rsg-source'))" },
     ],
+    must_support: &[
+        "Practitioner.identifier",
+        "Practitioner.name",
+        "Practitioner.name.family",
+        "Practitioner.name.given",
+    ],
 };

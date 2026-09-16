@@ -48,4 +48,11 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Location", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()" },
         ProfileInvariant { path: "Location", key: "au-core-loc-01", severity: InvariantSeverity::Error, human: "The location shall at least have a valid identifier or address or type", expression: "address.exists() or type.exists() or identifier.where(system.count() + value.count() >1).exists()" },
     ],
+    must_support: &[
+        "Location.name",
+        "Location.type",
+        "Location.address",
+        "Location.physicalType",
+        "Location.managingOrganization",
+    ],
 };

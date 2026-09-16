@@ -64,4 +64,13 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Provenance", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()" },
         ProfileInvariant { path: "Provenance.agent", key: "provenance-1", severity: InvariantSeverity::Error, human: "onBehalfOf SHALL be present when Provenance.agent.who is a Practitioner or Device", expression: "who.exists((resolve() is Practitioner) or (resolve() is Device)) implies onBehalfOf.exists()" },
     ],
+    must_support: &[
+        "Provenance.target",
+        "Provenance.target.reference",
+        "Provenance.recorded",
+        "Provenance.agent",
+        "Provenance.agent.type",
+        "Provenance.agent.who",
+        "Provenance.agent.onBehalfOf",
+    ],
 };

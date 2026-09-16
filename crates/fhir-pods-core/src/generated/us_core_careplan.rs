@@ -65,4 +65,13 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "CarePlan.text.div", key: "txt-2", severity: InvariantSeverity::Error, human: "The narrative SHALL have some non-whitespace content", expression: "htmlChecks()" },
         ProfileInvariant { path: "CarePlan.activity", key: "cpl-3", severity: InvariantSeverity::Error, human: "Provide a reference or detail, not both", expression: "detail.empty() or reference.empty()" },
     ],
+    must_support: &[
+        "CarePlan.text",
+        "CarePlan.text.status",
+        "CarePlan.text.div",
+        "CarePlan.status",
+        "CarePlan.intent",
+        "CarePlan.category",
+        "CarePlan.subject",
+    ],
 };

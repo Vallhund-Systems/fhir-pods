@@ -70,4 +70,14 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "PractitionerRole", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()" },
         ProfileInvariant { path: "PractitionerRole.practitioner", key: "au-core-prarol-01", severity: InvariantSeverity::Error, human: "At least a reference, identifier or display shall be present, or, if neither is available, the Data Absent Reason extension shall be present", expression: "(reference.exists() or identifier.exists() or display.exists()) xor extension('http://hl7.org/fhir/StructureDefinition/data-absent-reason').exists()" },
     ],
+    must_support: &[
+        "PractitionerRole.identifier",
+        "PractitionerRole.practitioner",
+        "PractitionerRole.organization",
+        "PractitionerRole.code",
+        "PractitionerRole.specialty",
+        "PractitionerRole.telecom",
+        "PractitionerRole.telecom.system",
+        "PractitionerRole.telecom.value",
+    ],
 };

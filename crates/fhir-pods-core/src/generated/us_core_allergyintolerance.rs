@@ -49,4 +49,12 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "AllergyIntolerance", key: "dom-5", severity: InvariantSeverity::Error, human: "If a resource is contained in another resource, it SHALL NOT have a security label", expression: "contained.meta.security.empty()" },
         ProfileInvariant { path: "AllergyIntolerance", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()" },
     ],
+    must_support: &[
+        "AllergyIntolerance.clinicalStatus",
+        "AllergyIntolerance.verificationStatus",
+        "AllergyIntolerance.code",
+        "AllergyIntolerance.patient",
+        "AllergyIntolerance.reaction",
+        "AllergyIntolerance.reaction.manifestation",
+    ],
 };

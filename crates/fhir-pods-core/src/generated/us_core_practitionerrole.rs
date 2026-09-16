@@ -48,4 +48,15 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "PractitionerRole", key: "pd-1", severity: InvariantSeverity::Error, human: "SHALL have contact information or a reference to an Endpoint", expression: "telecom or endpoint" },
         ProfileInvariant { path: "PractitionerRole", key: "us-core-13", severity: InvariantSeverity::Error, human: "SHALL have a practitioner, an organization, a healthcare service, or a location.", expression: "practitioner or organization or healthcareService or location" },
     ],
+    must_support: &[
+        "PractitionerRole.practitioner",
+        "PractitionerRole.organization",
+        "PractitionerRole.code",
+        "PractitionerRole.specialty",
+        "PractitionerRole.location",
+        "PractitionerRole.telecom",
+        "PractitionerRole.telecom.system",
+        "PractitionerRole.telecom.value",
+        "PractitionerRole.endpoint",
+    ],
 };

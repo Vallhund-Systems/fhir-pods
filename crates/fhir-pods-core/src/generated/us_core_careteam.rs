@@ -39,4 +39,11 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "CareTeam", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()" },
         ProfileInvariant { path: "CareTeam.participant", key: "ctm-1", severity: InvariantSeverity::Error, human: "CareTeam.participant.onBehalfOf can only be populated when CareTeam.participant.member is a Practitioner", expression: "onBehalfOf.exists() implies (member.resolve().iif(empty(), true, ofType(Practitioner).exists()))" },
     ],
+    must_support: &[
+        "CareTeam.status",
+        "CareTeam.subject",
+        "CareTeam.participant",
+        "CareTeam.participant.role",
+        "CareTeam.participant.member",
+    ],
 };

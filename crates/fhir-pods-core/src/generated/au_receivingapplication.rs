@@ -43,4 +43,6 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     invariants: &[
     ],
+    must_support: &[
+    ],
 };

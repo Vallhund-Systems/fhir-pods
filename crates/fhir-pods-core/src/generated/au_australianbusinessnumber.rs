@@ -25,4 +25,6 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     invariants: &[
         ProfileInvariant { path: "Identifier", key: "inv-abn-0", severity: InvariantSeverity::Error, human: "ABN shall be 11 digits", expression: "value.matches('^([0-9]{11})$')" },
     ],
+    must_support: &[
+    ],
 };

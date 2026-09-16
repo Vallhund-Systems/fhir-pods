@@ -41,4 +41,12 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Goal", key: "dom-6", severity: InvariantSeverity::Warning, human: "A resource should have narrative for robust management", expression: "text.`div`.exists()" },
         ProfileInvariant { path: "Goal.target", key: "gol-1", severity: InvariantSeverity::Error, human: "Goal.target.measure is required if Goal.target.detail is populated", expression: "(detail.exists() and measure.exists()) or detail.exists().not()" },
     ],
+    must_support: &[
+        "Goal.lifecycleStatus",
+        "Goal.description",
+        "Goal.subject",
+        "Goal.start[x]",
+        "Goal.target",
+        "Goal.target.due[x]",
+    ],
 };
