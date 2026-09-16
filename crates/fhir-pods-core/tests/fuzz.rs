@@ -46,8 +46,130 @@ fn env_u64(key: &str, default: u64) -> u64 {
 // ---- generators ------------------------------------------------------------
 
 fn byte_soup(rng: &mut Rng) -> Vec<u8> {
-    let n = rng.below(256);
+    // mostly small, occasionally a few KB — the parsers see both regimes
+    let n = if rng.chance(90) { rng.below(256) } else { rng.below(8192) };
     (0..n).map(|_| rng.next() as u8).collect()
+}
+
+/// The things a JSON parser gets wrong: escapes, surrogates, number edge
+/// cases, encodings, whitespace, duplicate keys, nesting just under the limit.
+const HOSTILE: &[&str] = &[
+    "\"\\u0000\"", "\"\\ud83d\\ude00\"", "\"\\ud83d\"", "\"\\udc00\"", "\"\\uZZZZ\"", "\"\\u12\"", "\"\\x41\"",
+    "\"\\/\\b\\f\\n\\r\\t\"", "\"\\\"", "\"unterminated", "\"tab\there\"", "-", "-0", "01", "1.", ".5", "1e", "1e+",
+    "1E400", "-1e-400", "123456789012345678901234567890", "0.000000000000000000000001", "1.5e5.5", "+1",
+    "NaN", "Infinity", "-Infinity", "tru", "nul", "True", "\u{feff}{}", "{\"a\":1,\"a\":2}", "{\"\":\"\"}",
+    "{\"a\":1,}", "[1,]", "[,1]", "{,}", "{\"a\"}", "{\"a\":}", "{a:1}", "{'a':1}", "[]", "{}", "",
+    " \n\r\t{}\n", "{}garbage", "{} {}", "\"\u{2028}\u{2029}\"", "\"\u{fffe}\"", "\"\u{10ffff}\"",
+];
+
+fn hostile_primitive(rng: &mut Rng) -> Vec<u8> {
+    match rng.below(6) {
+        0 => rng.pick(HOSTILE).as_bytes().to_vec(),
+        1 => {
+            // a resource whose members are hostile scalars
+            let mut out = String::from("{\"resourceType\":");
+            json_str(&mut out, *rng.pick(TYPES));
+            for _ in 0..(1 + rng.below(6)) {
+                out.push(',');
+                json_str(&mut out, *rng.pick(KEYS));
+                out.push(':');
+                out.push_str(*rng.pick(HOSTILE));
+            }
+            out.push('}');
+            out.into_bytes()
+        }
+        2 => {
+            // nesting right around the limit (128): both sides of the fence
+            let d = 120 + rng.below(16);
+            let mut s = String::from("{\"resourceType\":\"Patient\",\"x\":");
+            s.push_str(&"[".repeat(d));
+            s.push_str(&"]".repeat(d));
+            s.push('}');
+            s.into_bytes()
+        }
+        3 => {
+            // invalid UTF-8 spliced into an otherwise valid resource
+            let mut b = resource(rng).into_bytes();
+            for _ in 0..(1 + rng.below(4)) {
+                let i = rng.below(b.len());
+                b[i] = *rng.pick(&[0x80u8, 0xC0, 0xC1, 0xF5, 0xFF, 0xED, 0xA0, 0xBF]);
+            }
+            b
+        }
+        4 => {
+            // a wide object: many keys, long strings
+            let mut out = String::from("{\"resourceType\":\"Observation\"");
+            for i in 0..(50 + rng.below(400)) {
+                out.push_str(&format!(",\"k{i}\":"));
+                if rng.chance(20) {
+                    json_str(&mut out, &"a".repeat(rng.below(4096)));
+                } else {
+                    out.push_str(*rng.pick(HOSTILE));
+                }
+            }
+            out.push('}');
+            out.into_bytes()
+        }
+        _ => {
+            // resourceType / meta.profile of the wrong shape
+            let rt = *rng.pick(&["1", "null", "[]", "{}", "[\"Patient\"]", "\"\"", "\"patient\"", "\"Patient \""]);
+            let prof = *rng.pick(&[
+                "\"x\"", "[]", "[1]", "[null]", "\"http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient\"",
+                "[\"http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient\",\"http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate\"]",
+                "[\"http://hl7.org.au/fhir/core/StructureDefinition/au-core-nope\"]", "{}",
+            ]);
+            format!("{{\"resourceType\":{rt},\"meta\":{{\"profile\":{prof}}},\"status\":\"final\"}}").into_bytes()
+        }
+    }
+}
+
+/// The real IG examples + broken corpus (gitignored, derived at run time by
+/// `conformance/make_corpus.py`) — far richer than the synthetic generator.
+/// Empty when the corpus hasn't been built; the harness then skips this arm.
+fn corpus() -> Vec<Vec<u8>> {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../conformance/corpus");
+    let Ok(rd) = std::fs::read_dir(dir) else { return Vec::new() };
+    let mut files: Vec<_> = rd.flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "json")).collect();
+    files.sort(); // determinism: read_dir order is not stable
+    files.iter().filter_map(|p| std::fs::read(p).ok()).collect()
+}
+
+/// A real example, mutated: the mutations land inside real slices, real
+/// extensions, real identifiers — the paths the synthetic generator only
+/// reaches by luck.
+fn mutate_corpus(rng: &mut Rng, corpus: &[Vec<u8>]) -> Vec<u8> {
+    let base = rng.pick(corpus);
+    let mut b = base.clone();
+    for _ in 0..(1 + rng.below(12)) {
+        if b.is_empty() {
+            break;
+        }
+        let i = rng.below(b.len());
+        match rng.below(6) {
+            0 => b[i] = rng.next() as u8,
+            1 => b.insert(i, *rng.pick(b"{}[]\":,\\ _0aZ")),
+            2 => {
+                b.remove(i);
+            }
+            3 => {
+                // splice a chunk of another corpus file in
+                let other = rng.pick(corpus);
+                if !other.is_empty() {
+                    let s = rng.below(other.len());
+                    let e = (s + rng.below(200)).min(other.len());
+                    b.splice(i..i, other[s..e].iter().copied());
+                }
+            }
+            4 => {
+                // duplicate a chunk of itself (repeats an element)
+                let e = (i + rng.below(300)).min(b.len());
+                let chunk = b[i..e].to_vec();
+                b.splice(e..e, chunk);
+            }
+            _ => b.truncate(i),
+        }
+    }
+    b
 }
 
 /// A few random edits to a valid document: flips, structural inserts,
@@ -170,16 +292,31 @@ fn resource(rng: &mut Rng) -> String {
 }
 
 const EXPR_TOKS: &[&str] = &[
-    "value", "status", "code", "coding", "system", "component", "dataAbsentReason", "exists()", "empty()",
-    "not()", "count()", "first()", "hasValue()", "where(", "exists(", "and", "or", "xor", "implies", "=",
-    "!=", "<", "<=", ">", "(", ")", ".", ",", "'final'", "'x'", "''", "0", "1", "42", "99999999999999999999",
-    "$this", "true", "false", "%resource", "matches(", "substring(", "toInteger()", "'unterminated", " ",
+    // supported today
+    "value", "status", "code", "coding", "system", "component", "dataAbsentReason", "identifier", "extension",
+    "exists()", "empty()", "not()", "count()", "first()", "hasValue()", "where(", "exists(", "and", "or", "xor",
+    "implies", "=", "!=", "(", ")", ".", ",", "'final'", "'x'", "''", "0", "1", "42", "$this", "true", "false",
+    // tier two (must parse to Unsupported today, must evaluate tomorrow)
+    "<", "<=", ">", ">=", "+", "-", "*", "/", "mod", "div", "&", "|", "in", "contains", "is", "as",
+    "substring(", "toInteger()", "length()", "iif(", "select(", "ofType(", "matches(", "startsWith(", "all(",
+    "single()", "last()", "tail()", "skip(", "take(", "distinct()", "union(", "combine(", "trace(",
+    "1.5", "-1", "99999999999999999999", "0.0000001", "@2020-01-01", "@T10:00", "@2020-01-01T10:00:00Z", "1 'kg'",
+    "%resource", "%context", "%ucum", "{}", "$index", "$total", "Patient", "Observation",
+    // lexical hostility
+    "'unterminated", "'\\'", "'\\u0041'", "'\\q'", "`backtick`", "`", "\"dq\"", "\u{feff}", "\u{2028}", " ", "\t", "\n",
+    "..", ",,", "()", "[]", "[0]", "[-1]", "[99999999]", "//", "/* c */", "#", "@", "@@", "@2020-13-45",
 ];
 
 fn expression(rng: &mut Rng) -> String {
-    let n = 1 + rng.below(12);
+    // mostly short; occasionally long, and occasionally nested near the limit
+    let n = if rng.chance(90) { 1 + rng.below(12) } else { 12 + rng.below(200) };
     let sep = if rng.chance(50) { "" } else { " " };
-    (0..n).map(|_| *rng.pick(EXPR_TOKS)).collect::<Vec<_>>().join(sep)
+    let mut e = (0..n).map(|_| *rng.pick(EXPR_TOKS)).collect::<Vec<_>>().join(sep);
+    if rng.chance(5) {
+        let d = 56 + rng.below(16); // straddles path::MAX_DEPTH (64)
+        e = format!("{}{}{}", "(".repeat(d), e, ")".repeat(d));
+    }
+    e
 }
 
 // ---- properties ------------------------------------------------------------
@@ -220,8 +357,12 @@ fn seeded_fuzz_never_panics() {
     let seed = env_u64("FUZZ_SEED", 20260915);
     let iters = env_u64("FUZZ_ITERS", 50_000);
     let mut rng = Rng::new(seed);
+    let corpus = corpus();
+    if corpus.is_empty() {
+        eprintln!("note: conformance/corpus not built — skipping the real-example arm (python3 conformance/make_corpus.py)");
+    }
     for iter in 0..iters {
-        match iter % 4 {
+        match iter % 6 {
             0 => check_validate(&byte_soup(&mut rng), seed, iter, "bytes"),
             1 => {
                 let base = resource(&mut rng);
@@ -231,6 +372,8 @@ fn seeded_fuzz_never_panics() {
                 let doc = resource(&mut rng);
                 check_validate(doc.as_bytes(), seed, iter, "structured");
             }
+            3 => check_validate(&hostile_primitive(&mut rng), seed, iter, "hostile"),
+            4 if !corpus.is_empty() => check_validate(&mutate_corpus(&mut rng, &corpus), seed, iter, "corpus"),
             _ => {
                 let expr = expression(&mut rng);
                 let doc = resource(&mut rng);
