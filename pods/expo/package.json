@@ -1,6 +1,6 @@
 {
   "name": "fhir-pods-expo",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Embeddable FHIR verifier — Expo native module (iOS). Wraps the fhir-pods Rust core over a lean C ABI.",
   "license": "MIT",
   "author": "Justin Grosvenor",
