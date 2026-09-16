@@ -83,6 +83,51 @@ def choice_key(sliced_path, type_code):
     return base + type_code[0].upper() + type_code[1:]
 
 
+def flatten(obj, prefix=""):
+    """Leaf (relative path, scalar) pairs of a pattern/fixed object. Arrays
+    contribute their elements' leaves — a pattern on a repeating element means
+    'contains an element matching this'."""
+    out = []
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            out += flatten(v, f"{prefix}.{k}" if prefix else k)
+    elif isinstance(obj, list):
+        for v in obj:
+            out += flatten(v, prefix)
+    elif isinstance(obj, SCALAR) and not isinstance(obj, bool):
+        out.append((prefix, str(obj)))
+    return out
+
+
+def profile_discriminators(ref, dpath):
+    """What an external profile fixes at `dpath` (relative to its root type):
+    its pattern/fixed object flattened, plus scalar fixeds on `dpath`'s
+    children. These become the slice's Value discriminators."""
+    if not ref:
+        return []
+    root = ref.get("type")
+    want = f"{root}.{dpath}"
+    pairs = []
+    for e in (ref.get("snapshot") or {}).get("element", []):
+        p, eid = e.get("path", ""), e.get("id", "")
+        if ":" in eid:
+            continue
+        if p == want:
+            for k, v in e.items():
+                if k.startswith(("pattern", "fixed")):
+                    pairs += [(f"{dpath}.{sub}" if sub else dpath, val) for sub, val in flatten(v)]
+        elif p.startswith(want + "."):
+            fx = scalar_fixed(e)
+            if fx is not None:
+                pairs.append((p[len(root) + 1:], fx))
+    seen, out = set(), []
+    for pair in pairs:
+        if pair not in seen:
+            seen.add(pair)
+            out.append(pair)
+    return out
+
+
 # JSON-shape rules the base spec attaches to every element; not profile
 # semantics, and they use FHIRPath outside the core (children(), value xor).
 STRUCTURAL_INVARIANTS = {"ele-1", "ext-1"}
@@ -106,7 +151,9 @@ def invariants_of(sd):
     return out
 
 
-def build(sd):
+def build(sd, load=None):
+    """`load(url)` resolves a referenced profile's StructureDefinition (or None)
+    so a slice can be discriminated by, and inherit, an external profile."""
     resource_type = sd["type"]
     elements = {}     # path -> rule
     slicings = {}     # sliced path -> {"closed", "disc": [(type, path)], "slices": {name: {...}}}
@@ -150,10 +197,18 @@ def build(sd):
                 continue
             name, _ = tail.split(".", 1)                     # a slice sub-element
             sl = sg["slices"].setdefault(name, {"min": 0, "max": None, "type": None, "profile": None, "subs": {}})
-            if not path.startswith(head + ".") or has_object_fixed(e):
+            if not path.startswith(head + "."):
                 deferred += 1
                 continue
             rel = path[len(head) + 1:]
+            if has_object_fixed(e):
+                # Not enforced (pattern semantics differ from fixed), but the
+                # slice can be discriminated by it.
+                for k, v in e.items():
+                    if k.startswith(("pattern", "fixed")) and isinstance(v, (dict, list)):
+                        sl.setdefault("objpat", {})[rel] = v
+                deferred += 1
+                continue
             min_, max_, fixed, bind, enforceable = constraint(e)
             if enforceable:
                 merge(sl["subs"], rel, min_, max_, fixed, bind)
@@ -194,6 +249,23 @@ def build(sd):
                     if val is None and dpath == "url" and sl["profile"]:
                         val = sl["profile"]
                     if val is None:
+                        # The slice's own object pattern at the discriminator
+                        # path (a patternCodeableConcept on `type`, say).
+                        obj = sl.get("objpat", {}).get(dpath)
+                        if obj:
+                            discs.extend(
+                                ("value", "$this." + (f"{dpath}.{s}" if s else dpath), v) for s, v in flatten(obj)
+                            )
+                            continue
+                    if val is None and sl["profile"] and load:
+                        # The slice inherits an external profile: discriminate
+                        # by what that profile fixes at the discriminator path
+                        # (e.g. au-ihi's `type` pattern → coding NI).
+                        pairs = profile_discriminators(load(sl["profile"]), dpath)
+                        if pairs:
+                            discs.extend(("value", "$this." + p, v) for p, v in pairs)
+                            continue
+                    if val is None:
                         ok = False
                         break
                     discs.append(("value", "$this." + dpath, val))
@@ -223,8 +295,8 @@ def el_line(path, r, indent):
     )
 
 
-def emit(sd, provenance):
-    resource_type, elements, slicings, deferred = build(sd)
+def emit(sd, provenance, load=None):
+    resource_type, elements, slicings, deferred = build(sd, load)
     name = sd.get("title") or sd.get("name") or sd.get("id")
     n_slices = sum(len(s[2]) for s in slicings)
     invariants = invariants_of(sd)
@@ -256,7 +328,8 @@ def emit(sd, provenance):
         out.append(f"        Slicing {{ path: {rs(sliced_path)}, closed: {str(closed).lower()}, slices: &[")
         for sname, sl, discs in slices:
             mx = f"Max::Bounded({sl['max']})" if sl["max"] is not None else "Max::Star"
-            out.append(f"            Slice {{ name: {rs(sname)}, min: {sl['min']}, max: {mx}, discriminators: &[")
+            prof = f"Some({rs(sl['profile'])})" if sl.get("profile") else "None"
+            out.append(f"            Slice {{ name: {rs(sname)}, min: {sl['min']}, max: {mx}, profile: {prof}, discriminators: &[")
             for d in discs:
                 if d[0] == "type":
                     out.append(f"                Discriminator::Type {{ key: {rs(d[1])} }},")

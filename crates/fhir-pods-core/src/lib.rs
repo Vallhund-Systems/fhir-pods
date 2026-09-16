@@ -689,6 +689,10 @@ pub mod compiled {
         pub max: Max,
         /// Constraints on the slice's sub-elements, paths relative as `$this.…`.
         pub elements: &'static [ElementConstraint],
+        /// A profile (by canonical URL, looked up in the registry) that matched
+        /// instances must also conform to — how a slice inherits an external
+        /// datatype profile's constraints, e.g. `au-ihi` on `Patient.identifier:ihi`.
+        pub profile: Option<&'static str>,
     }
 
     pub struct Slicing {
@@ -848,6 +852,22 @@ pub mod engine {
                     for el in slice.elements {
                         let sub = format!("{label}.{}", el.path.trim_start_matches("$this."));
                         check_element(el, &sub, inst, r);
+                    }
+                    // A slice that names a profile: matched instances must also
+                    // conform to it. Recursive — the instance becomes the root,
+                    // and the profile's own element paths resolve against it.
+                    if let Some(url) = slice.profile {
+                        if let Some(profile) = crate::generated::REGISTRY.iter().find(|p| p.url == url) {
+                            for issue in validate(profile, inst).issues {
+                                let rel = issue
+                                    .path
+                                    .strip_prefix(profile.resource_type)
+                                    .map(|s| s.trim_start_matches('.'))
+                                    .unwrap_or(&issue.path);
+                                let path = if rel.is_empty() { label.clone() } else { format!("{label}.{rel}") };
+                                r.push(issue.severity, issue.code, &path, issue.message);
+                            }
+                        }
                     }
                 }
             }
@@ -1645,6 +1665,26 @@ mod tests {
             "\"link\":[{\"other\":{\"reference\":\"Patient/2\"},\"type\":\"nope\"}],\"birthDate\"",
         );
         assert!(probe_str(&bad).contains("Patient.link.type"));
+    }
+
+    #[test]
+    fn identifier_slice_inherits_au_ihi_profile() {
+        // An NI-typed identifier is the `ihi` slice, whose profile (au-ihi)
+        // fixes the system — reached through the slice's profile, recursively,
+        // with the issue relabelled onto the slice.
+        let ni = |system: &str| {
+            PATIENT_OK.replace(
+                r#""identifier":[{"value":"1"}]"#,
+                &format!(
+                    r#""identifier":[{{"type":{{"coding":[{{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"NI"}}]}},"system":"{system}","value":"8003608833357361"}}]"#
+                ),
+            )
+        };
+        let wrong = probe_str(&ni("urn:oid:1.2.36.146.595.217.0.1"));
+        assert!(wrong.contains("Patient.identifier:ihi.system"), "{wrong}");
+        assert!(wrong.contains("\"valid\":false"), "{wrong}");
+        let right = probe_str(&ni("http://ns.electronichealth.net.au/id/hi/ihi/1.0"));
+        assert!(right.contains("\"valid\":true"), "{right}");
     }
 
     // --- Observation: generated au-core-heartrate, selected via meta.profile ---

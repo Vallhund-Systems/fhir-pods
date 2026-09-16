@@ -349,6 +349,31 @@ treat `$validate.profile` `uri`→`canonical` + R5's `usageContext` as additive.
   produced **no false positives on the 64 valid examples**. The one remaining
   disagreement is the IHI Luhn: it needs string/arithmetic FHIRPath *and* the
   `type.profile` choice into `au.base` — the next build.
+
+  **Seventh pass, `type.profile` + `au.base` (2026-09-15): 83/84.** On
+  inspection the element-level `type.profile` list is nearly a no-op (base
+  `Identifier` is always among the choices), so the mechanism that matters is
+  the **slicing**: `Patient.identifier` is sliced by `pattern` on `type`, and
+  each slice *names an external profile* (`au-ihi`, `au-medicarecardnumber`,
+  `au-dvanumber`) that carries the discriminating `type` pattern, the fixed
+  `system`, and the invariants. Design — recursive and honest: a `Slice` may
+  name a `profile` (canonical URL); matched instances are validated against
+  that compiled profile from the registry with the instance as the root, and
+  its issues are relabelled onto the slice. The generator resolves a slice's
+  discriminator in order — its own scalar fixed → a nested slice's fixed → the
+  extension URL → its own object pattern (flattened) → the referenced profile's
+  pattern/fixed at the discriminator path (flattened) — and **defers the slice
+  if none resolves**: `:ihi` and `:medicare` resolved (`NI` / `MC`); `:dva`
+  stayed deferred because neither `au-core-patient` nor `au-dvanumber` carries
+  a `type` pattern — nothing to resolve, nothing invented. `gen_all` now
+  indexes every package for URL resolution and generates the `Identifier`
+  datatype profiles from `hl7.fhir.au.base` (36) alongside the 25 AU Core
+  resource profiles: 61 in the registry. A wrong-system IHI probe flipped to
+  agreement (caught by `au-ihi`'s fixed system, no invariant needed); all
+  five valid Patient examples still agree with slices live; the bad-Luhn IHI
+  still disagrees *correctly* — its invariant parses `Unsupported` and is
+  skipped. **The last gap is FHIRPath tier two** (`substring`, `toInteger`,
+  arithmetic, `mod`, `iif`, `select`).
 - **Inferno** (ONC g10) and **Touchstone** are **API-behavior** harnesses
   (SMART launch, Bulk Data, search, US Core over the wire) — relevant only if we
   later ship a *server* surface, not for the embeddable validator. Note them,

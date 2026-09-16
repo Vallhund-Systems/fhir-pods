@@ -156,6 +156,17 @@ def add_bad_luhn_ihi(d):
     })
 
 
+def wrong_system_ihi(d):
+    """An identifier typed NI (an IHI) whose system is not the IHI namespace —
+    caught by au-ihi's fixed system, reached through the identifier slice.
+    Needs no invariant, so this build should flip it."""
+    d.setdefault("identifier", []).append({
+        "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "NI"}]},
+        "system": "urn:oid:1.2.36.146.595.217.0.1",
+        "value": "8003608833357361",
+    })
+
+
 def drop_value_keep_no_dar(d):
     """No value[x] and no dataAbsentReason — the vitals `vs-2` invariant."""
     for k in [k for k in d if k.startswith("value")]:
@@ -174,6 +185,7 @@ def subject_wrong_type(d):
 MUTATIONS = [
     ("Observation-bloodpressure-1.json", "bloodpressure-wrong-diastolic-code", wrong_diastolic_code, False),
     ("Patient-ronny-irvine.json", "patient-ihi-bad-luhn", add_bad_luhn_ihi, False),
+    ("Patient-ronny-irvine.json", "patient-ihi-wrong-system", wrong_system_ihi, False),
     ("Observation-heartrate-1.json", "heartrate-no-value-no-dar", drop_value_keep_no_dar, False),
     ("Observation-heartrate-1.json", "heartrate-subject-wrong-type", subject_wrong_type, True),
     ("Observation-bloodpressure-1.json", "bloodpressure-missing-diastolic", drop_diastolic, False),

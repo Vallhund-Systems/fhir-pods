@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
-"""Batch-generate every resource profile in a FHIR package into `src/generated/`,
-plus a `mod.rs` that declares each module and exposes a `REGISTRY` of all
-compiled profiles — looked up at runtime by canonical URL via `meta.profile`.
+"""Batch-generate compiled profiles from one or more FHIR packages into
+`src/generated/`, plus a `mod.rs` declaring each module and exposing a
+`REGISTRY` of all compiled profiles — looked up at runtime by canonical URL.
+
+The first package is primary: its resource profiles are generated. Every
+package contributes to the URL index that lets a slice discriminate by, and
+inherit, an external profile — and the `Identifier` datatype profiles from
+every package are generated so those slices have something to conform to
+(e.g. `hl7.fhir.au.base`'s `au-ihi` / `au-medicarecardnumber` / `au-dvanumber`).
 
 Usage:
-    gen_all.py <package/dir> <out/dir> "<package id version>" [file-prefix]
+    gen_all.py <out/dir> "<provenance>" <primary/package/dir> [<dependency/package/dir> ...]
 """
 import glob
 import json
@@ -16,23 +22,43 @@ from gen_profile import build, emit  # noqa: E402
 
 
 def main():
-    pkg_dir, out_dir, provenance = sys.argv[1], sys.argv[2], sys.argv[3]
-    prefix = sys.argv[4] if len(sys.argv) > 4 else "StructureDefinition-"
+    out_dir, provenance, pkg_dirs = sys.argv[1], sys.argv[2], sys.argv[3:]
+    if not pkg_dirs:
+        sys.exit("usage: gen_all.py <out/dir> <provenance> <primary pkg> [<dependency pkg> ...]")
     os.makedirs(out_dir, exist_ok=True)
+
+    # canonical URL -> file, across every package (the resolver's index)
+    index, cache = {}, {}
+    for pkg in pkg_dirs:
+        for path in glob.glob(os.path.join(pkg, "StructureDefinition-*.json")):
+            sd = json.load(open(path))
+            if sd.get("resourceType") == "StructureDefinition" and sd.get("url"):
+                index.setdefault(sd["url"], path)
+
+    def load(url):
+        if url not in index:
+            return None
+        if url not in cache:
+            cache[url] = json.load(open(index[url]))
+        return cache[url]
+
+    targets = []
+    for i, pkg in enumerate(pkg_dirs):
+        for path in sorted(glob.glob(os.path.join(pkg, "StructureDefinition-*.json"))):
+            sd = json.load(open(path))
+            if sd.get("derivation") != "constraint" or not (sd.get("snapshot") or {}).get("element"):
+                continue
+            primary_resource = i == 0 and sd.get("kind") == "resource"
+            identifier_profile = sd.get("kind") == "complex-type" and sd.get("type") == "Identifier"
+            if primary_resource or identifier_profile:
+                targets.append(sd)
+
     mods = []
-    for path in sorted(glob.glob(os.path.join(pkg_dir, f"{prefix}*.json"))):
-        sd = json.load(open(path))
-        if (
-            sd.get("resourceType") != "StructureDefinition"
-            or sd.get("kind") != "resource"
-            or sd.get("derivation") != "constraint"
-            or not (sd.get("snapshot") or {}).get("element")
-        ):
-            continue
+    for sd in targets:
         mod = sd["id"].replace("-", "_").replace(".", "_")
         with open(os.path.join(out_dir, f"{mod}.rs"), "w") as f:
-            f.write(emit(sd, provenance))
-        _, elements, slicings, deferred = build(sd)
+            f.write(emit(sd, provenance, load))
+        _, elements, slicings, deferred = build(sd, load)
         mods.append((mod, sd.get("title") or sd["id"], len(elements), sum(len(s[2]) for s in slicings), deferred))
 
     with open(os.path.join(out_dir, "mod.rs"), "w") as f:
@@ -41,7 +67,7 @@ def main():
         f.write("use crate::compiled::CompiledProfile;\n\n")
         for mod, *_ in mods:
             f.write(f"pub mod {mod};\n")
-        f.write("\n/// Every compiled profile, looked up by canonical URL (`meta.profile`).\n")
+        f.write("\n/// Every compiled profile, looked up by canonical URL (`meta.profile`, or a slice's `profile`).\n")
         f.write("pub static REGISTRY: &[&CompiledProfile] = &[\n")
         for mod, *_ in mods:
             f.write(f"    &{mod}::PROFILE,\n")
