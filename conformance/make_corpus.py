@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Emit the conformance corpus.
 
-Valid fixtures are the AU Core package's own example instances — published,
-publisher-validated against each profile, the best possible "valid" source —
-fetched from packages.fhir.org at a pinned version into a gitignored cache.
+Valid fixtures are each IG package's own example instances (AU Core, US Core)
+— published, publisher-validated against each profile, the best possible
+"valid" source — fetched from packages.fhir.org at pinned versions into
+gitignored caches.
 The corpus is *derived*, never committed: the package (and the SNOMED display
 terms its examples carry) never lands in the repo, per the licence rule.
 
@@ -12,6 +13,7 @@ hand-written cases. Every fixture declares `meta.profile`, so profile
 selection is automatic for both our validator and the oracle.
 """
 import copy
+import fnmatch
 import glob
 import io
 import json
@@ -22,34 +24,45 @@ import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CORPUS = os.path.join(HERE, "corpus")
-CACHE = os.path.join(HERE, "package")
-PKG_ID, PKG_VER = "hl7.fhir.au.core", "2.0.0"
-PKG_URL = f"https://packages.fhir.org/{PKG_ID}/{PKG_VER}"
 AU = "http://hl7.org.au/fhir/core/StructureDefinition/"
+US = "http://hl7.org/fhir/us/core/StructureDefinition/"
 HR, PT = AU + "au-core-heartrate", AU + "au-core-patient"
 
+# The IGs under test: (package id, version, canonical prefix, cache dir,
+# fixture-name prefix). Each package's own examples are its valid fixtures.
+# The oracle (run.py) is handed the same list.
+IGS = [
+    ("hl7.fhir.au.core", "2.0.0", AU, "package", "example-"),
+    ("hl7.fhir.us.core", "6.1.0", US, "package-us", "us-"),
+]
 
-def ensure_package():
-    """The unpacked package, fetching it once."""
-    examples = os.path.join(CACHE, "package", "example")
+
+def ensure_package(pkg_id, pkg_ver, cache_dir):
+    """The unpacked package's example dir, fetching the package once."""
+    cache = os.path.join(HERE, cache_dir)
+    examples = os.path.join(cache, "package", "example")
     if os.path.isdir(examples):
         return examples
-    os.makedirs(CACHE, exist_ok=True)
-    print(f"==> fetching {PKG_ID}#{PKG_VER}")
-    data = urllib.request.urlopen(PKG_URL).read()
+    os.makedirs(cache, exist_ok=True)
+    print(f"==> fetching {pkg_id}#{pkg_ver}")
+    data = urllib.request.urlopen(f"https://packages.fhir.org/{pkg_id}/{pkg_ver}").read()
     with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as t:
         try:
-            t.extractall(CACHE, filter="data")
+            t.extractall(cache, filter="data")
         except TypeError:  # Python < 3.12
-            t.extractall(CACHE)
+            t.extractall(cache)
     return examples
 
 
-def au_profile(d):
+def profile_of(d, prefix):
     for p in (d.get("meta") or {}).get("profile") or []:
-        if p.startswith(AU):
+        if p.startswith(prefix):
             return p
     return None
+
+
+def au_profile(d):
+    return profile_of(d, AU)
 
 
 def mutate(base, fn):
@@ -181,6 +194,71 @@ def subject_wrong_type(d):
     d["subject"] = {"reference": "Device/1"}
 
 
+# --- US Core probes: one per feature the second IG exercises differently ---
+
+def drop_race_text(d):
+    """Remove the required `text` sub-extension of the us-core-race complex
+    extension — only reachable through the extension slice's profile
+    (us-core-race: extension:text 1..1)."""
+    for e in d.get("extension", []):
+        if e.get("url", "").endswith("/us-core-race"):
+            e["extension"] = [x for x in e.get("extension", []) if x.get("url") != "text"]
+
+
+def drop_diastolic_us(d):
+    """Remove the diastolic component (LOINC 8462-4) — us-core-blood-pressure
+    component:diastolic 1..1."""
+    d["component"] = [
+        c for c in d.get("component", [])
+        if not any(x.get("code") == "8462-4" for x in (c.get("code") or {}).get("coding", []))
+    ]
+
+
+def wrong_bp_unit(d):
+    """mm[Hg] -> mmHg on the systolic component — a fixed UCUM code inside a
+    component slice."""
+    for c in d.get("component", []):
+        q = c.get("valueQuantity")
+        if q and q.get("code") == "mm[Hg]":
+            q["code"] = "mmHg"
+            break
+
+
+def wrong_lab_category(d):
+    """laboratory -> vital-signs: the us-core-observation-lab category slice
+    (pattern on $this) then matches nothing; category:us-core 1..1."""
+    for cat in d.get("category", []):
+        for x in cat.get("coding", []):
+            if x.get("code") == "laboratory":
+                x["code"] = "vital-signs"
+
+
+def drop_value_and_dar(d):
+    for k in [k for k in d if k.startswith("value")]:
+        d.pop(k)
+    d.pop("dataAbsentReason", None)
+
+
+# (example file glob, fixture name, mutation, expected verdict)
+US_MUTATIONS = [
+    ("Patient-example.json", "us-patient-missing-name", drop("name"), False),
+    ("Patient-example.json", "us-patient-bad-gender", lambda d: d.update(gender="banana"), False),
+    ("Patient-example.json", "us-patient-race-missing-text", drop_race_text, False),
+    ("Observation-blood-pressure.json", "us-bp-missing-diastolic", drop_diastolic_us, False),
+    ("Observation-blood-pressure.json", "us-bp-wrong-unit", wrong_bp_unit, False),
+    ("Observation-serum-sodium.json", "us-lab-missing-category", drop("category"), False),
+    ("Observation-serum-sodium.json", "us-lab-wrong-category", wrong_lab_category, False),
+    ("Observation-*smok*.json", "us-smoking-no-value", drop_value_and_dar, False),
+    ("Condition-health-concern-example.json", "us-condition-missing-category", drop("category"), False),
+    # The oracle reports this VALID (requester is must-support, not required in
+    # 6.1.0) — kept as a guard against over-enforcing what the oracle does not.
+    ("MedicationRequest-self-tylenol.json", "us-medreq-missing-requester", drop("requester"), True),
+    ("Encounter-example-1.json", "us-encounter-missing-type", drop("type"), False),
+    ("Immunization-imm-1.json", "us-immunization-missing-vaccinecode", drop("vaccineCode"), False),
+    ("AllergyIntolerance-example.json", "us-allergy-missing-patient", drop("patient"), False),
+]
+
+
 # (example file, fixture name, mutation, expected verdict)
 MUTATIONS = [
     ("Observation-bloodpressure-1.json", "bloodpressure-wrong-diastolic-code", wrong_diastolic_code, False),
@@ -198,37 +276,52 @@ MUTATIONS = [
 
 
 def main():
-    examples_dir = ensure_package()
     os.makedirs(CORPUS, exist_ok=True)
     for f in glob.glob(os.path.join(CORPUS, "*.json")):  # derived: rebuild clean
         os.remove(f)
     manifest = []
 
-    def emit(name, resource, profile, expect):
+    def emit(name, resource, profile, expect, ig):
         fname = f"{name}.json"
         with open(os.path.join(CORPUS, fname), "w") as fh:
             json.dump(resource, fh, indent=2)
             fh.write("\n")
-        manifest.append({"file": fname, "profile": profile, "expect": expect})
+        manifest.append({"file": fname, "profile": profile, "expect": expect, "ig": ig})
 
+    au_ig = f"{IGS[0][0]}#{IGS[0][1]}"
     for name, profile, expect, resource in HAND_WRITTEN:
-        emit(name, resource, profile, expect)
+        emit(name, resource, profile, expect, au_ig)
 
-    examples = {}
-    for path in sorted(glob.glob(os.path.join(examples_dir, "*.json"))):
-        d = json.load(open(path))
-        profile = au_profile(d)
-        if not profile:
+    # Every IG's own examples that declare one of its profiles: valid by
+    # publication. Examples that declare no profile of the IG are left out —
+    # neither side would apply the IG to them.
+    au_examples, us_examples = {}, {}
+    for pkg_id, pkg_ver, prefix, cache_dir, name_prefix in IGS:
+        examples_dir = ensure_package(pkg_id, pkg_ver, cache_dir)
+        ig = f"{pkg_id}#{pkg_ver}"
+        for path in sorted(glob.glob(os.path.join(examples_dir, "*.json"))):
+            d = json.load(open(path))
+            profile = profile_of(d, prefix)
+            if not profile:
+                continue
+            (au_examples if prefix == AU else us_examples)[os.path.basename(path)] = d
+            emit(name_prefix + os.path.basename(path)[:-5], d, profile, True, ig)
+
+    us_ig = f"{IGS[1][0]}#{IGS[1][1]}"
+    for pattern, name, fn, expect in US_MUTATIONS:
+        src = next((k for k in sorted(us_examples) if fnmatch.fnmatch(k, pattern)), None)
+        if src is None:
+            print(f"!! no US Core example matching {pattern}", file=sys.stderr)
             continue
-        examples[os.path.basename(path)] = d
-        emit("example-" + os.path.basename(path)[:-5], d, profile, True)
+        base = us_examples[src]
+        emit(name, mutate(base, fn), profile_of(base, US), expect, us_ig)
 
     for src, name, fn, expect in MUTATIONS:
-        base = examples.get(src)
+        base = au_examples.get(src)
         if base is None:
             print(f"!! no example {src}", file=sys.stderr)
             continue
-        emit(name, mutate(base, fn), au_profile(base), expect)
+        emit(name, mutate(base, fn), au_profile(base), expect, au_ig)
 
     with open(os.path.join(CORPUS, "manifest.json"), "w") as fh:
         json.dump(manifest, fh, indent=2)

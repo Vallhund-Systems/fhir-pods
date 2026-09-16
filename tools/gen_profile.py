@@ -194,6 +194,13 @@ def build(sd, load=None):
                 sl["max"] = int(mx) if mx not in (None, "*") else None
                 sl["type"] = types[0].get("code") if types else None
                 sl["profile"] = (types[0].get("profile") or [None])[0] if types else None
+                if has_object_fixed(e):
+                    # The slice element's own pattern (a patternCodeableConcept
+                    # on `category:us-core`, say) — what a `pattern $this`
+                    # discriminator resolves to. Keyed by the empty path.
+                    for k, v in e.items():
+                        if k.startswith(("pattern", "fixed")) and isinstance(v, (dict, list)):
+                            sl.setdefault("objpat", {})[""] = v
                 continue
             name, _ = tail.split(".", 1)                     # a slice sub-element
             sl = sg["slices"].setdefault(name, {"min": 0, "max": None, "type": None, "profile": None, "subs": {}})
@@ -250,11 +257,14 @@ def build(sd, load=None):
                         val = sl["profile"]
                     if val is None:
                         # The slice's own object pattern at the discriminator
-                        # path (a patternCodeableConcept on `type`, say).
-                        obj = sl.get("objpat", {}).get(dpath)
+                        # path (a patternCodeableConcept on `type`, say), or on
+                        # the slice element itself when the path is `$this`.
+                        key = "" if dpath == "$this" else dpath
+                        obj = sl.get("objpat", {}).get(key)
                         if obj:
                             discs.extend(
-                                ("value", "$this." + (f"{dpath}.{s}" if s else dpath), v) for s, v in flatten(obj)
+                                ("value", "$this" + "".join(f".{seg}" for seg in (key, s) if seg), v)
+                                for s, v in flatten(obj)
                             )
                             continue
                     if val is None and sl["profile"] and load:

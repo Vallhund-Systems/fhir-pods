@@ -3,14 +3,15 @@
 `src/generated/`, plus a `mod.rs` declaring each module and exposing a
 `REGISTRY` of all compiled profiles — looked up at runtime by canonical URL.
 
-The first package is primary: its resource profiles are generated. Every
-package contributes to the URL index that lets a slice discriminate by, and
-inherit, an external profile — and the `Identifier` datatype profiles from
-every package are generated so those slices have something to conform to
-(e.g. `hl7.fhir.au.base`'s `au-ihi` / `au-medicarecardnumber` / `au-dvanumber`).
+The first N packages (`--primaries N`, default 1) are primary: their resource
+profiles are generated. Every package contributes to the URL index that lets a
+slice discriminate by, and inherit, an external profile — and the `Identifier`
+and complex `Extension` datatype profiles from every package are generated so
+those slices have something to conform to (e.g. `hl7.fhir.au.base`'s `au-ihi`
+/ `au-medicarecardnumber`, US Core's `us-core-race`).
 
 Usage:
-    gen_all.py <out/dir> "<provenance>" <primary/package/dir> [<dependency/package/dir> ...]
+    gen_all.py [--primaries N] <out/dir> "<provenance>" <primary pkg> [<pkg> ...]
 """
 import glob
 import json
@@ -22,9 +23,13 @@ from gen_profile import build, emit  # noqa: E402
 
 
 def main():
-    out_dir, provenance, pkg_dirs = sys.argv[1], sys.argv[2], sys.argv[3:]
+    args = sys.argv[1:]
+    primaries = 1
+    if args[:1] == ["--primaries"]:
+        primaries, args = int(args[1]), args[2:]
+    out_dir, provenance, pkg_dirs = args[0], args[1], args[2:]
     if not pkg_dirs:
-        sys.exit("usage: gen_all.py <out/dir> <provenance> <primary pkg> [<dependency pkg> ...]")
+        sys.exit("usage: gen_all.py [--primaries N] <out/dir> <provenance> <primary pkg> [<pkg> ...]")
     os.makedirs(out_dir, exist_ok=True)
 
     # canonical URL -> file, across every package (the resolver's index)
@@ -48,14 +53,17 @@ def main():
             sd = json.load(open(path))
             if sd.get("derivation") != "constraint" or not (sd.get("snapshot") or {}).get("element"):
                 continue
-            primary_resource = i == 0 and sd.get("kind") == "resource"
-            identifier_profile = sd.get("kind") == "complex-type" and sd.get("type") == "Identifier"
-            if primary_resource or identifier_profile:
+            primary_resource = i < primaries and sd.get("kind") == "resource"
+            # Datatype profiles a slice can inherit: Identifier (AU Base's IHI,
+            # Medicare, DVA…) and complex Extensions (US Core's race /
+            # ethnicity…, whose sub-extensions carry their own cardinality).
+            datatype_profile = sd.get("kind") == "complex-type" and sd.get("type") in ("Identifier", "Extension")
+            if primary_resource or datatype_profile:
                 targets.append(sd)
 
     mods = []
     for sd in targets:
-        mod = sd["id"].replace("-", "_").replace(".", "_")
+        mod = sd["id"].replace("-", "_").replace(".", "_").lower()
         with open(os.path.join(out_dir, f"{mod}.rs"), "w") as f:
             f.write(emit(sd, provenance, load))
         _, elements, slicings, deferred = build(sd, load)

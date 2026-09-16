@@ -22,7 +22,7 @@ HERE = os.path.join(ROOT, "conformance")
 CORPUS = os.path.join(HERE, "corpus")
 JAR = os.path.join(HERE, "validator_cli.jar")
 JAR_URL = "https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar"
-IG = "hl7.fhir.au.core#2.0.0"
+IGS = ["hl7.fhir.au.core#2.0.0", "hl7.fhir.us.core#6.1.0"]  # keep in step with make_corpus.IGS
 FILE_EXT = "operationoutcome-file"
 
 
@@ -87,7 +87,10 @@ def oracle_batch(paths):
     offline posture. Returns {file basename: (verdict, detail, error_paths)}."""
     out = os.path.join(CORPUS, "_oracle.bundle.json")
     subprocess.run(
-        [JAVA, "-jar", JAR, *paths, "-version", "4.0", "-ig", IG, "-tx", "n/a", "-output", out],
+        [JAVA, "-jar", JAR, *paths, "-version", "4.0", *[a for ig in IGS for a in ("-ig", ig)], "-tx", "n/a",
+         # A CLI policy lint, not conformance: published IG examples use example.org
+         # URLs and are valid by publication. Off, so the oracle scores profiles only.
+         "-allow-example-urls", "true", "-output", out],
         capture_output=True, text=True,
     )
     results = {}
@@ -126,7 +129,7 @@ def main():
     paths = [os.path.join(CORPUS, c["file"]) for c in manifest]
     oracle = oracle_batch(paths) if have_java else {}
 
-    print(f"{'fixture':<44} {'expect':<8} {'ours':<8} {'oracle':<8} status")
+    print(f"{'fixture':<58} {'expect':<8} {'ours':<8} {'oracle':<8} status")
     failures = 0
     oracle_errors = 0
     for c, path in zip(manifest, paths):
@@ -143,7 +146,7 @@ def main():
             status = "OURS!=ORACLE"
         if status in ("OURS!=EXPECT", "OURS!=ORACLE"):
             failures += 1
-        print(f"{c['file']:<44} {expect:<8} {ov:<8} {rv:<8} {status}")
+        print(f"{c['file']:<58} {expect:<8} {ov:<8} {rv:<8} {status}")
         if status != "ok":
             for d in detail[:6]:
                 print(f"    oracle: {d}")

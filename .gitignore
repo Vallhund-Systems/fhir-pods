@@ -6,7 +6,7 @@ Cargo.lock
 conformance/validator_cli.jar
 # derived at run time from the pinned AU Core package (carries SNOMED displays)
 conformance/corpus/
-conformance/package/
+conformance/package*/
 __pycache__/
 # cargo-fuzz working dirs
 fuzz/target/

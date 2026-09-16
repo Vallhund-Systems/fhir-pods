@@ -406,6 +406,26 @@ treat `$validate.profile` `uri`→`canonical` + R5's `usageContext` as additive.
   page-aligned, built with plain cargo + the NDK clang — no `cargo-ndk`). The
   "almost free" thesis is now a measured number on all three delivery
   targets, not a hope.
+- **Pass 10 — a second IG: US Core 6.1.0 → 271/271 (2026-09-15).** The
+  corpus builder, oracle runner and generator now take a list of IGs; the
+  registry holds 156 profiles (AU Core 25 + US Core 49 resource profiles, plus
+  the `Identifier` *and now complex `Extension`* datatype profiles from every
+  package). US Core's 174 profile-declaring examples came in **agreeing
+  first time** (0 false rejections); the oracle's only complaints were its
+  own CLI policy lint on `example.org` URLs in published examples — switched
+  off with `-allow-example-urls true` so the oracle scores conformance, not
+  hygiene. Thirteen planted US Core probes steered three changes: (1) the
+  slice element's *own* `patternCodeableConcept` now resolves a `pattern
+  $this` discriminator (US Core's `category:us-core` / `category:laboratory`
+  idiom, absent from AU Core); (2) complex `Extension` profiles are compiled
+  so an extension slice inherits them (`Patient.extension:race` →
+  `us-core-race`, whose `extension:text` is 1..1); (3) one expectation was
+  mine, not the spec's — `MedicationRequest.requester` is must-support, not
+  required, in 6.1.0; flipped to an over-enforcement guard. Result:
+  **271/271, one informational path difference** (the oracle additionally
+  flags a *display-name* mismatch on a code we don't bundle displays for —
+  consistent with the terminology stance). `.wasm` grew 170 → 262 KB (49 →
+  66 KB gzipped) for the second IG.
 - **Inferno** (ONC g10) and **Touchstone** are **API-behavior** harnesses
   (SMART launch, Bulk Data, search, US Core over the wire) — relevant only if we
   later ship a *server* surface, not for the embeddable validator. Note them,
