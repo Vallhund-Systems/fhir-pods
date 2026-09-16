@@ -1,6 +1,7 @@
 /** The ABI this wrapper speaks; a module reporting anything else is refused. */
 export const ABI_VERSION: number;
 
+// The report types below mirror pods/expo/src/index.ts verbatim — the pods are standalone packages; keep them in sync.
 export type Severity = "fatal" | "error" | "warning" | "information";
 
 /** One finding, in the pods' ergonomic shape. */

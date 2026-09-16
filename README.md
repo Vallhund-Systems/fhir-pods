@@ -1,8 +1,8 @@
 # fhir-pods
 
-An embeddable FHIR verifier — a small Rust core that **validates** and **lowers**
-FHIR, with a lean WASM boundary, so the check runs wherever the data already is:
-in the app, in the browser, at the edge, on device.
+An embeddable FHIR verifier — a small Rust core that **validates** FHIR against
+compiled profiles, behind one lean C ABI, so the check runs wherever the data
+already is: in the app, in the browser, at the edge, on device.
 
 ## Why
 
@@ -37,33 +37,40 @@ Rust-shaped. (See [`docs/architecture.md`](docs/architecture.md).)
   published conformance suites (Inferno / Touchstone) before widening.
 - **Ships no licensed terminology.** SNOMED CT carries affiliate licensing in
   many jurisdictions; terminology providers are pluggable.
-- **Source-agnostic.** It lowers *arbitrary* input to FHIR. Domain-specific maps
-  live in the host application, never in this repo.
 
 ## Status
 
-Working verifier for **AU Core 2.0.0**, **US Core 6.1.0** and **IPA 1.1.0**
-(168 compiled profiles: 86 resource profiles plus the `Identifier` and
-complex `Extension` datatypes slices inherit — AU Base's IHI/Medicare/DVA,
-US Core's race / ethnicity): per-parent cardinality, fixed values, required
-bindings, slicing with profile inheritance, every declared profile applied,
-typed traversal from a compact element-type table, and a FHIRPath engine
-(with a linear-time `matches()` regex) that evaluates every invariant in the
-registry except `htmlChecks()` and `resolve()` (skipped, never guessed).
-Agrees with the HL7 reference validator on **289/289** corpus instances (the
-three IGs' own 253 published examples + 36 broken ones). Delivered as a
-~370 KB `.wasm` (96 KB gzipped) and an Expo
-module (iOS + Android), each measured at tens of microseconds per resource;
-terminology beyond the bundled sets arrives through a host-provided seam
-(`TerminologyProvider`), never as shipped content. What "agrees" covers and
-excludes: [`docs/scope.md`](docs/scope.md).
-Zero dependencies, `no_std`, fuzzed. Design and decisions:
-[`docs/architecture.md`](docs/architecture.md),
-[`docs/incumbent-apis.md`](docs/incumbent-apis.md).
+- **AU Core 2.0.0, US Core 6.1.0, IPA 1.1.0** — 168 compiled profiles (86
+  resource profiles plus the `Identifier` and complex `Extension` datatypes
+  slices inherit).
+- **Checks:** per-parent cardinality, fixed values, required bindings, slicing
+  with profile inheritance, every declared profile applied, must-support gaps
+  (as information), and a FHIRPath engine with typed traversal and a
+  linear-time `matches()` that evaluates every invariant in the registry
+  except `htmlChecks()` and `resolve()` — skipped, never guessed.
+- **Agreement with the HL7 reference validator: 289/289** corpus instances
+  (the three IGs' own 253 published examples + 36 broken ones). What that
+  covers and excludes: [`docs/scope.md`](docs/scope.md).
+- **Terminology** beyond the bundled base sets arrives through a
+  host-provided seam (`TerminologyProvider`), never as shipped content.
+- **Delivery:** a ~370 KB `.wasm` (96 KB gzipped) with a dependency-free JS
+  wrapper, and an Expo module (iOS XCFramework + Android jniLibs) — each
+  measured at tens of microseconds per profiled resource.
+- Zero dependencies, `no_std`, `#![forbid(unsafe_code)]`, fuzzed.
+
+Design: [`docs/architecture.md`](docs/architecture.md) ·
+decisions: [`docs/incumbent-apis.md`](docs/incumbent-apis.md) ·
+how it got here: [`docs/history.md`](docs/history.md).
+
+## Use
+
+- Browser / edge / Node: [`pods/wasm`](pods/wasm/README.md) — `instantiate(bytes)` → `validate(json)`.
+- iOS / Android (Expo): [`pods/expo`](pods/expo/README.md) — `validate(json)`, native terminology provider.
+- Rust: `fhir_pods_core::validate_bytes(&[u8]) -> Validation`; the C ABI is `crates/fhir-pods-ffi/include/fhir_pods.h`.
 
 ## Layout
 
-- `crates/fhir-pods-core` — the Rust verifier + lowering core (zero deps, no `unsafe`).
+- `crates/fhir-pods-core` — the Rust verifier core (zero deps, no `unsafe`, `no_std`).
 - `crates/fhir-pods-ffi` — the one lean C ABI, compiled per target (wasm32 / native staticlib).
 - `pods/wasm` — the wasm pod: a ~370 KB `.wasm` (96 KB gzipped) + a zero-dependency JS wrapper.
 - `pods/expo` — the expo pod: the core as an Expo native module (iOS XCFramework + Android jniLibs).

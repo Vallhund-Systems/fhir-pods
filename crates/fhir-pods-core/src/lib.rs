@@ -48,8 +48,6 @@ mod typemap;
 /// Under a resource type the table doesn't cover, a node has no type and
 /// type-dependent FHIRPath is skipped, never guessed.
 pub mod typing {
-    use alloc::string::String;
-
     use crate::typemap::{TABLE, TYPES};
 
     /// A resource or datatype name the table knows.
@@ -57,8 +55,26 @@ pub mod typing {
         TYPES.binary_search(&name).ok().map(|i| TYPES[i])
     }
 
-    fn lookup(path: &str) -> Option<&'static (&'static str, &'static str)> {
-        TABLE.binary_search_by(|(p, _)| (*p).cmp(path)).ok().map(|i| &TABLE[i])
+    /// `p.cmp(&format!("{ctx}.{key}"))` without building the string.
+    fn cmp_joined(p: &str, ctx: &str, key: &str) -> core::cmp::Ordering {
+        use core::cmp::Ordering::*;
+        let pb = p.as_bytes();
+        let mut i = 0;
+        for part in [ctx.as_bytes(), b".", key.as_bytes()] {
+            for &x in part {
+                match pb.get(i) {
+                    None => return Less,
+                    Some(&y) if y != x => return y.cmp(&x),
+                    _ => {}
+                }
+                i += 1;
+            }
+        }
+        if pb.len() > i { Greater } else { Equal }
+    }
+
+    fn lookup2(ctx: &str, key: &str) -> Option<&'static (&'static str, &'static str)> {
+        TABLE.binary_search_by(|(p, _)| cmp_joined(p, ctx, key)).ok().map(|i| &TABLE[i])
     }
 
     /// A child's typing: `ctx` is what its own children resolve against (a
@@ -80,11 +96,7 @@ pub mod typing {
             k if k.starts_with('_') => return Some(Child { ctx: "Element", ty: "Element" }),
             _ => {}
         }
-        let mut full = String::with_capacity(ctx.len() + 1 + key.len());
-        full.push_str(ctx);
-        full.push('.');
-        full.push_str(key);
-        let (path, ty) = match lookup(&full) {
+        let (path, ty) = match lookup2(ctx, key) {
             Some((p, t)) => (*p, *t),
             None => choice(ctx, key)?,
         };
@@ -94,11 +106,9 @@ pub mod typing {
     /// `valueQuantity` under `Observation` → the `Observation.value[x]` entry
     /// with `Quantity` among its types.
     fn choice(ctx: &str, key: &str) -> Option<(&'static str, &'static str)> {
-        let mut prefix = String::from(ctx);
-        prefix.push('.');
-        let start = TABLE.partition_point(|(p, _)| *p < prefix.as_str());
+        let start = TABLE.partition_point(|(p, _)| cmp_joined(p, ctx, "") == core::cmp::Ordering::Less);
         for (path, tys) in &TABLE[start..] {
-            let Some(rest) = path.strip_prefix(prefix.as_str()) else { break };
+            let Some(rest) = path.strip_prefix(ctx).and_then(|r| r.strip_prefix('.')) else { break };
             let Some(stem) = rest.strip_suffix("[x]") else { continue };
             if stem.contains('.') {
                 continue;
@@ -164,52 +174,58 @@ pub fn validate_bytes(input: &[u8]) -> Validation {
 
 /// [`validate_bytes`] with a host terminology provider behind the bundled sets.
 pub fn validate_bytes_with(input: &[u8], tx: &dyn terminology::TerminologyProvider) -> Validation {
-    let fields = match json::scan_top_level(input) {
-        Ok(f) => f,
+    validate_bytes_impl(input, tx, None)
+}
+
+fn validate_bytes_impl(input: &[u8], tx: &dyn terminology::TerminologyProvider, cache: Option<&Validator>) -> Validation {
+    // The scanner's contract, kept: a resource is a top-level object.
+    let first = input.iter().position(|b| !matches!(b, b' ' | b'\t' | b'\n' | b'\r')).unwrap_or(input.len());
+    if input.get(first) != Some(&b'{') {
+        return parse_failure(json::ParseError { at: first, msg: "unexpected byte" });
+    }
+    let parsed = match document::Parsed::parse(input) {
+        Ok(p) => p,
         Err(e) => return parse_failure(e),
     };
-    match fields.scalar("resourceType") {
-        None if !fields.has("resourceType") => {
+    let doc = parsed.doc();
+    let rt_member = parsed.top_member("resourceType");
+    let rt = match rt_member {
+        None => {
             let mut report = Report::default();
             report.push(Severity::Error, IssueType::Structure, "resourceType", "resourceType is required".into());
-            Validation { resource_type: "Unknown".into(), profile: None, profiles: Vec::new(), report }
+            return Validation { resource_type: "Unknown".into(), profile: None, profiles: Vec::new(), report };
         }
-        None => Validation { resource_type: "Unknown".into(), profile: None, profiles: Vec::new(), report: Report::default() },
-        Some(rt) => match document::Parsed::parse(input) {
-            Ok(parsed) => {
-                let doc = parsed.doc();
-                let profiles = select_profiles(rt, &doc);
-                if profiles.is_empty() {
-                    return if rt == "Observation" {
-                        Validation {
-                            resource_type: rt.into(),
-                            profile: Some("AU Core Observation"),
-                            profiles: vec!["AU Core Observation"],
-                            report: au_core::validate_observation(&fields),
-                        }
-                    } else {
-                        Validation { resource_type: rt.into(), profile: None, profiles: Vec::new(), report: Report::default() }
-                    };
-                }
-                // Conform to every declared profile; a finding two profiles
-                // share is reported once.
-                let mut report = Report::default();
-                for profile in &profiles {
-                    for issue in engine::validate_with(profile, &doc, tx).issues {
-                        if !report.issues.contains(&issue) {
-                            report.issues.push(issue);
-                        }
-                    }
-                }
-                Validation {
-                    resource_type: rt.into(),
-                    profile: Some(profiles[0].name),
-                    profiles: profiles.iter().map(|p| p.name).collect(),
-                    report,
-                }
+        Some(json::Value::Str(s)) => *s,
+        Some(_) => return Validation { resource_type: "Unknown".into(), profile: None, profiles: Vec::new(), report: Report::default() },
+    };
+    let profiles = select_profiles(rt, &doc);
+    if profiles.is_empty() {
+        return if rt == "Observation" {
+            let fields = match json::scan_top_level(input) { Ok(f) => f, Err(e) => return parse_failure(e) };
+            Validation {
+                resource_type: rt.into(),
+                profile: Some("AU Core Observation"),
+                profiles: vec!["AU Core Observation"],
+                report: au_core::validate_observation(&fields),
             }
-            Err(e) => parse_failure(e),
-        },
+        } else {
+            Validation { resource_type: rt.into(), profile: None, profiles: Vec::new(), report: Report::default() }
+        };
+    }
+    let mut report = Report::default();
+    for profile in &profiles {
+        let rep = engine::validate_at(profile, &doc, &doc, tx, 0, cache);
+        for issue in rep.issues {
+            if !report.issues.contains(&issue) {
+                report.issues.push(issue);
+            }
+        }
+    }
+    Validation {
+        resource_type: rt.into(),
+        profile: Some(profiles[0].name),
+        profiles: profiles.iter().map(|p| p.name).collect(),
+        report,
     }
 }
 
@@ -413,14 +429,19 @@ pub mod wire {
 
     /// Append `s` to `out`, escaping the characters JSON requires.
     pub(crate) fn escape(out: &mut String, s: &str) {
-        for c in s.chars() {
-            match c {
-                '"' => out.push_str("\\\""),
-                '\\' => out.push_str("\\\\"),
-                c if (c as u32) < 0x20 => out.push(' '),
-                c => out.push(c),
-            }
+        let mut start = 0;
+        for (i, b) in s.bytes().enumerate() {
+            let rep = match b {
+                b'"' => "\\\"",
+                b'\\' => "\\\\",
+                b if b < 0x20 => " ",
+                _ => continue,
+            };
+            out.push_str(&s[start..i]);
+            out.push_str(rep);
+            start = i + 1;
         }
+        out.push_str(&s[start..]);
     }
 }
 
@@ -475,68 +496,78 @@ pub mod json {
     /// name (the resource type, or `$this` for a sub-document) and is skipped.
     /// Arrays expand; `[x]` matches a choice suffix (`value[x]` → `valueQuantity`).
     pub fn resolve<'v, 'a>(root: &'v Value<'a>, path: &str) -> Vec<&'v Value<'a>> {
-        let mut current: Vec<&'v Value<'a>> = vec![root];
-        for seg in path.split('.').skip(1) {
-            let mut next = Vec::new();
-            for node in current {
-                children(node, seg, &mut next);
-            }
-            current = next;
-        }
-        current
+        let mut out = Vec::new();
+        resolve_each(root, path, &mut |v| out.push(v));
+        out
     }
 
-    /// Push the children of `node` matching `seg` (expanding arrays).
-    ///
-    /// FHIR JSON represents a primitive that carries only extensions (no value)
-    /// as its `_name` sibling alone — `"_birthDate": {"extension": […]}` with no
-    /// `birthDate`. That element **is present** (it satisfies `min`), so when the
-    /// value key is absent we resolve through `_name`, which also makes its
-    /// `.extension` reachable. When both are present they describe one element,
-    /// so only the value key is counted.
-    pub fn children<'v, 'a>(node: &'v Value<'a>, seg: &str, out: &mut Vec<&'v Value<'a>>) {
+    /// Visit every node `path` resolves to, depth-first, with no intermediate
+    /// collections. First segment (the root's name) is skipped.
+    pub fn resolve_each<'v, 'a>(root: &'v Value<'a>, path: &str, f: &mut dyn FnMut(&'v Value<'a>)) {
+        match path.split_once('.') {
+            None => f(root),
+            Some((_, rest)) => walk(root, rest, f),
+        }
+    }
+
+    fn walk<'v, 'a>(node: &'v Value<'a>, rest: &str, f: &mut dyn FnMut(&'v Value<'a>)) {
+        match rest.split_once('.') {
+            None => for_each_child(node, rest, f),
+            Some((seg, tail)) => for_each_child(node, seg, &mut |c| walk(c, tail, f)),
+        }
+    }
+
+    /// The children of `node` at `seg` (arrays expanded), in document order.
+    pub fn for_each_child<'v, 'a>(node: &'v Value<'a>, seg: &str, f: &mut dyn FnMut(&'v Value<'a>)) {
         match node {
             Value::Object(members) => {
-                let before = out.len();
-                for (k, v) in members {
-                    if key_matches(k, seg) {
-                        push_expanded(v, out);
+                let mut found = false;
+                match seg.strip_suffix("[x]") {
+                    Some(prefix) => {
+                        for (k, v) in members {
+                            if k.len() > prefix.len() && k.starts_with(prefix) && k.as_bytes()[prefix.len()].is_ascii_uppercase() {
+                                expand(v, f);
+                            }
+                        }
                     }
-                }
-                if out.len() == before && !seg.ends_with("[x]") {
-                    for (k, v) in members {
-                        if k.strip_prefix('_') == Some(seg) {
-                            push_expanded(v, out);
+                    None => {
+                        for (k, v) in members {
+                            if *k == seg {
+                                found = true;
+                                expand(v, f);
+                            }
+                        }
+                        if !found {
+                            for (k, v) in members {
+                                if k.strip_prefix('_') == Some(seg) {
+                                    expand(v, f);
+                                }
+                            }
                         }
                     }
                 }
             }
             Value::Array(items) => {
                 for item in items {
-                    children(item, seg, out);
+                    for_each_child(item, seg, f);
                 }
             }
             _ => {}
         }
     }
 
-    fn push_expanded<'v, 'a>(v: &'v Value<'a>, out: &mut Vec<&'v Value<'a>>) {
+    fn expand<'v, 'a>(v: &'v Value<'a>, f: &mut dyn FnMut(&'v Value<'a>)) {
         match v {
-            Value::Array(items) => out.extend(items.iter()),
-            other => out.push(other),
+            Value::Array(items) => items.iter().for_each(|x| f(x)),
+            other => f(other),
         }
     }
 
-    fn key_matches(key: &str, seg: &str) -> bool {
-        match seg.strip_suffix("[x]") {
-            Some(prefix) => {
-                key.len() > prefix.len()
-                    && key.starts_with(prefix)
-                    && key[prefix.len()..].chars().next().is_some_and(|c| c.is_ascii_uppercase())
-            }
-            None => key == seg,
-        }
+    /// Push the children of `node` matching `seg` (expanding arrays).
+    pub fn children<'v, 'a>(node: &'v Value<'a>, seg: &str, out: &mut Vec<&'v Value<'a>>) {
+        for_each_child(node, seg, &mut |v| out.push(v));
     }
+
 
     /// Recursive descent must be bounded: past this, nesting is a `ParseError`
     /// — never a stack overflow, which is an abort (not a panic) and fatal on
@@ -754,6 +785,13 @@ pub mod document {
         fn scalars(&self, path: &str) -> Vec<&str>;
         /// Sub-documents rooted at each node `path` resolves to.
         fn instances(&self, path: &str) -> Vec<Self>;
+        /// The direct children under one key (arrays expanded) — `instances("$this.key")`
+        /// without building or re-splitting a path.
+        fn child_instances(&self, key: &str) -> Vec<Self> {
+            let mut p = alloc::string::String::from("$this.");
+            p.push_str(key);
+            self.instances(&p)
+        }
         /// This node's scalar value as text, if it is a scalar.
         fn as_scalar(&self) -> Option<&str>;
         /// This node's value if it is a JSON boolean.
@@ -781,6 +819,13 @@ pub mod document {
         }
         pub fn doc(&self) -> TreeDoc<'_, 'a> {
             TreeDoc { root: &self.value, ctx: resource_ctx(&self.value) }
+        }
+        /// A top-level member by key (the JSON type tag lives here).
+        pub fn top_member(&self, key: &str) -> Option<&Value<'a>> {
+            match &self.value {
+                Value::Object(kvs) => kvs.iter().find(|(k, _)| *k == key).map(|(_, v)| v),
+                _ => None,
+            }
         }
     }
 
@@ -818,24 +863,23 @@ pub mod document {
             let Some((parent, last)) = path.rsplit_once('.') else {
                 return Vec::new();
             };
-            json::resolve(self.root, parent)
-                .into_iter()
-                .map(|p| {
-                    let mut out = Vec::new();
-                    json::children(p, last, &mut out);
-                    out.len()
-                })
-                .collect()
+            let mut out = Vec::new();
+            json::resolve_each(self.root, parent, &mut |p| {
+                let mut n = 0usize;
+                json::for_each_child(p, last, &mut |_| n += 1);
+                out.push(n);
+            });
+            out
         }
 
         fn scalars(&self, path: &str) -> Vec<&str> {
-            json::resolve(self.root, path)
-                .into_iter()
-                .filter_map(|v| match v {
-                    Value::Str(s) => Some(*s),
-                    _ => None,
-                })
-                .collect()
+            let mut out = Vec::new();
+            json::resolve_each(self.root, path, &mut |v| {
+                if let Value::Str(s) = v {
+                    out.push(*s)
+                }
+            });
+            out
         }
 
         fn instances(&self, path: &str) -> Vec<Self> {
@@ -854,10 +898,23 @@ pub mod document {
                     _ => None,
                 };
             }
-            json::resolve(self.root, path)
-                .into_iter()
-                .map(|n| TreeDoc { root: n, ctx: if ctx == Some("Resource") { resource_ctx(n) } else { ctx } })
-                .collect()
+            let mut out = Vec::new();
+            json::resolve_each(self.root, path, &mut |n| {
+                out.push(TreeDoc { root: n, ctx: if ctx == Some("Resource") { resource_ctx(n) } else { ctx } })
+            });
+            out
+        }
+
+        fn child_instances(&self, key: &str) -> Vec<Self> {
+            let ctx = match self.ctx {
+                Some(c) if !key.ends_with("[x]") => crate::typing::child(c, key).map(|ch| ch.ctx),
+                _ => None,
+            };
+            let mut out = Vec::new();
+            json::for_each_child(self.root, key, &mut |n| {
+                out.push(TreeDoc { root: n, ctx: if ctx == Some("Resource") { resource_ctx(n) } else { ctx } })
+            });
+            out
         }
 
         fn as_scalar(&self) -> Option<&str> {
@@ -1026,6 +1083,62 @@ pub mod compiled {
     }
 }
 
+/// A validator that has parsed the registry's invariant expressions once.
+/// Build one per process (about half a millisecond) and reuse it: the free
+/// functions [`validate_bytes`] / [`validate_bytes_with`] re-parse every
+/// invariant on every call and cost roughly twice as much.
+pub struct Validator {
+    /// Parsed ASTs keyed by the expression's `'static` address — the registry
+    /// shares expression strings, so this is small and the lookup is a binary
+    /// search on an integer.
+    invariants: Vec<(usize, Option<path::Expr>)>,
+}
+
+impl Default for Validator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Validator {
+    pub fn new() -> Self {
+        let mut keys: Vec<(usize, &'static str)> = Vec::new();
+        for p in generated::REGISTRY {
+            for inv in p.invariants {
+                keys.push((inv.expression.as_ptr() as usize, inv.expression));
+            }
+        }
+        keys.sort_unstable_by_key(|k| k.0);
+        keys.dedup_by_key(|k| k.0);
+        Self { invariants: keys.into_iter().map(|(k, e)| (k, path::parse(e).ok())).collect() }
+    }
+
+    /// The parsed expression, or `None` when it is outside the supported
+    /// FHIRPath core (skipped, never guessed).
+    fn expr(&self, expression: &'static str) -> Option<&path::Expr> {
+        let k = expression.as_ptr() as usize;
+        match self.invariants.binary_search_by_key(&k, |x| x.0) {
+            Ok(i) => self.invariants[i].1.as_ref(),
+            Err(_) => None,
+        }
+    }
+
+    /// [`validate_bytes`], with the invariants already parsed.
+    pub fn validate(&self, input: &[u8]) -> Validation {
+        validate_bytes_impl(input, &terminology::Bundled, Some(self))
+    }
+
+    /// [`validate_bytes_with`], with the invariants already parsed.
+    pub fn validate_with(&self, input: &[u8], tx: &dyn terminology::TerminologyProvider) -> Validation {
+        validate_bytes_impl(input, tx, Some(self))
+    }
+
+    /// [`must_support_gaps`].
+    pub fn must_support_gaps(&self, input: &[u8]) -> Vec<&'static str> {
+        crate::must_support_gaps(input)
+    }
+}
+
 /// The validation engine — the domain service. Pure: a compiled profile and a
 /// document in, a report out.
 pub mod engine {
@@ -1054,7 +1167,7 @@ pub mod engine {
     /// Validate with a host terminology provider answering the bindings the
     /// bundled sets can't (see [`crate::terminology::Chain`]).
     pub fn validate_with<D: Document>(profile: &CompiledProfile, doc: &D, tx: &dyn TerminologyProvider) -> Report {
-        validate_at(profile, doc, doc, tx, 0)
+        validate_at(profile, doc, doc, tx, 0, None)
     }
 
     /// Must-support elements that are absent where their parent is present.
@@ -1071,19 +1184,30 @@ pub mod engine {
     /// `root` is the resource being validated (`%resource`) — the same node
     /// as `doc` at the top level, and still the resource when `doc` is a
     /// slice instance being checked against an inherited profile.
-    fn validate_at<D: Document>(profile: &CompiledProfile, doc: &D, root: &D, tx: &dyn TerminologyProvider, depth: usize) -> Report {
+    pub(crate) fn validate_at<D: Document>(profile: &CompiledProfile, doc: &D, root: &D, tx: &dyn TerminologyProvider, depth: usize, cache: Option<&crate::Validator>) -> Report {
         let mut r = Report::default();
         for el in profile.elements {
             check_element(el, el.path, doc, tx, &mut r);
         }
         for slicing in profile.slicings {
-            check_slicing(slicing, doc, root, tx, &mut r, depth);
+            check_slicing(slicing, doc, root, tx, &mut r, depth, cache);
         }
         for inv in profile.invariants {
             // Outside the supported FHIRPath core: skipped, never guessed.
-            let Ok(expr) = path::parse(inv.expression) else { continue };
+            let owned;
+            let expr: &path::Expr = match cache {
+                Some(v) => match v.expr(inv.expression) {
+                    Some(e) => e,
+                    None => continue,
+                },
+                None => {
+                    let Ok(e) = path::parse(inv.expression) else { continue };
+                    owned = e;
+                    &owned
+                }
+            };
             for (ctx, this_type) in invariant_contexts(inv, doc) {
-                if path::check_with(&expr, &ctx, this_type, Some(root)) == Verdict::Fail {
+                if path::check_with(expr, &ctx, this_type, Some(root)) == Verdict::Fail {
                     let severity = match inv.severity {
                         InvariantSeverity::Error => Severity::Error,
                         InvariantSeverity::Warning => Severity::Warning,
@@ -1218,17 +1342,21 @@ pub mod engine {
     /// Evaluate a slicing per parent instance: assign instances to slices, check
     /// each slice's cardinality, validate its sub-constraints against every
     /// matched instance (re-rooted as `$this`), and enforce `closed`.
-    fn check_slicing<D: Document>(slicing: &Slicing, doc: &D, root: &D, tx: &dyn TerminologyProvider, r: &mut Report, depth: usize) {
+    fn check_slicing<D: Document>(slicing: &Slicing, doc: &D, root: &D, tx: &dyn TerminologyProvider, r: &mut Report, depth: usize, cache: Option<&crate::Validator>) {
         let Some((parent_path, last)) = slicing.path.rsplit_once('.') else {
             return;
         };
         for parent in doc.instances(parent_path) {
-            let all = parent.instances(&format!("$this.{last}"));
+            let all = parent.child_instances(last);
             let mut matched = 0usize;
+            let mut label = String::new();
             for slice in slicing.slices {
-                let label = format!("{}:{}", slicing.path, slice.name);
+                label.clear();
+                label.push_str(slicing.path);
+                label.push(':');
+                label.push_str(slice.name);
                 let insts: Vec<_> = match type_key(slice) {
-                    Some(key) => parent.instances(&format!("$this.{key}")),
+                    Some(key) => parent.child_instances(key),
                     None => all.iter().filter(|i| matches(slice, *i)).cloned().collect(),
                 };
                 matched += insts.len();
@@ -1241,17 +1369,18 @@ pub mod engine {
                         r.push(Severity::Error, IssueType::Structure, &label, format!("{label} exceeds max {m} (found {count})"));
                     }
                 }
+                let base_len = label.len();
                 for inst in &insts {
                     for el in slice.elements {
-                        let sub = format!("{label}.{}", el.path.trim_start_matches("$this."));
-                        check_element(el, &sub, inst, tx, r);
+                        label.truncate(base_len);
+                        label.push('.');
+                        label.push_str(el.path.trim_start_matches("$this."));
+                        check_element(el, &label, inst, tx, r);
                     }
-                    // A slice that names a profile: matched instances must also
-                    // conform to it. Recursive — the instance becomes the root,
-                    // and the profile's own element paths resolve against it.
+                    label.truncate(base_len);
                     if let Some(url) = slice.profile.filter(|_| depth < MAX_INHERIT) {
                         if let Some(profile) = crate::generated::REGISTRY.iter().find(|p| p.url == url) {
-                            for issue in validate_at(profile, inst, root, tx, depth + 1).issues {
+                            for issue in validate_at(profile, inst, root, tx, depth + 1, cache).issues {
                                 let rel = issue
                                     .path
                                     .strip_prefix(profile.resource_type)
@@ -1967,6 +2096,36 @@ pub mod path {
         Bool(bool),
     }
 
+    /// Compare two items' scalar text without allocating.
+    fn scalar_eq<D: Document>(a: &Item<D>, b: &Item<D>) -> Option<bool> {
+        let mut buf_a = [0u8; 24];
+        let mut buf_b = [0u8; 24];
+        let sa = scalar_str(a, &mut buf_a)?;
+        let sb = scalar_str(b, &mut buf_b)?;
+        Some(sa == sb)
+    }
+    fn scalar_str<'i, D: Document>(it: &'i Item<D>, buf: &'i mut [u8; 24]) -> Option<&'i str> {
+        match it {
+            Item::Node(d) => d.as_scalar(),
+            Item::Str(s) => Some(s.as_str()),
+            Item::Bool(b) => Some(if *b { "true" } else { "false" }),
+            Item::Int(n) => {
+                // itoa into the caller's buffer
+                let mut n2 = *n;
+                let neg = n2 < 0;
+                let mut i = buf.len();
+                loop {
+                    i -= 1;
+                    buf[i] = b'0' + (n2 % 10).unsigned_abs() as u8;
+                    n2 /= 10;
+                    if n2 == 0 { break; }
+                }
+                if neg { i -= 1; buf[i] = b'-'; }
+                core::str::from_utf8(&buf[i..]).ok()
+            }
+        }
+    }
+
     fn scalar_of<D: Document>(it: &Item<D>) -> Option<String> {
         match it {
             Item::Node(d) => d.as_scalar().map(String::from),
@@ -2018,8 +2177,7 @@ pub mod path {
     fn items_equal<D: Document>(a: &Item<D>, b: &Item<D>) -> bool {
         match (a, b) {
             (Item::Node(x), Item::Node(y)) => x.same(y),
-            (Item::Node(_), _) | (_, Item::Node(_)) => scalar_of(a).is_some() && scalar_of(a) == scalar_of(b),
-            _ => scalar_of(a) == scalar_of(b),
+            _ => scalar_eq(a, b).unwrap_or(false),
         }
     }
 
@@ -2056,8 +2214,10 @@ pub mod path {
     /// `dateTime` matches `dateTime` / `FHIR.dateTime`; case-insensitive on the
     /// last segment, as FHIRPath type specifiers are written both ways.
     fn type_matches(this_type: &str, spec: &str) -> bool {
-        let last = |t: &str| t.rsplit('.').next().unwrap_or(t).to_ascii_lowercase();
-        last(this_type) == last(spec)
+        fn last(t: &str) -> &str {
+            t.rsplit('.').next().unwrap_or(t)
+        }
+        last(this_type).eq_ignore_ascii_case(last(spec))
     }
 
     /// A collection that must be empty or a single item; more is unsupported
@@ -2218,7 +2378,7 @@ pub mod path {
                     let Item::Node(d) = it else {
                         return Err(Unsupported);
                     };
-                    let mut found = d.instances(&format!("$this.{name}"));
+                    let mut found = d.child_instances(name);
                     if found.is_empty() {
                         // Choice type: `value` reaches `valueQuantity` (typed by its key).
                         found = d.choice_children(name);
@@ -2239,7 +2399,7 @@ pub mod path {
                     },
                     ("count", 0) => vec![Item::Int(coll.len() as i64)],
                     ("first", 0) => coll.into_iter().take(1).collect(),
-                    ("hasValue", 0) => vec![Item::Bool(coll.iter().any(|it| scalar_of(it).is_some()))],
+                    ("hasValue", 0) => vec![Item::Bool(coll.iter().any(|it| match it { Item::Node(d) => d.as_scalar().is_some(), _ => true }))],
                     ("where", 1) => filter(&coll, &args[0], env)?,
                     ("last", 0) => coll.into_iter().last().into_iter().collect(),
                     // `single()`: the one item, empty for none; more is an error in the spec
@@ -2363,8 +2523,8 @@ pub mod path {
                             let Item::Node(d) = it else {
                                 return Err(Unsupported);
                             };
-                            for ext in d.instances("$this.extension") {
-                                let matches = ext.instances("$this.url").iter().any(|u| u.as_scalar() == Some(url.as_str()));
+                            for ext in d.child_instances("extension") {
+                                let matches = ext.child_instances("url").iter().any(|u| u.as_scalar() == Some(url.as_str()));
                                 if matches {
                                     out.push(Item::Node(ext));
                                 }
@@ -2478,9 +2638,9 @@ pub mod path {
                 if a.len() != 1 || b.len() != 1 {
                     return Err(Unsupported);
                 }
-                match (scalar_of(&a[0]), scalar_of(&b[0])) {
-                    (Some(x), Some(y)) => vec![Item::Bool(if *op == Op::Eq { x == y } else { x != y })],
-                    _ => return Err(Unsupported),
+                match scalar_eq(&a[0], &b[0]) {
+                    Some(eq) => vec![Item::Bool(if *op == Op::Eq { eq } else { !eq })],
+                    None => return Err(Unsupported),
                 }
             }
             Expr::Bin(l, op, r) => {

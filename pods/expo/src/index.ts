@@ -5,6 +5,7 @@ export function abiVersion(): number {
   return FhirPodsExpoModule.abiVersion();
 }
 
+// The report types below mirror pods/wasm/src/index.d.ts verbatim — the pods are standalone packages; keep them in sync.
 export type Severity = "fatal" | "error" | "warning" | "information";
 
 /** One finding, in the pods' ergonomic shape. */

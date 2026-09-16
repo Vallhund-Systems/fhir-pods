@@ -21,33 +21,39 @@ StructureDefinitions (including jurisdictional profiles like AU Core), and
 ValueSets are themselves FHIR resources. So the types *and* the validators for a
 given profile are **derivable from the spec**.
 
-- **The compiled path (this repo).** A `build.rs` ingests an Implementation
-  Guide package and emits Rust: typed resource structs, and validators where the
-  profile's cardinalities, must-support flags, and binding strengths are baked
-  into straight-line code. A thin `derive`/attribute macro
-  (`#[fhir(profile = "…")]`) gives the ergonomic surface that wires a host type
-  to the generated conformance. Result: monomorphized checks, no runtime
-  interpretation, and a tiny `.wasm`.
+- **The compiled path (this repo).** `tools/gen_all.py` reads the packages'
+  shipped `snapshot.element` and emits Rust — one `CompiledProfile` per
+  profile (cardinality, fixed values, bindings, slicing, invariants,
+  must-support) as `'static` data, plus an element-type table from the base
+  spec — committed under `src/generated/` and `src/typemap.rs`. The engine
+  walks that data; nothing is interpreted from StructureDefinitions at run
+  time and nothing is fetched. Result: a small `.wasm`, no warm-up.
 - **The interpreted path (pure TS, and most JS FHIR libs).** Ship the
   StructureDefinitions as data and tree-walk them at runtime on every
   validation. Larger, slower, and — the real problem — undifferentiated from
   what already exists.
 
-Precise division of labor: **`build.rs` codegen for spec ingestion** (proc-macros
-are the wrong tool for reading large external files — it hurts incremental
-compilation), **a small `proc-macro` derive for ergonomics**. "Gut said proc
-macros" was pointing at the right thing: compile-time generation of the verifier.
+Division of labor: **a generator for spec ingestion** (a Python script over
+the packages, run by `scripts/gen-profiles.sh`, with committed output — no
+`build.rs`, no proc-macros: reading large external packages at build time
+hurts incremental compilation and hides the IR), **hand-written Rust for the
+engine**.
 
 ## Modules (`fhir-pods-core`)
 
 | module | role |
 |---|---|
-| `model` | resource representation (raw JSON now → generated typed model) |
-| `validate` | the verifier: `Validator` → `Report` of `Issue`s |
-| `path` | FHIRPath engine — evaluates invariants |
-| `terminology` | pluggable `TerminologyProvider` for binding checks (ships no licensed content) |
-| `lower` | source-agnostic lowering passes: arbitrary input → FHIR resource |
-| `audit` | FHIR-native audit records (`AuditEvent` / `Provenance`) |
+| `json` | zero-copy top-level scan + borrowed value tree, depth-bounded |
+| `document` | the `Document` port and the tree adapter (`Parsed` / `TreeDoc`), typed traversal |
+| `typing` + `typemap` | the element-type table and its lookup (a node learns its FHIR type as it is reached) |
+| `compiled` | the profile IR the generator emits (`CompiledProfile`, slicing, invariants, must-support) |
+| `generated` | the compiled profiles + `REGISTRY` (committed output of `tools/gen_all.py`) |
+| `engine` | the verifier: `CompiledProfile` × `Document` → `Report` |
+| `path` | the FHIRPath engine — evaluates invariants |
+| `regex` | a linear-time regex engine for FHIRPath `matches()` |
+| `terminology` + `value_sets` | the `TerminologyProvider` seam and the bundled base-FHIR sets (ships no licensed content) |
+| `validate` | `Severity`, `IssueType`, `Issue`, `Report` |
+| `wire` | the anti-corruption layer: `OperationOutcome` and the `Validation` JSON |
 
 ## Conformance target
 
@@ -85,10 +91,11 @@ core* to a native staticlib and bridge it:
   up in a profile.
 
 The C ABI in `fhir-pods-ffi` is the shared FFI surface — the native pod
-compiles it to a staticlib instead of `wasm32`. Two entrypoints, the two API
-layers: `fhir_pods_validate` (the ergonomic report) and
-`fhir_pods_operation_outcome` (the spec wire form). Both pods make exactly
-these two calls; the ABI never changes per target.
+compiles it to a staticlib instead of `wasm32`. Three entrypoints —
+`fhir_pods_validate` (the `Validation` JSON), `fhir_pods_operation_outcome`
+(the spec wire form), `fhir_pods_must_support` (information) — plus the
+`_tx` twins that take a host terminology callback. Every pod makes exactly
+these calls; the ABI never changes per target.
 
 **Boundary (the wall):** the expo pod is a **standalone Expo module any app can
 install** — published or vendored as a release artifact, never source-linked into
@@ -168,7 +175,7 @@ The two conflicts that kill "traces alone":
 - **Correlate, don't conflate.** Stamp the `trace_id` onto the `AuditEvent` so an
   investigation can pivot from the authoritative audit record to the rich,
   ephemeral trace. Audit is the record of truth; the trace is context, linked by
-  id. (This is why `audit::AuditRecord` carries `trace_id`.)
+  id. (A host that emits `AuditEvent`s should carry the trace id on them.)
 
 **Net:** traces alone — no. A dedicated, unsampled, durable audit stream (FHIR
 `AuditEvent`), *correlated* with OTel traces by id, with OTel as the collection
@@ -199,8 +206,9 @@ Two places "free" quietly ends, designed against from the start:
    non-trivial lookup. **Compile ValueSets into perfect-hash / FST tables at
    build time** so the check stays O(1); never ship an interpreted set scan.
 
-Net: structural validation free, boundary zero-copy, terminology compiled. The
-end-to-end skeleton exists so these can be *measured*, not asserted.
+Net: structural validation free, boundary zero-copy, terminology compiled.
+Measured, not asserted: tens of microseconds per profiled resource on every
+delivery target (see the README).
 
 ## Non-goals
 

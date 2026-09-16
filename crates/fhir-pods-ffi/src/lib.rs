@@ -5,15 +5,14 @@
 //! wasm-bindgen, no UniFFI runtime) — the boundary is: pass a UTF-8 JSON
 //! resource as `(ptr, len)`, get a length-prefixed JSON document back.
 //!
-//! Two entrypoints, the two layers of the API:
-//! - [`fhir_pods_validate`] — the ergonomic report (`valid`, `profile`, `issues[]`).
+//! Three entrypoints:
+//! - [`fhir_pods_validate`] — the `Validation` JSON (`valid`, `profile(s)`, `issues[]`).
 //! - [`fhir_pods_operation_outcome`] — the spec resource, for the wire.
+//! - [`fhir_pods_must_support`] — must-support gaps, information only.
 //!
 //! Each has a `_tx` twin taking a host **terminology callback** — the seam
 //! through which NCTS / VSAC / an on-device cache answer the bindings the
 //! bundled value sets can't. The bundled sets are always consulted first.
-//! [`fhir_pods_must_support`] is the client-side completeness check —
-//! information, never part of the validation report.
 //!
 //! ## Memory contract
 //! - Buffers returned to the host are `[u32 little-endian length][UTF-8 bytes…]`.
@@ -27,8 +26,19 @@
 
 use core::ffi::c_void;
 
+use std::sync::OnceLock;
+
 use fhir_pods_core::terminology::{Bundled, Chain, Membership, TerminologyProvider};
-use fhir_pods_core::{must_support_gaps, validate_bytes_with, wire};
+use fhir_pods_core::{must_support_gaps, wire, Validator};
+
+/// One validator per process: the registry's invariants are parsed once, on
+/// first use (about half a millisecond), and every call after that is free
+/// of parsing. `Validator` is immutable after construction, so sharing it is
+/// sound; `OnceLock` also serialises the one-time build on native targets.
+fn validator() -> &'static Validator {
+    static VALIDATOR: OnceLock<Validator> = OnceLock::new();
+    VALIDATOR.get_or_init(Validator::new)
+}
 
 /// Bump when the exported surface or the memory contract changes; the
 /// wrappers refuse a mismatched module.
@@ -78,20 +88,20 @@ pub extern "C" fn fhir_pods_abi_version() -> u32 {
 /// issue in the report, not an error at the boundary.
 #[no_mangle]
 pub unsafe extern "C" fn fhir_pods_validate(ptr: *const u8, len: usize) -> *mut u8 {
-    pack(wire::report(&validate_bytes_with(input(ptr, len), &Bundled)).as_bytes())
+    pack(wire::report(&validator().validate_with(input(ptr, len), &Bundled)).as_bytes())
 }
 
 /// Validate a FHIR resource; returns a FHIR `OperationOutcome` resource — the
 /// `$validate` wire form. Same memory contract as [`fhir_pods_validate`].
 #[no_mangle]
 pub unsafe extern "C" fn fhir_pods_operation_outcome(ptr: *const u8, len: usize) -> *mut u8 {
-    pack(validate_bytes_with(input(ptr, len), &Bundled).to_operation_outcome().as_bytes())
+    pack(validator().validate_with(input(ptr, len), &Bundled).to_operation_outcome().as_bytes())
 }
 
 /// [`fhir_pods_validate`] with a host terminology callback (`cb` may be null).
 #[no_mangle]
 pub unsafe extern "C" fn fhir_pods_validate_tx(ptr: *const u8, len: usize, cb: Option<TxCallback>, ctx: *mut c_void) -> *mut u8 {
-    with_tx(cb, ctx, |tx| pack(wire::report(&validate_bytes_with(input(ptr, len), tx)).as_bytes()))
+    with_tx(cb, ctx, |tx| pack(wire::report(&validator().validate_with(input(ptr, len), tx)).as_bytes()))
 }
 
 /// [`fhir_pods_operation_outcome`] with a host terminology callback.
@@ -102,7 +112,7 @@ pub unsafe extern "C" fn fhir_pods_operation_outcome_tx(
     cb: Option<TxCallback>,
     ctx: *mut c_void,
 ) -> *mut u8 {
-    with_tx(cb, ctx, |tx| pack(validate_bytes_with(input(ptr, len), tx).to_operation_outcome().as_bytes()))
+    with_tx(cb, ctx, |tx| pack(validator().validate_with(input(ptr, len), tx).to_operation_outcome().as_bytes()))
 }
 
 /// The selected profile's must-support elements the resource leaves empty
@@ -215,12 +225,12 @@ mod wasm_host {
 
     #[no_mangle]
     pub unsafe extern "C" fn fhir_pods_validate_host_tx(ptr: *const u8, len: usize) -> *mut u8 {
-        pack(wire::report(&validate_bytes_with(input(ptr, len), &Chain(&[&Bundled, &ImportTx]))).as_bytes())
+        pack(wire::report(&validator().validate_with(input(ptr, len), &Chain(&[&Bundled, &ImportTx]))).as_bytes())
     }
 
     #[no_mangle]
     pub unsafe extern "C" fn fhir_pods_operation_outcome_host_tx(ptr: *const u8, len: usize) -> *mut u8 {
-        pack(validate_bytes_with(input(ptr, len), &Chain(&[&Bundled, &ImportTx])).to_operation_outcome().as_bytes())
+        pack(validator().validate_with(input(ptr, len), &Chain(&[&Bundled, &ImportTx])).to_operation_outcome().as_bytes())
     }
 }
 
@@ -289,11 +299,11 @@ mod android {
     fn run<'l>(env: &mut JNIEnv<'l>, json: &JByteArray<'l>, provider: &JObject<'l>, outcome: bool) -> jbyteArray {
         let input = bytes_in(env, json);
         let doc = if provider.is_null() {
-            let v = validate_bytes_with(&input, &Bundled);
+            let v = validator().validate_with(&input, &Bundled);
             if outcome { v.to_operation_outcome() } else { wire::report(&v) }
         } else {
             let host = JavaTx { env: RefCell::new(env), provider };
-            let v = validate_bytes_with(&input, &Chain(&[&Bundled, &host]));
+            let v = validator().validate_with(&input, &Chain(&[&Bundled, &host]));
             if outcome { v.to_operation_outcome() } else { wire::report(&v) }
         };
         bytes_out(env, &doc)

@@ -19,7 +19,7 @@
 
 ## 0.1.0 — 2026-09-15
 
-First cut. One verifier core, one C ABI (version 3), three pods.
+First cut. One verifier core, one C ABI (version 3), two pods (wasm, Expo).
 
 **Verifier**
 - AU Core 2.0.0, US Core 6.1.0, IPA 1.1.0 — 168 compiled profiles (86

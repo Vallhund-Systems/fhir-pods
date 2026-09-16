@@ -56,14 +56,14 @@ The "aggregate" is just the pure function `validate(profile, document) -> report
 ## Value objects (the Validation context)
 
 ```
-Cardinality { min: u32, max: Max }        Max = Bounded(u32) | Star
-Binding     { strength: Strength, value_set: &str }
-Fixed       (a scalar/coding the element must equal)
-Slice       { name, discriminator: Discriminator, cardinality, constraints }
-Discriminator { kind: Value|Pattern|Type|Profile|Exists, path }
-ElementConstraint { path, cardinality, types, fixed, binding, slices }
-CompiledProfile   { url, name, resource_type, elements: [ElementConstraint], deferred }
-Issue, Report     (already exist)
+ElementConstraint { path, min: u32, max: Max, fixed: Option<&str>, required_binding: Option<Binding> }
+Binding           { value_set, kind: Code | Coding | CodeableConcept }
+Discriminator     Value { path, value } | Type { key }
+Slice             { name, discriminators, min, max, elements, profile: Option<url> }
+Slicing           { path, closed, slices }
+ProfileInvariant  { path, key, severity, human, expression, types }
+CompiledProfile   { url, name, resource_type, elements, slicings, invariants, must_support }
+Issue, Report     (severity, IssueType, path, message)
 ```
 
 All immutable, all `Send + Sync`, all `'static` in generated profiles.
@@ -74,9 +74,13 @@ The engine does not know how the JSON is represented. It validates against a
 **`Document` port**:
 
 ```
-trait Document {
-    fn count(&self, path: &str) -> usize;         // occurrences of an element (arrays expand, [x] resolves)
-    fn scalars(&self, path: &str) -> Vec<&str>;   // scalar values at a path (for fixed / binding)
+trait Document: Clone {
+    fn child_counts(&self, path) -> Vec<usize>;   // per parent instance — cardinality
+    fn scalars(&self, path) -> Vec<&str>;          // fixed values, bindings, discriminators
+    fn instances(&self, path) -> Vec<Self>;        // re-rooted sub-documents ($this)
+    fn choice_children(&self, stem) -> Vec<Self>;  // value → valueQuantity / valueString …
+    fn all_children(&self) -> Vec<Self>;           // descendants()
+    fn as_scalar / as_bool / same / fhir_type      // FHIRPath's view of one node
 }
 ```
 
@@ -106,13 +110,12 @@ A `Fixed` on a SNOMED `Coding` carries **`system` + `code` only — never
 `display`** (the code is a licence-free reference; the display is licensed
 content). The generator enforces this when it emits `Fixed` values.
 
-## Grind order
+## The grind, in the order it happened
 
-1. **Document context** — the value-tree parser + the path navigator behind the port.
-2. **Nested engine** — cardinality + fixed + binding on nested paths (unlocks most of `au-core-heartrate`: fixed UCUM unit/system, nested value cardinality).
-3. **Slicing** — discriminators + per-slice constraints (the last piece of `au-core-heartrate`: the LOINC/SNOMED code slices).
-4. **Generator** — emit the richer `ElementConstraint` tree (with the display-drop rule) from `snapshot.element`.
-5. **Conformance** — differential-test the whole thing against `validator_cli.jar`.
+Document adapter → nested engine → slicing → generator → conformance oracle →
+FHIRPath (three tiers) → hardening → pods → second and third IGs → the
+terminology seam → typed traversal. The pass-by-pass record is
+[`history.md`](history.md).
 
 ## Hardening
 

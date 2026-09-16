@@ -7,7 +7,6 @@ description = "Embeddable FHIR verifier + lowering core. No I/O, no server, no l
 publish = false
 
 [dependencies]
-# Intentionally zero external dependencies at commit zero. The typed resource
-# model + validators are code-generated from the FHIR StructureDefinitions
-# (build.rs), and a JSON parser lands with the model — added deliberately, not
-# by default.
+# Intentionally zero external dependencies: the JSON parser, the FHIRPath and
+# regex engines and the compiled profiles (src/generated, from tools/gen_all.py)
+# are all in-crate, so the core stays no_std and audit-sized.

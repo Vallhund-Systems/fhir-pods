@@ -43,9 +43,9 @@ Per-parent cardinality, fixed/pattern values (scalars; object patterns via
 slice discriminators), `required` bindings on bundled sets, slicing (value /
 pattern / type discriminators, closed slicing, nested-slice discriminator
 resolution, slice → profile inheritance for `Identifier` and complex
-`Extension` types), and FHIRPath invariants through tier two. Every
+`Extension` types), and FHIRPath invariants with typed traversal. Every
 error-level finding either side raised on the corpus is in this set — that is
-the 271/271.
+the 289/289.
 
 ## What we skip, never guess
 

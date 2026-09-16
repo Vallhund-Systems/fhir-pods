@@ -28,7 +28,7 @@ Android; nothing here is source-linked into the host app.
 
 The Android build needs only an NDK (`ANDROID_HOME`, newest NDK picked up
 automatically; no `cargo-ndk`), links with 16 KB page alignment for
-Android 15+, and produces a ~560 KB stripped `.so` per ABI.
+Android 15+, and produces a ~1 MB stripped `.so` per ABI.
 
 ## Use it in an Expo app
 
@@ -88,13 +88,13 @@ can't answer. `system` is "" for a bare `code` element.
 Wired end to end and proven on the simulator: the pod, packed with `npm pack`
 and installed into a fresh Expo SDK 57 app as a vendored tarball, autolinks
 (`FhirPodsExpo` in `Podfile.lock`, deployment target raised to 16.4 by Expo),
-builds, and answers from JS on both platforms — ABI 1, correct findings at the
+builds, and answers from JS on both platforms — ABI 3, correct findings at the
 right paths, garbage in → `fatal` out, and **~22,000 validations/s on an
 iPhone 17 simulator (45 µs each) / ~19,600 on a Pixel 8 emulator (51 µs each),
 including `JSON.parse` of the report**. The real verifier is
 behind it (AU Core 2.0.0, US Core 6.1.0, IPA 1.1.0 — 168 compiled profiles,
-FHIRPath invariants; 288/288 agreement with the HL7 reference validator). The bridge is the same two calls
-the wasm pod makes — the ABI never changes per target.
+FHIRPath invariants; 289/289 agreement with the HL7 reference validator). The bridge is the same calls the
+wasm pod makes — the ABI never changes per target.
 
 ## Boundary
 
