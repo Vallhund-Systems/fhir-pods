@@ -142,6 +142,15 @@ fn lift_matches_core_and_round_trips_lowered_copies_of_ten_audit_resources() {
         let file = case.member("file").and_then(Node::as_str).unwrap();
         let profile = case.member("profile").and_then(Node::as_str).unwrap();
         let data = fs::read(fixtures.join(file)).unwrap();
+        assert_eq!(
+            // The manifest hashes the original compact JSON plus newline;
+            // the checked-in fixtures add formatting for review.
+            fhir_pods_core::hash::hex(&fhir_pods_core::hash::sha256(
+                format!("{}\n", Node::from_value(&json::parse(&data).unwrap()).to_json()).as_bytes()
+            )),
+            case.member("source_sha256").and_then(Node::as_str).unwrap(),
+            "audit fixture hash: {file}"
+        );
         // Some valid records still report missing slots in the core. Check
         // the CLI's full result and exit contract independently of whether
         // the engine can populate every labelled slot.

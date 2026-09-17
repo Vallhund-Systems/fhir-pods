@@ -1,0 +1,24 @@
+{
+  "source_revision": "40f56be",
+  "source": "crates/fhir-pods-core/examples/v2_corpus.rs",
+  "source_sha256": "69364a885d24615f437c1a30e62195a4282a7356b9c0103d9d054791a4947605",
+  "line_endings": "LF; source CR separators normalized, no field changes",
+  "cases": [
+    {
+      "file": "oru-r01.hl7",
+      "sha256": "26eea4191bc7a2e9c9dab3ba784f43ba1255e3379be2e4415e876590c22e4f24"
+    },
+    {
+      "file": "adt-a01.hl7",
+      "sha256": "6f16498a7b86fb83b75fb35264a5d20416f85be05f8646d8d589e7e1130e841b"
+    },
+    {
+      "file": "vxu-v04.hl7",
+      "sha256": "8ce54f5f615aeb2a8245414967d2f7dc5b0cc06eff741f5216169066e9ea32d2"
+    },
+    {
+      "file": "oml-o21.hl7",
+      "sha256": "f12504d2cddf57924371e4b5446fcf5e9bce86caf84b89db785eb3683e142ae1"
+    }
+  ]
+}

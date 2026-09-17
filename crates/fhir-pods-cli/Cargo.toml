@@ -1,6 +1,6 @@
 [package]
 name = "fhir-pods-cli"
-version = "0.5.2"
+version = "0.9.0"
 edition = "2021"
 license = "MIT"
 description = "Local command-line tools for FHIR validation, construction and transformation."

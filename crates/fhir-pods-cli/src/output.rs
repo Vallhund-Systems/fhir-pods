@@ -1,15 +1,42 @@
 use fhir_pods_core::{
     assemble::Assembled,
+    compiled::{CompiledProfile, Max},
     deidentify::{Deidentified, Finding},
     lift::Lifted,
     lower::Lowered,
     node::Node,
     terminology::Need,
+    v2::Converted,
     wire, Validation,
 };
 
 pub fn lowered(result: &Lowered) -> String {
     format!("{{\"resource\":{},\"validation\":{}}}", result.resource, wire::report(&result.validation))
+}
+
+pub fn converted(result: &Converted) -> String {
+    let skipped = Node::Array(
+        result
+            .skipped
+            .iter()
+            .map(|s| {
+                Node::Object(vec![
+                    ("at".into(), Node::Str(s.at.clone())),
+                    ("target".into(), Node::Str(s.target.clone())),
+                    ("why".into(), Node::Str(s.why.clone())),
+                ])
+            })
+            .collect(),
+    );
+    let strings = |items: &[String]| Node::Array(items.iter().cloned().map(Node::Str).collect()).to_json();
+    format!(
+        "{{\"bundle\":{},\"validation\":{},\"skipped\":{},\"unplaced\":{},\"unmapped\":{}}}",
+        result.bundle,
+        wire::report(&result.validation),
+        skipped.to_json(),
+        strings(&result.unplaced),
+        strings(&result.unmapped)
+    )
 }
 
 pub fn lifted(result: &Lifted) -> String {
@@ -98,4 +125,36 @@ pub fn needs(needs: &[Need], validation: &Validation) -> String {
             .collect(),
     );
     format!("{{\"needs\":{},\"validation\":{}}}", needs.to_json(), wire::report(validation))
+}
+
+pub fn slots(profile: &CompiledProfile) -> String {
+    let slots = Node::Array(
+        profile
+            .lowering
+            .slots
+            .iter()
+            .map(|s| {
+                Node::Object(vec![
+                    ("path".into(), Node::Str(s.path.into())),
+                    ("type".into(), Node::Str(s.ty.into())),
+                    ("choices".into(), Node::Array(s.choices.iter().map(|c| Node::Str((*c).into())).collect())),
+                    ("min".into(), Node::Number(s.min.to_string())),
+                    (
+                        "max".into(),
+                        match s.max {
+                            Max::Bounded(n) => Node::Number(n.to_string()),
+                            Max::Star => Node::Null,
+                        },
+                    ),
+                    ("mustSupport".into(), Node::Bool(s.must_support)),
+                ])
+            })
+            .collect(),
+    );
+    Node::Object(vec![("slots".into(), slots)]).to_json()
+}
+
+pub fn must_support(gaps: &[&str], validation: &Validation) -> String {
+    let gaps = Node::Array(gaps.iter().map(|s| Node::Str((*s).into())).collect());
+    format!("{{\"mustSupportGaps\":{},\"validation\":{}}}", gaps.to_json(), wire::report(validation))
 }

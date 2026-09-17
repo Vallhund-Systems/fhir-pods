@@ -1,11 +1,19 @@
 use std::ffi::{OsStr, OsString};
-use std::io::{self, Read, Write};
+use std::io::{self, Read};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use fhir_pods_core::{audit::Kind, deidentify::Policy, node::Node, wire, Validator};
+use fhir_pods_core::{
+    audit::Kind,
+    deidentify::Policy,
+    node::Node,
+    terminology::{Bundled, Chain, Expansions, Recorder},
+    v2::Options,
+    wire, Validator,
+};
 
 mod output;
+mod stdio;
 
 const HELP: &str = "fhir-pods — local FHIR tools
 
@@ -16,16 +24,23 @@ Usage:
   fhir-pods deidentify --policy POLICY_FILE [FILE|-]
   fhir-pods document ips|au-ps [FILE|-]
   fhir-pods audit KIND [FILE|-]
+  fhir-pods v2 [FILE|-] [--timezone Z|+10:00] [--code-system NAME=URI ...]
+  fhir-pods v2 --structure NAME
   fhir-pods needs [FILE|-]
+  fhir-pods slots PROFILE_URL
+  fhir-pods must-support [FILE|-]
   fhir-pods --help | --version
 
 Audit kinds: read, query, create, update, delete; or patient- prefixed variants.
 Input defaults to stdin. Use -- before positional arguments beginning with -.
 POLICY_FILE may be - only when the resource is read from a file.
+--terminology TABLE is accepted by validate, lower, lift, document, audit, v2,
+needs and must-support. TABLE may be - only with a resource file.
+slots and v2 --structure read no stdin. v2 input is ER7 text; other inputs are JSON.
 Results are JSON on stdout. Usage/I/O errors are JSON on stderr.
-Exit 0: valid result (deidentify requires no remaining findings; lift no missing slots).
-Exit 1: invalid result, remaining findings, missing lift slots, or rejected input.
-Exit 2: command usage, policy configuration, or I/O failure.
+Exit 0: valid result (deidentify: no remaining findings; lift: no missing; v2: no unplaced).
+Exit 1: invalid result, remaining findings, missing lift slots, unplaced v2 segments, or rejected input.
+Exit 2: command usage, policy/terminology configuration, or I/O failure.
 Warnings, including unresolved terminology, do not change a valid verdict.
 ";
 
@@ -35,6 +50,9 @@ struct Args {
     input: PathBuf,
     policy: Option<PathBuf>,
     outcome: bool,
+    v2_options: Options,
+    structure: Option<String>,
+    terminology: Option<PathBuf>,
 }
 
 enum Failure {
@@ -47,12 +65,19 @@ fn parse(args: Vec<OsString>) -> Result<Args, Failure> {
     let Some(command) = args.first().and_then(|a| a.to_str()) else {
         return Err(bad("a command is required; use --help"));
     };
-    if !matches!(command, "validate" | "lower" | "lift" | "deidentify" | "document" | "audit" | "needs") {
+    if !matches!(
+        command,
+        "validate" | "lower" | "lift" | "deidentify" | "document" | "audit" | "v2" | "needs" | "slots" | "must-support"
+    ) {
         return Err(bad("unknown command; use --help"));
     }
     let mut positional = Vec::new();
     let mut policy = None;
     let mut outcome = false;
+    let mut timezone = None;
+    let mut code_systems = Vec::new();
+    let mut structure = None;
+    let mut terminology = None;
     let mut literal = false;
     let mut tail = args[1..].iter();
     while let Some(arg) = tail.next() {
@@ -65,16 +90,39 @@ fn parse(args: Vec<OsString>) -> Result<Args, Failure> {
                 policy = Some(PathBuf::from(tail.next().ok_or_else(|| bad("--policy needs a file path"))?));
             }
             Some("--outcome") if !literal && command == "validate" && !outcome => outcome = true,
+            Some("--terminology") if !literal && !matches!(command, "deidentify" | "slots") => {
+                if terminology.is_some() {
+                    return Err(bad("--terminology may only be supplied once"));
+                }
+                terminology = Some(PathBuf::from(tail.next().ok_or_else(|| bad("--terminology needs a file path"))?));
+            }
+            Some("--timezone" | "--code-system" | "--structure") if !literal && command == "v2" => {
+                let flag = arg.to_str().unwrap();
+                let value = tail.next().and_then(|v| v.to_str()).ok_or_else(|| bad("v2 option needs a UTF-8 value"))?;
+                match flag {
+                    "--timezone" if timezone.is_none() => timezone = Some(value.to_owned()),
+                    "--structure" if structure.is_none() => structure = Some(value.to_owned()),
+                    "--code-system" => {
+                        let (name, uri) = value.split_once('=').ok_or_else(|| bad("--code-system needs NAME=URI"))?;
+                        if code_systems.iter().any(|(n, _)| n == name) {
+                            return Err(bad("--code-system names must be unique"));
+                        }
+                        code_systems.push((name.to_owned(), Node::Str(uri.to_owned())));
+                    }
+                    _ => return Err(bad("v2 option may only be supplied once")),
+                }
+            }
             Some(s) if !literal && s.starts_with('-') && s != "-" => {
                 return Err(bad("unknown or repeated option; use --help"));
             }
             _ => positional.push(arg.clone()),
         }
     }
-    let parameter = if matches!(command, "lower" | "lift" | "document" | "audit") {
+    let parameter = if matches!(command, "lower" | "lift" | "document" | "audit" | "slots") {
         if positional.is_empty() {
             return Err(bad(match command {
                 "lower" => "lower needs a profile URL",
+                "slots" => "slots needs a profile URL",
                 "lift" => "lift needs a profile URL or an empty string for a declared profile",
                 "document" => "document needs ips or au-ps",
                 _ => "audit needs an event kind; use --help",
@@ -94,6 +142,20 @@ fn parse(args: Vec<OsString>) -> Result<Args, Failure> {
     if positional.len() > 1 {
         return Err(bad("only one input file is accepted"));
     }
+    if structure.is_some()
+        && (!positional.is_empty() || timezone.is_some() || !code_systems.is_empty() || terminology.is_some())
+    {
+        return Err(bad("--structure does not accept an input file, conversion options or terminology"));
+    }
+    if command == "slots" && !positional.is_empty() {
+        return Err(bad("slots accepts a profile URL, not an input file"));
+    }
+    let options = Node::Object(vec![
+        ("timezone".into(), timezone.map(Node::Str).unwrap_or(Node::Null)),
+        ("codeSystems".into(), Node::Object(code_systems)),
+    ]);
+    // Use the core's option grammar, before consuming the input stream.
+    let v2_options = Options::from_json(options.to_json().as_bytes()).map_err(|e| Failure::Usage(e.to_string()))?;
     let input = positional.pop().map(PathBuf::from).unwrap_or_else(|| PathBuf::from("-"));
     if command == "deidentify" && policy.is_none() {
         return Err(bad("deidentify requires --policy POLICY_FILE"));
@@ -101,7 +163,10 @@ fn parse(args: Vec<OsString>) -> Result<Args, Failure> {
     if input.as_os_str() == "-" && policy.as_ref().is_some_and(|p| p.as_os_str() == "-") {
         return Err(bad("resource and policy cannot both use stdin"));
     }
-    Ok(Args { command: command.into(), parameter, input, policy, outcome })
+    if input.as_os_str() == "-" && terminology.as_ref().is_some_and(|p| p.as_os_str() == "-") {
+        return Err(bad("resource and terminology cannot both use stdin"));
+    }
+    Ok(Args { command: command.into(), parameter, input, policy, outcome, v2_options, structure, terminology })
 }
 
 fn read(path: &std::path::Path) -> Result<Vec<u8>, Failure> {
@@ -115,26 +180,57 @@ fn read(path: &std::path::Path) -> Result<Vec<u8>, Failure> {
 }
 
 fn run(args: Args) -> Result<(String, bool), Failure> {
+    if args.command == "slots" {
+        let url = args.parameter.as_deref().unwrap().split('|').next().unwrap();
+        let profile = fhir_pods_core::generated::REGISTRY
+            .iter()
+            .find(|p| p.url == url)
+            .ok_or_else(|| Failure::Rejected("no compiled profile with that URL".into()))?;
+        return Ok((output::slots(profile), true));
+    }
+    if let Some(name) = args.structure {
+        let tree = fhir_pods_core::v2::convert::structure_tree(&name)
+            .ok_or_else(|| Failure::Rejected(format!("no map for message structure '{name}'")))?;
+        return Ok((
+            Node::Object(vec![("structure".into(), Node::Str(name)), ("tree".into(), Node::Str(tree))]).to_json(),
+            true,
+        ));
+    }
     // Read/validate policy before consuming the resource stream.
     let policy = args
         .policy
         .as_ref()
         .map(|p| Policy::from_json(&read(p)?).map_err(|error| Failure::Usage(format!("invalid policy: {error}"))))
         .transpose()?;
+    let table = args
+        .terminology
+        .as_ref()
+        .map(|p| {
+            let bytes = read(p)?;
+            let text =
+                std::str::from_utf8(&bytes).map_err(|_| Failure::Usage("terminology table must be UTF-8".into()))?;
+            Expansions::parse(text)
+                .map_err(|e| Failure::Usage(format!("invalid terminology table at line {}: {}", e.line, e.msg)))
+        })
+        .transpose()?
+        .unwrap_or_default();
+    let tx = Chain(&[&Bundled, &table]);
     let input = read(&args.input)?;
     let validator = Validator::new();
     let rejected = |error: &dyn std::fmt::Display| Failure::Rejected(error.to_string());
     Ok(match args.command.as_str() {
         "validate" => {
-            let report = validator.validate(&input);
+            let report = validator.validate_with(&input, &tx);
             (if args.outcome { report.to_operation_outcome() } else { wire::report(&report) }, report.is_valid())
         }
         "lower" => {
-            let lowered = validator.lower(args.parameter.as_deref().unwrap(), &input).map_err(|e| rejected(&e))?;
+            let lowered =
+                validator.lower_with(args.parameter.as_deref().unwrap(), &input, &tx).map_err(|e| rejected(&e))?;
             (output::lowered(&lowered), lowered.validation.is_valid())
         }
         "lift" => {
-            let result = validator.lift(args.parameter.as_deref().unwrap(), &input).map_err(|e| rejected(&e))?;
+            let result =
+                validator.lift_with(args.parameter.as_deref().unwrap(), &input, &tx).map_err(|e| rejected(&e))?;
             let valid = result.validation.is_valid() && result.missing.is_empty();
             (output::lifted(&result), valid)
         }
@@ -144,31 +240,36 @@ fn run(args: Args) -> Result<(String, bool), Failure> {
             (output::deidentified(&result), valid)
         }
         "document" => {
-            let result = validator.document(args.parameter.as_deref().unwrap(), &input).map_err(|e| rejected(&e))?;
+            let result =
+                validator.document_with(args.parameter.as_deref().unwrap(), &input, &tx).map_err(|e| rejected(&e))?;
             (output::assembled(&result), result.validation.is_valid())
         }
         "audit" => {
-            let result = validator.audit(args.parameter.as_deref().unwrap(), &input).map_err(|e| rejected(&e))?;
+            let result =
+                validator.audit_with(args.parameter.as_deref().unwrap(), &input, &tx).map_err(|e| rejected(&e))?;
             (output::lowered(&result), result.validation.is_valid())
         }
+        "v2" => {
+            let result = validator.v2_with(&input, &args.v2_options, &tx).map_err(|e| rejected(&e))?;
+            let valid = result.validation.is_valid() && result.unplaced.is_empty();
+            (output::converted(&result), valid)
+        }
         "needs" => {
-            let validation = validator.validate(&input);
-            let needs = validator.terminology_needs(&input);
-            (output::needs(&needs, &validation), validation.is_valid())
+            let recorder = Recorder::new();
+            let validation = validator.validate_with(&input, &Chain(&[&tx, &recorder]));
+            (output::needs(&recorder.needs(), &validation), validation.is_valid())
+        }
+        "must-support" => {
+            let validation = validator.validate_with(&input, &tx);
+            let gaps = validator.must_support_gaps(&input);
+            (output::must_support(&gaps, &validation), validation.is_valid())
         }
         _ => unreachable!("parse checked the command"),
     })
 }
 
-fn write_line(text: &str, stderr: bool) -> io::Result<()> {
-    if stderr {
-        writeln!(io::stderr().lock(), "{text}")
-    } else {
-        writeln!(io::stdout().lock(), "{text}")
-    }
-}
-
 fn main() -> ExitCode {
+    use stdio::write_line;
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
     // Help is only special before --, so a file literally named --help works.
     if args.iter().take_while(|a| *a != OsStr::new("--")).any(|a| a == "--help" || a == "-h") {
