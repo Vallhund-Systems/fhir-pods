@@ -1,6 +1,7 @@
 use fhir_pods_core::{
     assemble::Assembled,
     deidentify::{Deidentified, Finding},
+    lift::Lifted,
     lower::Lowered,
     node::Node,
     terminology::Need,
@@ -9,6 +10,18 @@ use fhir_pods_core::{
 
 pub fn lowered(result: &Lowered) -> String {
     format!("{{\"resource\":{},\"validation\":{}}}", result.resource, wire::report(&result.validation))
+}
+
+pub fn lifted(result: &Lifted) -> String {
+    let missing = Node::Array(result.missing.iter().map(|s| Node::Str((*s).into())).collect());
+    let extras = Node::Array(result.extras.iter().cloned().map(Node::Str).collect());
+    format!(
+        "{{\"inputs\":{},\"validation\":{},\"missing\":{},\"extras\":{}}}",
+        result.inputs,
+        wire::report(&result.validation),
+        missing.to_json(),
+        extras.to_json()
+    )
 }
 
 pub fn deidentified(result: &Deidentified) -> String {

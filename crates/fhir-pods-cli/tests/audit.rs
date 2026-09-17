@@ -131,3 +131,39 @@ fn audit_usage_errors_precede_input_reading() {
         }
     }
 }
+
+#[test]
+fn lift_matches_core_and_round_trips_lowered_copies_of_ten_audit_resources() {
+    let fixtures = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/audit");
+    let manifest = Node::from_value(&json::parse(&fs::read(fixtures.join("manifest.json")).unwrap()).unwrap());
+    let Some(Node::Array(cases)) = manifest.member("cases") else { panic!("manifest cases") };
+    assert_eq!(cases.len(), 10);
+    for case in cases {
+        let file = case.member("file").and_then(Node::as_str).unwrap();
+        let profile = case.member("profile").and_then(Node::as_str).unwrap();
+        let data = fs::read(fixtures.join(file)).unwrap();
+        // Some valid records still report missing slots in the core. Check
+        // the CLI's full result and exit contract independently of whether
+        // the engine can populate every labelled slot.
+        let native = fhir_pods_core::Validator::new().lift(profile, &data).unwrap();
+        assert!(native.validation.is_valid(), "{file}");
+        let lifted = result(&call(&["lift", profile], &data), i32::from(!native.missing.is_empty()));
+        let missing = Node::Array(native.missing.iter().map(|s| Node::Str((*s).into())).collect());
+        assert_eq!(lifted.member("missing"), Some(&missing), "{file}");
+        assert_eq!(lifted.member("extras"), Some(&Node::Array(vec![])), "{file}");
+        let inputs = Node::from_value(&json::parse(native.inputs.as_bytes()).unwrap());
+        let validation =
+            Node::from_value(&json::parse(fhir_pods_core::wire::report(&native.validation).as_bytes()).unwrap());
+        assert_eq!(lifted.member("inputs"), Some(&inputs), "{file}");
+        assert_eq!(lifted.member("validation"), Some(&validation), "{file}");
+
+        // Round-trip the lowered copy. This deliberately does not establish
+        // preservation of fields outside slots in the original audit record.
+        let lowered = result(&call(&["lower", profile], inputs.to_json().as_bytes()), 0);
+        let resource = lowered.member("resource").unwrap().to_json();
+        let expected = fhir_pods_core::Validator::new().lift(profile, resource.as_bytes()).unwrap();
+        let lifted = result(&call(&["lift", profile], resource.as_bytes()), i32::from(!expected.missing.is_empty()));
+        let again = result(&call(&["lower", profile], lifted.member("inputs").unwrap().to_json().as_bytes()), 0);
+        assert_eq!(again, lowered, "{file}");
+    }
+}

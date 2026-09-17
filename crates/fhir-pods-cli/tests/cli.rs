@@ -170,3 +170,106 @@ fn literal_option_filename_and_help_work() {
     assert_eq!(output.status.code(), Some(0));
     assert!(String::from_utf8(output.stdout).unwrap().contains("deidentify --policy"));
 }
+
+const HR: &str = "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate";
+const HR_INPUTS: &[u8] = br#"{"status":"final","subject":{"reference":"Patient/synthetic","display":"Line\n\"two\"\\tab\t"},"effectiveDateTime":"2026-09-16T08:00:00+10:00","valueQuantity.value":72,"valueQuantity.unit":"beats/minute"}"#;
+
+fn heart_rate() -> Node {
+    result(&call(&["lower", HR], HR_INPUTS), 0).member("resource").unwrap().clone()
+}
+
+#[test]
+fn lift_selects_explicit_or_declared_profile_and_accepts_files_and_stdin() {
+    let files = Files::new();
+    let resource = heart_rate();
+    let bytes = resource.to_json();
+    let path = files.write("resource with spaces.json", &bytes);
+    let lifted = result(&call(&["lift", HR], bytes.as_bytes()), 0);
+    for args in [vec!["lift", HR, "-"], vec!["lift", ""], vec!["lift", HR, path.to_str().unwrap()]] {
+        assert_eq!(result(&call(&args, bytes.as_bytes()), 0), lifted);
+    }
+    assert_eq!(lifted.member("missing"), Some(&Node::Array(vec![])));
+    assert_eq!(lifted.member("extras"), Some(&Node::Array(vec![])));
+    let inputs = lifted.member("inputs").unwrap();
+    let expected = Node::from_value(&json::parse(HR_INPUTS).unwrap());
+    assert_eq!(inputs, &expected);
+    let again = result(&call(&["lower", HR], inputs.to_json().as_bytes()), 0);
+    assert_eq!(again.member("resource"), Some(&resource));
+    assert_eq!(again.member("validation"), lifted.member("validation"));
+
+    // A literal option-like filename must remain readable after --.
+    files.write("--help", &bytes);
+    let output = Command::new(env!("CARGO_BIN_EXE_fhir-pods"))
+        .current_dir(&files.0)
+        .args(["lift", "", "--", "--help"])
+        .output()
+        .unwrap();
+    assert_eq!(result(&output, 0), lifted);
+}
+
+#[test]
+fn lift_reports_extras_without_failing_and_escapes_untrusted_paths() {
+    let mut resource = heart_rate();
+    let Node::Object(ref mut members) = resource else { panic!("resource object") };
+    members.push(("issued".into(), Node::Str("2026-09-16T08:00:00Z".into())));
+    let lifted = result(&call(&["lift", HR], resource.to_json().as_bytes()), 0);
+    assert_eq!(lifted.member("extras"), Some(&Node::Array(vec![Node::Str("issued".into())])));
+    assert!(lifted.member("inputs").unwrap().member("issued").is_none());
+
+    // An unknown key is invalid FHIR but must still form a valid JSON report.
+    let key = "synthetic\"\n\\雪";
+    let Node::Object(ref mut members) = resource else { unreachable!() };
+    members.push((key.into(), Node::Bool(true)));
+    let lifted = result(&call(&["lift", HR], resource.to_json().as_bytes()), 1);
+    assert_eq!(lifted.member("missing"), Some(&Node::Array(vec![])));
+    assert_eq!(lifted.member("extras"), Some(&Node::Array(vec![Node::Str("issued".into()), Node::Str(key.into())])));
+    assert_eq!(lifted.member("validation").unwrap().member("valid"), Some(&Node::Bool(false)));
+}
+
+#[test]
+fn lift_applies_an_undeclared_profile_and_keeps_missing_slots_with_failed_validation() {
+    // This is valid against base Patient but not AU Core Patient. The CLI
+    // must return the lift verdict, rather than validating only declarations.
+    result(&call(&["validate"], PATIENT.as_bytes()), 0);
+    let lifted = result(&call(&["lift", PROFILE], PATIENT.as_bytes()), 1);
+    assert_eq!(lifted.member("missing"), Some(&Node::Array(vec![Node::Str("identifier".into())])));
+    assert_eq!(lifted.member("validation").unwrap().member("valid"), Some(&Node::Bool(false)));
+    assert!(lifted.member("inputs").unwrap().member("name").is_some());
+    assert!(lifted.member("error").is_none());
+}
+
+#[test]
+fn lift_rejected_resources_and_profiles_are_json_errors_on_stdout() {
+    let wrong = b"{\"resourceType\":\"Observation\"}".as_slice();
+    for (profile, input) in [
+        (PROFILE, b"{".as_slice()),
+        (PROFILE, b"\xff".as_slice()),
+        (PROFILE, b"[]".as_slice()),
+        (PROFILE, b"{}".as_slice()),
+        (PROFILE, wrong),
+        ("https://example.org/not-compiled", PATIENT.as_bytes()),
+        ("", PATIENT.as_bytes()),
+    ] {
+        let lifted = result(&call(&["lift", profile], input), 1);
+        assert!(lifted.member("error").and_then(Node::as_str).is_some());
+        assert!(lifted.member("inputs").is_none());
+    }
+}
+
+#[test]
+fn lift_usage_and_io_errors_are_json_on_stderr() {
+    for args in [
+        vec!["lift"],
+        vec!["lift", PROFILE, "--outcome"],
+        vec!["lift", "", "a", "b"],
+        vec!["lift", "", "/no/such/fhir-pods-input"],
+    ] {
+        let output = call(&args, b"");
+        assert_eq!(output.status.code(), Some(2));
+        assert!(output.stdout.is_empty());
+        assert!(Node::from_value(&json::parse(&output.stderr).unwrap()).member("error").is_some());
+    }
+    let help = call(&["--help"], b"");
+    assert_eq!(help.status.code(), Some(0));
+    assert!(String::from_utf8(help.stdout).unwrap().contains("lift PROFILE_URL|\"\""));
+}

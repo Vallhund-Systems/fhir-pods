@@ -14,6 +14,8 @@ cargo install --path crates/fhir-pods-cli
 fhir-pods validate patient.json
 fhir-pods validate --outcome < patient.json
 fhir-pods lower http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient inputs.json
+fhir-pods lift http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient patient.json
+fhir-pods lift "" < patient.json
 fhir-pods deidentify --policy policy.json patient.json
 fhir-pods document ips inputs.json
 fhir-pods document au-ps < inputs.json
@@ -43,6 +45,19 @@ not change the exit-code rules below.
 `needs` emits both `needs` and `validation`, so an invalid input cannot look
 successful merely because it has no terminology questions.
 
+`lift PROFILE_URL` reads a resource into the profile's input slots for `lower`.
+Pass an empty argument (`lift ""`) to select a compiled profile declared in the
+resource's `meta.profile`. With an explicit URL, the resource is validated
+against that profile even when it does not declare it. The result contains
+`inputs` (an object, not an encoded JSON string), `validation`, `missing`
+(required slots absent) and `extras` (paths not covered by slots, fixed leaves
+or pass-through fields). A valid verdict can still include missing slots;
+the exit code checks both fields. Nonempty `extras` do not change the exit code;
+inspect them before lowering the returned `inputs`, since uncovered values are not
+preserved. A missing CLI profile argument is a usage error (exit 2); an unknown
+profile, absent compiled declaration with `""`, wrong resource type or malformed
+resource is a rejected operation (exit 1, JSON error on stdout).
+
 `audit KIND` builds a BALP basic AuditEvent from host inputs. Kinds are `read`,
 `query`, `create`, `update`, `delete`, and the five `patient-` prefixed variants.
 For example, `fhir-pods audit read` accepts this JSON on stdin:
@@ -68,8 +83,8 @@ or an invalid generated record return exit 1 with a JSON error/report.
 
 | Exit | Meaning |
 | --- | --- |
-| 0 | The validation verdict is valid. De-identification additionally requires an empty `remaining` list. |
-| 1 | Invalid result, remaining de-identification findings, or input rejected by the operation. The JSON report/error is on stdout. |
+| 0 | The validation verdict is valid. De-identification additionally requires empty `remaining`; lifting requires empty `missing`. |
+| 1 | Invalid result, remaining de-identification findings, missing lift slots, or input rejected by the operation. The JSON report/error is on stdout. |
 | 2 | Usage, policy configuration, file/stdin read, or output failure. Usage/read/configuration errors are JSON on stderr; an output failure cannot guarantee delivery of an error. |
 
 Warnings do not change the validation verdict. In particular, a successful

@@ -12,6 +12,7 @@ const HELP: &str = "fhir-pods — local FHIR tools
 Usage:
   fhir-pods validate [--outcome] [FILE|-]
   fhir-pods lower PROFILE_URL [FILE|-]
+  fhir-pods lift PROFILE_URL|\"\" [FILE|-]
   fhir-pods deidentify --policy POLICY_FILE [FILE|-]
   fhir-pods document ips|au-ps [FILE|-]
   fhir-pods audit KIND [FILE|-]
@@ -22,8 +23,8 @@ Audit kinds: read, query, create, update, delete; or patient- prefixed variants.
 Input defaults to stdin. Use -- before positional arguments beginning with -.
 POLICY_FILE may be - only when the resource is read from a file.
 Results are JSON on stdout. Usage/I/O errors are JSON on stderr.
-Exit 0: valid result (deidentify also requires no remaining findings).
-Exit 1: invalid result, remaining de-identification findings, or rejected input.
+Exit 0: valid result (deidentify requires no remaining findings; lift no missing slots).
+Exit 1: invalid result, remaining findings, missing lift slots, or rejected input.
 Exit 2: command usage, policy configuration, or I/O failure.
 Warnings, including unresolved terminology, do not change a valid verdict.
 ";
@@ -46,7 +47,7 @@ fn parse(args: Vec<OsString>) -> Result<Args, Failure> {
     let Some(command) = args.first().and_then(|a| a.to_str()) else {
         return Err(bad("a command is required; use --help"));
     };
-    if !matches!(command, "validate" | "lower" | "deidentify" | "document" | "audit" | "needs") {
+    if !matches!(command, "validate" | "lower" | "lift" | "deidentify" | "document" | "audit" | "needs") {
         return Err(bad("unknown command; use --help"));
     }
     let mut positional = Vec::new();
@@ -70,10 +71,11 @@ fn parse(args: Vec<OsString>) -> Result<Args, Failure> {
             _ => positional.push(arg.clone()),
         }
     }
-    let parameter = if matches!(command, "lower" | "document" | "audit") {
+    let parameter = if matches!(command, "lower" | "lift" | "document" | "audit") {
         if positional.is_empty() {
             return Err(bad(match command {
                 "lower" => "lower needs a profile URL",
+                "lift" => "lift needs a profile URL or an empty string for a declared profile",
                 "document" => "document needs ips or au-ps",
                 _ => "audit needs an event kind; use --help",
             }));
@@ -130,6 +132,11 @@ fn run(args: Args) -> Result<(String, bool), Failure> {
         "lower" => {
             let lowered = validator.lower(args.parameter.as_deref().unwrap(), &input).map_err(|e| rejected(&e))?;
             (output::lowered(&lowered), lowered.validation.is_valid())
+        }
+        "lift" => {
+            let result = validator.lift(args.parameter.as_deref().unwrap(), &input).map_err(|e| rejected(&e))?;
+            let valid = result.validation.is_valid() && result.missing.is_empty();
+            (output::lifted(&result), valid)
         }
         "deidentify" => {
             let result = validator.deidentify(&input, policy.as_ref().unwrap()).map_err(|e| rejected(&e))?;
