@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.6.3 — 2026-09-16
+
+**FHIRPath, against the official R4 suite** (planning F007 / T023). Of the
+eleven disagreements the review lane's catalogue found, ten were the
+engine's and are fixed; one is kept on purpose. Oracle unchanged:
+**1199/1199** — no registry invariant turned on any of this.
+
+- **A literal is a System value, a FHIR element never is.** `1 is Integer`,
+  `true is Boolean`, `1.is(System.Integer)` hold; `Patient.active is
+  System.Boolean` does not (the suite's `testType14`), so the mapping that
+  made a FHIR `boolean` a `System.Boolean` is gone. Unqualified names on
+  elements still match as written (`$this is DateTime` on a `dateTime`
+  stays false, as before).
+- **`as` / `ofType` name the exact type**: `Patient.gender.ofType(string)`
+  is empty though a `code` is a `string` to `is` (which keeps the
+  hierarchy). An unknown type name (`as(string1)`) is an error, never an
+  empty result.
+- **A bare resource-type name is the item itself when that is its type**
+  — inside `iif`, `where` and the rest, not only at the invariant's root —
+  so `iif(Patient.name.exists(), …)` takes the right branch.
+- Kept: `as` on more than one item filters rather than errors. The suite
+  wants an error; the reference validator's own `dom-3`
+  (`descendants().as(canonical)`) needs the filter, and that is the engine
+  we agree with. One disagreement, stated.
+
+The catalogue's adapter asserts every string output `is System.String`,
+which the corrected semantics make false for FHIR elements; ten of its
+cases now read as failures for that reason alone (a note to the review
+lane, whose T021 is exactly that adapter).
+
 ## 0.6.2 — 2026-09-16
 
 The review lane's F025–F028 (planning repository), all taken. Oracle:

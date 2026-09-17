@@ -701,10 +701,61 @@ fn item_type<'a, D: Document>(it: &'a Item<D>, operand: &Expr, env: &Env<'a, D>)
     }
     match it {
         Item::Node(d) => d.fhir_type().ok_or(Unsupported),
-        Item::Str(_) => Ok("string"),
-        Item::Int(_) => Ok("integer"),
-        Item::Bool(_) => Ok("boolean"),
+        // a literal is a System value, not a FHIR element
+        Item::Str(_) => Ok("System.String"),
+        Item::Int(_) => Ok("System.Integer"),
+        Item::Bool(_) => Ok("System.Boolean"),
     }
+}
+
+/// Is `spec` a type name at all — a FHIR type, an abstract base, or a
+/// System type? An unknown name in `as` / `ofType` is an error, as the
+/// reference engine has it, never an empty result.
+fn known_type_name(ns: Option<&str>, spec: &str) -> bool {
+    let system =
+        matches!(spec, "String" | "Integer" | "Decimal" | "Boolean" | "Date" | "DateTime" | "Time" | "Quantity");
+    match ns {
+        Some("System") => system,
+        Some("FHIR") => crate::typing::known_type(spec).is_some() || ABSTRACT.contains(&spec),
+        _ => system || crate::typing::known_type(spec).is_some() || ABSTRACT.contains(&spec),
+    }
+}
+
+const ABSTRACT: &[&str] = &[
+    "Resource",
+    "DomainResource",
+    "Element",
+    "BackboneElement",
+    // the primitives: types of their own, with no children in the element table
+    "boolean",
+    "integer",
+    "string",
+    "decimal",
+    "uri",
+    "url",
+    "canonical",
+    "base64Binary",
+    "instant",
+    "date",
+    "dateTime",
+    "time",
+    "code",
+    "oid",
+    "id",
+    "markdown",
+    "unsignedInt",
+    "positiveInt",
+    "uuid",
+    "xhtml",
+];
+
+/// `as` / `ofType`: the item's type is exactly the one named — `code` is not
+/// a `string` here, as the reference engine has it (unlike `is`).
+fn type_is_exactly(actual: &str, ns: Option<&str>, spec: &str) -> bool {
+    if let Some(system) = actual.strip_prefix("System.") {
+        return ns != Some("FHIR") && system == spec;
+    }
+    ns != Some("System") && actual.strip_prefix("FHIR.").unwrap_or(actual) == spec
 }
 
 /// The type name in `as(canonical)` / `ofType(System.String)` — written as
@@ -740,22 +791,15 @@ fn type_matches(actual: &str, spec: &str) -> bool {
 /// on a FHIR `dateTime` is false, so US Core's `us-core-1` never fires —
 /// there, or here.
 fn type_matches_ns(actual: &str, ns: Option<&str>, spec: &str) -> bool {
+    // a literal (`1`, `true`, `'x'`) is a System value: `1 is Integer` and
+    // `1 is System.Integer` hold, `1 is FHIR.integer` does not
+    if let Some(system) = actual.strip_prefix("System.") {
+        return ns != Some("FHIR") && system == spec;
+    }
     let actual = actual.strip_prefix("FHIR.").unwrap_or(actual);
+    // a FHIR element is never a System type (`Patient.active is System.Boolean` is false)
     if ns == Some("System") {
-        let system = spec;
-        let mapped = match actual {
-            "string" | "code" | "id" | "markdown" | "xhtml" | "base64Binary" | "uri" | "url" | "canonical" | "uuid"
-            | "oid" => "String",
-            "integer" | "positiveInt" | "unsignedInt" => "Integer",
-            "decimal" => "Decimal",
-            "boolean" => "Boolean",
-            "date" => "Date",
-            "dateTime" | "instant" => "DateTime",
-            "time" => "Time",
-            "Quantity" | "Age" | "Count" | "Distance" | "Duration" | "MoneyQuantity" | "SimpleQuantity" => "Quantity",
-            _ => return false,
-        };
-        return mapped == system;
+        return false;
     }
     let is = |t: &str| t == spec;
     if is(actual) {
@@ -957,7 +1001,11 @@ fn eval<D: Document>(e: &Expr, ctx: &Item<D>, env: &Env<'_, D>) -> Result<Vec<It
             let Some(it) = single(&coll)? else {
                 return Ok(vec![]);
             };
-            if type_matches(item_type(it, operand, env)?, ty) {
+            let (ns, spec) = ty.split_once('.').map(|(a, b)| (Some(a), b)).unwrap_or((None, ty.as_str()));
+            if !known_type_name(ns, spec) {
+                return Err(Unsupported);
+            }
+            if type_is_exactly(item_type(it, operand, env)?, ns, spec) {
                 vec![it.clone()]
             } else {
                 vec![]
@@ -968,7 +1016,12 @@ fn eval<D: Document>(e: &Expr, ctx: &Item<D>, env: &Env<'_, D>) -> Result<Vec<It
         Expr::Lit(Lit::Bool(b)) => vec![Item::Bool(*b)],
         // A bare resource-type name (`QuestionnaireResponse.item`,
         // `Patient.name`) is `$this` when that is its type.
-        Expr::Nav(base, name) if matches!(**base, Expr::This) && env.this_type == Some(name.as_str()) => {
+        Expr::Nav(base, name)
+            if matches!(**base, Expr::This)
+                && (env.this_type == Some(name.as_str())
+                    || matches!(ctx, Item::Node(d) if d.fhir_type() == Some(name.as_str())
+                        || d.scalars("$this.resourceType") == [name.as_str()])) =>
+        {
             vec![ctx.clone()]
         }
         Expr::Nav(base, name) => {
@@ -1093,9 +1146,16 @@ fn eval<D: Document>(e: &Expr, ctx: &Item<D>, env: &Env<'_, D>) -> Result<Vec<It
                     let Some((ns, ty)) = type_arg(&args[0]) else {
                         return Err(Unsupported);
                     };
+                    // an unknown type name is an error. (`as` on more than one
+                    // item is one too by the official suite, but the reference
+                    // validator's own dom-3 — `descendants().as(canonical)` —
+                    // needs the filter reading, and that is the engine agreed with)
+                    if !known_type_name(ns, ty) {
+                        return Err(Unsupported);
+                    }
                     let mut out = Vec::new();
                     for it in &coll {
-                        if type_matches_ns(item_type(it, &args[0], &env.inner())?, ns, ty) {
+                        if type_is_exactly(item_type(it, &args[0], &env.inner())?, ns, ty) {
                             out.push(it.clone());
                         }
                     }

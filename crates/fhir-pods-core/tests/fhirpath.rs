@@ -284,11 +284,15 @@ fn type_tests_honour_the_hierarchy() {
     // FHIRPath system types answer only when qualified — so `$this is
     // DateTime` on a dateTime is false (and US Core's us-core-1 never fires)
     assert_eq!(fp("id is String", d), Fail);
-    assert_eq!(fp("id is System.String and id.length() > 0", d), Pass);
+    // a FHIR element is never a System type (the official suite's testType14:
+    // `Patient.active.is(System.Boolean).not()`); a literal is one
+    assert_eq!(fp("id is System.String", d), Fail);
+    assert_eq!(fp("'x' is System.String and 'x' is String and 1 is Integer and true is Boolean", d), Pass);
+    assert_eq!(fp("1 is FHIR.integer or 1 is integer", d), Fail);
     assert_eq!(fp("recordedDate is DateTime", r#"{"resourceType":"Condition","recordedDate":"2020"}"#), Fail);
     assert_eq!(
         fp(
-            "recordedDate is dateTime and recordedDate is System.DateTime",
+            "recordedDate is dateTime and recordedDate is FHIR.dateTime and (recordedDate is System.DateTime).not()",
             r#"{"resourceType":"Condition","recordedDate":"2020"}"#
         ),
         Pass
@@ -296,7 +300,8 @@ fn type_tests_honour_the_hierarchy() {
     assert_eq!(fp("subject.reference is string", d), Pass);
     let mr =
         r#"{"resourceType":"MedicationRequest","instantiatesCanonical":["http://x"],"instantiatesUri":["http://y"]}"#;
-    assert_eq!(fp("descendants().ofType(uri).count() = 2", mr), Pass); // canonical is a uri
+    assert_eq!(fp("descendants().ofType(uri).count() = 1", mr), Pass); // exact: a canonical is not a uri to ofType
+    assert_eq!(fp("descendants().where($this is uri).count() = 2", mr), Pass); // but it is one to `is`
 }
 
 // --- regex + tier three collections ---
@@ -412,7 +417,11 @@ fn fhirpath_type_functions_on_typed_nodes() {
     use fhir_pods_core::path::Verdict::{Fail, Pass, Unsupported};
     let d = r#"{"resourceType":"MedicationRequest","instantiatesCanonical":["http://x/plan"],"instantiatesUri":["http://x/u"],"subject":{"reference":"Patient/1"},"medicationCodeableConcept":{"text":"m"}}"#;
     assert_eq!(fp("descendants().as(canonical).count() = 1", d), Pass);
-    assert_eq!(fp("descendants().ofType(FHIR.uri).count() = 2", d), Pass); // canonical is a uri
+    // `ofType` / `as` name the exact type (the official suite: `Patient.gender.ofType(string)`
+    // is empty though a code is a string); `is` honours the hierarchy
+    assert_eq!(fp("descendants().ofType(FHIR.uri).count() = 1", d), Pass);
+    assert_eq!(fp("descendants().where($this is uri).count() = 2", d), Pass);
+    assert_eq!(fp("instantiatesCanonical.first().as(string1)", d), Unsupported); // an unknown type is an error
     assert_eq!(fp("medication.ofType(CodeableConcept).exists()", d), Pass);
     assert_eq!(fp("medication is CodeableConcept", d), Pass);
     assert_eq!(fp("medication is Reference", d), Fail);
