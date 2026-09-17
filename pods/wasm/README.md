@@ -41,7 +41,7 @@ const outcome = pod.operationOutcome(JSON.stringify(observation));
 ```
 
 `validate` never throws for bad input: unparseable JSON is a `fatal` issue in
-the report. Both calls are synchronous — tens of microseconds for a profiled
+the report. Both calls are synchronous — under a hundred microseconds end to end in JS (69–89 µs on an M4 Max at v0.8.3, JSON copy and parse included; see `bench/`) for a profiled
 resource.
 
 ### Lowering — a conformant resource from the variable data only

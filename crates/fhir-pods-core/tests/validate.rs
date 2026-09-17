@@ -434,6 +434,15 @@ fn an_extension_sits_where_its_definition_allows() {
         r.contains("\"valid\":false") && r.contains("this element is [Element, dateTime, Patient.deceased[x]]"),
         "{r}"
     );
+    // a recursive backbone: the owner answers to its definition path, cycles collapsed (F051)
+    let ordinal = r##"{"resourceType":"Questionnaire","status":"active","item":[{"linkId":"1","type":"group","item":[{"linkId":"1.1","type":"choice","answerOption":[{"valueCoding":{"code":"a"},"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/ordinalValue","valueDecimal":1}]}]}]}]}"##;
+    assert!(probe_str(ordinal).contains("\"valid\":true"), "{}", probe_str(ordinal));
+    let misplaced = ordinal.replace(r#""answerOption":[{"valueCoding":{"code":"a"},"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/ordinalValue","valueDecimal":1}]}]"#, r#""answerOption":[{"valueCoding":{"code":"a"}}],"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/ordinalValue","valueDecimal":1}]"#);
+    assert!(
+        probe_str(&misplaced).contains("this element is [Element, BackboneElement, Questionnaire.item]"),
+        "{}",
+        probe_str(&misplaced)
+    );
     // inside a Bundle entry the owner is judged from the nested resource, not the Bundle
     let nested = format!(
         r#"{{"resourceType":"Bundle","type":"collection","entry":[{{"fullUrl":"urn:uuid:5b8e1672-0000-4000-8000-000000000001","resource":{ok}}}]}}"#

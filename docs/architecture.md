@@ -190,8 +190,8 @@ at once here, and they are kept apart:
 
 **Measured (v0.6.1, release build, one 2026 Apple M-series laptop,
 `examples/bench.rs`):** 78 µs for an AU Core Patient, 81 µs for an AU Core
-heart rate, 152 µs for a US Core Patient; the `.wasm` is 1.1 MB (277 KB
-gzipped). Earlier releases measured 37 / 66 µs on a quieter machine — the
+heart rate, 152 µs for a US Core Patient; the `.wasm` is ~1.5 MiB (365 KiB
+gzipped) at v0.8.3, the HL7 v2 maps ~300 KB of it. Earlier releases measured 37 / 66 µs on a quieter machine — the
 absolute number is the machine's; what the releases hold to is no
 regression back to back (planning T020 makes it reproducible). The conformance corpus the numbers come from is
 reproducible from `conformance/run.py`.

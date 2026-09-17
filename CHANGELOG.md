@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.8.4 — 2026-09-17
+
+**Verifier: extension contexts on recursive backbones** (F051, found by
+the review agent's unprofiled lane). The owner's definition path is built
+from the nearest backbone context, whose content-reference cycles the type
+table already collapses (`Questionnaire.item` for an item three deep), so
+`ordinalValue` on a nested item's `answerOption` — and any context-declared
+extension on a recursive backbone (Questionnaire and QuestionnaireResponse
+items, Composition sections, Consent provisions) — is allowed where its
+definition says. US Core's PRAPARE Questionnaire agrees with the oracle
+again. Docs: the wasm size and timing claims in `docs/architecture.md`
+and `pods/wasm/README.md` dated to v0.8.3 (F057).
+
+Tests: 174. Oracle: **1206/1206**.
+
 ## 0.8.3 — 2026-09-17
 
 **The reviewer's F032–F035 taken.**

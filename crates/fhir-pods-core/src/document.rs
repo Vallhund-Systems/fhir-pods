@@ -362,7 +362,11 @@ fn owner_names(w: &Walk<'_, '_>) -> Vec<alloc::string::String> {
     };
     let is_datatype =
         |c: &str| !c.contains('.') && !is_resource(c) && c != "Element" && crate::typing::known_type(c).is_some();
-    if let Some(r) = (0..=owner).rev().find(|&i| is_resource(w.ctxs[i].0)) {
+    // from the nearest resource or backbone context — a backbone's context is
+    // its definition path with content-reference cycles already collapsed
+    // (`Questionnaire.item` for an item three deep), which is what a context
+    // expression names
+    if let Some(r) = (0..=owner).rev().find(|&i| is_resource(w.ctxs[i].0) || w.ctxs[i].0.contains('.')) {
         names.push(path_from(r));
     }
     if let Some(d) = (0..=owner).rev().find(|&i| is_datatype(w.ctxs[i].0)) {
