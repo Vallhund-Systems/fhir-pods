@@ -50,7 +50,9 @@ fn er7_parses_separators_repetitions_components_subcomponents_and_escapes() {
     assert_eq!(pid.value(5, 4, 0), "A");
     // errors are named
     assert_eq!(Message::parse(b"PID|1").unwrap_err(), ParseError::NoHeader);
-    assert_eq!(Message::parse(b"MSH|^~\\&|A\rXY").unwrap_err(), ParseError::BadSegment(2));
+    // a malformed segment name is a segment the structure will not place, not a refusal
+    assert_eq!(Message::parse(b"MSH|^~\\&|A\rXY").unwrap().segments[1].name, "XY");
+    assert_eq!(Message::parse(b"MSH|^~\\&|A\r|x").unwrap_err(), ParseError::BadSegment(2));
 }
 
 #[test]
@@ -191,8 +193,10 @@ fn an_adt_a01_becomes_an_admission_with_what_the_message_carries_and_names_what_
     // coverage: the payor an Organization, the relationship through the table (to v3 RoleCode, as the IG maps it)
     assert!(b.contains(r#""resourceType":"Coverage""#) && b.contains(r#""payor":[{"reference":"urn:uuid:"#), "{b}");
     assert!(b.contains(r#""relationship":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/v3-RoleCode","code":"ONESELF"}]}"#), "{b}");
-    // the Z segment is named, not silently dropped
+    // the Z segment is named, not silently dropped; so is a valued field no map row names
     assert_eq!(c.unplaced, vec!["ZPI[1]".to_string()]);
+    eprintln!("unmapped {:?}", c.unmapped);
+    assert!(c.unmapped.iter().all(|u| u.contains('[') && u.contains('-')), "{:?}", c.unmapped);
     // what FHIR requires and the message does not carry is not invented: the validation names it
     let report = wire::report(&c.validation);
     assert!(!c.validation.is_valid(), "{report}");

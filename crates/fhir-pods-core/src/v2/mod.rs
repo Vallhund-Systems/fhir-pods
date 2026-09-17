@@ -65,7 +65,7 @@ pub struct Rep {
 pub enum ParseError {
     /// Not starting with `MSH` and its separators.
     NoHeader,
-    /// A segment line without a three-character name.
+    /// A segment line with no name before the first field separator.
     BadSegment(usize),
     /// Not UTF-8.
     NotText,
@@ -75,7 +75,7 @@ impl core::fmt::Display for ParseError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             ParseError::NoHeader => f.write_str("message must start with MSH and its separators"),
-            ParseError::BadSegment(i) => write!(f, "segment {i} has no three-character name"),
+            ParseError::BadSegment(i) => write!(f, "segment {i} has no name"),
             ParseError::NotText => f.write_str("message is not UTF-8"),
         }
     }
@@ -172,11 +172,17 @@ impl Message {
             if line.is_empty() {
                 continue;
             }
-            if line.len() < 3 || !line.is_char_boundary(3) || !line[..3].bytes().all(|b| b.is_ascii_alphanumeric()) {
+            // the name is what stands before the first field separator: a
+            // malformed one is a segment the structure will not place (named
+            // in `unplaced`), not a reason to refuse the message
+            let (name, rest) = match line.find(sep.field) {
+                Some(j) => (&line[..j], &line[j + sep.field.len_utf8()..]),
+                None => (line, ""),
+            };
+            if name.is_empty() {
                 return Err(ParseError::BadSegment(i + 1));
             }
-            let name = String::from(&line[..3]);
-            let rest = line[3..].strip_prefix(sep.field).unwrap_or(&line[3..]);
+            let name = String::from(name);
             let mut fields: Vec<Field> = Vec::new();
             if name == "MSH" {
                 // MSH-1 is the field separator, MSH-2 the encoding characters: literal, never unescaped
@@ -187,6 +193,8 @@ impl Message {
                 fields.push(Field { reps: alloc::vec![Rep { components: alloc::vec![alloc::vec![enc_text]] }] });
                 let enc_len: usize = enc.iter().map(|c| c.len_utf8()).sum();
                 let after = rest.get(enc_len..).map(|r| r.strip_prefix(sep.field).unwrap_or("")).unwrap_or("");
+                // MSH-2 is the encoding characters themselves
+                let _ = &after;
                 for raw in split_top(after, sep.field) {
                     fields.push(parse_field(raw, &sep));
                 }

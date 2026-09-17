@@ -163,6 +163,10 @@ pub struct Converted {
     pub skipped: Vec<Skip>,
     /// Segments the message structure has no row for (`ZPI[1]`), left out.
     pub unplaced: Vec<String>,
+    /// Valued fields of placed segments that no map row names at all
+    /// (`PID[1]-2`): the IG says nothing about them, so nothing was done —
+    /// what a host must look at itself to know nothing was lost.
+    pub unmapped: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1448,6 +1452,7 @@ pub fn convert_with(
     let salt = crate::hash::hex(&crate::hash::sha256(input)[..16]);
     let mut cv = Converter { options, instances: Vec::new(), skipped: Vec::new(), seq: 0, salt };
     let mut unplaced = Vec::new();
+    let mut unmapped: Vec<String> = Vec::new();
 
     // the structure walk: the message structure as a tree (segments and
     // groups, each with its cardinality — the groups' from the standard,
@@ -1566,6 +1571,22 @@ pub fn convert_with(
         let lookup = |name: &str| lookup_in(name, &scope);
         let mut applied: Vec<(&str, Instance)> = Vec::new();
         let mut deferred: Vec<(&str, Instance, &str)> = Vec::new();
+        // the fields any map for this segment names, applicable or not
+        let mut named: Vec<u16> = Vec::new();
+        for &ri in p.rows {
+            if let Some(smap) = map.rows[ri].map.and_then(|id| generated::SEGMENTS.iter().find(|m| m.id == id)) {
+                named.extend(smap.rows.iter().map(|r| r.field).filter(|f| *f != 0));
+            }
+        }
+        for (k, field) in seg.fields.iter().enumerate() {
+            let n = k as u16 + 1;
+            if seg.name == "MSH" && n <= 2 {
+                continue;
+            }
+            if field.reps.iter().any(Rep::is_valued) && !named.contains(&n) && !p.rows.is_empty() {
+                unmapped.push(alloc::format!("{seg_at}-{n}"));
+            }
+        }
         for &ri in p.rows {
             let row = &map.rows[ri];
             match row.cond {
@@ -1758,7 +1779,7 @@ pub fn convert_with(
     }
     let text = Node::Object(bundle).to_json();
     let validation = validator.validate_with(text.as_bytes(), tx);
-    Ok(Converted { bundle: text, validation, skipped, unplaced })
+    Ok(Converted { bundle: text, validation, skipped, unplaced, unmapped })
 }
 
 impl Validator {

@@ -119,7 +119,7 @@ let lifted = v.lift(HEART_RATE, json)?;          // Lifted: inputs + validation 
 let copy = v.deidentify(json, &Policy::safe_harbor(b"salt").today(2026))?;
 let summary = v.document("au-ps", inputs)?;      // Assembled: document + placed + validation
 let record = v.audit("patient-read", event)?;    // Lowered: a BALP AuditEvent + validation
-let msg = v.v2(er7, &v2::Options::default())?;   // Converted: bundle + validation + skipped + unplaced
+let msg = v.v2(er7, &v2::Options::default())?;   // Converted: bundle + validation + skipped + unplaced + unmapped
 let needs = v.terminology_needs(json);           // what the bundled sets could not decide
 ```
 
@@ -131,7 +131,7 @@ pod.lift(profileUrl, resource);                  // { inputs, validation, missin
 pod.deidentify(json, { salt, today });           // { resource, applied, validation, remaining }
 pod.document("ips", { resources, author, date }); // { document, placed, omitted, validation }
 pod.audit("patient-read", { recorded, client, server, user, source, patient, data, transaction });
-pod.v2(er7, { timezone: "+10:00" });             // { bundle, validation, skipped, unplaced }
+pod.v2(er7, { timezone: "+10:00" });             // { bundle, validation, skipped, unplaced, unmapped }
 pod.loadTerminology(table); pod.terminologyNeeds(json);
 ```
 

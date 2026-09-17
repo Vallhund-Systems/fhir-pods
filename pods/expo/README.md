@@ -102,7 +102,9 @@ maps compiled into the pod, and validated on the way out. `skipped` names
 every map row the pod could not execute for data the message carried (a
 narrative-only condition, a prose formula, a target form the engine does not
 take) with where and why; `unplaced` names the segments the structure has no
-place for (`ZPI[1]`). What FHIR requires and the message does not carry is
+place for (`ZPI[1]`); `unmapped` names the valued fields of placed segments
+that no map row mentions (`PID[1]-2`) — what the IG says nothing about, so
+nothing was done. What FHIR requires and the message does not carry is
 in `validation`, never invented. `timezone` is the zone of a time the
 message states without one (else such a time is truncated to its date and
 reported); `codeSystems` maps coding-system names (`L`, `99LAB`) to uris —

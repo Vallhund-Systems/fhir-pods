@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.8.6 — 2026-09-17
+
+**HL7 v2: what the IG says nothing about is named too** (F050). The
+conversion result carries `unmapped`: every valued field of a placed
+segment that no map row names at all (`PID[1]-2`), beside `skipped` (rows
+the maps state and the pod could not do) and `unplaced` (segments the
+structure has no place for) — so a host can audit data loss end to end.
+Across the C ABI, wasm and Expo pods (an added JSON field; no ABI change).
+A malformed segment name (`Z"Z`) no longer refuses the whole message: the
+segment is parsed by what stands before the first field separator and
+reported unplaced, as a receiver would ignore it; only a line with no name
+at all is a parse error.
+
+Tests: 175. Oracle: **1206/1206**.
+
 ## 0.8.5 — 2026-09-17
 
 **Bundles validate in linear time** (F057, seen by two reviews). Two

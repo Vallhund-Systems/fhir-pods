@@ -96,6 +96,8 @@ export interface V2Converted {
   skipped: V2Skip[];
   /** Segments the message structure has no place for (`ZPI[1]`), left out. */
   unplaced: string[];
+  /** Valued fields of placed segments that no map row names (`PID[1]-2`): the IG says nothing about them, so nothing was done. */
+  unmapped: string[];
 }
 
 /** Which patient summary a document is. */

@@ -82,7 +82,9 @@ uint8_t *fhir_pods_lift_tx(const uint8_t *profile, size_t profile_len, const uin
  * first, then the standard ones the pod knows. Returns {"bundle": {...}, "validation": {...},
  * "skipped": [{"at": "PID[1]-3.4", "target": "...", "why": "..."}] — what the
  * maps state for data the message carried and the pod did not do — and
- * "unplaced": ["ZPI[1]"] — segments the structure has no place for}, or
+ * "unplaced": ["ZPI[1]"] — segments the structure has no place for — and
+ * "unmapped": ["PID[1]-2"] — valued fields of placed segments that no map
+ * row names, so a host can audit what the IG says nothing about}, or
  * {"error": "..."} when it cannot start. */
 uint8_t *fhir_pods_v2(const uint8_t *message, size_t message_len, const uint8_t *options, size_t options_len);
 uint8_t *fhir_pods_v2_tx(const uint8_t *message, size_t message_len, const uint8_t *options, size_t options_len,

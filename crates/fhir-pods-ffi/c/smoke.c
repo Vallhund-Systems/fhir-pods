@@ -111,7 +111,7 @@ int main(void) {
                         "OBX|1|NM|2093-3^Cholesterol^LN||5.2|mmol/L^^UCUM|||||F|||20260916093000+1000\rZZZ|1\r";
     char *v2 = unpack(fhir_pods_v2((const uint8_t *)v2msg, strlen(v2msg), (const uint8_t *)"{}", 2));
     ok = ok && strstr(v2, "{\"bundle\":{\"resourceType\":\"Bundle\"") && strstr(v2, "\"valueQuantity\":{\"value\":5.2")
-         && strstr(v2, "\"unplaced\":[\"ZZZ[1]\"]}");
+         && strstr(v2, "\"unplaced\":[\"ZZZ[1]\"],\"unmapped\":[");
     printf("v2: %.100s...\n", v2);
     free(v2);
 

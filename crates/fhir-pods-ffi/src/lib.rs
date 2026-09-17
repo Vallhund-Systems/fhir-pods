@@ -312,7 +312,7 @@ pub unsafe extern "C" fn fhir_pods_lift_tx(
 /// HL7 v2: an ER7 message converted to a FHIR message Bundle through the
 /// `hl7.fhir.uv.v2mappings` maps, validated on the way out:
 /// `{"bundle": {…}, "validation": {…}, "skipped": [{"at", "target", "why"}],
-/// "unplaced": ["ZPI[1]"]}`, or `{"error": "…"}` when it cannot start (not
+/// "unplaced": ["ZPI[1]"], "unmapped": ["PID[1]-2"]}`, or `{"error": "…"}` when it cannot start (not
 /// a message, no map for its structure, bad options). `options` is JSON
 /// (`{}` for none): `timezone` (the zone of a v2 time stated without one)
 /// and `codeSystems` (coding-system names to uris beyond the standard ones).
@@ -372,15 +372,20 @@ fn v2_json(message: &[u8], options: &[u8], tx: &dyn TerminologyProvider) -> Stri
         wire::escape(&mut s, &k.why);
         s.push_str("\"}");
     }
-    s.push_str("],\"unplaced\":[");
-    for (i, u) in c.unplaced.iter().enumerate() {
-        if i > 0 {
-            s.push(',');
+    let list = |s: &mut String, items: &[String]| {
+        for (i, u) in items.iter().enumerate() {
+            if i > 0 {
+                s.push(',');
+            }
+            s.push('"');
+            wire::escape(s, u);
+            s.push('"');
         }
-        s.push('"');
-        wire::escape(&mut s, u);
-        s.push('"');
-    }
+    };
+    s.push_str("],\"unplaced\":[");
+    list(&mut s, &c.unplaced);
+    s.push_str("],\"unmapped\":[");
+    list(&mut s, &c.unmapped);
     s.push_str("]}");
     s
 }
@@ -1262,7 +1267,7 @@ mod tests {
                     && out.contains("\"valueQuantity\":{\"value\":5.2,\"code\":\"mmol/L\",\"unit\":\"mmol/L\",\"system\":\"http://unitsofmeasure.org\"}")
                     && out.contains(",\"validation\":{")
                     && out.contains("\"skipped\":[{\"at\":\"")
-                    && out.ends_with("\"unplaced\":[\"ZZZ[1]\"]}"),
+                    && out.contains("\"unplaced\":[\"ZZZ[1]\"],\"unmapped\":["),
                 "{out}"
             );
             let no_zone = msg.replace("20260916093000+1000", "20260916093000");
