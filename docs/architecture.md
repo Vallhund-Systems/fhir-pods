@@ -52,6 +52,7 @@ engine**.
 | `path` | the FHIRPath engine — evaluates invariants |
 | `regex` | a linear-time regex engine for FHIRPath `matches()` |
 | `terminology` + `value_sets` | the `TerminologyProvider` seam and the bundled base-FHIR sets (ships no licensed content) |
+| `v2` | HL7 v2: the ER7 parser (`Message`), the compiled `hl7.fhir.uv.v2mappings` tables (`generated`, from `tools/gen_v2.py`) and the converter to a message Bundle (`convert`) |
 | `validate` | `Severity`, `IssueType`, `Issue`, `Report` |
 | `wire` | the anti-corruption layer: `OperationOutcome` and the `Validation` JSON |
 

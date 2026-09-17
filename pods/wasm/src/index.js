@@ -3,7 +3,7 @@
 // WebAssembly does (browser, edge runtimes, Node, Bun, Deno).
 
 /** The ABI this wrapper speaks; a module reporting anything else is refused. */
-export const ABI_VERSION = 9;
+export const ABI_VERSION = 10;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -79,6 +79,7 @@ export async function instantiate(source, options = {}) {
   const auditEntry = terminology ? ex.fhir_pods_audit_host_tx : ex.fhir_pods_audit;
   const liftEntry = terminology ? ex.fhir_pods_lift_host_tx : ex.fhir_pods_lift;
   const documentEntry = terminology ? ex.fhir_pods_document_host_tx : ex.fhir_pods_document;
+  const v2Entry = terminology ? ex.fhir_pods_v2_host_tx : ex.fhir_pods_v2;
 
   return {
     abiVersion: abi,
@@ -100,6 +101,12 @@ export async function instantiate(source, options = {}) {
       const out = JSON.parse(call(ex.fhir_pods_slots, profileUrl));
       if (out.error) throw new Error(`fhir-pods: ${out.error}`);
       return out.slots;
+    },
+    // HL7 v2: an ER7 message (text or bytes) as a FHIR message Bundle.
+    v2: (message, options = {}) => {
+      const out = JSON.parse(call(v2Entry, message, typeof options === "string" ? options : JSON.stringify(options)));
+      if (out.error) throw new Error(`fhir-pods: ${out.error}`);
+      return out;
     },
     // Documents: an IPS / AU Patient Summary bundle from a patient and their resources.
     document: (kind, inputs) => {

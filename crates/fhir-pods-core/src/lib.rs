@@ -377,6 +377,8 @@ pub mod lower;
 
 pub mod lift;
 
+pub mod v2;
+
 pub mod document;
 
 pub mod compiled;

@@ -61,6 +61,11 @@ public class FhirPodsExpoModule: Module {
       call2(fhir_pods_lift_tx, profileUrl, resourceJson)
     }
 
+    // HL7 v2: {"bundle","validation","skipped","unplaced"} or {"error"}.
+    Function("v2") { (message: String, optionsJson: String) -> String in
+      call2(fhir_pods_v2_tx, message, optionsJson)
+    }
+
     // Audit: {"resource","validation"} or {"error"}.
     Function("audit") { (kind: String, inputsJson: String) -> String in
       call2(fhir_pods_audit_tx, kind, inputsJson)

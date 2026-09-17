@@ -39,6 +39,9 @@ internal object FhirPodsNative {
   /** {"inputs","validation","missing","extras"} — a resource read back into the profile's slots, or {"error"}. */
   external fun lift(profile: ByteArray, resource: ByteArray, terminology: FhirPodsTerminology?): ByteArray
 
+  /** {"bundle","validation","skipped","unplaced"} — an HL7 v2 message as a FHIR message Bundle, or {"error"}. */
+  external fun v2(message: ByteArray, options: ByteArray, terminology: FhirPodsTerminology?): ByteArray
+
   /** {"slots":[...]} — the inputs a profile takes, or {"error"}. */
   external fun slots(profile: ByteArray): ByteArray
 

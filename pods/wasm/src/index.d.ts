@@ -69,6 +69,35 @@ export interface Lifted {
   extras: string[];
 }
 
+/** Options for converting an HL7 v2 message. */
+export interface V2Options {
+  /**
+   * The zone a v2 time stated without one is in (`+10:00`); without it such a
+   * time is truncated to its date, and reported in `skipped`.
+   */
+  timezone?: string;
+  /** Coding-system names (`CWE.3`: `L`, `99LAB`) to uris, beyond the standard names the pod knows. */
+  codeSystems?: Record<string, string>;
+}
+
+/** What the maps state for data the message carried, and the pod did not do. */
+export interface V2Skip {
+  /** Where in the message (`PID[1]-3.4`, `OBX[2]-5`). */
+  at: string;
+  /** The FHIR target the map names. */
+  target: string;
+  why: string;
+}
+
+export interface V2Converted {
+  /** The message Bundle: MessageHeader first, `urn:uuid` entries, deterministic for the same message. */
+  bundle: Record<string, unknown>;
+  validation: Validation;
+  skipped: V2Skip[];
+  /** Segments the message structure has no place for (`ZPI[1]`), left out. */
+  unplaced: string[];
+}
+
 /** Which patient summary a document is. */
 export type DocumentKind = "ips" | "au-ps";
 
@@ -215,6 +244,16 @@ export interface Pod {
    * when it cannot start.
    */
   lift(profileUrl: string, resource: Record<string, unknown> | string): Lifted;
+  /**
+   * An HL7 v2 message (ER7 text or bytes; MLLP framing is the transport's)
+   * converted to a FHIR message Bundle through the hl7.fhir.uv.v2mappings
+   * maps and validated on the way out. What the maps state and the pod
+   * could not do for data the message carried is in `skipped`, never
+   * invented; what FHIR requires and the message does not carry is in
+   * `validation`. Throws only when it cannot start (not a message, no map
+   * for its structure, bad options).
+   */
+  v2(message: string | Uint8Array, options?: V2Options | string): V2Converted;
   /**
    * An IPS or AU Patient Summary document from a patient and their resources:
    * sections from the kind's Composition profile, each resource placed by what

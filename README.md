@@ -3,7 +3,8 @@
 A small Rust library that lets an application **speak FHIR at its edges** —
 verify a resource against compiled profiles, build one from the variable data
 only, hand out a de-identified copy under a policy, assemble a patient summary
-document — behind one lean C ABI, so every one of those runs wherever the
+document, turn an HL7 v2 message into a FHIR message bundle — behind one lean
+C ABI, so every one of those runs wherever the
 data already is: in the app, in the browser, at the edge, on device. Each
 operation says which profiles and policies it applied, what it found, and
 what it could not check; the host owns its data, its transport and the
@@ -19,6 +20,7 @@ decision to proceed.
 | **De-identify** | a resource and a policy (Safe Harbor by default) | a copy with names, contacts, addresses below state, exact dates, narrative, notes, attachments and free text gone (a code's display, a unit, a state and a country stay), identifiers pseudonymised under the host's salt, masked where the base or a profile requires an element; an audit trail; what a Safe Harbor check still finds; what free text a host's own rule kept, site by site |
 | **Document** | a patient and their resources | an IPS or AU Patient Summary `Bundle`: sections from the profile, narrative generated, references rewritten, validated |
 | **Audit** | what a host knows when a record is read, queried, created, updated or deleted: who asked, from where, which server, on whose behalf, which resource or patient, the request id | an `AuditEvent` conformant to the IHE Basic Audit Log Patterns profile for that kind of event, validated; `Provenance` and a failed action's `AuditEvent` lowered from the base definitions |
+| **HL7 v2** | an ER7 message (`ORU^R01`, `ADT^A01`, `VXU^V04`, `OML^O21`, …) | a FHIR message `Bundle` through the published v2-to-FHIR maps compiled into the pod, validated on the way out; every map row the pod could not execute for data the message carried, named with its reason; every segment the structure has no place for, named; what FHIR requires and the message does not carry, in the validation — never invented |
 | **Terminology** | the bindings the bundled sets cannot decide | answered by a compiled expansion table the host loads, by an ask-then-answer loop against a terminology server, or by a synchronous provider — never by shipped licensed content |
 
 The pod family and what comes next: [`docs/roadmap.md`](docs/roadmap.md).
@@ -58,11 +60,12 @@ with terminology switched off on both sides so profiles are what is scored.
 `conformance/run.py` builds the corpus from the pinned packages, runs
 validator_cli 6.10.4 over it, and compares verdicts:
 
-- **1201/1201** at v0.7.0 — the six IGs' published examples and 60-odd
+- **1205/1205** at v0.8.0 — the six IGs' published examples and 60-odd
   probes, every corpus resource lifted into its slots and lowered again, every
   one de-identified, the twelve document examples taken apart and assembled
-  again, an audit record of every kind from the audit surface, and the
-  review lane's adversarial probes. A run in which either
+  again, an audit record of every kind from the audit surface, four HL7 v2
+  messages converted to message bundles (each side's verdict, valid or not,
+  the same), and the review lane's adversarial probes. A run in which either
   side crashed, returned a foreign exit code or a report that disagrees
   with its own exit code counts as a failure, never as agreement. Every
   engine change is proven this way before it ships; the record is in the
@@ -92,7 +95,7 @@ terminology seam.
 
 ## Delivery
 
-- **wasm** — a ~1.15 MB `.wasm` (282 KB gzipped) with a dependency-free JS
+- **wasm** — a ~1.5 MB `.wasm` (358 KB gzipped) with a dependency-free JS
   wrapper; browser, edge runtimes, Node, Bun, Deno. [`pods/wasm`](pods/wasm/README.md).
 - **Expo** — the core as a native module: iOS XCFramework + Android jniLibs,
   a native terminology provider seam. [`pods/expo`](pods/expo/README.md).
@@ -115,6 +118,7 @@ let lifted = v.lift(HEART_RATE, json)?;          // Lifted: inputs + validation 
 let copy = v.deidentify(json, &Policy::safe_harbor(b"salt").today(2026))?;
 let summary = v.document("au-ps", inputs)?;      // Assembled: document + placed + validation
 let record = v.audit("patient-read", event)?;    // Lowered: a BALP AuditEvent + validation
+let msg = v.v2(er7, &Options::default())?;       // Converted: bundle + validation + skipped + unplaced
 let needs = v.terminology_needs(json);           // what the bundled sets could not decide
 ```
 
@@ -126,6 +130,7 @@ pod.lift(profileUrl, resource);                  // { inputs, validation, missin
 pod.deidentify(json, { salt, today });           // { resource, applied, validation, remaining }
 pod.document("ips", { resources, author, date }); // { document, placed, omitted, validation }
 pod.audit("patient-read", { recorded, client, server, user, source, patient, data, transaction });
+pod.v2(er7, { timezone: "+10:00" });             // { bundle, validation, skipped, unplaced }
 pod.loadTerminology(table); pod.terminologyNeeds(json);
 ```
 
@@ -150,6 +155,7 @@ unverified.
 
 - `crates/fhir-pods-core` — the core (zero deps, no `unsafe`, `no_std`):
   `engine`, `path` (FHIRPath), `lower`, `lift`, `deidentify`, `assemble`, `audit`,
+  `v2` (the ER7 parser, the compiled v2-to-FHIR maps and the converter),
   `terminology`, `generated/` (the compiled registry), `typemap` (the
   element-type table).
 - `crates/fhir-pods-ffi` — the one lean C ABI, compiled per target.

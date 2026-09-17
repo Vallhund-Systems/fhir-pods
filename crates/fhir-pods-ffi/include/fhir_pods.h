@@ -9,8 +9,8 @@
 extern "C" {
 #endif
 
-/* ABI version; a host refuses a mismatched module. This header is ABI 9. */
-#define FHIR_PODS_ABI_VERSION 9u
+/* ABI version; a host refuses a mismatched module. This header is ABI 10. */
+#define FHIR_PODS_ABI_VERSION 10u
 uint32_t fhir_pods_abi_version(void);
 
 /* Allocate `len` bytes in the module for the host to fill. */
@@ -72,6 +72,21 @@ uint8_t *fhir_pods_lower_tx(const uint8_t *profile, size_t profile_len, const ui
 uint8_t *fhir_pods_lift(const uint8_t *profile, size_t profile_len, const uint8_t *resource, size_t resource_len);
 uint8_t *fhir_pods_lift_tx(const uint8_t *profile, size_t profile_len, const uint8_t *resource, size_t resource_len,
                            fhir_pods_tx_callback cb, void *ctx);
+
+/* HL7 v2: an ER7 message (bytes; MLLP framing is the transport's) converted
+ * to a FHIR message Bundle through the hl7.fhir.uv.v2mappings maps and
+ * validated on the way out. Options are JSON ({} for none): {"timezone":
+ * "+10:00"} — the zone of a v2 time stated without one (else such a time is
+ * truncated to its date, and reported) — and {"codeSystems": {"L": "http://
+ * example.org/local"}} — coding-system names to uris beyond the standard
+ * ones the pod knows. Returns {"bundle": {...}, "validation": {...},
+ * "skipped": [{"at": "PID[1]-3.4", "target": "...", "why": "..."}] — what the
+ * maps state for data the message carried and the pod did not do — and
+ * "unplaced": ["ZPI[1]"] — segments the structure has no place for}, or
+ * {"error": "..."} when it cannot start. */
+uint8_t *fhir_pods_v2(const uint8_t *message, size_t message_len, const uint8_t *options, size_t options_len);
+uint8_t *fhir_pods_v2_tx(const uint8_t *message, size_t message_len, const uint8_t *options, size_t options_len,
+                         fhir_pods_tx_callback cb, void *ctx);
 
 /* De-identification: a copy of the resource under a policy (JSON:
  * {"salt": "...", "today": "YYYY-MM-DD", "base": "safe-harbor" | "none",

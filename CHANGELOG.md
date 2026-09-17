@@ -1,5 +1,66 @@
 # Changelog
 
+## 0.8.0 — 2026-09-17
+
+**HL7 v2.** ABI 10: `fhir_pods_v2(message, options)` (+ `_tx`); wasm
+`v2(message, options?)`, Expo `v2(message, options?)`; core `Validator::v2`
+/ `v2::{Message, convert::{Options, Converted, Skip}}`.
+
+- An ER7 message → a FHIR message `Bundle` through the published
+  `hl7.fhir.uv.v2mappings` 1.0.0 maps, compiled into the pod by
+  `tools/gen_v2.py`: 105 datatype maps, 75 segment maps, 13 message
+  structures (ADT_A01 / A02 / A05 / A06 / A09 / A11 / A17, MDM_T02, OML_O21,
+  ORM_O01, ORU_R01, SIU_S12, VXU_V04) and 70 vocabulary tables — 2054 rows,
+  1517 executed (22 of them concatenation formulas), 537 skipped with their
+  reason (309 target forms the engine does not take, 106 narrative-only
+  conditions, 56 prose assignments, 28 conditions outside the grammar, 19
+  ambiguous segment maps, 10 with no segment map, 7 source forms, 2
+  literals assigned to a reference). A skipped row is applied never and
+  *reported* whenever the message carries data for it (`skipped`: where in
+  the message, which target, why); a segment the structure has no place for
+  is `unplaced`. The Bundle is validated on the way out: what FHIR requires
+  and the message does not carry (an ADT's Provenance with no agent, a
+  Coverage with no status) is named in `validation`, never invented.
+- The parser: separators from MSH-1/2, repetitions, components,
+  subcomponents, the standard escapes (`\F\ \S\ \T\ \R\ \E\ \Xdd\ \.br\`).
+  MLLP framing is the transport's.
+- The converter's rules beyond the maps — structural, and all stated in
+  `v2/convert.rs`: a numbered instance (`DiagnosticReport[1]`) is shared
+  along the structure (ORC in COMMON_ORDER and OBR in ORDER_OBSERVATION fill
+  one report); a resource with a `subject` / `patient` / `beneficiary` and
+  none set refers to the nearest Patient in the structure, `encounter`
+  likewise; a DiagnosticReport's `result` is the observations of its order
+  group; the Bundle is a `message` with the MessageHeader first and
+  deterministic `urn:uuid` entries (the same message gives the same
+  bundle); an identifier under `urn:ietf:rfc:3986` whose value is a bare
+  OID or UUID is written as the URN the IG spells for the same value
+  elsewhere; a coding-system name (`LN`, `SCT`, `UCUM`, `HL7nnnn`) resolves
+  to its uri from the standard names of table 0396 and the host's
+  `codeSystems`, else the row is reported; a time stated without a zone is
+  truncated to its date and reported unless the host gives `timezone`; a
+  list item a failed reference leaves with only the map's literals
+  (`location[1].status` without its location) is dropped and reported.
+- The generator reads the maps as published and corrects nothing but
+  spelling: a `value[x]` key in the maps' case (`valuedateTime`), a
+  datatype's own name prefixed to its targets (`Quantity.code`), an
+  extension block placed a level above the element its definition allows
+  (`contactpoint-local` belongs on `ContactPoint.value`: `_value.extension`,
+  from the extensions package's contexts), and the one narrative that
+  instructs rather than conditions ("If mapped to FHIR, use Code System and
+  Display"). Two IG rows that assign a literal to a reference are refused.
+- Proof: `examples/v2_corpus.rs` converts four synthetic messages (ORU^R01
+  with two orders, ADT^A01, VXU^V04, OML^O21) and records each bundle's own
+  verdict for the oracle; fuzz target `v2`; the Node, C and Expo smokes.
+
+**Verifier**, found by the v2 bundles in front of the oracle: **an
+identifier under `urn:ietf:rfc:3986` must carry a URI** (a scheme) — an
+error, as the reference validator has it. Not yet checked, and now known
+from the same run: where an extension may sit (its definition's context).
+
+Oracle: **1205/1205** (1201 + the four v2 bundles: two valid on both sides,
+two invalid on both sides, for the same reasons). Tests: 162. `.wasm`:
+1.47 MB (358 KB gzipped) — the maps are ~300 KB of it.
+
 ## 0.7.0 — 2026-09-16
 
 **Lifting.** ABI 9: `fhir_pods_lift(profile, resource)` (+ `_tx`); wasm

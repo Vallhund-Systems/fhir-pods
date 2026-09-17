@@ -6,7 +6,7 @@
 //! validation of the lowered resource is clean.
 //!
 //!     cargo run -p fhir-pods-core --example lower_corpus -- conformance/corpus
-use std::{env, fs, process};
+use std::{env, fs};
 
 use fhir_pods_core::document::{Document, Parsed};
 use fhir_pods_core::{generated, wire, Validator};

@@ -145,6 +145,18 @@ the count above.
 - Slices whose discriminator cannot be resolved from the profile (e.g.
   AU Core's `identifier:dva`, whose `type` pattern lives nowhere). Deferred.
 - Bindings to value sets we do not bundle. Warned, not failed.
+- Where an extension may sit (its definition's `context`). An extension is
+  held to its compiled definition's shape and value, not to its place; the
+  reference validator refuses one out of place. Known since the v2
+  bundles (0.8.0): next.
+- **HL7 v2** (0.8.0): the published `hl7.fhir.uv.v2mappings` maps are
+  executed as published; a row the pod cannot execute (a narrative-only
+  condition, a prose formula, a target form the engine does not take, an
+  ambiguous segment map) is applied never and reported per message with its
+  reason, a segment the structure has no place for is named, and what FHIR
+  requires that the message does not carry stays missing and is named in
+  the validation. The converter's own rules beyond the maps are few,
+  structural and listed at the top of `v2/convert.rs`.
 
 A skipped check can only make us *more lenient* than the reference validator,
 never stricter: the corpus proves no lenience shows up on real examples, but a

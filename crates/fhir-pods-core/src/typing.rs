@@ -117,6 +117,11 @@ pub fn required_resource_children(ty: &str) -> impl Iterator<Item = &'static str
     span.iter().filter(|(rel, _, _, required)| *required && !rel.contains('.')).map(|(rel, _, _, _)| *rel)
 }
 
+/// Every type name the table knows, for a lookup by other spellings.
+pub fn type_names() -> impl Iterator<Item = &'static str> {
+    TYPES.iter().copied()
+}
+
 /// A resource or datatype name the table knows.
 pub fn known_type(name: &str) -> Option<&'static str> {
     TYPES.binary_search(&name).ok().map(|i| TYPES[i])

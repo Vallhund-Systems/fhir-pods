@@ -51,6 +51,11 @@ class FhirPodsExpoModule : Module() {
       String(FhirPodsNative.lift(profileUrl.toByteArray(Charsets.UTF_8), resourceJson.toByteArray(Charsets.UTF_8), terminology), Charsets.UTF_8)
     }
 
+    // HL7 v2: {"bundle","validation","skipped","unplaced"} or {"error"}.
+    Function("v2") { message: String, optionsJson: String ->
+      String(FhirPodsNative.v2(message.toByteArray(Charsets.UTF_8), optionsJson.toByteArray(Charsets.UTF_8), terminology), Charsets.UTF_8)
+    }
+
     // Audit: {"resource","validation"} or {"error"}.
     Function("audit") { kind: String, inputsJson: String ->
       String(FhirPodsNative.audit(kind.toByteArray(Charsets.UTF_8), inputsJson.toByteArray(Charsets.UTF_8), terminology), Charsets.UTF_8)

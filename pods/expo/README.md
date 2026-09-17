@@ -88,6 +88,27 @@ covers, so nothing is left behind unnamed; `validation` is the verdict on the
 way in. `lift("", resource)` takes the most specific compiled profile the
 resource declares. `lower(url, inputs)` gives the resource back.
 
+## HL7 v2
+
+```ts
+import { v2 } from "fhir-pods-expo";
+const { bundle, validation, skipped, unplaced } = v2(er7, { timezone: "+10:00" });
+// bundle: a message Bundle — MessageHeader, Patient, Encounter, DiagnosticReport, Observations…
+```
+
+An ER7 message (`ORU^R01`, `ADT^A01`, `VXU^V04`, `OML^O21`, …; MLLP framing
+is the transport's) converted through the published `hl7.fhir.uv.v2mappings`
+maps compiled into the pod, and validated on the way out. `skipped` names
+every map row the pod could not execute for data the message carried (a
+narrative-only condition, a prose formula, a target form the engine does not
+take) with where and why; `unplaced` names the segments the structure has no
+place for (`ZPI[1]`). What FHIR requires and the message does not carry is
+in `validation`, never invented. `timezone` is the zone of a time the
+message states without one (else such a time is truncated to its date and
+reported); `codeSystems` maps coding-system names (`L`, `99LAB`) to uris
+beyond the standard ones the pod knows. The same message gives the same
+bundle. Throws only when it cannot start.
+
 ## Documents
 
 ```ts

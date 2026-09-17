@@ -104,6 +104,17 @@ int main(void) {
     printf("lift: %.100s...\n", lifted);
     free(hr_low); free(lifted);
 
+    /* HL7 v2: an ORU^R01 as a message Bundle, the Z segment named. */
+    const char *v2msg = "MSH|^~\\&|LAB|ACME|EHR|CLINIC|20260916100000+1000||ORU^R01^ORU_R01|MSG0001|P|2.5.1\r"
+                        "PID|1||MRN12345^^^ACME^MR||Doe^Jane||19700615|F\r"
+                        "OBR|1|PLC001^EHR|FIL001^LAB|24331-1^Lipid panel^LN|||20260916090000+1000||||||||||||||||||F\r"
+                        "OBX|1|NM|2093-3^Cholesterol^LN||5.2|mmol/L^^UCUM|||||F|||20260916093000+1000\rZZZ|1\r";
+    char *v2 = unpack(fhir_pods_v2((const uint8_t *)v2msg, strlen(v2msg), (const uint8_t *)"{}", 2));
+    ok = ok && strstr(v2, "{\"bundle\":{\"resourceType\":\"Bundle\"") && strstr(v2, "\"valueQuantity\":{\"value\":5.2")
+         && strstr(v2, "\"unplaced\":[\"ZZZ[1]\"]}");
+    printf("v2: %.100s...\n", v2);
+    free(v2);
+
     /* Audit: a BALP AuditEvent from host-shaped inputs, validated. */
     const char *ev = "{\"recorded\":\"2026-09-16T10:00:00Z\",\"client\":{\"who\":\"Device/app-7\",\"network\":\"10.0.0.7\"},"
                      "\"server\":{\"who\":{\"display\":\"fhir.example.org\"},\"network\":\"https://fhir.example.org/r4\"},"

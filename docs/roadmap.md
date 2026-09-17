@@ -167,6 +167,49 @@ slice claims. The conformance harness lifts every corpus example and lowers
 it again for the reference validator (the same 350 re-lowered resources,
 now through the public operation).
 
+## 0.8 — HL7 v2 — shipped
+
+**What.** `fhir_pods_v2(message, options)` → a FHIR message `Bundle` from an
+ER7 message, through the published `hl7.fhir.uv.v2mappings` maps compiled
+into the pod:
+
+```json
+fhir_pods_v2("MSH|^~\\&|LAB|ACME|EHR|CLINIC|20260916100000+1000||ORU^R01|…", {})
+→ { "bundle": { "resourceType": "Bundle", "type": "message",
+                "entry": [ MessageHeader, Patient, Encounter, DiagnosticReport, Observation… ] },
+    "validation": { "valid": true, "issues": [] },
+    "skipped": [ { "at": "PID[1]-3.4", "target": "assigner(Organization)",
+                   "why": "narrative condition: If not in …identifier-registry…" }, … ],
+    "unplaced": [ "ZPI[1]" ] }
+```
+
+Thirteen message structures (ADT_A01 / A02 / A05 / A06 / A09 / A11 / A17,
+MDM_T02, OML_O21, ORM_O01, ORU_R01, SIU_S12, VXU_V04), 75 segment maps, 105
+datatype maps, 70 vocabulary tables. The maps are executed as published;
+what a row states and the pod cannot do (a narrative condition, a prose
+assignment, a target form the engine does not take) is applied never and
+reported whenever the message carries data for it. The bundle is validated
+on the way out, and what FHIR requires that the message does not carry is
+named there, never invented. Options: the zone of a time stated without
+one; coding-system names beyond the standard ones.
+
+**How.** `tools/gen_v2.py` compiles the 263 ConceptMaps to `'static`
+tables (rows, conditions in the maps' own grammar, concatenation formulas,
+vocabulary pairs); an ER7 parser; a converter that walks the message
+structure, opens resource instances per the message map (numbered
+instances shared along the structure), applies segment and datatype maps,
+and closes with a handful of stated structural rules (subject, encounter,
+report results, the message bundle's shape, URN identifiers). Proof: four
+synthetic messages in front of the reference validator, agreeing on valid
+and on invalid alike.
+
+**Not yet.** Datatype maps that yield several resources (`PL` → the bed,
+its room, its floor, the facility, chained by `partOf`) — the first is
+built, the rest reported; message rows that reference a resource from
+another (`Provenance[1].entity.what(Device)`); the Provenance the IG leaves
+to the implementer (no target, an agent only when EVN-5 is valued) — kept
+as the maps state it, so an ADT's validation names the gap.
+
 ## 0.6 — Audit and provenance — shipped
 
 **What.** `fhir_pods_audit(kind, inputs)` → an `AuditEvent` conformant to
@@ -214,15 +257,18 @@ all found by the new IG's corpus — the pattern every IG has followed.
   records in". Fetch → validate (pod) → lift into the host's model.
 - ~~**Lifting**~~ — shipped in 0.7.0 as the profile-driven half (below);
   the map from slot paths to a host's own fields stays in the host.
-- **HL7 v2** — only on demand: a v2 parser is small and pod-shaped; the
-  `ORU^R01` / `ADT` maps are integration work per source system.
+- ~~**HL7 v2**~~ — shipped in 0.8.0 (above), the published maps compiled
+  in; a source system's own dialect (Z segments, local tables) stays in the
+  host's hands: reported, never guessed.
 
 ## Sequence
 
 lowering → terminology → de-identification → documents (+ IG #4) → audit
-(+ IG #6) — all shipped, 0.3.0 → 0.6.0. Next in the core: the eleven
-official FHIRPath disagreements (planning T023); then the host-side pieces
-below as they are asked for.
+(+ IG #6) → lifting → HL7 v2 — all shipped, 0.3.0 → 0.8.0. Next in the
+core: extension contexts in the verifier (where an extension may sit; the
+oracle checks it, we do not yet); the eleven official FHIRPath
+disagreements (planning T023); then the host-side pieces below as they are
+asked for.
 Lowering first because it is what makes the verifier pay for itself; de-id
 before documents because it is small and it is a policy commitment a host
 can point at. Each pod ships as a minor version with its own release notes,

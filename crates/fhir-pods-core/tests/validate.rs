@@ -413,6 +413,23 @@ fn f026_an_unprofiled_bundle_owes_its_identity_and_the_base_bundle_rules() {
 }
 
 #[test]
+fn an_identifier_under_rfc_3986_carries_a_uri() {
+    let ok =
+        r##"{"resourceType":"Organization","identifier":[{"system":"urn:ietf:rfc:3986","value":"urn:oid:1.2.3"}]}"##;
+    assert!(probe_str(ok).contains("\"valid\":true"), "{}", probe_str(ok));
+    let bare = ok.replace("urn:oid:1.2.3", "1.2.3");
+    let r = probe_str(&bare);
+    assert!(
+        r.contains("\"valid\":false")
+            && r.contains("if identifier.system is 'urn:ietf:rfc:3986', then the identifier.value must be a full URI (e.g. start with a scheme), not '1.2.3'"),
+        "{r}"
+    );
+    // any other system takes the value as given
+    let other = ok.replace("urn:ietf:rfc:3986", "http://example.org/ids").replace("urn:oid:1.2.3", "1.2.3");
+    assert!(probe_str(&other).contains("\"valid\":true"), "{}", probe_str(&other));
+}
+
+#[test]
 fn a_local_reference_names_a_contained_resource_or_is_ref_1() {
     let with = r##"{"resourceType":"MedicationRequest","status":"active","intent":"order","contained":[{"resourceType":"Medication","id":"med1","code":{"text":"x"}}],"medicationReference":{"reference":"#med1"},"subject":{"reference":"Patient/p1"}}"##;
     assert!(probe_str(with).contains("\"valid\":true"), "{}", probe_str(with));

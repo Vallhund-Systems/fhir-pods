@@ -169,11 +169,18 @@ def main():
         ["cargo", "run", "-q", "-p", "fhir-pods-core", "--example", "audit_corpus", "--", CORPUS],
         cwd=ROOT, stdout=subprocess.DEVNULL,
     )
+    # The HL7 v2 proof: synthetic messages converted to message Bundles, each
+    # with our own verdict, for the oracle to judge — parity, not cleanliness.
+    subprocess.check_call(
+        ["cargo", "run", "-q", "-p", "fhir-pods-core", "--example", "v2_corpus", "--", CORPUS],
+        cwd=ROOT, stdout=subprocess.DEVNULL,
+    )
     manifest = json.load(open(os.path.join(CORPUS, "manifest.json")))
     manifest += json.load(open(os.path.join(CORPUS, "lowered-manifest.json")))
     manifest += json.load(open(os.path.join(CORPUS, "deid-manifest.json")))
     manifest += json.load(open(os.path.join(CORPUS, "doc-manifest.json")))
     manifest += json.load(open(os.path.join(CORPUS, "audit-manifest.json")))
+    manifest += json.load(open(os.path.join(CORPUS, "v2-manifest.json")))
     paths = [os.path.join(CORPUS, c["file"]) for c in manifest]
     oracle = oracle_batch(paths) if have_java else {}
 

@@ -372,6 +372,28 @@ fn structure_at<'v, 'a>(
             }
         }
     }
+    // an identifier whose system is `urn:ietf:rfc:3986` carries a URI: its
+    // value must have a scheme (the reference validator's rule, an error)
+    if ctx == "Identifier" {
+        let system = kvs.iter().find(|(k, _)| k.as_ref() == "system");
+        if matches!(system, Some((_, Value::Str(s))) if s.as_ref() == "urn:ietf:rfc:3986") {
+            if let Some((_, Value::Str(v))) = kvs.iter().find(|(k, _)| k.as_ref() == "value") {
+                let scheme_end = v.find(':').unwrap_or(0);
+                let has_scheme = scheme_end > 0
+                    && v.as_bytes()[0].is_ascii_alphabetic()
+                    && v[..scheme_end].bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'+' | b'.' | b'-'));
+                if !has_scheme {
+                    w.gaps.push((
+                        alloc::format!("{path}.value"),
+                        ValueIssue,
+                        alloc::format!(
+                            "if identifier.system is 'urn:ietf:rfc:3986', then the identifier.value must be a full URI (e.g. start with a scheme), not '{v}'"
+                        ),
+                    ));
+                }
+            }
+        }
+    }
     // an extension whose url names a compiled extension profile is held to it
     if ctx == "Extension" {
         if let Some((_, Value::Str(url))) = kvs.iter().find(|(k, _)| k.as_ref() == "url") {

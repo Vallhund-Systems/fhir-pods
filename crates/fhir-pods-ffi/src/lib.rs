@@ -44,7 +44,7 @@ fn validator() -> &'static Validator {
 
 /// Bump when the exported surface or the memory contract changes; the
 /// wrappers refuse a mismatched module.
-pub const ABI_VERSION: u32 = 9;
+pub const ABI_VERSION: u32 = 10;
 
 /// The compiled terminology table the host loaded (`fhir_pods_terminology_load`),
 /// consulted after the bundled sets and before any host callback.
@@ -305,6 +305,82 @@ pub unsafe extern "C" fn fhir_pods_lift_tx(
     ctx: *mut c_void,
 ) -> *mut u8 {
     with_tx(cb, ctx, |tx| pack(lift_json(input(profile, profile_len), input(resource, resource_len), tx).as_bytes()))
+}
+
+/// HL7 v2: an ER7 message converted to a FHIR message Bundle through the
+/// `hl7.fhir.uv.v2mappings` maps, validated on the way out:
+/// `{"bundle": {…}, "validation": {…}, "skipped": [{"at", "target", "why"}],
+/// "unplaced": ["ZPI[1]"]}`, or `{"error": "…"}` when it cannot start (not
+/// a message, no map for its structure, bad options). `options` is JSON
+/// (`{}` for none): `timezone` (the zone of a v2 time stated without one)
+/// and `codeSystems` (coding-system names to uris beyond the standard ones).
+#[no_mangle]
+pub unsafe extern "C" fn fhir_pods_v2(
+    message: *const u8,
+    message_len: usize,
+    options: *const u8,
+    options_len: usize,
+) -> *mut u8 {
+    with_providers(None, |tx| pack(v2_json(input(message, message_len), input(options, options_len), tx).as_bytes()))
+}
+
+/// [`fhir_pods_v2`] with a host terminology callback for the validation.
+#[no_mangle]
+pub unsafe extern "C" fn fhir_pods_v2_tx(
+    message: *const u8,
+    message_len: usize,
+    options: *const u8,
+    options_len: usize,
+    cb: Option<TxCallback>,
+    ctx: *mut c_void,
+) -> *mut u8 {
+    with_tx(cb, ctx, |tx| pack(v2_json(input(message, message_len), input(options, options_len), tx).as_bytes()))
+}
+
+fn v2_json(message: &[u8], options: &[u8], tx: &dyn TerminologyProvider) -> String {
+    let error = |e: String| {
+        let mut s = String::from("{\"error\":\"");
+        wire::escape(&mut s, &e);
+        s.push_str("\"}");
+        s
+    };
+    let opts = match fhir_pods_core::v2::convert::Options::from_json(options) {
+        Ok(o) => o,
+        Err(e) => return error(e.to_string()),
+    };
+    let c = match validator().v2_with(message, &opts, tx) {
+        Ok(c) => c,
+        Err(e) => return error(e.to_string()),
+    };
+    let mut s = String::with_capacity(c.bundle.len() + 512);
+    s.push_str("{\"bundle\":");
+    s.push_str(&c.bundle);
+    s.push_str(",\"validation\":");
+    s.push_str(&wire::report(&c.validation));
+    s.push_str(",\"skipped\":[");
+    for (i, k) in c.skipped.iter().enumerate() {
+        if i > 0 {
+            s.push(',');
+        }
+        s.push_str("{\"at\":\"");
+        wire::escape(&mut s, &k.at);
+        s.push_str("\",\"target\":\"");
+        wire::escape(&mut s, &k.target);
+        s.push_str("\",\"why\":\"");
+        wire::escape(&mut s, &k.why);
+        s.push_str("\"}");
+    }
+    s.push_str("],\"unplaced\":[");
+    for (i, u) in c.unplaced.iter().enumerate() {
+        if i > 0 {
+            s.push(',');
+        }
+        s.push('"');
+        wire::escape(&mut s, u);
+        s.push('"');
+    }
+    s.push_str("]}");
+    s
 }
 
 fn lift_json(profile: &[u8], resource: &[u8], tx: &dyn TerminologyProvider) -> String {
@@ -667,6 +743,18 @@ mod wasm_host {
     }
 
     #[no_mangle]
+    pub unsafe extern "C" fn fhir_pods_v2_host_tx(
+        message: *const u8,
+        message_len: usize,
+        options: *const u8,
+        options_len: usize,
+    ) -> *mut u8 {
+        with_providers(Some(&ImportTx), |tx| {
+            pack(v2_json(input(message, message_len), input(options, options_len), tx).as_bytes())
+        })
+    }
+
+    #[no_mangle]
     pub unsafe extern "C" fn fhir_pods_lift_host_tx(
         profile: *const u8,
         profile_len: usize,
@@ -855,6 +943,19 @@ mod android {
     ) -> jbyteArray {
         let (k, i) = (bytes_in(&mut env, &kind), bytes_in(&mut env, &inputs));
         let doc = with_java(&mut env, &provider, |tx| document_json(&k, &i, tx));
+        bytes_out(&mut env, &doc)
+    }
+
+    #[no_mangle]
+    pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_v2<'l>(
+        mut env: JNIEnv<'l>,
+        _this: JObject<'l>,
+        message: JByteArray<'l>,
+        options: JByteArray<'l>,
+        provider: JObject<'l>,
+    ) -> jbyteArray {
+        let (m, o) = (bytes_in(&mut env, &message), bytes_in(&mut env, &options));
+        let doc = with_java(&mut env, &provider, |tx| v2_json(&m, &o, tx));
         bytes_out(&mut env, &doc)
     }
 
@@ -1146,6 +1247,30 @@ mod tests {
             );
             let err = unpack(fhir_pods_lift(url.as_ptr(), url.len(), b"[]".as_ptr(), 2));
             assert_eq!(err, "{\"error\":\"input is not a FHIR resource\"}");
+        }
+    }
+
+    #[test]
+    fn v2_round_trips() {
+        unsafe {
+            let msg = "MSH|^~\\&|LAB|ACME|EHR|CLINIC|20260916100000+1000||ORU^R01^ORU_R01|MSG0001|P|2.5.1\rPID|1||MRN12345^^^ACME^MR||Doe^Jane||19700615|F\rOBR|1|PLC001^EHR|FIL001^LAB|24331-1^Lipid panel^LN|||20260916090000+1000||||||||||||||||||F\rOBX|1|NM|2093-3^Cholesterol^LN||5.2|mmol/L^^UCUM|||||F|||20260916093000+1000\rZZZ|1\r";
+            let out = unpack(fhir_pods_v2(msg.as_ptr(), msg.len(), b"{}".as_ptr(), 2));
+            assert!(
+                out.starts_with("{\"bundle\":{\"resourceType\":\"Bundle\",")
+                    && out.contains("\"valueQuantity\":{\"value\":5.2,\"code\":\"mmol/L\",\"unit\":\"mmol/L\",\"system\":\"http://unitsofmeasure.org\"}")
+                    && out.contains(",\"validation\":{")
+                    && out.contains("\"skipped\":[{\"at\":\"")
+                    && out.ends_with("\"unplaced\":[\"ZZZ[1]\"]}"),
+                "{out}"
+            );
+            let no_zone = msg.replace("20260916093000+1000", "20260916093000");
+            let opts = "{\"timezone\":\"+10:00\"}";
+            let out = unpack(fhir_pods_v2(no_zone.as_ptr(), no_zone.len(), opts.as_ptr(), opts.len()));
+            assert!(out.contains("\"effectiveDateTime\":\"2026-09-16T09:30:00+10:00\""), "{out}");
+            let err = unpack(fhir_pods_v2(b"nope".as_ptr(), 4, b"{}".as_ptr(), 2));
+            assert_eq!(err, "{\"error\":\"message must start with MSH and its separators\"}");
+            let err = unpack(fhir_pods_v2(msg.as_ptr(), msg.len(), b"[]".as_ptr(), 2));
+            assert!(err.starts_with("{\"error\":\"options must be a JSON object"), "{err}");
         }
     }
 
