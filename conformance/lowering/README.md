@@ -1,0 +1,9 @@
+# Fixed lowering conformance examples
+
+Run `JAVA=/path/to/java python3 conformance/lowering/run.py --output /tmp/lowering-proof` from the repository root, with the pinned `conformance/validator_cli.jar` (6.10.4), or pass `--jar PATH`. This uses the sibling audit lane's native ABI/oracle runner.
+
+The 70 fixed synthetic cases cover full forms and wrong JSON kinds for the 25 concrete slot types currently present in generated profiles, a concrete/generic choice pair (the 26th slot type), and primitive extension carriers. Reference, Quantity and CodeableConcept shorthand forms have content assertions. Unknown keys, two alternatives of a choice, fixed-leaf collisions, whole labelled slices alongside fixed or unsupported child keys, and optional gates are separate examples. Each wrong-kind case must produce its intended `value` issue at the supplied slot, so a downstream required-field error alone cannot satisfy the test.
+
+Preservation checks require each supplied value to survive unchanged, while allowing the lowering engine to add fixed leaves and known displays. Complete resources and combined operation reports are retained separately. Every emitted resource is revalidated locally and sent to the reference validator. Coverage inventory fails if a new generated slot type has no fixed case; it does not assert coverage of every choice alternative or every profile.
+
+On v0.8.4 (`1860d48`): 69/70 cases agree overall; all native operation/preservation expectations pass, and 68 emitted resources are compared. The remaining difference is an extension-only effectiveDateTime in heart rate: native accepts; reference 6.10.4 fails inherited R4 `vs-1`. The human description refers to a populated date value, while the expression lacks that guard. Keep this result visible pending adjudication; no tolerance or expected-failure suppression converts it to a pass. The suite exits 1.
