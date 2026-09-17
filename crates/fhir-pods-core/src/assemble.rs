@@ -390,10 +390,11 @@ fn codeable(system: &str, code: &str) -> Node {
 /// `Type/id`, an absolute URL ending so, or `urn:uuid:id` — to that entry's
 /// `fullUrl`.
 fn rewrite_references(node: &mut Node, entries: &[(String, String)]) {
+    // a relative `Type/id` names the entry with that key; an absolute URL names
+    // only an entry given with exactly that fullUrl (the server is part of the
+    // identity — a suffix match would attach another server's patient)
     let names = |r: &str, key: &str| -> bool {
-        r == key
-            || r.ends_with(&alloc::format!("/{key}"))
-            || key.split_once('/').is_some_and(|(_, id)| r.strip_prefix("urn:uuid:") == Some(id))
+        r == key || key.split_once('/').is_some_and(|(_, id)| r.strip_prefix("urn:uuid:") == Some(id))
     };
     match node {
         Node::Object(kvs) => {
@@ -563,8 +564,10 @@ pub fn assemble(kind: Kind, inputs: &Value<'_>, validator: &Validator) -> Result
     }
 
     // the Composition
-    let comp_key = alloc::format!("Composition/#{}", resources.len());
-    let comp_url = alloc::format!("urn:uuid:{}", entry_uuid(&alloc::format!("{}:{comp_key}", kind.name())));
+    // the document's identity is its content: the same inputs make the same
+    // document, and any difference in them makes a different one
+    let content = crate::hash::hex(&crate::hash::sha256(Node::from_value(inputs).to_json().as_bytes()));
+    let comp_url = alloc::format!("urn:uuid:{}", entry_uuid(&alloc::format!("{}:composition:{content}", kind.name())));
     let comp_id = comp_url.trim_start_matches("urn:uuid:").to_string();
     let mut composition = Node::Object(alloc::vec![
         ("resourceType".into(), Node::Str("Composition".into())),
@@ -591,7 +594,7 @@ pub fn assemble(kind: Kind, inputs: &Value<'_>, validator: &Validator) -> Result
 
     // the Bundle
     let doc_id = identifier.unwrap_or_else(|| {
-        alloc::format!("urn:uuid:{}", entry_uuid(&alloc::format!("{}:document:{patient_url}:{date}", kind.name())))
+        alloc::format!("urn:uuid:{}", entry_uuid(&alloc::format!("{}:document:{content}", kind.name())))
     });
     // the Bundle's timestamp is an instant: given, or the date when it is one
     let is_instant = |s: &str| crate::temporal::parse(s).is_some_and(|t| t.precision >= 6 && t.has_tz);

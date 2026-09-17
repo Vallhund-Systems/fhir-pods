@@ -88,6 +88,14 @@ pub fn required_children(ty: &str) -> impl Iterator<Item = &'static str> {
     span.iter().filter(|(rel, _, _, required)| *required && !rel.contains('.')).map(|(rel, _, _, _)| *rel)
 }
 
+/// The direct children a resource type itself requires (`Observation.status`,
+/// `Observation.code`) — what the base resource says when no profile, which
+/// restates them, applies.
+pub fn required_resource_children(ty: &str) -> impl Iterator<Item = &'static str> {
+    let span = if crate::typemap::RESOURCES.binary_search(&ty).is_ok() { range_of(ty).unwrap_or(&[]) } else { &[][..] };
+    span.iter().filter(|(rel, _, _, required)| *required && !rel.contains('.')).map(|(rel, _, _, _)| *rel)
+}
+
 /// A resource or datatype name the table knows.
 pub fn known_type(name: &str) -> Option<&'static str> {
     TYPES.binary_search(&name).ok().map(|i| TYPES[i])
@@ -100,6 +108,8 @@ pub fn known_type(name: &str) -> Option<&'static str> {
 pub struct Child {
     pub ctx: &'static str,
     pub ty: &'static str,
+    /// The `[x]` element this key is one choice of (`valueQuantity` → `value`).
+    pub choice: Option<&'static str>,
 }
 
 /// The typing of element `key` under `ctx`. `Child { ty: "Resource" }`
@@ -113,22 +123,26 @@ pub fn child(ctx: &'static str, key: &str) -> Option<Child> {
             } else {
                 "id"
             };
-            return Some(Child { ctx: ty, ty });
+            return Some(Child { ctx: ty, ty, choice: None });
         }
-        "extension" | "modifierExtension" => return Some(Child { ctx: "Extension", ty: "Extension" }),
-        k if k.starts_with('_') => return Some(Child { ctx: "Element", ty: "Element" }),
+        "extension" | "modifierExtension" => return Some(Child { ctx: "Extension", ty: "Extension", choice: None }),
+        k if k.starts_with('_') => return Some(Child { ctx: "Element", ty: "Element", choice: None }),
         _ => {}
     }
-    let codes = match lookup(ctx, key) {
-        Some(e) => e.codes,
-        None => choice(ctx, key)?,
+    let (codes, stem) = match lookup(ctx, key) {
+        Some(e) => (e.codes, None),
+        None => {
+            let (stem, codes) = choice(ctx, key)?;
+            (codes, Some(stem))
+        }
     };
-    Some(resolve(codes))
+    let c = resolve(codes);
+    Some(Child { choice: stem, ..c })
 }
 
 /// `valueQuantity` under `Observation` → the `Observation.value[x]` entry's
 /// `Quantity` alternative.
-fn choice(ctx: &str, key: &str) -> Option<&'static str> {
+fn choice(ctx: &str, key: &str) -> Option<(&'static str, &'static str)> {
     let (ty, rest) = split_ctx(ctx);
     let span = range_of(ty)?;
     // the entries directly under `rest`: those sorting at or after `rest.`
@@ -151,7 +165,7 @@ fn choice(ctx: &str, key: &str) -> Option<&'static str> {
         for t in CODES[*code as usize].split('|') {
             let (first, tail) = t.split_at(1);
             if suffix.len() == t.len() && suffix[..1].eq_ignore_ascii_case(first) && &suffix[1..] == tail {
-                return Some(t);
+                return Some((stem, t));
             }
         }
     }
@@ -161,15 +175,15 @@ fn choice(ctx: &str, key: &str) -> Option<&'static str> {
 fn resolve(codes: &'static str) -> Child {
     // a backbone (or content reference): the path is the children's context
     if let Some(path) = codes.strip_prefix('#') {
-        return Child { ctx: path, ty: "BackboneElement" };
+        return Child { ctx: path, ty: "BackboneElement", choice: None };
     }
     if let Some(path) = codes.strip_prefix('~') {
-        return Child { ctx: path, ty: "Element" };
+        return Child { ctx: path, ty: "Element", choice: None };
     }
     // a choice list that was not narrowed (path given with `[x]`): untypable
     let ty = codes.split('|').next().unwrap_or(codes);
     match ty {
-        "Resource" | "DomainResource" => Child { ctx: "Resource", ty: "Resource" },
-        t => Child { ctx: known_type(t).unwrap_or(t), ty: t },
+        "Resource" | "DomainResource" => Child { ctx: "Resource", ty: "Resource", choice: None },
+        t => Child { ctx: known_type(t).unwrap_or(t), ty: t, choice: None },
     }
 }

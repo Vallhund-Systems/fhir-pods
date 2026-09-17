@@ -537,6 +537,15 @@ pub static RANGES: &[(u32, u32)] = &[
     (5442, 5471),
 ];
 
+/// `DomainResource`'s root invariants: (key, is_error, human, expression).
+pub static DOMAIN_INVARIANTS: &[(&str, bool, &str, &str)] = &[
+    ("dom-2", true, "If the resource is contained in another resource, it SHALL NOT contain nested Resources", "contained.contained.empty()"),
+    ("dom-3", true, "If the resource is contained in another resource, it SHALL be referred to from elsewhere in the resource or SHALL refer to the containing resource", "contained.where((('#'+id in (%resource.descendants().reference | %resource.descendants().as(canonical) | %resource.descendants().as(uri) | %resource.descendants().as(url))) or descendants().where(reference = '#').exists() or descendants().where(as(canonical) = '#').exists() or descendants().where(as(canonical) = '#').exists()).not()).trace('unmatched', id).empty()"),
+    ("dom-4", true, "If a resource is contained in another resource, it SHALL NOT have a meta.versionId or a meta.lastUpdated", "contained.meta.versionId.empty() and contained.meta.lastUpdated.empty()"),
+    ("dom-5", true, "If a resource is contained in another resource, it SHALL NOT have a security label", "contained.meta.security.empty()"),
+    ("dom-6", false, "A resource should have narrative for robust management", "text.`div`.exists()"),
+];
+
 /// The distinct type codes: `type|type…`, `#Backbone.path` (a backbone or
 /// content reference), `~Element.path` (an inline Element).
 pub static CODES: &[&str] = &[

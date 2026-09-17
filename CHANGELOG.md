@@ -1,5 +1,69 @@
 # Changelog
 
+## 0.5.2 — 2026-09-16
+
+The second review's findings (planning repository F008–F017, with F003
+rechecked), all taken. Oracle: **1022/1022** (1010 + twelve probes for the
+verdict-changing fixes). No ABI change.
+
+**Verifier**
+- **Nested resources are validated** (F010): a resource inside a Bundle
+  entry, `contained`, or a `Parameters` parameter — however deep — is held
+  to the profiles it declares, in the outer bundle's scope, its findings
+  prefixed with the indexed path it sits at
+  (`Bundle.entry[1].resource.Patient.identifier`). Before, an AU Core
+  Patient missing its identifier inside an unprofiled collection Bundle
+  validated clean. Found by the same shape walk, so the cost is nil: timing
+  is unchanged against 0.5.1 measured back to back.
+- **A declared profile compiled for another resource type is an error**
+  (F011), not a silent drop.
+- **The temporal grammar in full** (F012): a `dateTime` with a time has
+  seconds and a zone, an `instant` has a date, a `time` has no zone, an
+  offset stops at ±14:00, year 0000 is outside.
+- **`ext-1` counts a value given through its `_value…` carrier** (F013).
+- **The base resource's own rules when no compiled profile is declared:**
+  its required elements (`Encounter.class`, `Observation.status`), one key
+  per choice element (`value[x]` under two keys is an error, profile or
+  not), and `DomainResource`'s invariants — `dom-3` (contained resources
+  referenced) as an error, `dom-6` (narrative) as a warning — from a
+  generated table (`typemap::DOMAIN_INVARIANTS`). `docs/scope.md` says so;
+  the README's coverage claim is narrowed to what is checked.
+
+**De-identification**
+- **Pseudonyms replace every character** (F008): a non-ASCII letter was
+  copied through, so `Müller`, `北京` and their like survived in ids and
+  identifier values. Every non-ASCII character now maps like a letter.
+- **An identifier's pseudonym domain is its `system` read from the
+  original** (F014), whatever the member order; before, `value` before
+  `system` fell into the empty domain.
+- **The age clamp reads the unit** (F015): months, weeks, days and years
+  (UCUM code or unit word) are compared in years and clamped in the
+  quantity's own unit (1100 months → 1080); recorded in `applied` as a
+  `clamp` action (new `Action::Clamp`, also accepted in a policy). The
+  checker reads the unit the same way, and accepts exactly 90 — Safe
+  Harbor's own aggregate — which it used to flag.
+
+**Documents**
+- **An absolute reference names only an entry with exactly that fullUrl**
+  (F009): `http://other.example.org/fhir/Patient/p1` no longer attaches to
+  this bundle's `Patient/p1` by suffix. Relative `Type/id` and `urn:uuid`
+  matching unchanged.
+- **The Composition id and Bundle identifier derive from every input**
+  (F016): the seed is the SHA-256 of the canonical inputs, so two documents
+  for the same patient on the same date with different content have
+  different identities; the same inputs still make the same document.
+
+**Conformance harness** (F017, F003 rechecked)
+- Our side: a crash, an exit code other than 0/1, output that is not an
+  `OperationOutcome`, or a report whose severities disagree with the exit
+  code is `LOCAL-ERR` — a failure, never a verdict.
+- The oracle's side: an exit code other than 0/1 discards its output; an
+  entry that is not an `OperationOutcome` is not a verdict; the jar on disk
+  is checked against the pinned version before it runs.
+
+Tests: 107 (nine new, one named per finding). `.wasm`: 990 KB (251 KB
+gzipped).
+
 ## 0.5.1 — 2026-09-16
 
 The first review's findings (planning repository F001–F004), all taken.

@@ -34,7 +34,7 @@ informational), by family:
 | **Multiple matching profiles** | 32 | The validator had to pick among candidate profiles (its own warning) | A resource that declares several profiles is validated against **every** one we have compiled (findings shared by two profiles are reported once; the report carries `profiles`). The oracle's warning here is about its own choice among *implicit* candidates, not declared ones. |
 | **Deprecation / advisories** | 5 + 2 | Deprecated extensions and concepts, "UCUM annotations like {T-Score} can be misleading" | Advisory, not conformance; not emitted. |
 | **Reference target types** | (none in corpus) | `subject` must reference a Patient | The reference validator does **not** enforce this offline either (`heartrate-subject-wrong-type` expects *valid* as a guard). Not enforced. |
-| **Default profiles** | — | An undeclared profile means the base resource | Same: no profile claimed, nothing checked. A jurisdiction default is opt-in (`Validator::with_default_profile`). |
+| **Default profiles** | — | An undeclared profile means the base resource | Same: no profile claimed; the base resource's own rules (shape, its required elements, one key per choice, `dom-3` / `dom-6`) still apply. A jurisdiction default is opt-in (`Validator::with_default_profile`). |
 | **Attachment fetching** | 1 | "Attachment content cannot be checked … error accessing <url>" | Never: a library does no I/O. |
 | **must-support** | 0 | Validators do not check must-support | Not an error by spec. Exposed separately: `must_support_gaps(resource)` (and `probe --must-support`) lists the selected profile's must-support elements the resource leaves empty where their parent is present — what a client certifying against the IG must populate when it has the data. Never in the validation report. |
 
@@ -76,15 +76,26 @@ the 294/294.
   with neither value nor children (`ele-1`), an extension with both a
   value and nested extensions (`ext-1`), and a contained resource that
   itself contains, is versioned or carries security labels (`dom-2`,
-  `dom-4`, `dom-5`). Not checked: the regular expressions on `id`, `code`,
-  `uri` and friends, and the `_name` / `name` array pairing.
+  `dom-4`, `dom-5`), and a choice element (`value[x]`) given under two of
+  its keys. A `dateTime` with a time has seconds and a zone, an `instant`
+  has a date, a `time` has no zone, an offset stops at ±14:00, and year
+  0000 is outside the grammar. Not checked: the regular expressions on
+  `id`, `code`, `uri` and friends, and the `_name` / `name` array pairing.
+- **A resource nested in another — a Bundle entry, a contained resource, a
+  `Parameters` resource, however deep — is validated against the profiles
+  it declares, in the outer bundle's scope,** its findings prefixed with the
+  indexed path it sits at (`Bundle.entry[1].resource.Patient.identifier`).
+  A declared profile compiled for another resource type is an error.
 - **A declared profile the registry has not compiled is a warning**
   (`not-supported`, naming the profile) — the reference validator's own
   severity for a profile it cannot resolve — so a claim the verifier could
   not check is visible in the report, never silent. A host that treats an
   unverified claim as a failure filters that issue code. A resource with no
-  declared profile is held to the base spec's shape rules and nothing more:
-  `profile` is empty and nothing is claimed.
+  compiled profile declared is held to the base resource: the shape rules,
+  the resource's own required elements (`Encounter.class`,
+  `Observation.status`), and `DomainResource`'s invariants (`dom-3`
+  unreferenced contained, `dom-6` narrative as a warning) — `profile` is
+  empty and nothing more is claimed.
 - **Documents.** A `Bundle` is validated against its declared Bundle
   profile: entries discriminated by resource type and by conformance to a
   profile (a validation pass in the same bundle), section entries by what

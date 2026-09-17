@@ -13,7 +13,7 @@ decision to proceed.
 
 | Operation | In | Out |
 | --- | --- | --- |
-| **Verify** | a resource (JSON) | every finding against the base spec and the profiles it declares, as a report or a FHIR `OperationOutcome`; must-support gaps as information |
+| **Verify** | a resource (JSON) | the findings against the base spec's shape and resource rules and against the profiles it declares — and the profiles every nested resource declares — as a report or a FHIR `OperationOutcome`; must-support gaps as information; what could not be checked, named |
 | **Lower** | a profile URL and the variable inputs (`status`, `subject`, `valueQuantity.value`…) | the conformant resource — the profile supplies the codings, categories, units and slices — validated on the way out |
 | **De-identify** | a resource and a policy (Safe Harbor by default) | a copy with names, contacts, addresses below state, exact dates and free text gone, identifiers pseudonymised under the host's salt, masked where the profile requires an element; an audit trail; what a Safe Harbor check still finds |
 | **Document** | a patient and their resources | an IPS or AU Patient Summary `Bundle`: sections from the profile, narrative generated, references rewritten, validated |
@@ -56,11 +56,14 @@ with terminology switched off on both sides so profiles are what is scored.
 `conformance/run.py` builds the corpus from the pinned packages, runs
 validator_cli 6.10.4 over it, and compares verdicts:
 
-- **1010/1010** at v0.5.1 — the five IGs' published examples and 50-odd
+- **1022/1022** at v0.5.2 — the five IGs' published examples and 60-odd
   probes, every corpus resource re-lowered from its own slot values, every
   one de-identified, the twelve document examples taken apart and assembled
-  again, and the review lane's adversarial probes. Every engine change is
-  proven this way before it ships; the record is in the changelog.
+  again, and the review lane's adversarial probes. A run in which either
+  side crashed, returned a foreign exit code or a report that disagrees
+  with its own exit code counts as a failure, never as agreement. Every
+  engine change is proven this way before it ships; the record is in the
+  changelog.
 - **Skip, never guess.** Anything outside the supported FHIRPath core, an
   unresolvable slice, a set the bundle cannot decide, a profile the registry
   has not compiled — reported as such, never invented. What is checked and

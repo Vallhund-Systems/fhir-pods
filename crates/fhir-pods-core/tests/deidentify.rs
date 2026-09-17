@@ -261,3 +261,66 @@ fn every_registry_example_shape_survives_the_walk() {
     assert!(!d.resource.contains("\"contact\""), "{}", d.resource);
     assert!(d.applied.iter().any(|a| a.path == "Patient.contact" && a.action == Action::Remove));
 }
+
+// --- the v0.5.1 review's findings, pinned ---
+
+#[test]
+fn f008_a_pseudonym_replaces_every_character_not_just_the_ascii_ones() {
+    let p = r#"{"resourceType":"Patient","id":"Müller-Øst-北京-1","identifier":[{"system":"http://h.example.org/mrn","value":"Åke·Ünal·Ωmega"}],"gender":"male"}"#;
+    let d = deid(p, &Policy::safe_harbor(b"s"));
+    for original in ["Müller", "Øst", "北京", "Åke", "Ünal", "Ωmega", "ü", "Ø", "北", "Å", "Ü", "Ω"] {
+        assert!(!d.resource.contains(original), "{original} survived: {}", d.resource);
+    }
+    // the copy is ASCII throughout: nothing of the original alphabet remains to read
+    let id = d.resource.split(r#""id":""#).nth(1).unwrap().split('"').next().unwrap();
+    assert!(id.is_ascii() && id.chars().filter(|c| *c == '-').count() == 3, "{id}");
+}
+
+#[test]
+fn f014_an_identifier_pseudonym_domain_is_its_system_whatever_the_member_order() {
+    let system_first =
+        r#"{"resourceType":"Patient","identifier":[{"system":"http://a.example.org","value":"123"}],"gender":"male"}"#;
+    let value_first =
+        r#"{"resourceType":"Patient","identifier":[{"value":"123","system":"http://a.example.org"}],"gender":"male"}"#;
+    let other_system =
+        r#"{"resourceType":"Patient","identifier":[{"value":"123","system":"http://b.example.org"}],"gender":"male"}"#;
+    let pick = |json: &str| {
+        let d = deid(json, &Policy::safe_harbor(b"s"));
+        d.resource.split(r#""value":""#).nth(1).unwrap().split('"').next().unwrap().to_string()
+    };
+    assert_eq!(pick(system_first), pick(value_first), "the same identifier gets the same pseudonym");
+    assert_ne!(pick(system_first), pick(other_system), "another system is another domain");
+}
+
+#[test]
+fn f015_an_age_clamp_reads_the_unit_and_is_recorded() {
+    let cond = |age: &str| {
+        format!(
+            r#"{{"resourceType":"Condition","code":{{"text":"c"}},"subject":{{"reference":"Patient/1"}},"onsetAge":{age}}}"#
+        )
+    };
+    // months over 89 years clamp to 90 years of months
+    let d = deid(
+        &cond(r#"{"value":1100,"unit":"months","system":"http://unitsofmeasure.org","code":"mo"}"#),
+        &Policy::safe_harbor(b"s"),
+    );
+    assert!(d.resource.contains(r#""onsetAge":{"value":1080,"unit":"months""#), "{}", d.resource);
+    assert!(d.applied.iter().any(|a| a.path == "Condition.onsetAge" && a.action == Action::Clamp), "{:?}", d.applied);
+    // weeks under the line are left alone, and nothing is recorded
+    let d = deid(
+        &cond(r#"{"value":4000,"unit":"wk","system":"http://unitsofmeasure.org","code":"wk"}"#),
+        &Policy::safe_harbor(b"s"),
+    );
+    assert!(d.resource.contains(r#""value":4000"#) && !d.applied.iter().any(|a| a.action == Action::Clamp));
+    // a unit the policy does not read is left alone but the checker names it — no, it cannot: reported as-is
+    let d = deid(
+        &cond(r#"{"value":95,"unit":"a","system":"http://unitsofmeasure.org","code":"a"}"#),
+        &Policy::safe_harbor(b"s"),
+    );
+    assert!(d.resource.contains(r#""value":90"#) && d.remaining.is_empty(), "{}", d.resource);
+    // the checker reads the unit too
+    let months = check(cond(r#"{"value":1100,"code":"mo"}"#).as_bytes());
+    assert!(months.iter().any(|f| f.what == "age over 89"), "{months:?}");
+    let weeks = check(cond(r#"{"value":1100,"code":"wk"}"#).as_bytes());
+    assert!(!weeks.iter().any(|f| f.what == "age over 89"), "{weeks:?}");
+}

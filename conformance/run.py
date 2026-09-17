@@ -75,13 +75,20 @@ def summarize(outcome):
 
 
 def ours(probe, path):
-    """Our verdict and our OperationOutcome's error paths (apples to apples)."""
+    """Our verdict and our OperationOutcome's error paths (apples to apples).
+    A crash, a foreign exit code, or a report that disagrees with the exit
+    code is an execution failure ("error"), never a verdict."""
     r = subprocess.run([probe, "--outcome", path], capture_output=True, text=True)
     try:
         o = json.loads(r.stdout)
     except ValueError:
-        o = {}
-    return ("valid" if r.returncode == 0 else "invalid"), error_paths(o)
+        o = None
+    if r.returncode not in (0, 1) or not isinstance(o, dict) or o.get("resourceType") != "OperationOutcome":
+        return "error", set()
+    has_errors = any(i.get("severity") in ("error", "fatal") for i in o.get("issue", []))
+    if has_errors != (r.returncode == 1):
+        return "error", set()
+    return ("invalid" if has_errors else "valid"), error_paths(o)
 
 
 def oracle_batch(paths):
@@ -98,10 +105,14 @@ def oracle_batch(paths):
         capture_output=True, text=True,
     )
     results = {}
+    # the validator exits 0 (all valid) or 1 (some invalid); anything else — a
+    # signal, a JVM failure — means its output, if any, is not evidence
+    if proc.returncode not in (0, 1):
+        print(f"!! the oracle did not run to completion (exit {proc.returncode}):\n{proc.stderr[-2000:]}", file=sys.stderr)
+        return results
     try:
         b = json.load(open(out))
     except (OSError, ValueError):
-        # the validator exits non-zero when any resource is invalid; no output at all is a failed run
         print(f"!! the oracle produced no output (exit {proc.returncode}):\n{proc.stderr[-2000:]}", file=sys.stderr)
         return results
     if b.get("resourceType") == "Bundle":
@@ -109,6 +120,8 @@ def oracle_batch(paths):
     else:
         entries = [b]
     for o in entries:
+        if o.get("resourceType") != "OperationOutcome":
+            continue  # not a verdict
         src = next((x.get("valueString") for x in o.get("extension", []) if x.get("url", "").endswith(FILE_EXT)), None)
         key = os.path.basename(src) if src else (os.path.basename(paths[0]) if len(paths) == 1 else None)
         if key:
@@ -125,6 +138,11 @@ def main():
     if have_java and not os.path.exists(JAR):
         print("==> fetching validator_cli.jar")
         urllib.request.urlretrieve(JAR_URL, JAR)
+    if have_java:
+        # the jar on disk must be the pinned version: the oracle is part of the record
+        banner = subprocess.run([JAVA, "-jar", JAR], capture_output=True, text=True)
+        if f"Version {JAR_VERSION}" not in (banner.stdout + banner.stderr):
+            sys.exit(f"!! {JAR} is not validator_cli {JAR_VERSION}; delete it to refetch the pinned version")
     if not have_java:
         print(
             "!! No JVM: the oracle (validator_cli.jar) needs Java 11+ — set JAVA_HOME (or JAVA) to a JDK. "
@@ -160,15 +178,17 @@ def main():
         ov, opaths = ours(probe, path)
         rv, detail, rpaths = oracle.get(c["file"], ("error", ["no OperationOutcome for this file"], set())) if have_java else ("-", [], set())
         status = "ok"
-        if ov != expect:
+        if ov == "error":
+            status = "LOCAL-ERR"  # our own run failed: a crash or a malformed report, not a verdict
+        elif ov != expect:
             status = "OURS!=EXPECT"
         if have_java and rv == "error":
             status = "ORACLE-ERR"
             oracle_errors += 1
-        elif have_java and ov != rv:
+        elif have_java and ov != rv and status == "ok":
             status = "OURS!=ORACLE"
-        if status in ("OURS!=EXPECT", "OURS!=ORACLE", "ORACLE-ERR"):
-            failures += 1  # missing oracle evidence is not agreement
+        if status != "ok":
+            failures += 1  # a missing verdict on either side is not agreement
         print(f"{c['file']:<58} {expect:<8} {ov:<8} {rv:<8} {status}")
         if status != "ok":
             for d in detail[:6]:

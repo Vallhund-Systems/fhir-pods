@@ -111,53 +111,44 @@ fn validate_bytes_impl(
     let mut report = Report::default();
     // A resource type the base spec does not define cannot be checked at
     // all — and is not a FHIR resource.
-    if typing::known_type(rt).filter(|t| typemap::RESOURCES.binary_search(t).is_ok()).is_none() {
-        report.push(
-            Severity::Error,
-            IssueType::Structure,
-            "resourceType",
-            format!("'{rt}' is not a FHIR R4 resource type"),
-        );
-        return Validation { resource_type: rt.into(), profile: None, profiles: Vec::new(), report };
-    }
+    let rt: &'static str = match typing::known_type(rt).filter(|t| typemap::RESOURCES.binary_search(t).is_ok()) {
+        Some(t) => t,
+        None => {
+            report.push(
+                Severity::Error,
+                IssueType::Structure,
+                "resourceType",
+                format!("'{rt}' is not a FHIR R4 resource type"),
+            );
+            return Validation { resource_type: rt.into(), profile: None, profiles: Vec::new(), report };
+        }
+    };
     // The base spec's shape rules, profile or no profile: what every element
     // is, its JSON kind, whether it repeats, what a datatype requires.
-    for (path, kind, message) in parsed.structure_gaps() {
+    let (gaps, nested) = parsed.structure();
+    for (path, kind, message) in gaps {
         report.push(Severity::Error, kind, &path, message);
-    }
-    // A declared profile the registry has not compiled is a claim the
-    // verifier cannot check — said so, as a warning naming it (the reference
-    // validator's severity for a profile it cannot resolve), never silence.
-    for url in doc.scalars("$this.meta.profile") {
-        let base = url.split('|').next().unwrap_or(url);
-        if !generated::REGISTRY.iter().any(|p| p.url == base) {
-            report.push(
-                Severity::Warning,
-                IssueType::NotSupported,
-                "meta.profile",
-                format!("declared profile '{url}' is not compiled here, so it was not checked"),
-            );
-        }
-    }
-    // No declared profile we have compiled (and no default configured on the
-    // validator): the base resource applies, and the walk above is what the
-    // base says — nothing more is claimed.
-    let profiles = select_profiles(rt, &doc, cache.map(|v| v.defaults.as_slice()).unwrap_or(&[]));
-    if profiles.is_empty() {
-        return Validation { resource_type: rt.into(), profile: None, profiles: Vec::new(), report };
     }
     let bundle = (rt == "Bundle").then_some(&doc);
     if let Some(b) = bundle {
         engine::check_document(b, &mut report);
     }
-    let evaluated = engine::Evaluated::default();
-    for profile in &profiles {
-        let rep = engine::validate_at_with(profile, &doc, &doc, tx, 0, cache, bundle, Some(&evaluated));
-        for issue in rep.issues {
-            if !report.issues.contains(&issue) {
-                report.issues.push(issue);
-            }
-        }
+    let defaults = cache.map(|v| v.defaults.as_slice()).unwrap_or(&[]);
+    let profiles = validate_resource(rt, &doc, "", tx, cache, bundle, defaults, &mut report);
+    // every resource nested in this one (Bundle entries, contained resources,
+    // Parameters) is held to its own declared profiles, in this bundle's scope
+    for (label, nested) in nested {
+        let Some(nrt) = nested.scalars("$this.resourceType").first().copied() else { continue };
+        let Some(nrt) = typing::known_type(nrt).filter(|t| typemap::RESOURCES.binary_search(t).is_ok()) else {
+            continue;
+        };
+        validate_resource(nrt, &nested, &label, tx, cache, bundle, &[], &mut report);
+    }
+    // No declared profile we have compiled (and no default configured on the
+    // validator): the base resource applies — the shape walk and the base's
+    // own invariants above are what it says — and nothing more is claimed.
+    if profiles.is_empty() {
+        return Validation { resource_type: rt.into(), profile: None, profiles: Vec::new(), report };
     }
     Validation {
         resource_type: rt.into(),
@@ -165,6 +156,65 @@ fn validate_bytes_impl(
         profiles: profiles.iter().map(|p| p.name).collect(),
         report,
     }
+}
+
+/// Validate one resource (the root, or one nested in it, at `label`) against
+/// the profiles it declares: unknown ones are warned about, a compiled one
+/// for another resource type is an error, the rest are applied; with none
+/// applied, `DomainResource`'s own invariants stand in. Returns the profiles
+/// applied.
+#[allow(clippy::too_many_arguments)]
+fn validate_resource<D: Document>(
+    rt: &'static str,
+    doc: &D,
+    label: &str,
+    tx: &dyn terminology::TerminologyProvider,
+    cache: Option<&Validator>,
+    bundle: Option<&D>,
+    defaults: &[(&'static str, &'static CompiledProfile)],
+    report: &mut Report,
+) -> Vec<&'static CompiledProfile> {
+    let at = |path: &str| if label.is_empty() { String::from(path) } else { format!("{label}.{path}") };
+    for url in doc.scalars("$this.meta.profile") {
+        let base = url.split('|').next().unwrap_or(url);
+        match generated::REGISTRY.iter().find(|p| p.url == base) {
+            None => report.push(
+                Severity::Warning,
+                IssueType::NotSupported,
+                &at("meta.profile"),
+                format!("declared profile '{url}' is not compiled here, so it was not checked"),
+            ),
+            Some(p) if p.resource_type != rt => report.push(
+                Severity::Error,
+                IssueType::Structure,
+                &at("meta.profile"),
+                format!("declared profile '{url}' applies to {}, not to a {rt}", p.resource_type),
+            ),
+            Some(_) => {}
+        }
+    }
+    let profiles = select_profiles(rt, doc, defaults);
+    let evaluated = engine::Evaluated::default();
+    let mut issues = Vec::new();
+    if profiles.is_empty() {
+        // the base's own rules for a domain resource: dom-3 (contained
+        // resources referenced) and dom-6 (narrative); dom-2/4/5 are in the walk
+        if !matches!(rt, "Bundle" | "Binary" | "Parameters") {
+            issues.extend(engine::domain_invariants(doc, rt, cache, bundle).issues);
+        }
+    }
+    for profile in &profiles {
+        issues.extend(engine::validate_at_with(profile, doc, doc, tx, 0, cache, bundle, Some(&evaluated)).issues);
+    }
+    for mut issue in issues {
+        if !label.is_empty() {
+            issue.path = at(&issue.path);
+        }
+        if !report.issues.contains(&issue) {
+            report.issues.push(issue);
+        }
+    }
+    profiles
 }
 
 /// Profile selection, as the spec has it: every declared `meta.profile` we
@@ -338,6 +388,9 @@ impl Default for Validator {
 impl Validator {
     pub fn new() -> Self {
         let mut keys: Vec<(usize, &'static str)> = Vec::new();
+        for (_, _, _, expr) in typemap::DOMAIN_INVARIANTS {
+            keys.push((expr.as_ptr() as usize, expr));
+        }
         for p in generated::REGISTRY {
             let slice_invariants = p.slicings.iter().flat_map(|s| s.slices.iter()).flat_map(|sl| sl.invariants.iter());
             for inv in p.invariants.iter().chain(slice_invariants) {

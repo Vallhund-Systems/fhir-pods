@@ -129,11 +129,48 @@ UNPROFILED_OBSERVATION = {
     "resourceType": "Observation", "status": "final", "code": {"text": "x"}, "valueString": "y",
 }
 
+AU_PATIENT = "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"
+
 HAND_WRITTEN = [
     # not a FHIR resource type at all (F002)
     ("not-a-resource", None, False, {"resourceType": "NotAResource"}),
     # No declared profile: the base resource applies (which we do not compile) — valid, and no profile claimed.
     ("observation-unprofiled", None, True, UNPROFILED_OBSERVATION),
+    # the v0.5.1 review's findings (F010–F013) and the base-resource rules an
+    # unprofiled resource still owes
+    ("bundle-nested-profile-invalid", None, False, {
+        "resourceType": "Bundle", "type": "collection",
+        "entry": [{"resource": {"resourceType": "Basic", "code": {"text": "x"}}},
+                  {"resource": {"resourceType": "Patient", "meta": {"profile": [AU_PATIENT]},
+                                "name": [{"family": "x"}], "gender": "male", "birthDate": "1970"}}],
+    }),
+    ("contained-profile-invalid", None, False, {
+        "resourceType": "Encounter", "status": "finished",
+        "class": {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "AMB"},
+        "contained": [{"resourceType": "Patient", "id": "x", "meta": {"profile": [AU_PATIENT]},
+                       "name": [{"family": "x"}], "gender": "male", "birthDate": "1970"}],
+        "subject": {"reference": "#x"},
+    }),
+    ("patient-declares-observation-profile", None, False, {
+        "resourceType": "Patient", "meta": {"profile": [HR]}, "gender": "male",
+    }),
+    ("datetime-without-seconds", None, False, mutate(UNPROFILED_OBSERVATION, lambda d: d.__setitem__("effectiveDateTime", "2026-09-16T10:00+10:00"))),
+    ("datetime-offset-beyond-14", None, False, mutate(UNPROFILED_OBSERVATION, lambda d: d.__setitem__("effectiveDateTime", "2026-09-16T10:00:00+15:00"))),
+    ("datetime-year-zero", None, False, mutate(UNPROFILED_OBSERVATION, lambda d: d.__setitem__("effectiveDateTime", "0000-09-16"))),
+    ("time-with-zone", None, False, mutate(UNPROFILED_OBSERVATION, lambda d: d.__setitem__("valueTime", "10:00:00Z"))),
+    ("instant-without-date", None, False, mutate(UNPROFILED_OBSERVATION, lambda d: d.__setitem__("issued", "10:00:00Z"))),
+    ("extension-value-via-carrier", None, True, {
+        "resourceType": "Patient", "gender": "male",
+        "extension": [{"url": "http://example.org/x", "_valueString": {"extension": [
+            {"url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason", "valueCode": "unknown"}]}}],
+    }),
+    ("unprofiled-encounter-missing-class", None, False, {"resourceType": "Encounter", "status": "finished"}),
+    ("unprofiled-two-choice-keys", None, False, mutate(UNPROFILED_OBSERVATION, lambda d: d.__setitem__("valueInteger", 1))),
+    ("unprofiled-unreferenced-contained", None, False, {
+        "resourceType": "Encounter", "status": "finished",
+        "class": {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "AMB"},
+        "contained": [{"resourceType": "Patient", "id": "p"}],
+    }),
     ("heartrate-valid", HR, True, HEARTRATE),
     ("heartrate-missing-snomed", HR, False, mutate(HEARTRATE, lambda d: d["code"]["coding"].pop(1))),
     ("heartrate-bad-ucum-code", HR, False, mutate(HEARTRATE, lambda d: d["valueQuantity"].update(code="min"))),

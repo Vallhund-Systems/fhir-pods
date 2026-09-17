@@ -61,6 +61,9 @@ pub fn parse(s: &str) -> Option<Temporal> {
     let time_only = b.get(2) == Some(&b':');
     if !time_only && b.first().is_some_and(u8::is_ascii_digit) {
         y = digits(b, 4)?;
+        if y == 0 {
+            return None; // year 0000 is outside the FHIR grammar
+        }
         i = 4;
         precision = 1;
         has_date = true;
@@ -132,6 +135,9 @@ pub fn parse(s: &str) -> Option<Temporal> {
                     return None;
                 }
                 let tm = digits(&b[i + 4..], 2)?;
+                if th > 14 || tm > 59 || (th == 14 && tm > 0) {
+                    return None; // offsets run -14:00 … +14:00
+                }
                 tz = (th * 60 + tm) * if sign == b'-' { -1 } else { 1 };
                 has_tz = true;
                 i += 6;

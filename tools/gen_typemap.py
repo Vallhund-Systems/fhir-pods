@@ -15,6 +15,11 @@ Usage:
 """
 import glob
 import json
+
+
+def rs(s):
+    return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
 import os
 import re
 import sys
@@ -106,6 +111,18 @@ def main():
         for t in types:
             f.write(f"    ({pos}, {pos + len(groups[t])}),\n")
             pos += len(groups[t])
+        f.write("];\n\n")
+        # DomainResource's own invariants (dom-1 … dom-6): what every domain
+        # resource owes, profile or no profile
+        dom = sds.get("DomainResource") or {}
+        f.write("/// `DomainResource`'s root invariants: (key, is_error, human, expression).\n")
+        f.write("pub static DOMAIN_INVARIANTS: &[(&str, bool, &str, &str)] = &[\n")
+        for e in (dom.get("snapshot") or {}).get("element", []):
+            if e.get("path") != "DomainResource":
+                continue
+            for c in e.get("constraint", []):
+                if c.get("key") and c.get("expression"):
+                    f.write(f'    ({rs(c["key"])}, {str(c.get("severity") == "error").lower()}, {rs(c.get("human", ""))}, {rs(c["expression"])}),\n')
         f.write("];\n\n")
         f.write("/// The distinct type codes: `type|type…`, `#Backbone.path` (a backbone or\n")
         f.write("/// content reference), `~Element.path` (an inline Element).\n")

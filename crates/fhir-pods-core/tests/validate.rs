@@ -251,9 +251,24 @@ fn must_support_gaps_are_reported_where_the_parent_is_present() {
 // --- shared ---
 
 #[test]
-fn non_profiled_resource_has_no_profile() {
+fn non_profiled_resource_has_no_profile_but_owes_the_base_resource_its_required_elements() {
+    let r = probe_str(
+        r#"{"resourceType":"Encounter","status":"finished","class":{"system":"http://terminology.hl7.org/CodeSystem/v3-ActCode","code":"AMB"}}"#,
+    );
+    assert!(r.contains("\"valid\":true") && !r.contains("\"profile\""), "{r}");
+    // the base resource's own required elements, with no profile to restate them
     let r = probe_str(r#"{"resourceType":"Encounter","status":"finished"}"#);
-    assert!(r.contains("\"valid\":true"), "{r}");
+    assert!(r.contains("\"valid\":false") && r.contains("Encounter.class is required"), "{r}");
+    // one key per choice element, profile or no profile
+    let r = probe_str(
+        r#"{"resourceType":"Observation","status":"final","code":{"text":"x"},"valueString":"a","valueInteger":1}"#,
+    );
+    assert!(r.contains("Observation.value[x] allows one choice; found valueString, valueInteger"), "{r}");
+    // dom-3: a contained resource nothing refers to
+    let r = probe_str(
+        r#"{"resourceType":"Encounter","status":"finished","class":{"code":"AMB"},"contained":[{"resourceType":"Patient","id":"p"}]}"#,
+    );
+    assert!(r.contains("dom-3"), "{r}");
 }
 
 #[test]
@@ -299,4 +314,79 @@ fn an_observation_with_a_vital_sign_loinc_code_is_held_to_the_base_profile() {
     let other = obs.replace("29463-7", "2339-0").replace("vital-signs", "laboratory");
     let r = fhir_pods_core::validate_bytes(other.as_bytes());
     assert!(r.profiles.is_empty(), "{:?}", r.profiles);
+}
+
+// --- the v0.5.1 review's findings, pinned ---
+
+#[test]
+fn f010_resources_nested_in_a_bundle_are_held_to_their_own_declared_profiles() {
+    // an AU Core Patient without an identifier, inside a collection with no profile of its own
+    let bad = r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},"name":[{"family":"x"}],"gender":"male","birthDate":"1970"}"#;
+    let bundle = format!(
+        r#"{{"resourceType":"Bundle","type":"collection","entry":[{{"resource":{{"resourceType":"Basic","code":{{"text":"x"}}}}}},{{"resource":{bad}}}]}}"#
+    );
+    let r = probe_str(&bundle);
+    assert!(r.contains("\"valid\":false"), "{r}");
+    assert!(r.contains("\"path\":\"Bundle.entry[1].resource.Patient.identifier\""), "{r}");
+    // the same profile inside `contained`, with the outer resource unprofiled
+    let contained = format!(
+        r##"{{"resourceType":"Encounter","status":"finished","class":{{"code":"AMB"}},"contained":[{bad}],"subject":{{"reference":"#x"}}}}"##
+    );
+    let r = probe_str(&contained.replace(r#""name":[{"family":"x"}]"#, r#""id":"x","name":[{"family":"x"}]"#));
+    assert!(r.contains("Encounter.contained[0].Patient.identifier"), "{r}");
+    // and two levels down: a Parameters resource carrying the bundle
+    let params = format!(r#"{{"resourceType":"Parameters","parameter":[{{"name":"b","resource":{bundle}}}]}}"#);
+    let r = probe_str(&params);
+    assert!(r.contains("Parameters.parameter[0].resource.Bundle.entry[1].resource.Patient.identifier"), "{r}");
+}
+
+#[test]
+fn f011_a_declared_profile_for_another_resource_type_is_an_error_not_silence() {
+    let r = probe_str(
+        r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate"]},"gender":"male"}"#,
+    );
+    assert!(r.contains("\"valid\":false") && r.contains("applies to Observation, not to a Patient"), "{r}");
+}
+
+#[test]
+fn f012_dates_and_times_are_held_to_the_full_grammar() {
+    let obs = |eff: &str| {
+        format!(
+            r#"{{"resourceType":"Observation","status":"final","code":{{"text":"x"}},"effectiveDateTime":"{eff}"}}"#
+        )
+    };
+    for (value, ok) in [
+        ("2026-09-16T10:00:00+10:00", true),
+        ("2026-09-16T10:00+10:00", false), // seconds are required once there is a time
+        ("2026-09-16T10:00:00", false),    // and so is a zone
+        ("2026-09-16T10:00:00+15:00", false), // offsets stop at 14:00
+        ("2026-09-16T10:00:00+10:60", false),
+        ("2026-09-16T10:00:00-14:00", true),
+        ("0000-09-16", false), // year 0 is outside the grammar
+        ("2026-09", true),
+    ] {
+        let r = probe_str(&obs(value));
+        assert_eq!(r.contains("\"valid\":true"), ok, "{value}: {r}");
+    }
+    let obs_time = |t: &str| {
+        format!(r#"{{"resourceType":"Observation","status":"final","code":{{"text":"x"}},"valueTime":"{t}"}}"#)
+    };
+    assert!(probe_str(&obs_time("10:00:00")).contains("\"valid\":true"));
+    assert!(probe_str(&obs_time("10:00:00Z")).contains("\"valid\":false"), "a time has no zone");
+    assert!(probe_str(&obs_time("10:00")).contains("\"valid\":false"), "a time has seconds");
+    let inst =
+        |t: &str| format!(r#"{{"resourceType":"Observation","status":"final","code":{{"text":"x"}},"issued":"{t}"}}"#);
+    assert!(probe_str(&inst("2026-09-16T10:00:00Z")).contains("\"valid\":true"));
+    assert!(probe_str(&inst("10:00:00Z")).contains("\"valid\":false"), "an instant has a date");
+}
+
+#[test]
+fn f013_an_extension_whose_value_arrives_through_its_carrier_satisfies_ext_1() {
+    let r = probe_str(
+        r#"{"resourceType":"Patient","gender":"male","extension":[{"url":"http://example.org/x","_valueString":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/data-absent-reason","valueCode":"unknown"}]}}]}"#,
+    );
+    assert!(!r.contains("ext-1"), "{r}");
+    // but an extension with neither is still ext-1
+    let r = probe_str(r#"{"resourceType":"Patient","gender":"male","extension":[{"url":"http://example.org/x"}]}"#);
+    assert!(r.contains("ext-1"), "{r}");
 }

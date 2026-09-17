@@ -31,6 +31,9 @@ pub enum Action {
     /// A string is replaced by a keyed hash of itself (references keep
     /// their type; contained references keep their `#`).
     Pseudonym,
+    /// An age over 89 reads as 90 (what the walk does to an `Age`; not a
+    /// rule target).
+    Clamp,
 }
 
 impl Action {
@@ -41,6 +44,7 @@ impl Action {
             Action::Mask => "mask",
             Action::Year => "year",
             Action::Pseudonym => "pseudonym",
+            Action::Clamp => "clamp",
         }
     }
 
@@ -51,6 +55,7 @@ impl Action {
             "mask" => Action::Mask,
             "year" => Action::Year,
             "pseudonym" => Action::Pseudonym,
+            "clamp" => Action::Clamp,
             _ => return None,
         })
     }
@@ -312,6 +317,8 @@ impl Walker<'_> {
                 '0'..='9' => (b'0' + next(&mut stream) % 10) as char,
                 'a'..='z' => (b'a' + next(&mut stream) % letters) as char,
                 'A'..='Z' => (b'A' + next(&mut stream) % letters) as char,
+                // anything beyond ASCII letters and digits is content, not shape: it goes too
+                c if !c.is_ascii() => (b'a' + next(&mut stream) % 26) as char,
                 c => c,
             });
         }
@@ -367,6 +374,12 @@ impl Walker<'_> {
         let mut out: Vec<(String, Node)> = Vec::with_capacity(kvs.len());
         let mut dropped: Vec<String> = Vec::new(); // keys whose `_key` carrier goes too
         let mut masked: Vec<String> = Vec::new();
+        // an Identifier's system, read from the original object whatever the member order
+        let identifier_system: Option<String> = if ctx == "Identifier" {
+            kvs.iter().find(|(k, _)| k == "system").and_then(|(_, v)| v.as_str().map(String::from))
+        } else {
+            None
+        };
         let taken = core::mem::take(kvs);
         // carriers are handled with their primitive: pull them out first
         let mut carriers: Vec<(String, Node)> = Vec::new();
@@ -396,10 +409,12 @@ impl Walker<'_> {
             let action = self.policy.action_for(&child_path, member.as_deref(), Some(ty)).unwrap_or(Action::Keep);
             let action = match action {
                 Action::Remove if self.required.contains(&child_path.as_str()) => Action::Mask,
+                // clamping is what the walk does to an Age on the way through; as a rule it means keep
+                Action::Clamp => Action::Keep,
                 a => a,
             };
             match action {
-                Action::Keep => {
+                Action::Keep | Action::Clamp => {
                     self.keep(&mut value, child, &child_path);
                     // an element emptied by what was removed inside it goes too
                     if prune_empty(&mut value) {
@@ -462,7 +477,7 @@ impl Walker<'_> {
                     }
                 }
                 Action::Pseudonym => {
-                    let domain = self.pseudonym_domain(ctx, &key, path, &out);
+                    let domain = self.pseudonym_domain(ctx, &key, path, identifier_system.as_deref());
                     let mut apply = |n: &mut Node| {
                         if let Node::Str(s) = n {
                             *s = match &domain {
@@ -495,7 +510,7 @@ impl Walker<'_> {
 
     /// Which pseudonym domain a string gets, so the same thing maps to the
     /// same pseudonym wherever it appears. `None` = it is a reference.
-    fn pseudonym_domain(&self, ctx: &str, key: &str, path: &str, siblings: &[(String, Node)]) -> Option<String> {
+    fn pseudonym_domain(&self, ctx: &str, key: &str, path: &str, identifier_system: Option<&str>) -> Option<String> {
         if (ctx == "Reference" && key == "reference") || (ctx == "Bundle.entry" && key == "fullUrl") {
             return None;
         }
@@ -504,8 +519,7 @@ impl Walker<'_> {
             return Some("id".into());
         }
         if ctx == "Identifier" && key == "value" {
-            let system = siblings.iter().find(|(k, _)| k == "system").and_then(|(_, v)| v.as_str()).unwrap_or("");
-            return Some(alloc::format!("identifier:{system}"));
+            return Some(alloc::format!("identifier:{}", identifier_system.unwrap_or("")));
         }
         Some(alloc::format!("text:{ctx}.{key}"))
     }
@@ -545,8 +559,8 @@ impl Walker<'_> {
             return;
         }
         self.walk_object(kvs, child.ctx, path);
-        if child.ty == "Age" {
-            clamp_age(kvs);
+        if child.ty == "Age" && clamp_age(kvs) {
+            self.note(path, Action::Clamp);
         }
     }
 
@@ -646,24 +660,52 @@ mod luhn {
     }
 }
 
-/// Ages over 89 read as 90.
-fn clamp_age(kvs: &mut Vec<(String, Node)>) {
-    let over = kvs
+/// Years per unit of an `Age` quantity (UCUM code or a plain unit word);
+/// `None` for a unit the policy does not interpret.
+fn years_per(unit: &str) -> Option<f64> {
+    Some(match unit {
+        "a" | "yr" | "year" | "years" => 1.0,
+        "mo" | "month" | "months" => 1.0 / 12.0,
+        "wk" | "week" | "weeks" => 7.0 / 365.25,
+        "d" | "day" | "days" => 1.0 / 365.25,
+        _ => return None,
+    })
+}
+
+/// The years an `Age` quantity states, when its unit is one the policy reads.
+fn age_years(kvs: &[(String, Node)]) -> Option<f64> {
+    let value = kvs.iter().find(|(k, _)| k == "value").and_then(|(_, v)| match v {
+        Node::Number(n) => n.parse::<f64>().ok(),
+        _ => None,
+    })?;
+    let unit = kvs
         .iter()
-        .find(|(k, _)| k == "value")
-        .and_then(|(_, v)| match v {
-            Node::Number(n) => n.parse::<f64>().ok(),
-            _ => None,
-        })
-        .is_some_and(|v| v > 89.0);
-    if over {
-        kvs.retain(|(k, _)| k != "comparator");
-        for (k, v) in kvs.iter_mut() {
-            if k == "value" {
-                *v = Node::Number("90".into());
-            }
+        .find(|(k, _)| k == "code")
+        .or_else(|| kvs.iter().find(|(k, _)| k == "unit"))
+        .and_then(|(_, v)| v.as_str())?;
+    Some(value * years_per(unit)?)
+}
+
+/// Ages over 89 read as 90, in the quantity's own unit.
+fn clamp_age(kvs: &mut Vec<(String, Node)>) -> bool {
+    let Some(years) = age_years(kvs) else { return false };
+    if years <= 89.0 {
+        return false;
+    }
+    let unit = kvs
+        .iter()
+        .find(|(k, _)| k == "code")
+        .or_else(|| kvs.iter().find(|(k, _)| k == "unit"))
+        .and_then(|(_, v)| v.as_str())
+        .unwrap_or("a");
+    let ninety = (90.0 / years_per(unit).unwrap_or(1.0) + 0.5) as i64;
+    kvs.retain(|(k, _)| k != "comparator");
+    for (k, v) in kvs.iter_mut() {
+        if k == "value" {
+            *v = Node::Number(ninety.to_string());
         }
     }
+    true
 }
 
 fn is_primitive_type(ty: &str) -> bool {
@@ -765,16 +807,21 @@ fn check_object(v: &Value<'_>, ctx: &'static str, path: &str, out: &mut Vec<Find
         if child.ty == "Age" {
             each(&mut |x| {
                 if let Value::Object(q) = x {
-                    let over = q
-                        .iter()
-                        .find(|(k, _)| k.as_ref() == "value")
-                        .and_then(|(_, v)| match v {
-                            Value::Number(n) => n.parse::<f64>().ok(),
-                            _ => None,
-                        })
-                        .is_some_and(|n| n > 89.0);
-                    if over {
-                        out.push(Finding { path: child_path.clone(), what: "age over 89".into() });
+                    let get = |k: &str| q.iter().find(|(m, _)| m.as_ref() == k).map(|(_, v)| v);
+                    let value = get("value").and_then(|v| match v {
+                        Value::Number(n) => n.parse::<f64>().ok(),
+                        _ => None,
+                    });
+                    let unit = get("code").or_else(|| get("unit")).and_then(|v| match v {
+                        Value::Str(u) => years_per(u),
+                        _ => None,
+                    });
+                    // over 89 is a finding; exactly 90 is Safe Harbor's own aggregate
+                    if let (Some(v), Some(per)) = (value, unit) {
+                        let years = v * per;
+                        if years > 89.0 && (years - 90.0).abs() > 1e-9 {
+                            out.push(Finding { path: child_path.clone(), what: "age over 89".into() });
+                        }
                     }
                 }
             });

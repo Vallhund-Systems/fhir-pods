@@ -66,11 +66,24 @@ impl<'a> Parsed<'a> {
     /// datatype missing what it requires (`Narrative.status`,
     /// `Extension.url`). Each finding is `(element path, issue type, message)`.
     pub fn structure_gaps(&self) -> Vec<Gap> {
-        let mut out = Vec::new();
-        if let Some(rt) = resource_ctx(&self.value) {
-            structure_in(&self.value, rt, rt, &mut out);
-        }
-        out
+        self.structure().0
+    }
+
+    /// The shape walk, once: its findings, and every resource nested inside
+    /// this one — `Bundle.entry.resource`, `contained`,
+    /// `Parameters.parameter.resource`, recursively — with the indexed
+    /// element path it sits at (`Bundle.entry[2].resource`), each as a
+    /// document of its own so its declared profiles can be validated.
+    pub fn structure(&self) -> (Vec<Gap>, Vec<(alloc::string::String, TreeDoc<'_, 'a>)>) {
+        let Some(rt) = resource_ctx(&self.value) else { return (Vec::new(), Vec::new()) };
+        let mut w = Walk { root: rt, gaps: Vec::new(), nested: Vec::new(), segs: Vec::new() };
+        structure_in(&self.value, rt, rt, &mut w);
+        let nested = w
+            .nested
+            .into_iter()
+            .filter_map(|(label, v)| resource_ctx(v).map(|rt| (label, TreeDoc::at(v, Some(rt)))))
+            .collect();
+        (w.gaps, nested)
     }
 
     /// A top-level member by key (the JSON type tag lives here).
@@ -113,11 +126,15 @@ fn expected_kind(ty: &str) -> &'static str {
 fn primitive_value_ok(ty: &str, v: &Value<'_>) -> bool {
     match (ty, v) {
         ("date", Value::Str(s)) => crate::temporal::parse(s).is_some_and(|t| t.has_date && t.precision <= 3),
-        ("dateTime", Value::Str(s)) => {
-            crate::temporal::parse(s).is_some_and(|t| t.has_date && (t.precision <= 3 || t.has_tz))
+        // a dateTime with a time has seconds and a zone; an instant has a date too; a time has neither date nor zone
+        ("dateTime", Value::Str(s)) => crate::temporal::parse(s)
+            .is_some_and(|t| t.has_date && (t.precision <= 3 || (t.precision >= 6 && t.has_tz))),
+        ("instant", Value::Str(s)) => {
+            crate::temporal::parse(s).is_some_and(|t| t.has_date && t.precision >= 6 && t.has_tz)
         }
-        ("instant", Value::Str(s)) => crate::temporal::parse(s).is_some_and(|t| t.precision >= 6 && t.has_tz),
-        ("time", Value::Str(s)) => crate::temporal::parse(s).is_some_and(|t| !t.has_date && t.precision >= 6),
+        ("time", Value::Str(s)) => {
+            crate::temporal::parse(s).is_some_and(|t| !t.has_date && t.precision >= 6 && !t.has_tz)
+        }
         // FHIR integers are 32-bit
         ("integer", Value::Number(n)) => n.parse::<i32>().is_ok(),
         ("positiveInt", Value::Number(n)) => n.parse::<i32>().is_ok_and(|i| i >= 1),
@@ -144,40 +161,106 @@ fn items_of<'x, 'a>(value: &'x Value<'a>, repeats: bool, path: &str) -> Result<V
     }
 }
 
-fn structure_in(v: &Value<'_>, ctx: &'static str, path: &str, out: &mut Vec<Gap>) {
-    structure_at(v, ctx, path, false, true, out)
+/// Does this resource declare a profile the registry has compiled (for its type)?
+fn declares_compiled_profile(kvs: &[(alloc::borrow::Cow<'_, str>, Value<'_>)]) -> bool {
+    let rt = kvs.iter().find(|(k, _)| k.as_ref() == "resourceType").and_then(|(_, v)| match v {
+        Value::Str(s) => Some(s.as_ref()),
+        _ => None,
+    });
+    let Some((_, Value::Object(meta))) = kvs.iter().find(|(k, _)| k.as_ref() == "meta") else { return false };
+    let Some((_, Value::Array(profiles))) = meta.iter().find(|(k, _)| k.as_ref() == "profile") else { return false };
+    profiles.iter().any(|p| match p {
+        Value::Str(u) => {
+            let base = u.split('|').next().unwrap_or(u);
+            crate::generated::REGISTRY.iter().any(|c| c.url == base && Some(c.resource_type) == rt)
+        }
+        _ => false,
+    })
+}
+
+/// The shape walk's state: the findings, every nested resource found (with
+/// the indexed element path it sits at), and the path segments so far —
+/// `(key, index)` for a repeating element — rendered only when a nested
+/// resource is found, so the walk itself never formats a path per element.
+struct Walk<'v, 'a> {
+    root: &'static str,
+    gaps: Vec<Gap>,
+    nested: Vec<(alloc::string::String, &'v Value<'a>)>,
+    segs: Vec<(&'v str, Option<usize>)>,
+}
+
+impl<'v, 'a> Walk<'v, 'a> {
+    fn label(&self, root: &str) -> alloc::string::String {
+        let mut s = alloc::string::String::from(root);
+        for (key, index) in &self.segs {
+            s.push('.');
+            s.push_str(key);
+            if let Some(i) = index {
+                s.push('[');
+                s.push_str(&alloc::format!("{i}"));
+                s.push(']');
+            }
+        }
+        s
+    }
+}
+
+fn structure_in<'v, 'a>(v: &'v Value<'a>, ctx: &'static str, path: &str, w: &mut Walk<'v, 'a>) {
+    structure_at(v, ctx, path, false, true, w)
 }
 
 /// `contained`: this object is a contained resource (or inside one), which
 /// the base spec holds to `dom-2` / `dom-4` / `dom-5`. `needs_content`: ele-1
 /// applies to this object on its own — false for a primitive's `_name`
 /// carrier whose value is present (the element has its value).
-fn structure_at(
-    v: &Value<'_>,
+fn structure_at<'v, 'a>(
+    v: &'v Value<'a>,
     ctx: &'static str,
     path: &str,
     contained: bool,
     needs_content: bool,
-    out: &mut Vec<Gap>,
+    w: &mut Walk<'v, 'a>,
 ) {
     use crate::validate::IssueType::{Invariant, Required, Structure, Value as ValueIssue};
     let Value::Object(kvs) = v else { return };
     let is_resource = crate::typemap::RESOURCES.binary_search(&ctx).is_ok();
-    let has = |name: &str| kvs.iter().any(|(k, _)| k.as_ref() == name || k.strip_prefix('_') == Some(name));
+    // a choice element (`medication[x]`) is present under any of its concrete keys
+    let has = |name: &str| match name.strip_suffix("[x]") {
+        Some(stem) => kvs.iter().any(|(k, _)| {
+            let k = k.strip_prefix('_').unwrap_or(k);
+            k.strip_prefix(stem).is_some_and(|rest| rest.chars().next().is_some_and(|c| c.is_ascii_uppercase()))
+        }),
+        None => kvs.iter().any(|(k, _)| k.as_ref() == name || k.strip_prefix('_') == Some(name)),
+    };
     for child in crate::typing::required_children(ctx) {
         if !has(child) {
-            out.push((path.into(), Required, alloc::format!("{ctx}.{child} is required (min 1, found 0)")));
+            w.gaps.push((path.into(), Required, alloc::format!("{ctx}.{child} is required (min 1, found 0)")));
         }
     }
+    // a resource with no compiled profile declared is held to what the base
+    // resource itself requires; a profile restates those and reports them
+    if is_resource && !declares_compiled_profile(kvs) {
+        for child in crate::typing::required_resource_children(ctx) {
+            if !has(child) {
+                w.gaps.push((path.into(), Required, alloc::format!("{ctx}.{child} is required (min 1, found 0)")));
+            }
+        }
+    }
+    // a choice element carries one of its keys, never two: collected as the
+    // keys are typed below, reported after
+    let mut stems: Vec<(&'static str, Vec<&str>)> = Vec::new();
     // ele-1: an element has a value or children — `{}` (or only an `id`) is neither
     if needs_content && !is_resource && !kvs.iter().any(|(k, _)| k.as_ref() != "id") {
-        out.push((path.into(), Invariant, alloc::format!("ele-1: {path} must have a value or children")));
+        w.gaps.push((path.into(), Invariant, alloc::format!("ele-1: {path} must have a value or children")));
     }
     // ext-1: an extension carries a value or nested extensions, not both
     if ctx == "Extension" {
-        let has_value = kvs.iter().any(|(k, _)| k.starts_with("value") && k.len() > 5);
+        // a value given only through its `_value…` carrier is still the value element
+        let has_value = kvs
+            .iter()
+            .any(|(k, _)| k.strip_prefix('_').unwrap_or(k).starts_with("value") && k.trim_start_matches('_').len() > 5);
         if has_value == has("extension") {
-            out.push((
+            w.gaps.push((
                 path.into(),
                 Invariant,
                 alloc::format!("ext-1: {path} must have either extensions or a value, not both"),
@@ -187,7 +270,7 @@ fn structure_at(
     // a contained resource: no nesting, no versioning, no security labels
     if contained && is_resource {
         if has("contained") {
-            out.push((
+            w.gaps.push((
                 path.into(),
                 Invariant,
                 alloc::format!("dom-2: {path} is contained and must not itself contain resources"),
@@ -196,7 +279,7 @@ fn structure_at(
         if let Some((_, Value::Object(meta))) = kvs.iter().find(|(k, _)| k.as_ref() == "meta") {
             for (k, rule) in [("versionId", "dom-4"), ("lastUpdated", "dom-4"), ("security", "dom-5")] {
                 if meta.iter().any(|(m, _)| m.as_ref() == k) {
-                    out.push((
+                    w.gaps.push((
                         path.into(),
                         Invariant,
                         alloc::format!("{rule}: {path} is contained and must not have meta.{k}"),
@@ -212,14 +295,24 @@ fn structure_at(
         let bare = key.strip_prefix('_').unwrap_or(key);
         let child_path = alloc::format!("{path}.{bare}");
         let Some(ch) = crate::typing::child(ctx, bare) else {
-            out.push((child_path.clone(), Structure, alloc::format!("{child_path} is not an element of {ctx}")));
+            w.gaps.push((child_path.clone(), Structure, alloc::format!("{child_path} is not an element of {ctx}")));
             continue;
         };
+        if let Some(stem) = ch.choice {
+            match stems.iter_mut().find(|(s, _)| *s == stem) {
+                Some((_, keys)) => {
+                    if !keys.contains(&bare) {
+                        keys.push(bare)
+                    }
+                }
+                None => stems.push((stem, alloc::vec![bare])),
+            }
+        }
         let repeats = crate::typing::repeats(ctx, bare);
         // a primitive's extension carrier: `_name`, an Element (an array of them, nulls as placeholders)
         if key.starts_with('_') {
             if !is_primitive(ch.ty) {
-                out.push((
+                w.gaps.push((
                     child_path.clone(),
                     Structure,
                     alloc::format!("{child_path} is not a primitive: no `_` carrier"),
@@ -229,7 +322,7 @@ fn structure_at(
             let items = match items_of(value, repeats, &child_path) {
                 Ok(items) => items,
                 Err(gap) => {
-                    out.push(gap);
+                    w.gaps.push(gap);
                     continue;
                 }
             };
@@ -237,10 +330,10 @@ fn structure_at(
                 match x {
                     Value::Object(_) => {
                         let paired = kvs.iter().any(|(k, _)| k.as_ref() == bare);
-                        structure_at(x, "Element", &child_path, contained, !paired, out)
+                        structure_at(x, "Element", &child_path, contained, !paired, w)
                     }
                     Value::Null if repeats => {}
-                    other => out.push((
+                    other => w.gaps.push((
                         child_path.clone(),
                         Structure,
                         alloc::format!(
@@ -255,45 +348,68 @@ fn structure_at(
         let items = match items_of(value, repeats, &child_path) {
             Ok(items) => items,
             Err(gap) => {
-                out.push(gap);
+                w.gaps.push(gap);
                 continue;
             }
         };
-        for x in items {
+        for (i, x) in items.into_iter().enumerate() {
+            w.segs.push((bare, repeats.then_some(i)));
             if ch.ty == "Resource" {
                 match resource_ctx(x) {
                     Some(rt) if matches!(x, Value::Object(_)) => {
-                        structure_at(x, rt, &child_path, contained || bare == "contained", true, out)
+                        // a resource of its own: validated against what it declares, in
+                        // the outer's scope, at the label the walk is at
+                        let label = w.label(w.root);
+                        w.nested.push((label, x));
+                        // deeper labels read as the issues do: `…resource.Bundle.entry[1]…`
+                        w.segs.push((rt, None));
+                        structure_at(x, rt, &child_path, contained || bare == "contained", true, w);
+                        w.segs.pop();
                     }
-                    _ => {
-                        out.push((child_path.clone(), Structure, alloc::format!("{child_path} is not a FHIR resource")))
-                    }
+                    _ => w.gaps.push((
+                        child_path.clone(),
+                        Structure,
+                        alloc::format!("{child_path} is not a FHIR resource"),
+                    )),
                 }
             } else if is_primitive(ch.ty) {
                 if matches!(x, Value::Null) && repeats && has(&alloc::format!("_{bare}")) {
+                    w.segs.pop();
                     continue; // a placeholder beside its carrier
                 }
                 let expected = expected_kind(ch.ty);
                 if json_kind(x) != expected {
-                    out.push((
+                    w.gaps.push((
                         child_path.clone(),
                         ValueIssue,
                         alloc::format!("{child_path}: a {} is a JSON {expected}, found {}", ch.ty, json_kind(x)),
                     ));
                 } else if !primitive_value_ok(ch.ty, x) {
-                    out.push((child_path.clone(), ValueIssue, alloc::format!("{child_path} is not a valid {}", ch.ty)));
+                    w.gaps.push((
+                        child_path.clone(),
+                        ValueIssue,
+                        alloc::format!("{child_path} is not a valid {}", ch.ty),
+                    ));
                 }
             } else {
                 match x {
-                    Value::Object(_) => structure_at(x, ch.ctx, &child_path, contained, true, out),
-                    other => out.push((
+                    Value::Object(_) => structure_at(x, ch.ctx, &child_path, contained, true, w),
+                    other => w.gaps.push((
                         child_path.clone(),
                         ValueIssue,
                         alloc::format!("{child_path}: a {} is a JSON object, found {}", ch.ty, json_kind(other)),
                     )),
                 }
             }
+            w.segs.pop();
         }
+    }
+    for (stem, keys) in stems.iter().filter(|(_, keys)| keys.len() > 1) {
+        w.gaps.push((
+            alloc::format!("{path}.{stem}[x]"),
+            Structure,
+            alloc::format!("{path}.{stem}[x] allows one choice; found {}", keys.join(", ")),
+        ));
     }
 }
 
@@ -326,7 +442,7 @@ impl<'v, 'a> TreeDoc<'v, 'a> {
         self.root
     }
 
-    fn at(root: &'v Value<'a>, ctx: Option<&'static str>) -> Self {
+    pub(crate) fn at(root: &'v Value<'a>, ctx: Option<&'static str>) -> Self {
         TreeDoc { root, ctx, carrier: None }
     }
 

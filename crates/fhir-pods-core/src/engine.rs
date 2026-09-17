@@ -385,6 +385,33 @@ fn matches<D: Document>(slice: &Slice, inst: &D, scope: &Scope<'_, D>) -> bool {
     })
 }
 
+/// `DomainResource`'s own invariants on a resource no compiled profile
+/// applies to — the ones the shape walk does not already enforce.
+pub(crate) fn domain_invariants<D: Document>(
+    doc: &D,
+    rt: &'static str,
+    cache: Option<&crate::Validator>,
+    bundle: Option<&D>,
+) -> Report {
+    let mut r = Report::default();
+    let scope = Scope { root: doc, bundle, tx: &Bundled, depth: 0, cache, evaluated: None };
+    for (key, is_error, human, expression) in crate::typemap::DOMAIN_INVARIANTS {
+        if matches!(*key, "dom-2" | "dom-4" | "dom-5") {
+            continue;
+        }
+        let inv = ProfileInvariant {
+            path: rt,
+            key,
+            severity: if *is_error { InvariantSeverity::Error } else { InvariantSeverity::Warning },
+            human,
+            expression,
+            types: &[],
+        };
+        check_invariant(&inv, rt, doc, &scope, &mut r);
+    }
+    r
+}
+
 /// Every `reference` under `node`, with the path it sits at.
 fn references_in<D: Document>(node: &D, path: &str, out: &mut Vec<(String, String)>) {
     for r in node.scalars("$this.reference") {

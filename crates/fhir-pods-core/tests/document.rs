@@ -140,3 +140,51 @@ fn a_non_conformant_resource_shows_up_in_the_validation_not_as_a_crash() {
     assert!(!a.validation.is_valid(), "{r}");
     assert!(r.contains("Condition"), "{r}");
 }
+
+// --- the v0.5.1 review's findings, pinned ---
+
+#[test]
+fn f009_an_absolute_reference_names_only_an_entry_with_exactly_that_full_url() {
+    let v = Validator::new();
+    // a condition pointing at ANOTHER server's Patient/p1 must not be attached to this patient
+    let foreign =
+        CONDITION.replace(r#""reference":"Patient/p1""#, r#""reference":"http://other.example.org/fhir/Patient/p1""#);
+    let a = v.document("ips", inputs(&[PATIENT, PRACTITIONER, &foreign], "").as_bytes()).unwrap();
+    assert!(a.document.contains(r#""reference":"http://other.example.org/fhir/Patient/p1""#), "{}", a.document);
+    // whereas an entry given with that exact fullUrl is what an absolute reference names
+    let json = format!(
+        r#"{{"resources":[{{"fullUrl":"http://this.example.org/fhir/Patient/p1","resource":{PATIENT}}},{PRACTITIONER},{}],"author":"Practitioner/gp1","date":"2026-09-16T10:00:00+10:00"}}"#,
+        CONDITION.replace(r#""reference":"Patient/p1""#, r#""reference":"http://this.example.org/fhir/Patient/p1""#)
+    );
+    let a = v.document("ips", json.as_bytes()).unwrap();
+    assert!(a.validation.is_valid(), "{}", wire::report(&a.validation));
+    assert!(
+        a.document.contains(r#""subject":{"reference":"http://this.example.org/fhir/Patient/p1"}"#),
+        "{}",
+        a.document
+    );
+}
+
+#[test]
+fn f016_the_document_identity_comes_from_every_input_not_the_patient_and_date_alone() {
+    let v = Validator::new();
+    let ids = |extra: &str, resources: &[&str]| {
+        let a = v.document("ips", inputs(resources, extra).as_bytes()).unwrap();
+        let comp = a.document.split(r#""fullUrl":""#).nth(1).unwrap().split('"').next().unwrap().to_string();
+        let ident = a
+            .document
+            .split(r#""identifier":{"system":"urn:ietf:rfc:3986","value":""#)
+            .nth(1)
+            .unwrap()
+            .split('"')
+            .next()
+            .unwrap()
+            .to_string();
+        (comp, ident)
+    };
+    let base = ids("", &[PATIENT, PRACTITIONER, CONDITION]);
+    assert_eq!(base, ids("", &[PATIENT, PRACTITIONER, CONDITION]), "the same inputs, the same identity");
+    assert_ne!(base, ids("", &[PATIENT, PRACTITIONER, ALLERGY]), "other content is another document");
+    assert_ne!(base, ids(r#","status":"final""#, &[PATIENT, PRACTITIONER, CONDITION]), "so is other metadata");
+    assert_ne!(base.0, base.1);
+}
