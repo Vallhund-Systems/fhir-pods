@@ -1,0 +1,15 @@
+{
+  "resourceType": "Patient",
+  "extension": [
+    {
+      "url": "https://example.org/ext",
+      "valueString": "synthetic",
+      "extension": [
+        {
+          "url": "child",
+          "valueString": "synthetic"
+        }
+      ]
+    }
+  ]
+}

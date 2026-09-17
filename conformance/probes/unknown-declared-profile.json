@@ -1,0 +1,8 @@
+{
+  "resourceType": "Patient",
+  "meta": {
+    "profile": [
+      "https://example.org/StructureDefinition/missing-profile"
+    ]
+  }
+}

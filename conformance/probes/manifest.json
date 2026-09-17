@@ -1,0 +1,158 @@
+[
+  {
+    "file": "base-patient-valid.json",
+    "profile": null,
+    "expect": true,
+    "reason": "Control: the base Patient has no required clinical fields."
+  },
+  {
+    "file": "profiled-patient-valid.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+    "expect": true,
+    "reason": "Control: a synthetic AU Core Patient with the required identifier, name, gender and birth date."
+  },
+  {
+    "file": "boolean-as-string.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+    "expect": false,
+    "reason": "R4 JSON: boolean primitives use JSON booleans, not strings."
+  },
+  {
+    "file": "date-as-number.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+    "expect": false,
+    "reason": "R4 JSON: date primitives use JSON strings."
+  },
+  {
+    "file": "reference-as-string.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+    "expect": false,
+    "reason": "R4 JSON: a Reference is an object, not a primitive string."
+  },
+  {
+    "file": "unknown-element.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+    "expect": false,
+    "reason": "Patient has no surpriseField element."
+  },
+  {
+    "file": "repeating-name-as-object.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+    "expect": false,
+    "reason": "R4 JSON: repeating elements are arrays even when they contain one item."
+  },
+  {
+    "file": "single-gender-as-array.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+    "expect": false,
+    "reason": "R4 JSON: a single-valued element is not an array."
+  },
+  {
+    "file": "malformed-date.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+    "expect": false,
+    "reason": "FHIR date must have a supported calendar-date lexical form."
+  },
+  {
+    "file": "impossible-calendar-date.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+    "expect": false,
+    "reason": "2023 is not a leap year; February 29 is not a calendar date."
+  },
+  {
+    "file": "year-only-date.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+    "expect": true,
+    "reason": "FHIR date permits year-only precision."
+  },
+  {
+    "file": "empty-name-array.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+    "expect": false,
+    "reason": "R4 JSON: empty arrays are not permitted; this also removes the required name."
+  },
+  {
+    "file": "empty-primitive.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+    "expect": false,
+    "reason": "R4 JSON: primitive strings cannot be empty."
+  },
+  {
+    "file": "invalid-integer-range.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+    "expect": false,
+    "reason": "FHIR integer is a signed 32-bit integer."
+  },
+  {
+    "file": "fractional-integer.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+    "expect": false,
+    "reason": "FHIR integer does not permit a fractional value."
+  },
+  {
+    "file": "multiple-choice-values.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+    "expect": true,
+    "reason": "Control: one permitted deceased[x] choice."
+  },
+  {
+    "file": "two-deceased-choices.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+    "expect": false,
+    "reason": "Patient.deceased[x] has maximum cardinality one across its choices."
+  },
+  {
+    "file": "unknown-resource-type.json",
+    "profile": null,
+    "expect": false,
+    "reason": "The resourceType must identify a known FHIR resource."
+  },
+  {
+    "file": "unknown-declared-profile.json",
+    "profile": null,
+    "expect": true,
+    "reason": "HL7 validator 6.10.4 with -tx n/a reports the unresolvable declared profile as a warning, not an error; verdict remains valid."
+  },
+  {
+    "file": "extension-missing-url.json",
+    "profile": null,
+    "expect": false,
+    "reason": "Extension.url has minimum cardinality one."
+  },
+  {
+    "file": "extension-value-and-children.json",
+    "profile": null,
+    "expect": false,
+    "reason": "Extension invariant ext-1 forbids both nested extensions and a value."
+  },
+  {
+    "file": "nested-contained.json",
+    "profile": null,
+    "expect": false,
+    "reason": "DomainResource invariant dom-2 forbids nested contained resources."
+  },
+  {
+    "file": "reference-target-offline.json",
+    "profile": null,
+    "expect": true,
+    "reason": "Offline reference-target control: reference type enforcement must be measured, not assumed."
+  },
+  {
+    "file": "primitive-extension-without-value.json",
+    "profile": null,
+    "expect": true,
+    "reason": "R4 JSON permits a primitive with only its underscore extension carrier."
+  },
+  {
+    "file": "null-primitive-without-extension.json",
+    "profile": null,
+    "expect": false,
+    "reason": "R4 JSON null is reserved for positional placeholders in primitive arrays."
+  },
+  {
+    "file": "primitive-array-placeholder.json",
+    "profile": null,
+    "expect": true,
+    "reason": "R4 JSON permits null placeholders in aligned primitive value/extension arrays."
+  }
+]

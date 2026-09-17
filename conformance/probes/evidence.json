@@ -1,0 +1,1258 @@
+{
+  "recorded_at": "2026-09-17T00:06:11.301317+00:00",
+  "source_revision": "0db63bcf72351751dbfc0a2027c4e116d9ed21e8",
+  "source_dirty": true,
+  "oracle_version": "6.10.4",
+  "oracle_sha256": "1106b9d58f9e363e47bea7c4fc065841e5fc91fe9d062775c3bfdd212bd653cc",
+  "oracle_options": [
+    "-version",
+    "4.0",
+    "-ig",
+    "hl7.fhir.au.core#2.0.0",
+    "-tx",
+    "n/a",
+    "-allow-example-urls",
+    "true"
+  ],
+  "oracle_exit_code": 0,
+  "note": "Terminology service disabled; the oracle may still resolve unknown profile URLs. Verdict parity only; issues retained for inspection.",
+  "counts": {
+    "total": 26,
+    "agree": 26,
+    "differ": 0
+  },
+  "probes": [
+    {
+      "file": "base-patient-valid.json",
+      "profile": null,
+      "expect": true,
+      "reason": "Control: the base Patient has no required clinical fields.",
+      "sha256": "3da05375f5ce9f02eee82b2fc7b46ea9658107ed2b25b5871a28676b79175616",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "profiled-patient-valid.json",
+      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+      "expect": true,
+      "reason": "Control: a synthetic AU Core Patient with the required identifier, name, gender and birth date.",
+      "sha256": "2ce86b7f5d9310cbe4cdb9c4cfc157390836b4ebd659ce4fabe009414886c167",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Patient.identifier[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "AU Core Patient",
+        "valid": true,
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "boolean-as-string.json",
+      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+      "expect": false,
+      "reason": "R4 JSON: boolean primitives use JSON booleans, not strings.",
+      "sha256": "3b8054341712df69185929e944f5b48f475b2b443ac0f329a7e6779e1ccfae25",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "Error parsing JSON: the primitive value must be a boolean",
+          "paths": [
+            "Patient.active"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Patient.identifier[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "AU Core Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "value",
+            "path": "Patient.active",
+            "message": "Patient.active: a boolean is a JSON boolean, found string"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "date-as-number.json",
+      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+      "expect": false,
+      "reason": "R4 JSON: date primitives use JSON strings.",
+      "sha256": "02f50e077f98bdef6d9bf198ba66a6e3443a8aa4999a076d9da9a49a15043954",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "Error parsing JSON: the primitive value must be a string",
+          "paths": [
+            "Patient.birthDate"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Patient.identifier[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "AU Core Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "value",
+            "path": "Patient.birthDate",
+            "message": "Patient.birthDate: a date is a JSON string, found number"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "reference-as-string.json",
+      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+      "expect": false,
+      "reason": "R4 JSON: a Reference is an object, not a primitive string.",
+      "sha256": "b2e6d02a0ea618cbdb5e8d862c9b56009942280e6252ff2a928dc6d3a47e96fb",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "The property managingOrganization must be an Object, not a Primitive property (at Patient.managingOrganization)",
+          "paths": [
+            "Patient.managingOrganization"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Patient.identifier[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "AU Core Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "value",
+            "path": "Patient.managingOrganization",
+            "message": "Patient.managingOrganization: a Reference is a JSON object, found string"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "unknown-element.json",
+      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+      "expect": false,
+      "reason": "Patient has no surpriseField element.",
+      "sha256": "8fe8c271f8a04f89fcfb39f748e5f1903a746cce3951e9872e9217c88029580c",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Unrecognized property 'surpriseField'",
+          "paths": [
+            "Patient"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Patient.identifier[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "AU Core Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "path": "Patient.surpriseField",
+            "message": "Patient.surpriseField is not an element of Patient"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "repeating-name-as-object.json",
+      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+      "expect": false,
+      "reason": "R4 JSON: repeating elements are arrays even when they contain one item.",
+      "sha256": "b97e463e28281c24a000f50dfe9a0310f6b400784b36a3ea3a2889b3776240f4",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "The property name must be a JSON Array, not an Object (at Patient)",
+          "paths": [
+            "Patient.name"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Patient.identifier[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "AU Core Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "path": "Patient.name",
+            "message": "Patient.name repeats: expected an array"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "single-gender-as-array.json",
+      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+      "expect": false,
+      "reason": "R4 JSON: a single-valued element is not an array.",
+      "sha256": "5dc65a5551d4452d66252618e7da772b852cc8de5d2663a9a30009e5d8343cf9",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "This property must be a simple value, not an Array (gender at Patient.gender)",
+          "paths": [
+            "Patient.gender"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Patient.identifier[0]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Patient.gender: minimum required = 1, but only found 0 (from http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0)",
+          "paths": [
+            "Patient"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "AU Core Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "path": "Patient.gender",
+            "message": "Patient.gender is a single element, not an array"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "malformed-date.json",
+      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+      "expect": false,
+      "reason": "FHIR date must have a supported calendar-date lexical form.",
+      "sha256": "cb4f3010347c52afa694a8e981f5a2f2dba9edc239ffd9134fcef8bcaf225e4f",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "Not a valid date format: 'not-a-date'",
+          "paths": [
+            "Patient.birthDate"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Patient.identifier[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "AU Core Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "value",
+            "path": "Patient.birthDate",
+            "message": "Patient.birthDate is not a valid date"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "impossible-calendar-date.json",
+      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+      "expect": false,
+      "reason": "2023 is not a leap year; February 29 is not a calendar date.",
+      "sha256": "e7f2c20d89cc5c7776f3da4936957e013abe370fcbfa4c582c681b1847ce3e91",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "Not a valid date format: '2023-02-29'",
+          "paths": [
+            "Patient.birthDate"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Patient.identifier[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "AU Core Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "value",
+            "path": "Patient.birthDate",
+            "message": "Patient.birthDate is not a valid date"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "year-only-date.json",
+      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+      "expect": true,
+      "reason": "FHIR date permits year-only precision.",
+      "sha256": "629012850dbc43e72920ff855cb20df54b1022eac5136e62e87599507a963487",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Patient.identifier[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "AU Core Patient",
+        "valid": true,
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "empty-name-array.json",
+      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+      "expect": false,
+      "reason": "R4 JSON: empty arrays are not permitted; this also removes the required name.",
+      "sha256": "3ebc44f73583cf0640acb4e6001e50309cd4dbf8e956b63584de1f0779f73da8",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "Array cannot be empty - the property should not be present if it has no values",
+          "paths": [
+            "Patient.name"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Patient.identifier[0]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Patient.name: minimum required = 1, but only found 0 (from http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0)",
+          "paths": [
+            "Patient"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: au-core-pat-02: 'At least one patient name shall have a family name, or if not available, the Data Absent Reason extension shall be present' (defined in http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient)",
+          "paths": [
+            "Patient"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "AU Core Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "path": "Patient.name",
+            "message": "Patient.name is an empty array (leave the element out instead)"
+          },
+          {
+            "severity": "error",
+            "code": "required",
+            "path": "Patient.name",
+            "message": "Patient.name is required (min 1, found 0)"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "au-core-pat-02: At least one patient name shall have a family name, or if not available, the Data Absent Reason extension shall be present"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "empty-primitive.json",
+      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+      "expect": false,
+      "reason": "R4 JSON: primitive strings cannot be empty.",
+      "sha256": "d15eee98e6275a1232b9c6dbc958b0c1cc05b304d5f2a5e405db5d296e838455",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: ele-1: 'All FHIR elements must have a @value or children' (defined in http://hl7.org/fhir/StructureDefinition/Element)",
+          "paths": [
+            "Patient.birthDate"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "value cannot be empty",
+          "paths": [
+            "Patient.birthDate"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Patient.identifier[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "AU Core Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "value",
+            "path": "Patient.birthDate",
+            "message": "Patient.birthDate is not a valid date"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "invalid-integer-range.json",
+      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+      "expect": false,
+      "reason": "FHIR integer is a signed 32-bit integer.",
+      "sha256": "e3fcb90ca283415bbc69dfb2dc9132d4e6b305acecf39c85216ca26d3f355953",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "The value '2147483648' is not a valid integer",
+          "paths": [
+            "Patient.multipleBirth.ofType(integer)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Patient.identifier[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "AU Core Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "value",
+            "path": "Patient.multipleBirthInteger",
+            "message": "Patient.multipleBirthInteger is not a valid integer"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "fractional-integer.json",
+      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+      "expect": false,
+      "reason": "FHIR integer does not permit a fractional value.",
+      "sha256": "c9b88cd7b079f70943c748db6da01e16b7f0c775cd9aeaa40419a70423979f0f",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "The value '1.5' is not a valid integer",
+          "paths": [
+            "Patient.multipleBirth.ofType(integer)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Patient.identifier[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "AU Core Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "value",
+            "path": "Patient.multipleBirthInteger",
+            "message": "Patient.multipleBirthInteger is not a valid integer"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "multiple-choice-values.json",
+      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+      "expect": true,
+      "reason": "Control: one permitted deceased[x] choice.",
+      "sha256": "77d77d9bf2b63bb443778f6a510712c207c26df41a370b727d1bd86cda066352",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Patient.identifier[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "AU Core Patient",
+        "valid": true,
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "two-deceased-choices.json",
+      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+      "expect": false,
+      "reason": "Patient.deceased[x] has maximum cardinality one across its choices.",
+      "sha256": "bae3c6c37e9f4cd71552c996a133be663452e57796fa5e2883b9c07b98970f5e",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Unrecognized property 'deceasedDateTime'",
+          "paths": [
+            "Patient"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Patient.identifier[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "AU Core Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "path": "Patient.deceased[x]",
+            "message": "Patient.deceased[x] exceeds max 1 (found 2)"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "unknown-resource-type.json",
+      "profile": null,
+      "expect": false,
+      "reason": "The resourceType must identify a known FHIR resource.",
+      "sha256": "d9feaba3af4b4ab5ef6d2c8fbeb31526a045ee8f05f02975608dd4d4ef2ce96d",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "fatal",
+          "code": "structure",
+          "text": "This content cannot be parsed (unknown or unrecognized resource name 'NotAResource')",
+          "paths": [
+            "NotAResource"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "NotAResource",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "path": "resourceType",
+            "message": "'NotAResource' is not a FHIR R4 resource type"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "unknown-declared-profile.json",
+      "profile": null,
+      "expect": true,
+      "reason": "HL7 validator 6.10.4 with -tx n/a reports the unresolvable declared profile as a warning, not an error; verdict remains valid.",
+      "sha256": "6746ab85349859716dd0ae86f7fdc60c185c5463d4a6c3a9b462392920f85850",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "structure",
+          "text": "Profile reference 'https://example.org/StructureDefinition/missing-profile' has not been checked because it could not be found, and fetching it resulted in the error org.hl7.fhir.r4.utils.client.EFhirClientException: Error from https://example.org: Example Domainbody{background:#eee;width:60vw;margin:15vh auto;font-family:system-ui,sans-serif}h1{font-size:1.5em}div{opacity:0.8}a:link,a:visited{color:#348}Example Domain This domain is for use in documentation examples without needing permission. Avoid use in operations. Learn more",
+          "paths": [
+            "Patient.meta.profile[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "not-supported",
+            "path": "meta.profile",
+            "message": "declared profile 'https://example.org/StructureDefinition/missing-profile' is not compiled here, so it was not checked"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "extension-missing-url.json",
+      "profile": null,
+      "expect": false,
+      "reason": "Extension.url has minimum cardinality one.",
+      "sha256": "8f4c8b769ea3c1dc8f93d85e1b44c8b6d937c5cf6890bfcc46a132fc7ec11deb",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "Extension.url is required in order to identify, use and validate the extension",
+          "paths": [
+            "Patient.extension[0]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Extension.url: minimum required = 1, but only found 0 (from http://hl7.org/fhir/StructureDefinition/Extension|4.0.1)",
+          "paths": [
+            "Patient.extension[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "required",
+            "path": "Patient.extension",
+            "message": "Extension.url is required (min 1, found 0)"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "extension-value-and-children.json",
+      "profile": null,
+      "expect": false,
+      "reason": "Extension invariant ext-1 forbids both nested extensions and a value.",
+      "sha256": "5864a6186e0160442ab1b508bcd783ce64ee55bbced1502fad12da3b54da750b",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: ext-1: 'Must have either extensions or value[x], not both' (defined in http://hl7.org/fhir/StructureDefinition/Extension)",
+          "paths": [
+            "Patient.extension[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "invariant",
+            "path": "Patient.extension",
+            "message": "ext-1: Patient.extension must have either extensions or a value, not both"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "nested-contained.json",
+      "profile": null,
+      "expect": false,
+      "reason": "DomainResource invariant dom-2 forbids nested contained resources.",
+      "sha256": "7618140f1c81e3905ecb6b774a55cafe64505782db4387cdb8c610d9084a28de",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: org-1: 'The organization SHALL at least have a name or an identifier, and possibly more than one'",
+          "paths": [
+            "Patient.contained[0]/*Organization/outer*/.contained[0]/*Organization/inner*/"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "structure",
+          "text": "Details for #inner matching against profile http://hl7.org/fhir/StructureDefinition/Organization|4.0.1",
+          "paths": [
+            "Patient.contained[0]/*Organization/outer*/.partOf"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: ref-1: 'SHALL have a contained resource if a local reference is provided' (url: inner; ids: outer) (log:  (url: inner; ids: outer))",
+          "paths": [
+            "Patient.contained[0]/*Organization/outer*/.partOf"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: org-1: 'The organization SHALL at least have a name or an identifier, and possibly more than one'",
+          "paths": [
+            "Patient.contained[0]/*Organization/outer*/"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "structure",
+          "text": "Details for #outer matching against profile http://hl7.org/fhir/StructureDefinition/Organization|4.0.1",
+          "paths": [
+            "Patient.managingOrganization"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: dom-2: 'If the resource is contained in another resource, it SHALL NOT contain nested Resources' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource)",
+          "paths": [
+            "Patient"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "invariant",
+            "path": "Patient.contained",
+            "message": "dom-2: Patient.contained is contained and must not itself contain resources"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "reference-target-offline.json",
+      "profile": null,
+      "expect": true,
+      "reason": "Offline reference-target control: reference type enforcement must be measured, not assumed.",
+      "sha256": "188fe8720fb73d5f81f06fb01e1a4b2016c2e16e8efc53ce664a269edb2d5c2f",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "primitive-extension-without-value.json",
+      "profile": null,
+      "expect": true,
+      "reason": "R4 JSON permits a primitive with only its underscore extension carrier.",
+      "sha256": "ae32d204cbbadf790ab993338bb2ca2592c31dd3d16a8e01caf5289cf0c1774e",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "null-primitive-without-extension.json",
+      "profile": null,
+      "expect": false,
+      "reason": "R4 JSON null is reserved for positional placeholders in primitive arrays.",
+      "sha256": "05a42b0045f8d1813c22e1564fdc154d322766c257c5f9f111c3a81f5b0d2c3b",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "This property must be a simple value, not a Null (birthDate at Patient.birthDate)",
+          "paths": [
+            "Patient.birthDate"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "value",
+            "path": "Patient.birthDate",
+            "message": "Patient.birthDate: a date is a JSON string, found null"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "primitive-array-placeholder.json",
+      "profile": null,
+      "expect": true,
+      "reason": "R4 JSON permits null placeholders in aligned primitive value/extension arrays.",
+      "sha256": "67e2075bbf7114a1898da64932ac9011f3b6dca047ce849c35de2678cf287c85",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "resourceType": "Patient",
+  "extension": [
+    {
+      "valueString": "synthetic"
+    }
+  ]
+}

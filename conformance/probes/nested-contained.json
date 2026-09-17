@@ -1,0 +1,21 @@
+{
+  "resourceType": "Patient",
+  "contained": [
+    {
+      "resourceType": "Organization",
+      "id": "outer",
+      "contained": [
+        {
+          "resourceType": "Organization",
+          "id": "inner"
+        }
+      ],
+      "partOf": {
+        "reference": "#inner"
+      }
+    }
+  ],
+  "managingOrganization": {
+    "reference": "#outer"
+  }
+}

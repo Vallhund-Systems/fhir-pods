@@ -1,0 +1,17 @@
+{
+  "recordedAt": "2026-09-17T00:08:04.387Z",
+  "browser": "Chrome/153.0.8010.48",
+  "status": "passed",
+  "abi": 7,
+  "wasmBytes": 982350,
+  "wasmSha256": "cee620b4a624a353ce0256a86aacf5fc5c46f88aa841220c6979f84744a56d1f",
+  "checks": [
+    "PASS validate au-patient",
+    "PASS validate base-heart-rate",
+    "PASS validate au-patient-missing-required",
+    "PASS validate malformed-json",
+    "PASS lower AU Core Patient",
+    "PASS deidentify synthetic identifiers and name",
+    "PASS IPS document assembly and validation roundtrip"
+  ]
+}

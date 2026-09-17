@@ -1,0 +1,18 @@
+{
+  "repository": "https://github.com/FHIR/fhir-test-cases",
+  "revision": "87fe5070c0d7c13d84acecfab9c5cc1b4ec2ba47",
+  "assets": {
+    "r4/fhirpath/tests-fhir-r4.xml": "47ece55cc534ef0fd8ed5d9d4b85c8aa4526edb58150ef37c5356064896bfb28",
+    "r4/appointment-examplereq.json": "0bc59eff908363c1183932e15738e288e1fb7dabb643dcdea6cf62e1d9478864",
+    "r4/codesystem-example.xml": "da56c88f1e329359b9e7eb376c84ddcd70abe97f0f932ee8a7b8b20cb55e8363",
+    "r4/explanationofbenefit-example.json": "fb6cdaca18a18e2c2b26e93cbe16709c0ff5ca9a15b7725531fa576d5034f899",
+    "r4/observation-example.xml": "80a32392067c65612f0fbffcd94e3832d5f21c356cf1ff7a61ded1c8032ff360",
+    "r4/parameters-example-types.xml": "38dc7daa23a7bc6117b59008a47daa737a9e031ecdccf01d9190e5697d62baff",
+    "r4/patient-container-example.json": "cec75206b31d2090285908050ab8c8bd11237008bcc36d8a6e6326b9ced4b884",
+    "r4/patient-example-period.xml": "3d02211271484cf069fb4c2ca72ad27a9179b24e60d7b3d292825ff097bd27cd",
+    "r4/patient-example.xml": "606695d227a8669dc6ef2669957b1684990b2e127a82592008642c50359324fd",
+    "r4/patient-name-extensions.json": "25d3b1fa540fc4586bee49d5b56106a967d6339461a802fb5e0fa5bb8469b827",
+    "r4/questionnaire-example.xml": "06e56aa1ab4c206fad6159f5fa8321b7d8a7666ce682ac5be128ff5ac6113048",
+    "r4/valueset-example-expansion.xml": "2fd28a9377eedfe9c0ff17a5d1756c40bc88b393a889853b75b883283a75919d"
+  }
+}
