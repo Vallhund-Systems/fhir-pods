@@ -10,11 +10,11 @@ JS  ──validate(json)──►  hand-written wrapper  ──C ABI──►  R
 ```
 
 No wasm-bindgen, no glue runtime: the wrapper is ~70 lines over `pod_alloc` /
-`pod_free` and the entrypoints. The `.wasm` carries the 259 compiled
-profiles of the six pinned IGs (AU Core, US Core, IPA, IPS, AU Patient
-Summary, IHE BALP — and the datatypes they inherit), the 72 bundled value
-sets, the FHIRPath engine and the HL7 v2 maps — ~1.5 MiB, 362 KiB gzipped
-at v0.8.1.
+`pod_free` and the entrypoints. The `.wasm` carries the 979 compiled
+profiles of the seven pinned IGs (AU Core, US Core, IPA, IPS, AU Patient
+Summary, IHE BALP, AU Base) and every HL7 extension, the 125 bundled value
+sets, the base code systems' codes, the FHIRPath engine and the HL7 v2
+maps — ~2.3 MiB, ~560 KiB gzipped at v0.9.1.
 
 ## Build
 

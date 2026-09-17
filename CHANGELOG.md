@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.9.1 — 2026-09-17
+
+**Broader validation, three ways.** (1) **AU Base 6.0.0** is a primary IG:
+its 123 published examples join the release gate and every AU Base
+profile is compiled. (2) **Every HL7 extension** is compiled — the 701 of
+`hl7.fhir.uv.extensions.r4` 5.3.0 — so where an extension may sit is
+checked for all of them, not only the ones the IGs' slices reach (the
+registry goes from 259 to 979 profiles). The extensions package is written
+across versions and names R5's abstract parents: a `CanonicalResource`
+context is met by R4's canonical resources; `regex` is allowed on
+`ElementDefinition.type` as well as `ElementDefinition`, as the reference
+validator allows it (FHIR-13328). (3) **The base code systems' content** is
+bundled — every `complete` CodeSystem of R4 core and of the HL7 terminology
+package (1,148 systems, 20,985 codes; no displays; SNOMED and LOINC never)
+— and a Coding, or a Quantity's coded unit, whose system is one of them is
+held to its codes ("Unknown code … in the CodeSystem …", an error). The
+two packages carry different versions of many systems and a validator may
+have either loaded, so a code is unknown only when *no* version we carry
+has it; a system any copy leaves open is not bundled. A code under
+`urn:ietf:rfc:3986` must be a URI.
+
+**Found by the new checks, in our own house.** The v2 IG maps CX.3 (the
+check-digit scheme) onto `namingsystem-checkDigit`, an extension defined
+for `NamingSystem` only; the converter had been placing it on identifiers,
+which no validator accepts. `gen_v2.py` now skips an extension block whose
+definition cannot sit where the map puts it, with the reason (14 rows,
+all this one). Two synthetic fixtures carried a contact-role code that is
+not in table 0131 (`NK`; the code is `N`) and an IN1 one pipe short, which
+put a date of birth in the insurance relationship; both corrected.
+
+Base lane (`conformance/base.py`): **4,809 of 5,292** agree (was 4,796),
+none stricter than the oracle; the "extension contexts we do not compile"
+family is gone. The wasm grows to ~2.3 MiB (~560 KiB gzipped) for the 720
+extension profiles and the code systems.
+
+Tests: 195 (workspace). Oracle (release gate): **1521/1521** — the seven
+IGs' examples, probes, and the v2 conversions.
+
 ## 0.9.0 — 2026-09-17
 
 **Broader validation: the base spec's own examples.** A new lane,

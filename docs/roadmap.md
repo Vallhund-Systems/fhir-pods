@@ -264,11 +264,11 @@ all found by the new IG's corpus — the pattern every IG has followed.
 ## Sequence
 
 lowering → terminology → de-identification → documents (+ IG #4) → audit
-(+ IG #6) → lifting → HL7 v2 — all shipped, 0.3.0 → 0.8.0. Next in the
-core: extension contexts in the verifier (where an extension may sit; the
-oracle checks it, we do not yet); the eleven official FHIRPath
-disagreements (planning T023); then the host-side pieces below as they are
-asked for.
+(+ IG #6) → lifting → HL7 v2 — all shipped, 0.3.0 → 0.8.0; then the
+verifier broadened against the base spec's own examples (0.9.0) and every
+HL7 extension's context and the base code systems' content (0.9.1). Next
+in the core: the eleven official FHIRPath disagreements (planning T023);
+then the host-side pieces below as they are asked for.
 Lowering first because it is what makes the verifier pay for itself; de-id
 before documents because it is small and it is a policy commitment a host
 can point at. Each pod ships as a minor version with its own release notes,

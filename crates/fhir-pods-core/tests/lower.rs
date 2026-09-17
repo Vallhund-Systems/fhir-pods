@@ -75,7 +75,7 @@ fn an_absent_value_leaves_the_optional_type_slice_out() {
     );
     assert!(l.validation.is_valid(), "{}", wire::report(&l.validation));
     assert!(!l.resource.contains("valueQuantity"), "{}", l.resource);
-    assert!(l.resource.contains(r#""dataAbsentReason":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/data-absent-reason","code":"unknown"}]}"#));
+    assert!(l.resource.contains(r#""dataAbsentReason":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/data-absent-reason","code":"unknown","display":"Unknown"}]}"#), "{}", l.resource);
 }
 
 #[test]

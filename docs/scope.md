@@ -51,8 +51,8 @@ instances across every resource type, almost all declaring no profile —
 validated as declared by us and by validator_cli, and compared. It runs
 apart from the release gate (parity, not cleanliness: the spec's own
 examples are not all valid, and several are conformance resources the
-reference validator holds to rules of its own kind). At v0.9.0:
-**4,796** agree. What the rest is, by family — every one a rule we do
+reference validator holds to rules of its own kind). At v0.9.1:
+**4,809** agree. What the rest is, by family — every one a rule we do
 not check, none a wrong verdict of ours on a rule we do:
 
 - **Definition resolution** (the largest, on conformance resources —
@@ -66,14 +66,20 @@ not check, none a wrong verdict of ours on a rule we do:
 - **Narrative hyperlinks** ("Hyperlink … does not resolve") — the xhtml's
   `<a href>` targets checked against the resource and the bundle: not done
   (the unprofiled lane records the same exclusion).
-- **Codes against code-system content** ("Unknown code … in the CodeSystem
-  …"): every Coding's code checked against the code system's concepts,
-  binding or no binding — needs the code systems' content, which the pod
-  does not ship (SNOMED never; the base FHIR ones not yet).
-- **Extension contexts of extensions we do not compile** (the registry
-  carries the extensions the six IGs reach, not every HL7 extension).
+- **Codes against a version of a code system we do not carry.** Since
+  v0.9.1 the base code systems' content is bundled (R4 core's and the HL7
+  terminology package's `complete` systems, codes only) and a Coding or
+  coded unit is held to it — but the two packages carry different versions
+  of many systems and a validator may have either loaded, so a code is
+  unknown only when no version we carry has it. The reference validator,
+  holding an example to the one version it loaded, rejects a handful more
+  (`partial` in `immunization-subpotent-reason`, gone from the newer copy).
 
-What the lane taught us, taken in v0.9.0: a canonical must be absolute
+What the lane taught us, taken in v0.9.1: every HL7 extension compiled
+(contexts checked for all; `CanonicalResource` met by R4's canonical
+resources, `regex` allowed on `ElementDefinition.type` as the reference
+validator allows it); the base code systems' codes; a code under
+`urn:ietf:rfc:3986` is a URI. Taken in v0.9.0: a canonical must be absolute
 unless it is a fragment; a narrative must say something (txt-2: text beyond
 whitespace, tags, comments and `&nbsp;`); `base64Binary` is the alphabet
 with padding at the end only; a `urn:uuid:` is a lowercase UUID and a

@@ -31,6 +31,22 @@ BASE_VITALS = {
 BASE_RESOURCES = {"AuditEvent", "Provenance"}
 
 
+
+RUST_KEYWORDS = {"as", "break", "const", "continue", "crate", "else", "enum", "extern", "false", "fn", "for", "if", "impl",
+                 "in", "let", "loop", "match", "mod", "move", "mut", "pub", "ref", "return", "self", "static", "struct",
+                 "super", "trait", "true", "type", "unsafe", "use", "where", "while", "async", "await", "dyn"}
+
+
+def mod_name(sd_id):
+    """A profile id as a Rust module name: lower snake case, never starting
+    with a digit, never a keyword."""
+    m = "".join(c if c.isalnum() else "_" for c in sd_id).lower()
+    if m[:1].isdigit():
+        m = "p_" + m
+    if m in RUST_KEYWORDS:
+        m = m + "_"
+    return m
+
 def main():
     args = sys.argv[1:]
     primaries = 1
@@ -104,13 +120,20 @@ def main():
             sd = json.load(open(path))
             if sd.get("id") in BASE_VITALS and (sd.get("snapshot") or {}).get("element"):
                 targets.append(sd)
-                implied.append(sd["id"].replace("-", "_").replace(".", "_").lower())
+                implied.append(mod_name(sd["id"]))
             elif sd.get("id") in BASE_RESOURCES and (sd.get("snapshot") or {}).get("element"):
                 targets.append(sd)
 
     mods = []
+    used = set()
     for sd in targets:
-        mod = sd["id"].replace("-", "_").replace(".", "_").lower()
+        mod = mod_name(sd["id"])
+        # the same id in two packages (AU Base's and HL7's `medication-type`): distinct modules
+        n = 2
+        while mod in used:
+            mod = f"{mod_name(sd['id'])}_{n}"
+            n += 1
+        used.add(mod)
         text, (ne, ns, nd) = emit(sd, provenance, load)
         with open(os.path.join(out_dir, f"{mod}.rs"), "w") as f:
             f.write(text)

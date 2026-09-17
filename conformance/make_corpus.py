@@ -36,6 +36,7 @@ IPA = "http://hl7.org/fhir/uv/ipa/StructureDefinition/"
 IPS = "http://hl7.org/fhir/uv/ips/StructureDefinition/"
 AUPS = "http://hl7.org.au/fhir/ps/StructureDefinition/"
 BALP = "https://profiles.ihe.net/ITI/BALP/StructureDefinition/"
+AUBASE = "http://hl7.org.au/fhir/StructureDefinition/"
 IGS = [
     ("hl7.fhir.au.core", "2.0.0", AU, "package", "example-"),
     ("hl7.fhir.us.core", "6.1.0", US, "package-us", "us-"),
@@ -43,16 +44,17 @@ IGS = [
     ("hl7.fhir.uv.ips", "2.0.1", IPS, "package-ips", "ips-"),
     ("hl7.fhir.au.ps", "1.0.0", AUPS, "package-au-ps", "aups-"),
     ("ihe.iti.balp", "1.1.4", BALP, "package-balp", "balp-"),
+    ("hl7.fhir.au.base", "6.0.0", AUBASE, "package-au-base", "aubase-"),
 ]
 
 # Dependency packages whose datatype profiles slices inherit (no examples
 # taken from them): fetched into the same gitignored caches so the generator
 # (scripts/gen-profiles.sh) never depends on another tool's package cache.
 DEPS = [
-    ("hl7.fhir.au.base", "6.0.0", "package-au-base"),
     ("hl7.fhir.uv.extensions.r4", "5.3.0", "package-ext"),   # extensions IPS / AU PS slices inherit
     ("hl7.fhir.r4.core", "4.0.1", "package-r4"),   # the element-type table (tools/gen_typemap.py)
     ("hl7.fhir.uv.v2mappings", "1.0.0", "package-v2mappings"),   # the HL7 v2 maps (tools/gen_v2.py)
+    ("hl7.terminology.r4", "6.2.0", "package-tho"),   # the code systems' content (tools/gen_codesystems.py)
 ]
 
 

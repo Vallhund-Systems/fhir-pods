@@ -533,6 +533,8 @@ pub mod value_sets;
 /// The bundled value sets, generated from the packages (`tools/gen_valuesets.py`).
 mod value_sets_table;
 
+/// The base code systems' content (generated): what a Coding's code is held to.
+pub mod code_systems_table;
 pub mod validate;
 
 pub mod path;

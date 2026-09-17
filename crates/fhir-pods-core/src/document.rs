@@ -435,6 +435,12 @@ fn owner_names(w: &Walk<'_, '_>) -> Vec<alloc::string::String> {
             names.push(String::from("DomainResource"));
         }
     }
+    // the extensions package is written across versions and names R5's
+    // abstract parents; in R4 they are the resources a canonical identifies
+    if CANONICAL_RESOURCES.binary_search(&owner_ctx).is_ok() {
+        names.push(String::from("CanonicalResource"));
+        names.push(String::from("MetadataResource"));
+    }
     // the path from the nearest resource, and from the nearest datatype
     let path_from = |start: usize| -> String {
         let mut p = String::from(w.ctxs[start].0);
@@ -473,6 +479,47 @@ fn owner_names(w: &Walk<'_, '_>) -> Vec<alloc::string::String> {
     }
     unique
 }
+
+/// Does a string start with a URI scheme (`scheme:`)?
+fn has_scheme(v: &str) -> bool {
+    let scheme_end = v.find(':').unwrap_or(0);
+    scheme_end > 0
+        && v.as_bytes()[0].is_ascii_alphabetic()
+        && v[..scheme_end].bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'+' | b'.' | b'-'))
+}
+
+/// R4's canonical resources, sorted (R5's `CanonicalResource`).
+const CANONICAL_RESOURCES: &[&str] = &[
+    "ActivityDefinition",
+    "CapabilityStatement",
+    "ChargeItemDefinition",
+    "CodeSystem",
+    "CompartmentDefinition",
+    "ConceptMap",
+    "EffectEvidenceSynthesis",
+    "EventDefinition",
+    "Evidence",
+    "EvidenceVariable",
+    "ExampleScenario",
+    "GraphDefinition",
+    "ImplementationGuide",
+    "Library",
+    "Measure",
+    "MessageDefinition",
+    "NamingSystem",
+    "OperationDefinition",
+    "PlanDefinition",
+    "Questionnaire",
+    "ResearchDefinition",
+    "ResearchElementDefinition",
+    "RiskEvidenceSynthesis",
+    "SearchParameter",
+    "StructureDefinition",
+    "StructureMap",
+    "TerminologyCapabilities",
+    "TestScript",
+    "ValueSet",
+];
 
 /// Does an extension's definition allow it where it sits? A `fhirpath`
 /// context is not evaluated (allowed); an `extension` context is met by
@@ -566,6 +613,40 @@ fn structure_object<'v, 'a>(
             }
         }
     }
+    // a Coding (or a Quantity's coded unit) whose system is a base code
+    // system the pod carries is held to its codes, as the reference validator
+    // holds it
+    if matches!(ctx, "Coding" | "Quantity" | "SimpleQuantity" | "Age" | "Duration" | "Count" | "Distance") {
+        let system = kvs.iter().find(|(k, _)| k.as_ref() == "system");
+        let code = kvs.iter().find(|(k, _)| k.as_ref() == "code");
+        if let (Some((_, Value::Str(system))), Some((_, Value::Str(code)))) = (system, code) {
+            let bare = system.split('|').next().unwrap_or(system);
+            // the "code system" of URIs: a code in it is a URI
+            if bare == "urn:ietf:rfc:3986" && !has_scheme(code) {
+                w.gaps.push((
+                    alloc::format!("{path}.code"),
+                    crate::validate::IssueType::CodeInvalid,
+                    alloc::format!("Unknown code '{code}' in the CodeSystem 'urn:ietf:rfc:3986'"),
+                ));
+            }
+            if let Ok(i) = crate::code_systems_table::CODE_SYSTEMS.binary_search_by(|(u, _, _)| (*u).cmp(bare)) {
+                let (_, case_sensitive, codes) = crate::code_systems_table::CODE_SYSTEMS[i];
+                let needle = alloc::format!("\n{code}\n");
+                let known = if case_sensitive {
+                    codes.contains(&needle)
+                } else {
+                    codes.to_ascii_lowercase().contains(&needle.to_ascii_lowercase())
+                };
+                if !known {
+                    w.gaps.push((
+                        alloc::format!("{path}.code"),
+                        crate::validate::IssueType::CodeInvalid,
+                        alloc::format!("Unknown code '{code}' in the CodeSystem '{bare}'"),
+                    ));
+                }
+            }
+        }
+    }
     // txt-2: a narrative says something — its xhtml has text beyond
     // whitespace, tags and comments
     if ctx == "Narrative" {
@@ -585,11 +666,7 @@ fn structure_object<'v, 'a>(
         let system = kvs.iter().find(|(k, _)| k.as_ref() == "system");
         if matches!(system, Some((_, Value::Str(s))) if s.as_ref() == "urn:ietf:rfc:3986") {
             if let Some((_, Value::Str(v))) = kvs.iter().find(|(k, _)| k.as_ref() == "value") {
-                let scheme_end = v.find(':').unwrap_or(0);
-                let has_scheme = scheme_end > 0
-                    && v.as_bytes()[0].is_ascii_alphabetic()
-                    && v[..scheme_end].bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'+' | b'.' | b'-'));
-                if !has_scheme {
+                if !has_scheme(v) {
                     w.gaps.push((
                         alloc::format!("{path}.value"),
                         ValueIssue,

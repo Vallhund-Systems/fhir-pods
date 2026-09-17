@@ -60,14 +60,14 @@ with terminology switched off on both sides so profiles are what is scored.
 `conformance/run.py` builds the corpus from the pinned packages, runs
 validator_cli 6.10.4 over it, and compares verdicts:
 
-- **1206/1206** at v0.8.1 — the six IGs' published examples and 60-odd
+- **1521/1521** at v0.9.1 — the seven IGs' published examples and 60-odd
   probes, every corpus resource lifted into its slots and lowered again, every
   one de-identified, the twelve document examples taken apart and assembled
   again, an audit record of every kind from the audit surface, five HL7 v2
   messages converted to message bundles (each side's verdict, valid or not,
   the same — which proves shape, not meaning: the converter's content is
   held by its own tests), and the review lane's adversarial probes.
-- **4,796 of 5,292** of FHIR R4's own published examples, every
+- **4,809 of 5,292** of FHIR R4's own published examples, every
   resource type, unprofiled (`conformance/base.py`, apart from the release
   gate) — the rest are rules the pod does not check and names
   ([`scope.md`](docs/scope.md)), never a wrong verdict on one it does. A run in which either
@@ -85,22 +85,26 @@ validator_cli 6.10.4 over it, and compares verdicts:
 
 ## What is compiled in
 
-259 profiles from the pinned packages (`scripts/gen-profiles.sh`
+979 profiles from the pinned packages (`scripts/gen-profiles.sh`
 regenerates): **AU Core 2.0.0**, **US Core 6.1.0**, **IPA 1.1.0**, **IPS
 2.0.1**, **AU Patient Summary 1.0.0**, **IHE Basic Audit Log Patterns
-1.1.4**, the AU Base 6.0.0 resource and datatype profiles they derive from
-or slice into, the extension profiles their slices inherit, the base spec's
+1.1.4**, **AU Base 6.0.0**, every HL7 extension (`hl7.fhir.uv.extensions.r4`
+5.3.0, 701 of them — so where an extension may sit is checked for all of
+them), the base spec's
 vital-sign profiles, which an Observation is held to by its LOINC code as
 the spec requires, and the base spec's own `AuditEvent` and `Provenance`
 definitions, so a host can lower and declare them directly. The element-
 type table covers every R4 resource and datatype, so a contained resource of
 any type is typed. Every licence-free value set the registry binds is bundled
-(72 sets); SNOMED CT, LOINC, VSAC and NCTS-hosted sets go through the
+(125 sets), and the base code systems' content — every `complete`
+CodeSystem of R4 core and the HL7 terminology package, codes only, no
+displays (1,148 systems), so a code no version of its system has is
+reported; SNOMED CT, LOINC, VSAC and NCTS-hosted sets go through the
 terminology seam.
 
 ## Delivery
 
-- **wasm** — a ~1.5 MiB `.wasm` (362 KiB gzipped) with a dependency-free JS
+- **wasm** — a ~2.3 MiB `.wasm` (~560 KiB gzipped) with a dependency-free JS
   wrapper; browser, edge runtimes, Node, Bun, Deno. [`pods/wasm`](pods/wasm/README.md).
 - **Expo** — the core as a native module: iOS XCFramework + Android jniLibs,
   a native terminology provider seam. [`pods/expo`](pods/expo/README.md).

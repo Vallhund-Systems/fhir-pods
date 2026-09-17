@@ -479,6 +479,47 @@ fn a_canonical_is_absolute_and_a_narrative_says_something() {
 }
 
 #[test]
+fn a_coding_in_a_base_code_system_is_a_known_code() {
+    let ok = r##"{"resourceType":"AdverseEvent","actuality":"actual","subject":{"reference":"Patient/p1"},"category":[{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/adverse-event-category","code":"wrong-patient"}]}]}"##;
+    assert!(probe_str(ok).contains("\"valid\":true"), "{}", probe_str(ok));
+    // R4's own copy of the system has other codes than the terminology package's: either version's code is known
+    let older = ok.replace("wrong-patient", "product-use-error");
+    assert!(probe_str(&older).contains("\"valid\":true"), "{}", probe_str(&older));
+    let unknown = ok.replace("wrong-patient", "wrong-planet");
+    let r = probe_str(&unknown);
+    assert!(
+        r.contains("\"valid\":false")
+            && r.contains("Unknown code 'wrong-planet' in the CodeSystem 'http://terminology.hl7.org/CodeSystem/adverse-event-category'"),
+        "{r}"
+    );
+    // a quantity's coded unit is a code in a system too
+    let med = |unit: &str| {
+        format!(
+            r##"{{"resourceType":"Medication","ingredient":[{{"itemCodeableConcept":{{"text":"x"}},"strength":{{"numerator":{{"value":1,"system":"http://unitsofmeasure.org","code":"mg"}},"denominator":{{"value":1,"system":"http://terminology.hl7.org/CodeSystem/v3-orderableDrugForm","code":"{unit}"}}}}}}]}}"##
+        )
+    };
+    assert!(probe_str(&med("TAB")).contains("\"valid\":true"), "{}", probe_str(&med("TAB")));
+    assert!(probe_str(&med("Tab")).contains("Unknown code 'Tab'"), "{}", probe_str(&med("Tab")));
+    // the "code system" of URIs
+    let uri = |code: &str| {
+        format!(
+            r##"{{"resourceType":"Basic","code":{{"coding":[{{"system":"urn:ietf:rfc:3986","code":"{code}"}}]}}}}"##
+        )
+    };
+    assert!(probe_str(&uri("http://example.org/x")).contains("\"valid\":true"));
+    assert!(probe_str(&uri("RicardianContract"))
+        .contains("Unknown code 'RicardianContract' in the CodeSystem 'urn:ietf:rfc:3986'"));
+    // a system the pod does not carry says nothing about the code
+    let foreign = ok
+        .replace("http://terminology.hl7.org/CodeSystem/adverse-event-category", "http://example.org/local")
+        .replace("wrong-patient", "anything");
+    assert!(probe_str(&foreign).contains("\"valid\":true"), "{}", probe_str(&foreign));
+    // a version on the system is not part of its identity
+    let versioned = ok.replace("adverse-event-category\"", "adverse-event-category|1.0.0\"");
+    assert!(probe_str(&versioned).contains("\"valid\":true"), "{}", probe_str(&versioned));
+}
+
+#[test]
 fn base64_oids_and_uuids_are_well_formed() {
     let ok = r##"{"resourceType":"DocumentReference","status":"current","content":[{"attachment":{"contentType":"text/plain","data":"aGVsbG8="}}]}"##;
     assert!(probe_str(ok).contains("\"valid\":true"), "{}", probe_str(ok));

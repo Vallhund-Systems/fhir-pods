@@ -911,9 +911,16 @@ def emit(sd, provenance, load=None):
     for path in must_support_of(sd):
         out.append(f"        {rs(path)},")
     out += ["    ],", "    contexts: &["]
-    for cx in sd.get("context") or []:
-        if cx.get("type") and cx.get("expression"):
-            out.append(f"        ({rs(cx['type'])}, {rs(cx['expression'])}),")
+    contexts = [(cx["type"], cx["expression"]) for cx in sd.get("context") or [] if cx.get("type") and cx.get("expression")]
+    # `regex` is defined on ElementDefinition and used, by the spec itself, on
+    # ElementDefinition.type; the reference validator accepts either place
+    # (FHIR-13328), and so do we
+    if sd.get("url") == "http://hl7.org/fhir/StructureDefinition/regex":
+        for extra in ("ElementDefinition", "ElementDefinition.type"):
+            if ("element", extra) not in contexts:
+                contexts.append(("element", extra))
+    for kind, expr in contexts:
+        out.append(f"        ({rs(kind)}, {rs(expr)}),")
     out += ["    ],", "};", ""]
     fixed, slices, slots = lowering_of(sd, load)
     out += ["/// How to build a resource for this profile (see `compiled::Lowering`).", "pub static LOWERING: Lowering = Lowering {", "    fixed: &["]

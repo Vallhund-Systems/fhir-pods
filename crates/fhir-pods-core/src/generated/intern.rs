@@ -238,7 +238,119 @@ pub static S48: &[&str] = &[
     "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-medicationrequest",
 ];
 pub static S49: &[&str] = &["string", "base64Binary"];
-pub static S50: &[&str] = &["valueDateTime", "valueAge", "valuePeriod", "valueRange", "valueString"];
-pub static S51: &[&str] = &["string", "markdown"];
-pub static S52: &[&str] = &["valueString", "valueMarkdown"];
-pub static S53: &[&str] = &["occurredPeriod", "occurredDateTime"];
+pub static S50: &[&str] = &["dateTime", "Period", "Timing"];
+pub static S51: &[&str] = &["Ratio", "Quantity"];
+pub static S52: &[&str] = &["valueDateTime", "valueAge", "valuePeriod", "valueRange", "valueString"];
+pub static S53: &[&str] = &["Reference", "markdown"];
+pub static S54: &[&str] = &["Reference", "canonical", "uri"];
+pub static S55: &[&str] = &["valueReference", "valueCanonical", "valueUri"];
+pub static S56: &[&str] = &["string", "Coding"];
+pub static S57: &[&str] = &["valueString", "valueCoding"];
+pub static S58: &[&str] = &["valueDateTime", "valuePeriod"];
+pub static S59: &[&str] = &["uri", "CodeableConcept"];
+pub static S60: &[&str] = &["valueUri", "valueCodeableConcept"];
+pub static S61: &[&str] = &[
+    "string",
+    "boolean",
+    "integer",
+    "decimal",
+    "date",
+    "dateTime",
+    "Coding",
+    "CodeableConcept",
+    "Period",
+    "Range",
+    "Quantity",
+    "Ratio",
+];
+pub static S62: &[&str] = &["Duration", "Range"];
+pub static S63: &[&str] = &["valueDuration", "valueRange"];
+pub static S64: &[&str] = &["canonical", "uri"];
+pub static S65: &[&str] = &["valueCanonical", "valueUri"];
+pub static S66: &[&str] = &["boolean", "string", "integer", "Quantity", "Ratio", "Range"];
+pub static S67: &[&str] = &["dateTime", "instant", "Period"];
+pub static S68: &[&str] = &["valueDateTime", "valueInstant", "valuePeriod"];
+pub static S69: &[&str] = &["string", "Reference"];
+pub static S70: &[&str] = &["valueString", "valueReference"];
+pub static S71: &[&str] = &["CodeableConcept", "canonical"];
+pub static S72: &[&str] = &["valueCodeableConcept", "valueCanonical"];
+pub static S73: &[&str] = &["valueBoolean", "valueCodeableConcept"];
+pub static S74: &[&str] = &["uri", "canonical"];
+pub static S75: &[&str] = &["valueUri", "valueCanonical"];
+pub static S76: &[&str] = &["date", "Age", "boolean"];
+pub static S77: &[&str] = &["valueDate", "valueAge", "valueBoolean"];
+pub static S78: &[&str] = &[
+    "valueBase64Binary",
+    "valueBoolean",
+    "valueCanonical",
+    "valueCode",
+    "valueDate",
+    "valueDateTime",
+    "valueDecimal",
+    "valueId",
+    "valueInstant",
+    "valueInteger",
+    "valueMarkdown",
+    "valueOid",
+    "valuePositiveInt",
+    "valueString",
+    "valueTime",
+    "valueUnsignedInt",
+    "valueUri",
+    "valueUrl",
+    "valueUuid",
+    "valueAddress",
+    "valueAge",
+    "valueAnnotation",
+    "valueAttachment",
+    "valueCodeableConcept",
+    "valueCoding",
+    "valueContactPoint",
+    "valueCount",
+    "valueDistance",
+    "valueDuration",
+    "valueHumanName",
+    "valueIdentifier",
+    "valueMoney",
+    "valuePeriod",
+    "valueQuantity",
+    "valueRange",
+    "valueRatio",
+    "valueReference",
+    "valueSampledData",
+    "valueSignature",
+    "valueTiming",
+    "valueContactDetail",
+    "valueContributor",
+    "valueDataRequirement",
+    "valueExpression",
+    "valueParameterDefinition",
+    "valueRelatedArtifact",
+    "valueTriggerDefinition",
+    "valueUsageContext",
+    "valueDosage",
+    "valueMeta",
+];
+pub static S79: &[&str] = &["integer", "Quantity"];
+pub static S80: &[&str] = &["valueInteger", "valueQuantity"];
+pub static S81: &[&str] = &["date", "dateTime", "time", "decimal", "integer", "Quantity"];
+pub static S82: &[&str] = &["valueDate", "valueDateTime", "valueTime", "valueDecimal", "valueInteger", "valueQuantity"];
+pub static S83: &[&str] =
+    &["boolean", "dateTime", "decimal", "integer", "string", "CodeableConcept", "Quantity", "Ratio"];
+pub static S84: &[&str] = &["string", "uri"];
+pub static S85: &[&str] = &["string", "url"];
+pub static S86: &[&str] = &["valueString", "valueUrl"];
+pub static S87: &[&str] = &["integer", "date", "time", "string", "Coding", "Reference"];
+pub static S88: &[&str] = &["valueInteger", "valueDate", "valueTime", "valueString", "valueCoding", "valueReference"];
+pub static S89: &[&str] = &["Period", "Duration"];
+pub static S90: &[&str] = &["valuePeriod", "valueDuration"];
+pub static S91: &[&str] = &["boolean", "CodeableConcept", "Quantity", "Range", "Expression"];
+pub static S92: &[&str] = &["valueBoolean", "valueCodeableConcept", "valueQuantity", "valueRange", "valueExpression"];
+pub static S93: &[&str] = &["string", "markdown"];
+pub static S94: &[&str] = &["valueString", "valueMarkdown"];
+pub static S95: &[&str] = &["string", "code", "integer", "boolean", "decimal", "url", "canonical"];
+pub static S96: &[&str] =
+    &["valueString", "valueCode", "valueInteger", "valueBoolean", "valueDecimal", "valueUrl", "valueCanonical"];
+pub static S97: &[&str] = &["canonical", "Reference", "uri"];
+pub static S98: &[&str] = &["valueCanonical", "valueReference", "valueUri"];
+pub static S99: &[&str] = &["occurredPeriod", "occurredDateTime"];

@@ -437,6 +437,12 @@ FHIR_TYPE_NAMES = {t.lower(): t for t in [
     "RelatedPerson", "ServiceRequest", "Specimen", "Task", "SupplyRequest", "Schedule", "Slot",
 ]}
 
+DATATYPE_NAMES = {
+    "Address", "Age", "Annotation", "Attachment", "CodeableConcept", "Coding", "ContactPoint", "Count", "Distance",
+    "Duration", "HumanName", "Identifier", "Money", "Period", "Quantity", "Range", "Ratio", "Reference", "SampledData",
+    "Signature", "Timing", "Dosage", "Meta", "Narrative", "Extension",
+}
+
 ext_contexts = {}
 
 # The standard's abstract message syntax for the groups the maps name: how
@@ -518,6 +524,31 @@ def main():
                 moves[m.group(1)] = "_" + elems[0].split(".", 1)[1] + "." + m.group(1)
         return moves
 
+    def context_refusals(rows, owner):
+        """The extension blocks whose definition cannot sit where the map puts
+        them: every context the definition names is another resource
+        (`namingsystem-checkDigit` on an Identifier). Placing one makes FHIR no
+        validator accepts, so the block's rows are skipped, with the reason."""
+        generic = {"Element", "*", "BackboneElement", "Resource", "DomainResource"}
+        refused = {}
+        for _src, _sd, _si, t, tinfo in rows:
+            display = (t.get("code") or "").strip()
+            m = re.match(r"^(.*extension\[\d+\])\.url$", display)
+            a = (tinfo.get("assignment") or "").strip()
+            if not m or not (a.startswith('"') and a.endswith('"')):
+                continue
+            ctxs = ext_contexts.get(a[1:-1]) or []
+            if not ctxs:
+                continue
+            if owner in DATATYPE_NAMES:
+                bad = all("." not in c and c not in generic and c not in DATATYPE_NAMES for c in ctxs)
+            else:
+                roots = {c.split(".", 1)[0] for c in ctxs}
+                bad = not any(r == owner or r in generic or r in DATATYPE_NAMES for r in roots)
+            if bad:
+                refused[m.group(1)] = f"extension context: {a[1:-1].rsplit('/', 1)[-1]} is defined for {', '.join(ctxs)}"
+        return refused
+
     def emit_rows(rows, kind, fhir=None, owner=None, v2=None):
         """rows: list of (source code, source display, source typeinfo,
         target, target typeinfo); `fhir` the datatype map's own FHIR type,
@@ -525,6 +556,7 @@ def main():
         `owner` the FHIR type the rows fill, for extension contexts."""
         out = []
         moves = context_moves(rows, owner) if owner else {}
+        refusals = context_refusals(rows, owner) if owner else {}
         stats["context moves"] += len(moves)
         for src, sdisplay, sinfo, t, tinfo in rows:
             stats["rows"] += 1
@@ -536,6 +568,9 @@ def main():
                     display = moved + display[len(block):]
             sref = parse_ref(src) if kind != "message" else None
             reason = None
+            for block, why in refusals.items():
+                if display == block or display.startswith(block + "."):
+                    reason = why
             if kind == "datatype":
                 if sref is None or sref[2] == 0:
                     reason = f"source form: {src}"
