@@ -63,6 +63,28 @@ the 294/294.
   every R4 resource type and datatype; a node under a `resourceType` the
   spec doesn't define has no type, and such an expression is skipped — and
   reported as an `information` issue naming the invariant.
+- **The base spec's shape rules apply to every resource, profile or no
+  profile:** an element the type does not define is an error; a primitive
+  must be the JSON kind its FHIR type is represented as (a `boolean` a JSON
+  boolean, an `integer` / `decimal` a number, everything else a string) and
+  a `date` / `dateTime` / `instant` / `time` must parse with the precision
+  and time zone the type demands; a repeating element must be an array and
+  a single one must not; a complex element must be an object; a datatype's
+  own required elements must be there. A `resourceType` the base spec does
+  not define is an error; so are an empty array or an empty string, an
+  integer outside 32 bits, a date that is not a calendar date, an element
+  with neither value nor children (`ele-1`), an extension with both a
+  value and nested extensions (`ext-1`), and a contained resource that
+  itself contains, is versioned or carries security labels (`dom-2`,
+  `dom-4`, `dom-5`). Not checked: the regular expressions on `id`, `code`,
+  `uri` and friends, and the `_name` / `name` array pairing.
+- **A declared profile the registry has not compiled is a warning**
+  (`not-supported`, naming the profile) — the reference validator's own
+  severity for a profile it cannot resolve — so a claim the verifier could
+  not check is visible in the report, never silent. A host that treats an
+  unverified claim as a failure filters that issue code. A resource with no
+  declared profile is held to the base spec's shape rules and nothing more:
+  `profile` is empty and nothing is claimed.
 - **Documents.** A `Bundle` is validated against its declared Bundle
   profile: entries discriminated by resource type and by conformance to a
   profile (a validation pass in the same bundle), section entries by what

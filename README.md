@@ -1,8 +1,13 @@
 # fhir-pods
 
-An embeddable FHIR verifier — a small Rust core that **validates** FHIR against
-compiled profiles, behind one lean C ABI, so the check runs wherever the data
-already is: in the app, in the browser, at the edge, on device.
+A small Rust library that lets an application **speak FHIR at its edges** —
+verify a resource against compiled profiles, build one from the variable data
+only, hand out a de-identified copy under a policy, assemble a patient summary
+document — behind one lean C ABI, so every one of those runs wherever the
+data already is: in the app, in the browser, at the edge, on device. Each
+operation says which profiles and policies it applied, what it found, and
+what it could not check; the host owns its data, its transport and the
+decision to proceed.
 
 ## Why
 
@@ -53,7 +58,7 @@ Rust-shaped. (See [`docs/architecture.md`](docs/architecture.md).)
   (as information), and a FHIRPath engine with typed traversal and a
   linear-time `matches()` that evaluates every invariant in the registry
   except `htmlChecks()` and `resolve()` — skipped, never guessed.
-- **Agreement with the HL7 reference validator: 967/967** fixtures
+- **Agreement with the HL7 reference validator: 1010/1010** fixtures
   (five IGs' published examples and probes, every lowered resource, every
   de-identified copy, every assembled document). What that
   covers and excludes: [`docs/scope.md`](docs/scope.md).
@@ -61,7 +66,7 @@ Rust-shaped. (See [`docs/architecture.md`](docs/architecture.md).)
   (generated from the packages); the rest arrives through a host seam — a
   compiled expansion table loaded at run time, an ask-then-answer loop
   (`terminology_needs`), or a synchronous provider — never as shipped content.
-- **Delivery:** a ~950 KB `.wasm` (242 KB gzipped) with a dependency-free JS
+- **Delivery:** a ~980 KB `.wasm` (249 KB gzipped) with a dependency-free JS
   wrapper, and an Expo module (iOS XCFramework + Android jniLibs) — 40–70 µs
   per profiled resource native, about 80 µs in wasm.
 - Zero dependencies, `no_std`, `#![forbid(unsafe_code)]`, fuzzed.
@@ -92,7 +97,7 @@ how it got here: [`docs/history.md`](docs/history.md).
 
 - `crates/fhir-pods-core` — the Rust verifier core (zero deps, no `unsafe`, `no_std`).
 - `crates/fhir-pods-ffi` — the one lean C ABI, compiled per target (wasm32 / native staticlib).
-- `pods/wasm` — the wasm pod: a ~950 KB `.wasm` (242 KB gzipped) + a zero-dependency JS wrapper.
+- `pods/wasm` — the wasm pod: a ~980 KB `.wasm` (249 KB gzipped) + a zero-dependency JS wrapper.
 - `pods/expo` — the expo pod: the core as an Expo native module (iOS XCFramework + Android jniLibs).
 - `scripts/` — `gen-profiles.sh`, `build-wasm.sh`, `build-ios-xcframework.sh`, `build-android-jnilibs.sh`, `smoke-c.sh`, `check-no-std.sh`, `release.sh`.
 - `docs/architecture.md` — the design, delivery model, audit surface, and perf budget.

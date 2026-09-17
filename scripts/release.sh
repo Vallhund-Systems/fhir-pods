@@ -11,7 +11,12 @@ VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' "$ROOT/crates/fhir-pods-core/Carg
 DIST="$ROOT/dist/$VERSION"
 
 echo "==> fhir-pods $VERSION"
-[ -z "$(git -C "$ROOT" status --porcelain)" ] || { echo "working tree not clean" >&2; exit 1; }
+# Tracked files must be committed: the artifacts come from the commit. Untracked
+# files (another lane's work in flight) are not packed — the pods' package
+# manifests list what ships — so they do not block a release; they are listed.
+[ -z "$(git -C "$ROOT" status --porcelain --untracked-files=no)" ] || { echo "working tree not clean (tracked changes)" >&2; exit 1; }
+UNTRACKED="$(git -C "$ROOT" status --porcelain --untracked-files=all | grep '^??' || true)"
+[ -z "$UNTRACKED" ] || echo "==> note: untracked files present, not part of this release:"$'\n'"$UNTRACKED"
 # The clean-room wall: the repo must never mention the host app's names. The
 # pattern is assembled so this script itself does not trip it.
 WALL="$(printf '%s|%s|%s' "aver""care" "avatars""global" "local""agent")"

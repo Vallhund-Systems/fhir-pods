@@ -59,15 +59,16 @@ impl<'a> Parsed<'a> {
     pub fn doc(&self) -> TreeDoc<'_, 'a> {
         TreeDoc { root: &self.value, ctx: resource_ctx(&self.value), carrier: None }
     }
-    /// The base spec's own minimums inside datatypes — a `Narrative` without
-    /// `status`, an `Extension` without `url` — anywhere in the resource:
-    /// `(element path, "Type.child")`. Profiles restate a resource's
-    /// required elements but not its datatypes' internals; this is the walk
-    /// that checks those.
-    pub fn datatype_gaps(&self) -> Vec<(alloc::string::String, alloc::string::String)> {
+    /// What the base spec says about the shape of every element, profile or
+    /// no profile: an element the type does not define, a value of the wrong
+    /// JSON kind for its FHIR type, a repeating element that is not an array
+    /// (or a single one that is), a date / time that does not parse, a
+    /// datatype missing what it requires (`Narrative.status`,
+    /// `Extension.url`). Each finding is `(element path, issue type, message)`.
+    pub fn structure_gaps(&self) -> Vec<Gap> {
         let mut out = Vec::new();
         if let Some(rt) = resource_ctx(&self.value) {
-            datatype_gaps_in(&self.value, rt, rt, &mut out);
+            structure_in(&self.value, rt, rt, &mut out);
         }
         out
     }
@@ -81,44 +82,217 @@ impl<'a> Parsed<'a> {
     }
 }
 
-fn datatype_gaps_in(
+/// One structural finding: element path, issue type, message.
+pub type Gap = (alloc::string::String, crate::validate::IssueType, alloc::string::String);
+
+fn is_primitive(ty: &str) -> bool {
+    ty.chars().next().is_some_and(|c| c.is_ascii_lowercase())
+}
+
+fn json_kind(v: &Value<'_>) -> &'static str {
+    match v {
+        Value::Null => "null",
+        Value::Bool(_) => "boolean",
+        Value::Number(_) => "number",
+        Value::Str(_) => "string",
+        Value::Array(_) => "array",
+        Value::Object(_) => "object",
+    }
+}
+
+/// The JSON kind a FHIR primitive is represented as.
+fn expected_kind(ty: &str) -> &'static str {
+    match ty {
+        "boolean" => "boolean",
+        "integer" | "positiveInt" | "unsignedInt" | "decimal" => "number",
+        _ => "string",
+    }
+}
+
+/// Is `v` a well-formed value of the temporal / numeric primitive `ty`?
+fn primitive_value_ok(ty: &str, v: &Value<'_>) -> bool {
+    match (ty, v) {
+        ("date", Value::Str(s)) => crate::temporal::parse(s).is_some_and(|t| t.has_date && t.precision <= 3),
+        ("dateTime", Value::Str(s)) => {
+            crate::temporal::parse(s).is_some_and(|t| t.has_date && (t.precision <= 3 || t.has_tz))
+        }
+        ("instant", Value::Str(s)) => crate::temporal::parse(s).is_some_and(|t| t.precision >= 6 && t.has_tz),
+        ("time", Value::Str(s)) => crate::temporal::parse(s).is_some_and(|t| !t.has_date && t.precision >= 6),
+        // FHIR integers are 32-bit
+        ("integer", Value::Number(n)) => n.parse::<i32>().is_ok(),
+        ("positiveInt", Value::Number(n)) => n.parse::<i32>().is_ok_and(|i| i >= 1),
+        ("unsignedInt", Value::Number(n)) => n.parse::<i32>().is_ok_and(|i| i >= 0),
+        // R4 JSON: a string primitive is never empty
+        (_, Value::Str(s)) => !s.is_empty(),
+        _ => true,
+    }
+}
+
+/// The items an element's value stands for: the array's items when it
+/// repeats, the value itself otherwise — or the shape error.
+fn items_of<'x, 'a>(value: &'x Value<'a>, repeats: bool, path: &str) -> Result<Vec<&'x Value<'a>>, Gap> {
+    use crate::validate::IssueType::Structure;
+    match value {
+        // R4 JSON: an array is never empty
+        Value::Array(xs) if repeats && xs.is_empty() => {
+            Err((path.into(), Structure, alloc::format!("{path} is an empty array (leave the element out instead)")))
+        }
+        Value::Array(xs) if repeats => Ok(xs.iter().collect()),
+        Value::Array(_) => Err((path.into(), Structure, alloc::format!("{path} is a single element, not an array"))),
+        _ if repeats => Err((path.into(), Structure, alloc::format!("{path} repeats: expected an array"))),
+        x => Ok(alloc::vec![x]),
+    }
+}
+
+fn structure_in(v: &Value<'_>, ctx: &'static str, path: &str, out: &mut Vec<Gap>) {
+    structure_at(v, ctx, path, false, true, out)
+}
+
+/// `contained`: this object is a contained resource (or inside one), which
+/// the base spec holds to `dom-2` / `dom-4` / `dom-5`. `needs_content`: ele-1
+/// applies to this object on its own — false for a primitive's `_name`
+/// carrier whose value is present (the element has its value).
+fn structure_at(
     v: &Value<'_>,
     ctx: &'static str,
     path: &str,
-    out: &mut Vec<(alloc::string::String, alloc::string::String)>,
+    contained: bool,
+    needs_content: bool,
+    out: &mut Vec<Gap>,
 ) {
+    use crate::validate::IssueType::{Invariant, Required, Structure, Value as ValueIssue};
     let Value::Object(kvs) = v else { return };
+    let is_resource = crate::typemap::RESOURCES.binary_search(&ctx).is_ok();
     let has = |name: &str| kvs.iter().any(|(k, _)| k.as_ref() == name || k.strip_prefix('_') == Some(name));
     for child in crate::typing::required_children(ctx) {
         if !has(child) {
-            out.push((alloc::string::String::from(path), alloc::format!("{ctx}.{child}")));
+            out.push((path.into(), Required, alloc::format!("{ctx}.{child} is required (min 1, found 0)")));
+        }
+    }
+    // ele-1: an element has a value or children — `{}` (or only an `id`) is neither
+    if needs_content && !is_resource && !kvs.iter().any(|(k, _)| k.as_ref() != "id") {
+        out.push((path.into(), Invariant, alloc::format!("ele-1: {path} must have a value or children")));
+    }
+    // ext-1: an extension carries a value or nested extensions, not both
+    if ctx == "Extension" {
+        let has_value = kvs.iter().any(|(k, _)| k.starts_with("value") && k.len() > 5);
+        if has_value == has("extension") {
+            out.push((
+                path.into(),
+                Invariant,
+                alloc::format!("ext-1: {path} must have either extensions or a value, not both"),
+            ));
+        }
+    }
+    // a contained resource: no nesting, no versioning, no security labels
+    if contained && is_resource {
+        if has("contained") {
+            out.push((
+                path.into(),
+                Invariant,
+                alloc::format!("dom-2: {path} is contained and must not itself contain resources"),
+            ));
+        }
+        if let Some((_, Value::Object(meta))) = kvs.iter().find(|(k, _)| k.as_ref() == "meta") {
+            for (k, rule) in [("versionId", "dom-4"), ("lastUpdated", "dom-4"), ("security", "dom-5")] {
+                if meta.iter().any(|(m, _)| m.as_ref() == k) {
+                    out.push((
+                        path.into(),
+                        Invariant,
+                        alloc::format!("{rule}: {path} is contained and must not have meta.{k}"),
+                    ));
+                }
+            }
         }
     }
     for (key, value) in kvs {
-        if key.as_ref() == "resourceType" {
+        if key.as_ref() == "resourceType" && is_resource {
             continue;
         }
-        let name = key.strip_prefix('_').unwrap_or(key);
-        let (child_ctx, child_path) = match key.strip_prefix('_') {
-            // a primitive's carrier is an Element holding extensions
-            Some(_) => ("Element", alloc::format!("{path}.{name}")),
-            None => match crate::typing::child(ctx, name) {
-                Some(ch) => (ch.ctx, alloc::format!("{path}.{name}")),
-                None => continue,
-            },
+        let bare = key.strip_prefix('_').unwrap_or(key);
+        let child_path = alloc::format!("{path}.{bare}");
+        let Some(ch) = crate::typing::child(ctx, bare) else {
+            out.push((child_path.clone(), Structure, alloc::format!("{child_path} is not an element of {ctx}")));
+            continue;
         };
-        let each = |x: &Value<'_>, out: &mut Vec<_>| {
-            if child_ctx == "Resource" {
-                if let Some(rt) = resource_ctx(x) {
-                    datatype_gaps_in(x, rt, &child_path, out);
+        let repeats = crate::typing::repeats(ctx, bare);
+        // a primitive's extension carrier: `_name`, an Element (an array of them, nulls as placeholders)
+        if key.starts_with('_') {
+            if !is_primitive(ch.ty) {
+                out.push((
+                    child_path.clone(),
+                    Structure,
+                    alloc::format!("{child_path} is not a primitive: no `_` carrier"),
+                ));
+                continue;
+            }
+            let items = match items_of(value, repeats, &child_path) {
+                Ok(items) => items,
+                Err(gap) => {
+                    out.push(gap);
+                    continue;
                 }
-            } else {
-                datatype_gaps_in(x, child_ctx, &child_path, out);
+            };
+            for x in items {
+                match x {
+                    Value::Object(_) => {
+                        let paired = kvs.iter().any(|(k, _)| k.as_ref() == bare);
+                        structure_at(x, "Element", &child_path, contained, !paired, out)
+                    }
+                    Value::Null if repeats => {}
+                    other => out.push((
+                        child_path.clone(),
+                        Structure,
+                        alloc::format!(
+                            "{child_path}: a primitive's extension carrier is a JSON object, found {}",
+                            json_kind(other)
+                        ),
+                    )),
+                }
+            }
+            continue;
+        }
+        let items = match items_of(value, repeats, &child_path) {
+            Ok(items) => items,
+            Err(gap) => {
+                out.push(gap);
+                continue;
             }
         };
-        match value {
-            Value::Array(xs) => xs.iter().for_each(|x| each(x, out)),
-            x => each(x, out),
+        for x in items {
+            if ch.ty == "Resource" {
+                match resource_ctx(x) {
+                    Some(rt) if matches!(x, Value::Object(_)) => {
+                        structure_at(x, rt, &child_path, contained || bare == "contained", true, out)
+                    }
+                    _ => {
+                        out.push((child_path.clone(), Structure, alloc::format!("{child_path} is not a FHIR resource")))
+                    }
+                }
+            } else if is_primitive(ch.ty) {
+                if matches!(x, Value::Null) && repeats && has(&alloc::format!("_{bare}")) {
+                    continue; // a placeholder beside its carrier
+                }
+                let expected = expected_kind(ch.ty);
+                if json_kind(x) != expected {
+                    out.push((
+                        child_path.clone(),
+                        ValueIssue,
+                        alloc::format!("{child_path}: a {} is a JSON {expected}, found {}", ch.ty, json_kind(x)),
+                    ));
+                } else if !primitive_value_ok(ch.ty, x) {
+                    out.push((child_path.clone(), ValueIssue, alloc::format!("{child_path} is not a valid {}", ch.ty)));
+                }
+            } else {
+                match x {
+                    Value::Object(_) => structure_at(x, ch.ctx, &child_path, contained, true, out),
+                    other => out.push((
+                        child_path.clone(),
+                        ValueIssue,
+                        alloc::format!("{child_path}: a {} is a JSON object, found {}", ch.ty, json_kind(other)),
+                    )),
+                }
+            }
         }
     }
 }

@@ -130,6 +130,8 @@ UNPROFILED_OBSERVATION = {
 }
 
 HAND_WRITTEN = [
+    # not a FHIR resource type at all (F002)
+    ("not-a-resource", None, False, {"resourceType": "NotAResource"}),
     # No declared profile: the base resource applies (which we do not compile) — valid, and no profile claimed.
     ("observation-unprofiled", None, True, UNPROFILED_OBSERVATION),
     ("heartrate-valid", HR, True, HEARTRATE),
@@ -148,6 +150,10 @@ HAND_WRITTEN = [
 
 def drop(key):
     return lambda d: d.pop(key, None)
+
+
+def set_field(key, value):
+    return lambda d: d.__setitem__(key, value)
 
 
 def dangling_reference(d):
@@ -380,6 +386,17 @@ MUTATIONS = [
     ("Patient-ronny-irvine.json", "patient-ihi-15-digits", short_ihi, False),
     ("Patient-ronny-irvine.json", "patient-split-type-codings", split_type_codings, True),
     ("Patient-ronny-irvine.json", "patient-birthdate-accuracy-wrong-type", birthdate_accuracy_wrong_type, False),
+    # the base spec's shape rules (the reviewer's F001 probes): JSON kind, unknown
+    # element, array-ness, date format
+    ("Patient-ronny-irvine.json", "patient-active-not-boolean", set_field("active", "not-a-boolean"), False),
+    ("Patient-ronny-irvine.json", "patient-birthdate-number", set_field("birthDate", 123), False),
+    ("Patient-ronny-irvine.json", "patient-managingorganization-string", set_field("managingOrganization", "not-an-object"), False),
+    ("Patient-ronny-irvine.json", "patient-unknown-element", set_field("surpriseField", {"anything": "goes"}), False),
+    ("Patient-ronny-irvine.json", "patient-name-not-an-array", lambda d: d.__setitem__("name", d["name"][0]), False),
+    ("Patient-ronny-irvine.json", "patient-gender-array", set_field("gender", ["male"]), False),
+    ("Patient-ronny-irvine.json", "patient-birthdate-not-a-date", set_field("birthDate", "not-a-date"), False),
+    # an unresolvable declared profile is a warning for the reference validator, not an error
+    ("Patient-ronny-irvine.json", "patient-unknown-declared-profile", lambda d: d["meta"]["profile"].append("https://example.org/unsupported-profile"), True),
     ("Observation-heartrate-1.json", "heartrate-escaped-slashes", escaped_slashes, True),
     ("Observation-heartrate-1.json", "heartrate-no-value-no-dar", drop_value_keep_no_dar, False),
     ("Observation-heartrate-1.json", "heartrate-subject-wrong-type", subject_wrong_type, True),
@@ -409,6 +426,15 @@ def main():
 
     for pkg_id, pkg_ver, cache_dir in DEPS:
         ensure_package(pkg_id, pkg_ver, cache_dir)
+
+    # The probe lane: hand-written fixtures with expected verdicts, each with
+    # its reason, kept in conformance/probes/ (see fhir-pods-planning T009).
+    probes_dir = os.path.join(HERE, "probes")
+    probes_manifest = os.path.join(probes_dir, "manifest.json")
+    if os.path.exists(probes_manifest):
+        for p in json.load(open(probes_manifest)):
+            d = json.load(open(os.path.join(probes_dir, p["file"])))
+            emit("probe-" + p["file"][:-5], d, p.get("profile"), bool(p["expect"]), "probes")
 
     au_ig = f"{IGS[0][0]}#{IGS[0][1]}"
     for name, profile, expect, resource in HAND_WRITTEN:

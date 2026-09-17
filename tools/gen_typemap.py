@@ -52,8 +52,18 @@ def main():
             if e.get("contentReference"):
                 codes = ["#" + e["contentReference"].split("#")[-1]]
             else:
-                codes = [x["code"] for x in e.get("type", []) if x.get("code")]
-            codes = [c.rsplit("/", 1)[-1].replace("System.", "") for c in codes]  # fhirpath System.String → String
+                # a primitive's value element (and `Extension.url`, `Element.id`) is
+                # typed with a FHIRPath System type; the FHIR type rides on it
+                codes = []
+                for x in e.get("type", []):
+                    if not x.get("code"):
+                        continue
+                    fhir_type = next(
+                        (ext.get("valueUrl") for ext in x.get("extension", [])
+                         if ext.get("url") == "http://hl7.org/fhir/StructureDefinition/structuredefinition-fhir-type"),
+                        None,
+                    )
+                    codes.append(fhir_type or x["code"].rsplit("/", 1)[-1].replace("System.", ""))
             if not codes:
                 continue
             # a backbone / inline element is its own typing context: keep its

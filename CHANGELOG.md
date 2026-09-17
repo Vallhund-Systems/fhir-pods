@@ -1,5 +1,57 @@
 # Changelog
 
+## 0.5.1 — 2026-09-16
+
+The first review's findings (planning repository F001–F004), all taken.
+
+**Verifier**
+- **The base spec's shape rules, profile or no profile** (F001): an
+  element the type does not define, a primitive of the wrong JSON kind for
+  its FHIR type, a repeating element that is not an array (or a single one
+  that is), a complex element that is not an object, a `date` / `dateTime`
+  / `instant` / `time` that does not parse as its type demands, a
+  contained or entry resource that is not one — all errors, from a typed
+  walk over the element-type table (`Parsed::structure_gaps`). Before,
+  `active: "not-a-boolean"`, `birthDate: 123` and an unknown element all
+  validated clean against AU Core Patient. Also from the base spec, profile
+  or no profile: `ele-1` (an element has a value or children), `ext-1` (an
+  extension has a value or nested extensions, not both), `dom-2` / `dom-4`
+  / `dom-5` on contained resources, no empty arrays or empty strings,
+  32-bit integers, real calendar dates. Nine corpus probes of our own and
+  the reviewer's first twenty-seven (`conformance/probes/`) all agree with
+  the reference validator; four of theirs found the last of those gaps.
+- **Coverage is never silent** (F002): a `resourceType` the base spec does
+  not define is an error, and a declared profile the registry has not
+  compiled is a warning naming it (`not-supported`) — the reference
+  validator's severity for a profile it cannot resolve, and a probe holds
+  both sides to it. A resource with no declared profile is held to the
+  shape rules above and claims nothing else. Report shape unchanged.
+- A bare `time` (`08:00:00`) parses: the temporal parser took a leading
+  digit for a date, so every `Timing.repeat.timeOfDay` in the corpus was
+  invalid the moment the walk checked times.
+- Dependency packages now also contribute the resource profiles a compiled
+  profile derives from (AU Base's `au-patient`, `au-diagnosticresult`…),
+  so an example that declares the base alongside the derived profile is
+  checked against both, as the reference does. Registry: 226 profiles.
+
+`.wasm`: 982 KB (249 KB gzipped). Timing unchanged within noise (40 µs
+Patient, 66 µs heart rate native).
+
+**Conformance harness** (F003): a fixture the oracle returned nothing for
+is a failure, not agreement; the oracle's previous output is removed before
+it runs and a run with no output is reported with its stderr; the validator
+jar is pinned (6.10.4) and named in the summary, which now states how many
+fixtures were actually compared. A probe lane: hand-written fixtures in
+`conformance/probes/` with a manifest carrying each one's expected verdict
+and reason are scored like every other fixture.
+
+**Documentation** (F004, T004): the README leads with what the library is —
+an application speaking FHIR at its edges: verify, build, de-identify,
+assemble — rather than the verifier alone; `docs/architecture.md`'s
+performance section separates what is measured, what is implemented and
+what is a target. `docs/scope.md` states the shape rules and the coverage
+semantics.
+
 ## 0.5.0 — 2026-09-16
 
 **Documents.** ABI 7: `fhir_pods_document(kind, inputs)`; wasm

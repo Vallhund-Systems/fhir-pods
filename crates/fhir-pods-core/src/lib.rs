@@ -108,17 +108,43 @@ fn validate_bytes_impl(
             return Validation { resource_type: "Unknown".into(), profile: None, profiles: Vec::new(), report };
         }
     };
+    let mut report = Report::default();
+    // A resource type the base spec does not define cannot be checked at
+    // all — and is not a FHIR resource.
+    if typing::known_type(rt).filter(|t| typemap::RESOURCES.binary_search(t).is_ok()).is_none() {
+        report.push(
+            Severity::Error,
+            IssueType::Structure,
+            "resourceType",
+            format!("'{rt}' is not a FHIR R4 resource type"),
+        );
+        return Validation { resource_type: rt.into(), profile: None, profiles: Vec::new(), report };
+    }
+    // The base spec's shape rules, profile or no profile: what every element
+    // is, its JSON kind, whether it repeats, what a datatype requires.
+    for (path, kind, message) in parsed.structure_gaps() {
+        report.push(Severity::Error, kind, &path, message);
+    }
+    // A declared profile the registry has not compiled is a claim the
+    // verifier cannot check — said so, as a warning naming it (the reference
+    // validator's severity for a profile it cannot resolve), never silence.
+    for url in doc.scalars("$this.meta.profile") {
+        let base = url.split('|').next().unwrap_or(url);
+        if !generated::REGISTRY.iter().any(|p| p.url == base) {
+            report.push(
+                Severity::Warning,
+                IssueType::NotSupported,
+                "meta.profile",
+                format!("declared profile '{url}' is not compiled here, so it was not checked"),
+            );
+        }
+    }
     // No declared profile we have compiled (and no default configured on the
-    // validator): the spec says the base resource applies, and we compile no
-    // base resources — so there is nothing to check and nothing to claim.
+    // validator): the base resource applies, and the walk above is what the
+    // base says — nothing more is claimed.
     let profiles = select_profiles(rt, &doc, cache.map(|v| v.defaults.as_slice()).unwrap_or(&[]));
     if profiles.is_empty() {
-        return Validation { resource_type: rt.into(), profile: None, profiles: Vec::new(), report: Report::default() };
-    }
-    let mut report = Report::default();
-    // the base spec's minimums inside datatypes, which no profile restates
-    for (path, what) in parsed.datatype_gaps() {
-        report.push(Severity::Error, IssueType::Required, &path, format!("{what} is required (min 1, found 0)"));
+        return Validation { resource_type: rt.into(), profile: None, profiles: Vec::new(), report };
     }
     let bundle = (rt == "Bundle").then_some(&doc);
     if let Some(b) = bundle {

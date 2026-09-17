@@ -34,7 +34,8 @@ fn resource_type_must_be_a_string() {
 
 #[test]
 fn tricky_string_does_not_end_object_early() {
-    let r = probe_str(&PATIENT_OK.replace("\"gender\"", "\"note\":\"a } \\\" tricky\",\"gender\""));
+    // a real string element (Patient has no `note`; an unknown element is now an error)
+    let r = probe_str(&PATIENT_OK.replace("\"family\":\"Doe\"", "\"family\":\"a } \\\" tricky\""));
     assert!(r.contains("\"valid\":true"), "{r}");
 }
 

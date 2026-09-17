@@ -184,18 +184,29 @@ plumbing — yes, and that is the elegant answer.
 ## Performance — almost free, shaped right
 
 Structural validation should be effectively free, and that is a design
-constraint, not a hope. A FHIR resource is a few KB; validating it against a
-*compiled* profile is straight-line branch code over an in-memory buffer. The
-target envelope:
+constraint, not a hope. A FHIR resource is a few KB. Three things are true
+at once here, and they are kept apart:
 
-- **Single pass, validate-on-parse.** Never materialize a DOM and walk it
-  twice — validate while parsing (SAX-style / a validating parser). One pass.
-- **No allocation in the hot path.** Borrow the input; emit issues into a small
-  reusable buffer. Steady state is zero heap churn.
-- **Compiled verifier.** Constraints are generated straight-line code (see
-  codegen above), not a runtime tree-walk over StructureDefinition JSON.
-- **Footprint in the noise.** Tens-of-KB binary, KB working set — a rounding
-  error beside an on-device model's hundreds of MB.
+**Measured (v0.5.0, release build, Apple M-series; the README carries the
+current numbers):** 37 µs for a profiled Patient, 66 µs for an AU Core
+heart rate, about 80 µs in wasm under Node; the `.wasm` is 951 KB
+(242 KB gzipped). The conformance corpus the numbers come from is
+reproducible from `conformance/run.py`.
+
+**Current implementation:** profiles are compiled into `'static` constraint
+tables (cardinality, fixed values, patterns, bindings, slicings, invariants,
+lowering slots) that a *generic* engine walks; the JSON is parsed into an
+allocated value tree with borrowed strings, typed as it is reached from the
+element-type table; FHIRPath invariants are parsed once per process and
+evaluated per resource. Nothing is interpreted from StructureDefinitions at
+run time and nothing is fetched. It is a compiled-data design, not
+generated straight-line code.
+
+**Targets, not yet built:** validate-on-parse in one pass without a
+materialised tree; no allocation in the hot path (borrow the input, emit
+issues into a reusable buffer); constraints lowered to straight-line code
+per profile. Each is a measured win to chase when the numbers above stop
+being in the noise for a host — none is claimed now.
 
 Two places "free" quietly ends, designed against from the start:
 
@@ -206,9 +217,10 @@ Two places "free" quietly ends, designed against from the start:
    non-trivial lookup. **Compile ValueSets into perfect-hash / FST tables at
    build time** so the check stays O(1); never ship an interpreted set scan.
 
-Net: structural validation free, boundary zero-copy, terminology compiled.
-Measured, not asserted: tens of microseconds per profiled resource on every
-delivery target (see the README).
+Net: structural validation cheap, boundary zero-copy where the platform
+allows it (the wasm and Expo pods copy the JSON once each way today),
+terminology compiled. Measured, not asserted — and the measurement, the
+implementation and the target are three different sentences.
 
 ## Non-goals
 

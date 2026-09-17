@@ -21,7 +21,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HERE = os.path.join(ROOT, "conformance")
 CORPUS = os.path.join(HERE, "corpus")
 JAR = os.path.join(HERE, "validator_cli.jar")
-JAR_URL = "https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar"
+# Pinned: the oracle is part of the evidence, so its version is part of the record.
+JAR_VERSION = "6.10.4"
+JAR_URL = f"https://github.com/hapifhir/org.hl7.fhir.core/releases/download/{JAR_VERSION}/validator_cli.jar"
 IGS = ["hl7.fhir.au.core#2.0.0", "hl7.fhir.us.core#6.1.0", "hl7.fhir.uv.ipa#1.1.0", "hl7.fhir.uv.ips#2.0.1", "hl7.fhir.au.ps#1.0.0"]  # keep in step with make_corpus.IGS
 FILE_EXT = "operationoutcome-file"
 
@@ -86,7 +88,9 @@ def oracle_batch(paths):
     """One JVM for the whole corpus, terminology disabled (-tx n/a) — our same
     offline posture. Returns {file basename: (verdict, detail, error_paths)}."""
     out = os.path.join(CORPUS, "_oracle.bundle.json")
-    subprocess.run(
+    if os.path.exists(out):
+        os.remove(out)  # never read a previous run's evidence
+    proc = subprocess.run(
         [JAVA, "-jar", JAR, *paths, "-version", "4.0", *[a for ig in IGS for a in ("-ig", ig)], "-tx", "n/a",
          # A CLI policy lint, not conformance: published IG examples use example.org
          # URLs and are valid by publication. Off, so the oracle scores profiles only.
@@ -97,6 +101,8 @@ def oracle_batch(paths):
     try:
         b = json.load(open(out))
     except (OSError, ValueError):
+        # the validator exits non-zero when any resource is invalid; no output at all is a failed run
+        print(f"!! the oracle produced no output (exit {proc.returncode}):\n{proc.stderr[-2000:]}", file=sys.stderr)
         return results
     if b.get("resourceType") == "Bundle":
         entries = [e.get("resource", {}) for e in b.get("entry", [])]
@@ -161,8 +167,8 @@ def main():
             oracle_errors += 1
         elif have_java and ov != rv:
             status = "OURS!=ORACLE"
-        if status in ("OURS!=EXPECT", "OURS!=ORACLE"):
-            failures += 1
+        if status in ("OURS!=EXPECT", "OURS!=ORACLE", "ORACLE-ERR"):
+            failures += 1  # missing oracle evidence is not agreement
         print(f"{c['file']:<58} {expect:<8} {ov:<8} {rv:<8} {status}")
         if status != "ok":
             for d in detail[:6]:
@@ -174,9 +180,10 @@ def main():
 
     n = len(manifest)
     tail = "" if have_java else " (ours vs expectation only; run with Java for the oracle)"
-    print(f"\n{n - failures}/{n} agree{tail}")
+    compared = n - oracle_errors
+    print(f"\n{n - failures}/{n} agree{tail} — {compared} compared with the oracle (validator_cli {JAR_VERSION})")
     if oracle_errors:
-        print(f"{oracle_errors} fixture(s) got no OperationOutcome from the oracle")
+        print(f"{oracle_errors} fixture(s) got no OperationOutcome from the oracle — counted as failures")
     sys.exit(1 if failures else 0)
 
 

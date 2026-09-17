@@ -73,19 +73,22 @@ def main():
             sd = json.load(open(path))
             if is_profile(sd) and (sd.get("kind") == "resource" or datatype_profile(sd)):
                 targets.append(sd)
+    # what the primaries reference (a slice's datatype profile) or derive from
+    # (their baseDefinition chain — an example may declare the base too)
     referenced, stack = set(), list(targets)
     while stack:
-        for e in (stack.pop().get("snapshot") or {}).get("element", []):
-            for t in e.get("type", []):
-                for url in t.get("profile", []):
-                    url = url.split("|")[0]
-                    if url not in referenced and load(url):
-                        referenced.add(url)
-                        stack.append(load(url))
+        sd = stack.pop()
+        urls = [sd["baseDefinition"].split("|")[0]] if sd.get("baseDefinition") else []
+        for e in (sd.get("snapshot") or {}).get("element", []):
+            urls += [u.split("|")[0] for t in e.get("type", []) for u in t.get("profile", [])]
+        for url in urls:
+            if url not in referenced and load(url):
+                referenced.add(url)
+                stack.append(load(url))
     for pkg in pkg_dirs[primaries:]:
         for path in sorted(glob.glob(os.path.join(pkg, "StructureDefinition-*.json"))):
             sd = json.load(open(path))
-            if is_profile(sd) and datatype_profile(sd) and sd.get("url") in referenced:
+            if is_profile(sd) and sd.get("url") in referenced and (datatype_profile(sd) or sd.get("kind") == "resource"):
                 targets.append(sd)
 
     # The base spec's vital-sign profiles: the reference validator applies
