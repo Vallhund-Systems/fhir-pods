@@ -1,5 +1,53 @@
 # Changelog
 
+## 0.6.0 — 2026-09-16
+
+**Audit and provenance.** ABI 8: `fhir_pods_audit(kind, inputs)` (+ `_tx`);
+wasm `audit(kind, inputs)`, Expo `audit(kind, inputs)`; core
+`Validator::audit` / `audit::{audit, Kind}`.
+
+- **IG #6: IHE Basic Audit Log Patterns (BALP) 1.1.4** — its 19 `AuditEvent`
+  profiles and 2 extensions compiled; its 45 published examples in the
+  corpus, each re-lowered from its slot values and de-identified as every
+  other example is. And the base spec's own **`AuditEvent` and
+  `Provenance`** definitions compiled as profiles (every element an input),
+  so a host lowers and declares them directly. Registry: 259 profiles; 72
+  bundled value sets.
+- **`audit(kind, inputs)`** for the ten BALP basic events — `read`, `query`,
+  `create`, `update`, `delete`, each with or without a known patient
+  (`patient-read`…) — from host-shaped inputs: `recorded`, `client` and
+  `server` (`who`, `network`), an optional `user`, `source`, `data` or
+  `query`, `patient`, and `transaction` (the request id, the correlation
+  with the trace — BALP's `X-Request-Id` entity). The profile supplies the
+  event type, subtype, action, outcome and the agents' types; a network
+  address is classified for its `network.type` (IP, URI, email, machine
+  name — or given as `{address, type}`); a query is base64-encoded. What the
+  profile leaves open and the host does not say takes the pattern's own
+  guidance, overridably: the user's participation type on a
+  create / update / delete is `author`, the data entity's role is
+  `Domain Resource`. A required input left out, or one out of place, is an
+  error before anything is built. The basic profiles record successful
+  events; a failed action is an `AuditEvent` lowered from the base
+  definition.
+- **The lowering engine grew** for it: a fixed leaf behind an optional gate
+  (`action` patterned but 0..1) is reachable by giving it, and must agree; a
+  fixed value lands with its type's JSON kind (a boolean, a number), not as
+  text; a sliced container asking for more instances than its required
+  slices supply (`entity` 2..* with one `patient` slice) keeps its plain
+  input; a fixed leaf under one slice no longer hides the same-named leaf
+  under a sibling slice (`entity:patient.role` vs `entity:data.role`); a base
+  definition exposes every element as a slot.
+- **Verifier: boolean patterns are enforced.** `patternBoolean` was dropped
+  by the generator, so BALP's `agent:user.requestor = true` — and any other
+  fixed boolean — was never checked. Three probes on a published example
+  (false, missing, true) hold both sides to it.
+
+Oracle: **1187/1187** (1160 with BALP's examples, their lowered and
+de-identified copies and the three probes, plus the 22 records of the
+audit proof: every kind with and without a user, a `Provenance`, a failed
+read). Tests: 113. `.wasm`: 1.1 MB (272 KB gzipped). Timing unchanged
+against 0.5.2 back to back (81 / 78 / 152 µs).
+
 ## 0.5.2 — 2026-09-16
 
 The second review's findings (planning repository F008–F017, with F003

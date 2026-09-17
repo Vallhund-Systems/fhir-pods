@@ -103,6 +103,25 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
         ],
     ),
     (
+        "http://hl7.org/fhir/ValueSet/audit-event-action",
+        &[
+            ("http://hl7.org/fhir/audit-event-action", "C", "Create"),
+            ("http://hl7.org/fhir/audit-event-action", "D", "Delete"),
+            ("http://hl7.org/fhir/audit-event-action", "E", "Execute"),
+            ("http://hl7.org/fhir/audit-event-action", "R", "Read/View/Print"),
+            ("http://hl7.org/fhir/audit-event-action", "U", "Update"),
+        ],
+    ),
+    (
+        "http://hl7.org/fhir/ValueSet/audit-event-outcome",
+        &[
+            ("http://hl7.org/fhir/audit-event-outcome", "0", "Success"),
+            ("http://hl7.org/fhir/audit-event-outcome", "12", "Major failure"),
+            ("http://hl7.org/fhir/audit-event-outcome", "4", "Minor failure"),
+            ("http://hl7.org/fhir/audit-event-outcome", "8", "Serious failure"),
+        ],
+    ),
+    (
         "http://hl7.org/fhir/ValueSet/bundle-type",
         &[
             ("http://hl7.org/fhir/bundle-type", "batch", "Batch"),
@@ -501,6 +520,16 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
         ],
     ),
     (
+        "http://hl7.org/fhir/ValueSet/network-type",
+        &[
+            ("http://hl7.org/fhir/network-type", "1", "Machine Name"),
+            ("http://hl7.org/fhir/network-type", "2", "IP Address"),
+            ("http://hl7.org/fhir/network-type", "3", "Telephone Number"),
+            ("http://hl7.org/fhir/network-type", "4", "Email address"),
+            ("http://hl7.org/fhir/network-type", "5", "URI"),
+        ],
+    ),
+    (
         "http://hl7.org/fhir/ValueSet/observation-status",
         &[
             ("http://hl7.org/fhir/observation-status", "amended", "Amended"),
@@ -737,11 +766,52 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
             ("http://terminology.hl7.org/CodeSystem/v3-Confidentiality", "V", "very restricted"),
         ],
     ),
+    (
+        "https://profiles.ihe.net/ITI/BALP/ValueSet/AuthZsubTypeVS",
+        &[
+            (
+                "https://profiles.ihe.net/ITI/BALP/CodeSystem/AuthZsubType",
+                "AuthZ-Consent",
+                "Authorization Decision using Roles and Consent",
+            ),
+            (
+                "https://profiles.ihe.net/ITI/BALP/CodeSystem/AuthZsubType",
+                "AuthZ-Role",
+                "Authorization Decision using only Roles",
+            ),
+        ],
+    ),
+    (
+        "https://profiles.ihe.net/ITI/BALP/ValueSet/OtherIdentifierTypesVS",
+        &[
+            ("http://terminology.hl7.org/CodeSystem/v2-0203", "NPI", "National provider identifier"),
+            ("http://terminology.hl7.org/CodeSystem/v2-0203", "PRN", "Provider number"),
+            ("https://profiles.ihe.net/ITI/BALP/CodeSystem/OtherIdentifierTypes", "SAML-subject-id", "SAML subject-id"),
+        ],
+    ),
+    (
+        "https://profiles.ihe.net/ITI/BALP/ValueSet/RestObjectRoles",
+        &[
+            ("http://terminology.hl7.org/CodeSystem/object-role", "20", "Job"),
+            ("http://terminology.hl7.org/CodeSystem/object-role", "3", "Report"),
+            ("http://terminology.hl7.org/CodeSystem/object-role", "4", "Domain Resource"),
+        ],
+    ),
 ];
 
 /// Displays for the codings the registry fixes, from the packages' code
 /// systems: sorted (system, code, display).
 pub static DISPLAYS: &[(&str, &str, &str)] = &[
+    ("http://dicom.nema.org/resources/ontology/DCM", "110106", "Export"),
+    ("http://dicom.nema.org/resources/ontology/DCM", "110107", "Import"),
+    ("http://dicom.nema.org/resources/ontology/DCM", "110113", "Security Alert"),
+    ("http://dicom.nema.org/resources/ontology/DCM", "110114", "User Authentication"),
+    ("http://dicom.nema.org/resources/ontology/DCM", "110150", "Application"),
+    ("http://dicom.nema.org/resources/ontology/DCM", "110152", "Destination Role ID"),
+    ("http://dicom.nema.org/resources/ontology/DCM", "110153", "Source Role ID"),
+    ("http://hl7.org/fhir/resource-types", "Consent", "Consent"),
+    ("http://hl7.org/fhir/restful-interaction", "create", "create"),
+    ("http://hl7.org/fhir/restful-interaction", "delete", "delete"),
     ("http://hl7.org/fhir/us/core/CodeSystem/careplan-category", "assess-plan", "Assessment and Plan of Treatment"),
     ("http://hl7.org/fhir/us/core/CodeSystem/us-core-provenance-participant-type", "transmitter", "Transmitter"),
     (
@@ -765,16 +835,25 @@ pub static DISPLAYS: &[(&str, &str, &str)] = &[
     ("http://terminology.hl7.org.au/CodeSystem/v2-0203", "RACSI", "Residential Aged Care Service Identifier"),
     ("http://terminology.hl7.org.au/CodeSystem/v2-0203", "SEN", "Commonwealth Seniors Health Card"),
     ("http://terminology.hl7.org.au/CodeSystem/v2-0203", "UPIN", "Medicare Provider Number"),
+    ("http://terminology.hl7.org/CodeSystem/audit-entity-type", "1", "Person"),
+    ("http://terminology.hl7.org/CodeSystem/audit-entity-type", "2", "System Object"),
+    ("http://terminology.hl7.org/CodeSystem/audit-event-type", "rest", "RESTful Operation"),
     ("http://terminology.hl7.org/CodeSystem/condition-category", "encounter-diagnosis", "Encounter Diagnosis"),
     ("http://terminology.hl7.org/CodeSystem/condition-category", "problem-list-item", "Problem List Item"),
     ("http://terminology.hl7.org/CodeSystem/coverage-class", "group", "Group"),
     ("http://terminology.hl7.org/CodeSystem/coverage-class", "plan", "Plan"),
+    ("http://terminology.hl7.org/CodeSystem/extra-security-role-type", "authserver", "authorization server"),
+    ("http://terminology.hl7.org/CodeSystem/iso-21089-lifecycle", "disclose", "Disclose Record Lifecycle Event"),
+    ("http://terminology.hl7.org/CodeSystem/object-role", "1", "Patient"),
+    ("http://terminology.hl7.org/CodeSystem/object-role", "13", "Security Resource"),
+    ("http://terminology.hl7.org/CodeSystem/object-role", "24", "Query"),
     ("http://terminology.hl7.org/CodeSystem/observation-category", "imaging", "Imaging"),
     ("http://terminology.hl7.org/CodeSystem/observation-category", "laboratory", "Laboratory"),
     ("http://terminology.hl7.org/CodeSystem/observation-category", "social-history", "Social History"),
     ("http://terminology.hl7.org/CodeSystem/observation-category", "survey", "Survey"),
     ("http://terminology.hl7.org/CodeSystem/observation-category", "vital-signs", "Vital Signs"),
     ("http://terminology.hl7.org/CodeSystem/provenance-participant-type", "author", "Author"),
+    ("http://terminology.hl7.org/CodeSystem/provenance-participant-type", "custodian", "Custodian"),
     ("http://terminology.hl7.org/CodeSystem/v2-0074", "LAB", "Laboratory"),
     ("http://terminology.hl7.org/CodeSystem/v2-0203", "EI", "Employee number"),
     ("http://terminology.hl7.org/CodeSystem/v2-0203", "HC", "Health Card Number"),
@@ -785,7 +864,19 @@ pub static DISPLAYS: &[(&str, &str, &str)] = &[
     ("http://terminology.hl7.org/CodeSystem/v2-0203", "NPI", "National provider identifier"),
     ("http://terminology.hl7.org/CodeSystem/v2-0203", "PEN", "Pension Number"),
     ("http://terminology.hl7.org/CodeSystem/v2-0203", "PI", "Patient internal identifier"),
+    ("http://terminology.hl7.org/CodeSystem/v2-0203", "PRN", "Provider number"),
     ("http://terminology.hl7.org/CodeSystem/v2-0443", "AP", "Administering Provider"),
     ("http://terminology.hl7.org/CodeSystem/v2-0443", "OP", "Ordering Provider"),
     ("http://terminology.hl7.org/CodeSystem/v3-ActClass", "PCPR", "care provision"),
+    ("http://terminology.hl7.org/CodeSystem/v3-ParticipationType", "IRCP", "information recipient"),
+    ("http://terminology.hl7.org/CodeSystem/v3-RoleClass", "PROV", "healthcare provider"),
+    (
+        "https://profiles.ihe.net/ITI/BALP/CodeSystem/BasicAuditEntityType",
+        "XrequestId",
+        "transport specific unique identifier where http X-Request-Id is used",
+    ),
+    ("https://profiles.ihe.net/ITI/BALP/CodeSystem/OtherIdentifierTypes", "SAML-subject-id", "SAML subject-id"),
+    ("https://profiles.ihe.net/ITI/BALP/CodeSystem/UserAgentTypes", "AuthzOauthService", "OAuth Authorization Server"),
+    ("https://profiles.ihe.net/ITI/BALP/CodeSystem/UserAgentTypes", "UserOauthAgent", "User OAuth Agent participant"),
+    ("https://profiles.ihe.net/ITI/BALP/CodeSystem/UserAgentTypes", "UserSamlAgent", "User SAML Agent participant"),
 ];

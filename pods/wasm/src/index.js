@@ -3,7 +3,7 @@
 // WebAssembly does (browser, edge runtimes, Node, Bun, Deno).
 
 /** The ABI this wrapper speaks; a module reporting anything else is refused. */
-export const ABI_VERSION = 7;
+export const ABI_VERSION = 8;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -76,6 +76,7 @@ export async function instantiate(source, options = {}) {
   const validate = terminology ? ex.fhir_pods_validate_host_tx : ex.fhir_pods_validate;
   const outcome = terminology ? ex.fhir_pods_operation_outcome_host_tx : ex.fhir_pods_operation_outcome;
   const lowerEntry = terminology ? ex.fhir_pods_lower_host_tx : ex.fhir_pods_lower;
+  const auditEntry = terminology ? ex.fhir_pods_audit_host_tx : ex.fhir_pods_audit;
 
   return {
     abiVersion: abi,
@@ -95,6 +96,13 @@ export async function instantiate(source, options = {}) {
     // Documents: an IPS / AU Patient Summary bundle from a patient and their resources.
     document: (kind, inputs) => {
       const out = JSON.parse(call(ex.fhir_pods_document, kind, typeof inputs === "string" ? inputs : JSON.stringify(inputs)));
+      if (out.error) throw new Error(`fhir-pods: ${out.error}`);
+      return out;
+    },
+    // Audit: an IHE BALP AuditEvent for a read / query / create / update /
+    // delete (with or without a patient) from host-shaped inputs.
+    audit: (kind, inputs) => {
+      const out = JSON.parse(call(auditEntry, kind, typeof inputs === "string" ? inputs : JSON.stringify(inputs)));
       if (out.error) throw new Error(`fhir-pods: ${out.error}`);
       return out;
     },

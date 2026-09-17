@@ -182,6 +182,7 @@ fn main() {
             || name.ends_with("manifest.json")
             || name.starts_with("lowered-")
             || name.starts_with("deid-")
+            || name.starts_with("audit-")
         {
             continue;
         }
@@ -289,6 +290,9 @@ fn main() {
             inputs.push(']');
         }
         inputs.push('}');
+        if std::env::var_os("FHIR_PODS_TRACE").is_some() {
+            eprintln!("{name} inputs: {inputs}");
+        }
         let lowered = validator.lower(profile.url, inputs.as_bytes()).expect("lowerable");
         n += 1;
         let ok = lowered.validation.is_valid();

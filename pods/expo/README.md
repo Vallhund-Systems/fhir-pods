@@ -90,6 +90,36 @@ entries, resources nothing reaches left out (`omitted`), required sections
 with nothing in them marked `emptyReason: unavailable`, and the Bundle
 validated on the way out (`validation`).
 
+## Audit
+
+```ts
+import { audit } from "fhir-pods-expo";
+const { resource, validation } = audit("patient-read", {
+  recorded: new Date().toISOString(),
+  client: { who: "Device/app-7", network: "10.0.0.7" },
+  server: { who: { display: "fhir.example.org" }, network: "https://fhir.example.org/r4" },
+  user: { who: "Practitioner/gp1", name: "Dr Who" },
+  source: { observer: "Device/audit-collector", site: "clinic-1" },
+  patient: "Patient/p1",
+  data: "Observation/hr1",
+  transaction: requestId, // X-Request-Id: the correlation with the trace
+});
+```
+
+`read`, `query`, `create`, `update`, `delete`, each with or without a known
+patient (`patient-read`…): an `AuditEvent` conformant to the IHE Basic Audit
+Log Patterns profile for that kind. The profile supplies the event type,
+subtype, action, outcome and the agents' types; a network address is
+classified for its type (or given as `{address, type}`); a `who` is a
+reference (`Type/id`) or a display name; a query (`query: "GET …"`) is
+base64-encoded. The user's participation on a create / update / delete is
+`author` and the data entity's role `Domain Resource` unless given
+(`user.type`, `data: {what, role}`). A required input left out, or one out
+of place, throws before anything is built; `validation` is the verdict. A
+failed action is not a BALP basic event — lower it from the base
+`AuditEvent` definition (`lower("http://hl7.org/fhir/StructureDefinition/AuditEvent", …)`),
+as `Provenance` is.
+
 ## De-identification
 
 ```ts

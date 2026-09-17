@@ -26,6 +26,9 @@ BASE_VITALS = {
     "vitalsigns", "bp", "bodyheight", "bodyweight", "bodytemp", "bmi", "headcircum", "heartrate",
     "oxygensat", "resprate", "vitalspanel",
 }
+# The base spec's own resource definitions compiled as profiles, so a host can
+# lower (and declare) them directly: the audit surface.
+BASE_RESOURCES = {"AuditEvent", "Provenance"}
 
 
 def main():
@@ -102,6 +105,8 @@ def main():
             if sd.get("id") in BASE_VITALS and (sd.get("snapshot") or {}).get("element"):
                 targets.append(sd)
                 implied.append(sd["id"].replace("-", "_").replace(".", "_").lower())
+            elif sd.get("id") in BASE_RESOURCES and (sd.get("snapshot") or {}).get("element"):
+                targets.append(sd)
 
     mods = []
     for sd in targets:

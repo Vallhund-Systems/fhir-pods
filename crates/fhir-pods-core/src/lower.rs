@@ -92,6 +92,12 @@ fn find_slot<'p>(profile: &'p CompiledProfile, key: &'p str) -> Option<Target<'p
             }
         }
     }
+    // a fixed leaf the profile gates behind an optional element (`action`
+    // patterned but 0..1): giving it is how a host reaches the gate — the
+    // value must then agree, which step 2 checks
+    if profile.lowering.fixed.iter().any(|(p, _)| *p == key) {
+        return leaf_type(profile.resource_type, key).map(|ty| Target { key, ty });
+    }
     None
 }
 
@@ -141,6 +147,38 @@ fn base_repeats(resource_type: &'static str, path: &str) -> bool {
 
 fn unlabelled(seg: &str) -> &str {
     seg.split(':').next().unwrap_or(seg)
+}
+
+/// The FHIR type of the element at labelled `path`, per the base spec.
+fn leaf_type(resource_type: &'static str, path: &str) -> Option<&'static str> {
+    let mut ctx: &'static str = resource_type;
+    let mut ty = None;
+    for seg in path.split('.') {
+        let ch = crate::typing::child(ctx, unlabelled(seg))?;
+        ctx = ch.ctx;
+        ty = Some(ch.ty);
+    }
+    ty
+}
+
+/// A fixed leaf's value as the JSON kind its type has: the generator keeps
+/// every fixed value as text (`"true"`, `"4"`), the wire does not.
+fn fixed_node(ty: Option<&str>, value: &str) -> Node {
+    match ty {
+        Some("boolean") => Node::Bool(value == "true"),
+        Some("integer" | "positiveInt" | "unsignedInt" | "decimal") => Node::Number(value.into()),
+        _ => Node::Str(value.into()),
+    }
+}
+
+/// Does a node carry a fixed value (as text)?
+fn agrees(node: &Node, value: &str) -> bool {
+    match node {
+        Node::Str(s) => s == value,
+        Node::Bool(b) => (*b && value == "true") || (!*b && value == "false"),
+        Node::Number(n) => n == value,
+        _ => false,
+    }
 }
 
 /// Walk / create the node at a labelled path. Repeating elements become
@@ -479,7 +517,7 @@ pub fn lower_with(
             if parent.is_empty() { &mut root } else { place(&mut root, parent, profile.resource_type, &mut instances) };
         let leaf_name = unlabelled(leaf);
         match holder.member_mut(leaf_name) {
-            Some(Node::Str(existing)) if existing == value => {}
+            Some(existing) if agrees(existing, value) => {}
             Some(existing) => {
                 let mut text = String::new();
                 existing.write(&mut text);
@@ -492,7 +530,7 @@ pub fn lower_with(
             }
             None => {
                 if let Node::Object(kvs) = holder {
-                    kvs.push((leaf_name.into(), Node::Str((*value).into())));
+                    kvs.push((leaf_name.into(), fixed_node(leaf_type(profile.resource_type, path), value)));
                 }
                 // a fixed coding (`….coding.code`, `….coding:label.code`) may
                 // carry the display the seam knows

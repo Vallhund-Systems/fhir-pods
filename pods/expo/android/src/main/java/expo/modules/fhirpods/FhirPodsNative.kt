@@ -42,6 +42,9 @@ internal object FhirPodsNative {
   /** {"document","placed","validation"} — an assembled patient summary, or {"error"}. */
   external fun document(kind: ByteArray, inputs: ByteArray): ByteArray
 
+  /** {"resource","validation"} — an IHE BALP AuditEvent for a kind of event, or {"error"}. */
+  external fun audit(kind: ByteArray, inputs: ByteArray, terminology: FhirPodsTerminology?): ByteArray
+
   /** {"resource","applied","validation","remaining"} — the de-identified copy, or {"error"}. */
   external fun deidentify(resource: ByteArray, policy: ByteArray): ByteArray
 

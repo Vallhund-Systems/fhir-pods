@@ -35,12 +35,14 @@ HR, PT = AU + "au-core-heartrate", AU + "au-core-patient"
 IPA = "http://hl7.org/fhir/uv/ipa/StructureDefinition/"
 IPS = "http://hl7.org/fhir/uv/ips/StructureDefinition/"
 AUPS = "http://hl7.org.au/fhir/ps/StructureDefinition/"
+BALP = "https://profiles.ihe.net/ITI/BALP/StructureDefinition/"
 IGS = [
     ("hl7.fhir.au.core", "2.0.0", AU, "package", "example-"),
     ("hl7.fhir.us.core", "6.1.0", US, "package-us", "us-"),
     ("hl7.fhir.uv.ipa", "1.1.0", IPA, "package-ipa", "ipa-"),
     ("hl7.fhir.uv.ips", "2.0.1", IPS, "package-ips", "ips-"),
     ("hl7.fhir.au.ps", "1.0.0", AUPS, "package-au-ps", "aups-"),
+    ("ihe.iti.balp", "1.1.4", BALP, "package-balp", "balp-"),
 ]
 
 # Dependency packages whose datatype profiles slices inherit (no examples
@@ -130,6 +132,16 @@ UNPROFILED_OBSERVATION = {
 }
 
 AU_PATIENT = "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"
+
+def user_agent(d):
+    return next(a for a in d["agent"] if any(c.get("code") == "IRCP" for c in a.get("type", {}).get("coding", [])))
+
+
+BALP_MUTATIONS = [
+    ("AuditEvent-ex-auditBasicReadClient.json", "balp-user-requestor-false", lambda d: user_agent(d).__setitem__("requestor", False), False),
+    ("AuditEvent-ex-auditBasicReadClient.json", "balp-user-requestor-missing", lambda d: user_agent(d).pop("requestor"), False),
+    ("AuditEvent-ex-auditBasicReadClient.json", "balp-user-requestor-true", lambda d: user_agent(d).__setitem__("requestor", True), True),
+]
 
 HAND_WRITTEN = [
     # not a FHIR resource type at all (F002)
@@ -497,7 +509,7 @@ def main():
         "ips-Bundle-bundle-ips-all-sections",
         "aups-Bundle-aups-referral-endoconsult-curated",
     }
-    au_examples, us_examples = {}, {}
+    au_examples, us_examples, balp_examples = {}, {}, {}
     for pkg_id, pkg_ver, prefix, cache_dir, name_prefix in IGS:
         examples_dir = ensure_package(pkg_id, pkg_ver, cache_dir)
         ig = f"{pkg_id}#{pkg_ver}"
@@ -506,7 +518,7 @@ def main():
             profile = profile_of(d, prefix)
             if not profile:
                 continue
-            (au_examples if prefix == AU else us_examples)[os.path.basename(path)] = d
+            {AU: au_examples, US: us_examples, BALP: balp_examples}.get(prefix, us_examples)[os.path.basename(path)] = d
             name = name_prefix + os.path.basename(path)[:-5]
             if name in SKIP:
                 print(f"   skipping {name}: {SKIP[name]}")
@@ -521,6 +533,15 @@ def main():
             continue
         base = us_examples[src]
         emit(name, mutate(base, fn), profile_of(base, US), expect, us_ig)
+
+    # the boolean pattern (agent:user.requestor = true) is a constraint like any other
+    balp_ig = f"{IGS[5][0]}#{IGS[5][1]}"
+    for src, name, fn, expect in BALP_MUTATIONS:
+        base = balp_examples.get(src)
+        if base is None:
+            print(f"!! no BALP example {src}", file=sys.stderr)
+            continue
+        emit(name, mutate(base, fn), profile_of(base, BALP), expect, balp_ig)
 
     for src, name, fn, expect in MUTATIONS:
         base = au_examples.get(src)

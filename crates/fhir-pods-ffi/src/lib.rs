@@ -44,7 +44,7 @@ fn validator() -> &'static Validator {
 
 /// Bump when the exported surface or the memory contract changes; the
 /// wrappers refuse a mismatched module.
-pub const ABI_VERSION: u32 = 7;
+pub const ABI_VERSION: u32 = 8;
 
 /// The compiled terminology table the host loaded (`fhir_pods_terminology_load`),
 /// consulted after the bundled sets and before any host callback.
@@ -248,6 +248,50 @@ pub unsafe extern "C" fn fhir_pods_document(
     inputs_len: usize,
 ) -> *mut u8 {
     pack(document_json(input(kind, kind_len), input(inputs, inputs_len)).as_bytes())
+}
+
+/// Audit: an `AuditEvent` for a `kind` of event (`read`, `patient-read`,
+/// `query`, `patient-query`, `create`, `patient-create`, `update`,
+/// `patient-update`, `delete`, `patient-delete`) from host-shaped inputs
+/// (JSON: `{"recorded", "client": {"who","network"}, "server": {…},
+/// "user"?: {…}, "source": {"observer"}, "data" | "query", "patient"?,
+/// "transaction"?}`), conformant to the IHE BALP profile for it and validated
+/// on the way out: `{"resource": {…}, "validation": {…}}`, or `{"error": "…"}`
+/// when it could not start.
+#[no_mangle]
+pub unsafe extern "C" fn fhir_pods_audit(
+    kind: *const u8,
+    kind_len: usize,
+    inputs: *const u8,
+    inputs_len: usize,
+) -> *mut u8 {
+    with_providers(None, |tx| pack(audit_json(input(kind, kind_len), input(inputs, inputs_len), tx).as_bytes()))
+}
+
+/// [`fhir_pods_audit`] with a host terminology callback.
+#[no_mangle]
+pub unsafe extern "C" fn fhir_pods_audit_tx(
+    kind: *const u8,
+    kind_len: usize,
+    inputs: *const u8,
+    inputs_len: usize,
+    cb: Option<TxCallback>,
+    ctx: *mut c_void,
+) -> *mut u8 {
+    with_tx(cb, ctx, |tx| pack(audit_json(input(kind, kind_len), input(inputs, inputs_len), tx).as_bytes()))
+}
+
+fn audit_json(kind: &[u8], inputs: &[u8], tx: &dyn TerminologyProvider) -> String {
+    let kind = core::str::from_utf8(kind).unwrap_or("");
+    match validator().audit_with(kind, inputs, tx) {
+        Ok(l) => lowered_json(&l.resource, &l.validation),
+        Err(e) => {
+            let mut s = String::from("{\"error\":\"");
+            wire::escape(&mut s, &e.to_string());
+            s.push_str("\"}");
+            s
+        }
+    }
 }
 
 fn document_json(kind: &[u8], inputs: &[u8]) -> String {
@@ -526,6 +570,18 @@ mod wasm_host {
             pack(lower_json(input(profile, profile_len), input(inputs, inputs_len), tx).as_bytes())
         })
     }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn fhir_pods_audit_host_tx(
+        kind: *const u8,
+        kind_len: usize,
+        inputs: *const u8,
+        inputs_len: usize,
+    ) -> *mut u8 {
+        with_providers(Some(&ImportTx), |tx| {
+            pack(audit_json(input(kind, kind_len), input(inputs, inputs_len), tx).as_bytes())
+        })
+    }
 }
 
 /// Android: the JVM cannot call a C ABI directly, so the expo pod's Kotlin
@@ -679,6 +735,19 @@ mod android {
     ) -> jbyteArray {
         let (k, i) = (bytes_in(&mut env, &kind), bytes_in(&mut env, &inputs));
         let doc = document_json(&k, &i);
+        bytes_out(&mut env, &doc)
+    }
+
+    #[no_mangle]
+    pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_audit<'l>(
+        mut env: JNIEnv<'l>,
+        _this: JObject<'l>,
+        kind: JByteArray<'l>,
+        inputs: JByteArray<'l>,
+        provider: JObject<'l>,
+    ) -> jbyteArray {
+        let (k, i) = (bytes_in(&mut env, &kind), bytes_in(&mut env, &inputs));
+        let doc = with_java(&mut env, &provider, |tx| audit_json(&k, &i, tx));
         bytes_out(&mut env, &doc)
     }
 
@@ -880,6 +949,24 @@ mod tests {
             let bad = "cda";
             let err = unpack(fhir_pods_document(bad.as_ptr(), bad.len(), inputs.as_ptr(), inputs.len()));
             assert_eq!(err, "{\"error\":\"kind must be ips or au-ps\"}");
+        }
+    }
+
+    #[test]
+    fn audit_round_trips() {
+        unsafe {
+            let inputs = r#"{"recorded":"2026-09-16T10:00:00Z","client":{"who":"Device/app-7","network":"10.0.0.7"},"server":{"who":{"display":"fhir.example.org"},"network":"https://fhir.example.org/r4"},"source":{"observer":"Device/audit"},"patient":"Patient/p1","data":"Observation/hr1"}"#;
+            let kind = "patient-read";
+            let out = unpack(fhir_pods_audit(kind.as_ptr(), kind.len(), inputs.as_ptr(), inputs.len()));
+            assert!(
+                out.starts_with("{\"resource\":{\"resourceType\":\"AuditEvent\"")
+                    && out.contains("IHE.BasicAudit.PatientRead")
+                    && out.contains("\"valid\":true"),
+                "{out}"
+            );
+            let bad = "browse";
+            let err = unpack(fhir_pods_audit(bad.as_ptr(), bad.len(), inputs.as_ptr(), inputs.len()));
+            assert!(err.starts_with("{\"error\":\"kind must be one of read"), "{err}");
         }
     }
 

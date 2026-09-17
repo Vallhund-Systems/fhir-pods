@@ -27,6 +27,7 @@ fn main() {
             || name.ends_with("manifest.json")
             || name.starts_with("lowered-")
             || name.starts_with("deid-")
+            || name.starts_with("audit-")
             || name.starts_with("doc-")
         {
             continue;

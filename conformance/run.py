@@ -24,7 +24,7 @@ JAR = os.path.join(HERE, "validator_cli.jar")
 # Pinned: the oracle is part of the evidence, so its version is part of the record.
 JAR_VERSION = "6.10.4"
 JAR_URL = f"https://github.com/hapifhir/org.hl7.fhir.core/releases/download/{JAR_VERSION}/validator_cli.jar"
-IGS = ["hl7.fhir.au.core#2.0.0", "hl7.fhir.us.core#6.1.0", "hl7.fhir.uv.ipa#1.1.0", "hl7.fhir.uv.ips#2.0.1", "hl7.fhir.au.ps#1.0.0"]  # keep in step with make_corpus.IGS
+IGS = ["hl7.fhir.au.core#2.0.0", "hl7.fhir.us.core#6.1.0", "hl7.fhir.uv.ipa#1.1.0", "hl7.fhir.uv.ips#2.0.1", "hl7.fhir.au.ps#1.0.0", "ihe.iti.balp#1.1.4"]  # keep in step with make_corpus.IGS
 FILE_EXT = "operationoutcome-file"
 
 
@@ -163,10 +163,17 @@ def main():
         ["cargo", "run", "-q", "-p", "fhir-pods-core", "--example", "document_corpus", "--", CORPUS],
         cwd=ROOT, stdout=subprocess.DEVNULL,
     )
+    # The audit proof: one record per BALP kind from the audit surface, plus
+    # the base Provenance / AuditEvent lowered, for the oracle to judge.
+    subprocess.check_call(
+        ["cargo", "run", "-q", "-p", "fhir-pods-core", "--example", "audit_corpus", "--", CORPUS],
+        cwd=ROOT, stdout=subprocess.DEVNULL,
+    )
     manifest = json.load(open(os.path.join(CORPUS, "manifest.json")))
     manifest += json.load(open(os.path.join(CORPUS, "lowered-manifest.json")))
     manifest += json.load(open(os.path.join(CORPUS, "deid-manifest.json")))
     manifest += json.load(open(os.path.join(CORPUS, "doc-manifest.json")))
+    manifest += json.load(open(os.path.join(CORPUS, "audit-manifest.json")))
     paths = [os.path.join(CORPUS, c["file"]) for c in manifest]
     oracle = oracle_batch(paths) if have_java else {}
 

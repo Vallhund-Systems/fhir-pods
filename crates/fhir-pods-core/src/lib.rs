@@ -357,6 +357,8 @@ pub mod deidentify;
 /// Documents: IPS / AU Patient Summary bundles assembled from resources.
 pub mod assemble;
 
+pub mod audit;
+
 pub mod json;
 pub mod lower;
 
@@ -452,6 +454,28 @@ impl Validator {
         let profile = generated::REGISTRY.iter().find(|p| p.url == url).ok_or(lower::LowerError::UnknownProfile)?;
         let parsed = json::parse(inputs).map_err(|_| lower::LowerError::InputsNotAnObject)?;
         lower::lower_with(profile, &parsed, Some(self), tx)
+    }
+
+    /// An `AuditEvent` for a read, query, create, update or delete of a
+    /// record (`kind`: `read`, `patient-read`, `query`, `patient-query`,
+    /// `create`, `patient-create`, `update`, `patient-update`, `delete`,
+    /// `patient-delete`), conformant to the IHE BALP profile for it, built
+    /// from host-shaped inputs and validated on the way out — see
+    /// [`audit`](crate::audit).
+    pub fn audit(&self, kind: &str, inputs: &[u8]) -> Result<lower::Lowered, audit::AuditError> {
+        self.audit_with(kind, inputs, &terminology::Bundled)
+    }
+
+    /// [`Validator::audit`] with a terminology provider.
+    pub fn audit_with(
+        &self,
+        kind: &str,
+        inputs: &[u8],
+        tx: &dyn terminology::TerminologyProvider,
+    ) -> Result<lower::Lowered, audit::AuditError> {
+        let kind = audit::Kind::parse(kind).ok_or(audit::AuditError::UnknownKind)?;
+        let parsed = json::parse(inputs).map_err(|_| audit::AuditError::InputsNotAnObject)?;
+        audit::audit_with(kind, &parsed, Some(self), tx)
     }
 
     /// [`terminology_needs`], with the invariants already parsed.

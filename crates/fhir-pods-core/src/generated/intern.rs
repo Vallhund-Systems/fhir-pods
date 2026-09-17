@@ -237,6 +237,8 @@ pub static S48: &[&str] = &[
     "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-medicationstatement",
     "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-medicationrequest",
 ];
-pub static S49: &[&str] = &["valueDateTime", "valueAge", "valuePeriod", "valueRange", "valueString"];
-pub static S50: &[&str] = &["string", "markdown"];
-pub static S51: &[&str] = &["valueString", "valueMarkdown"];
+pub static S49: &[&str] = &["string", "base64Binary"];
+pub static S50: &[&str] = &["valueDateTime", "valueAge", "valuePeriod", "valueRange", "valueString"];
+pub static S51: &[&str] = &["string", "markdown"];
+pub static S52: &[&str] = &["valueString", "valueMarkdown"];
+pub static S53: &[&str] = &["occurredPeriod", "occurredDateTime"];

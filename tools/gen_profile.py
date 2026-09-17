@@ -53,8 +53,8 @@ STRUCTURAL_INVARIANTS = {"ele-1", "ext-1"}
 def scalar_fixed(e):
     """The element's scalar fixed[x] / pattern[x] value, if any."""
     for k, v in e.items():
-        if k.startswith(("fixed", "pattern")) and isinstance(v, SCALAR) and not isinstance(v, bool):
-            return str(v)
+        if k.startswith(("fixed", "pattern")) and isinstance(v, SCALAR):
+            return "true" if v is True else "false" if v is False else str(v)
     return None
 
 
@@ -467,7 +467,17 @@ def lowering_of(sd, load=None):
         first = lp.split(".")[0].split(":")[0]
         if first in SKIP_SLOTS or first == "extension" and ":" not in lp:
             continue
-        if scalar_fixed(e) is not None or object_fixed(e) is not None or lp in has_fixed_below or unlabelled(lp) in has_fixed_below:
+        # a sliced container that asks for more instances than its required
+        # slices supply (BALP's disclosure: `entity` 2..* with one required
+        # `patient` slice): the rest are plain inputs, whatever its slices fix
+        own_slices = [m for (sp, m) in slices if sp.startswith(lp + ":") and "." not in sp[len(lp) + 1:]] if path in sliced else []
+        spare_container = bool(own_slices) and (e.get("min", 0) or 0) > sum(own_slices)
+        if scalar_fixed(e) is not None or object_fixed(e) is not None:
+            continue
+        # a labelled path is judged by its own slice's fixed leaves; the
+        # unlabelled form only suppresses a plain element (a fixed
+        # `entity:patient.role` must not hide `entity:data.role`)
+        if (lp in has_fixed_below or (lp == unlabelled(lp) and unlabelled(lp) in has_fixed_below)) and not spare_container:
             continue
         if e.get("max") == "0":
             continue
@@ -491,12 +501,19 @@ def lowering_of(sd, load=None):
             # a sliced container: reached through its slices — unless none of
             # them is required, in which case the container is the input
             # (Provenance.agent with optional author / transmitter slices)
-            own_slices = [m for (sp, m) in slices if sp.rsplit(".", 1)[0] == lp.rsplit(".", 1)[0] and sp.startswith(lp + ":")]
-            if any(m >= 1 for m in own_slices):
+            # A top-level container (`category`, `subtype`) stays an input even
+            # so: its slices' fixed leaves may sit behind an optional gate
+            # (`category:us-core.coding`), and the whole element the host gives
+            # is what reaches them. A nested one (`code.coding`) is reached
+            # through its slices alone.
+            if "." in lp and any(m >= 1 for m in own_slices) and not spare_container:
                 continue
         required = (e.get("min", 0) or 0) >= 1
         ms = bool(e.get("mustSupport"))
-        if not (required or ms or unlabelled(lp) in reached):
+        # a base definition (the spec's own AuditEvent, Provenance) fixes
+        # nothing: every element is the host's to give
+        is_base = sd.get("derivation") != "constraint"
+        if not (required or ms or is_base or unlabelled(lp) in reached):
             continue
         mx = e.get("max")
         mx = int(mx) if mx not in (None, "*") else None

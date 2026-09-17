@@ -93,6 +93,17 @@ int main(void) {
     printf("must-support: %s\n", ms);
     free(ms);
 
+    /* Audit: a BALP AuditEvent from host-shaped inputs, validated. */
+    const char *ev = "{\"recorded\":\"2026-09-16T10:00:00Z\",\"client\":{\"who\":\"Device/app-7\",\"network\":\"10.0.0.7\"},"
+                     "\"server\":{\"who\":{\"display\":\"fhir.example.org\"},\"network\":\"https://fhir.example.org/r4\"},"
+                     "\"source\":{\"observer\":\"Device/audit\"},\"patient\":\"Patient/p1\",\"data\":\"Observation/hr1\"}";
+    char *audit = unpack(fhir_pods_audit((const uint8_t *)"patient-read", 12, (const uint8_t *)ev, strlen(ev)));
+    ok = ok && strstr(audit, "IHE.BasicAudit.PatientRead") && strstr(audit, "\"valid\":true");
+    char *audit_err = unpack(fhir_pods_audit((const uint8_t *)"browse", 6, (const uint8_t *)ev, strlen(ev)));
+    ok = ok && strstr(audit_err, "{\"error\":\"kind must be one of");
+    printf("audit: %.120s...\n", audit);
+    free(audit); free(audit_err);
+
     puts(ok ? "C ABI smoke: OK" : "C ABI smoke: FAILED");
     return ok ? 0 : 1;
 }

@@ -107,6 +107,9 @@ the 294/294.
   IPS / AU PS carry a verdict), and references that do not resolve outside
   the Composition (the reference validator warns; so would a stricter
   reading — neither fails the document).
+- A scalar `pattern[x]` / `fixed[x]` on a boolean or a number is enforced
+  like one on a string (BALP's `agent:user.requestor = true`); the JSON kind
+  is the shape walk's concern, the value the profile's.
 - `pattern[x]` and `fixed[x]` objects on an element are enforced as
   patterns: every instance carries the leaves, one instance of a repeating
   element carrying each group. A `fixed[x]` object's "nothing else" clause

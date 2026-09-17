@@ -10,7 +10,7 @@ extern "C" {
 #endif
 
 /* ABI version; a host refuses a mismatched module. This header is ABI 7. */
-#define FHIR_PODS_ABI_VERSION 7u
+#define FHIR_PODS_ABI_VERSION 8u
 uint32_t fhir_pods_abi_version(void);
 
 /* Allocate `len` bytes in the module for the host to fill. */
@@ -82,6 +82,19 @@ uint8_t *fhir_pods_deidentify(const uint8_t *resource, size_t resource_len, cons
  * validated against the kind's Bundle profile: {"document": {...}, "placed":
  * [{"fullUrl","section"}], "validation": {...}} — or {"error": "..."}. */
 uint8_t *fhir_pods_document(const uint8_t *kind, size_t kind_len, const uint8_t *inputs, size_t inputs_len);
+
+/* Audit: an AuditEvent for a kind of event ("read", "patient-read", "query",
+ * "patient-query", "create", "patient-create", "update", "patient-update",
+ * "delete", "patient-delete") from host-shaped inputs — a JSON object
+ * {"recorded": "<instant>", "client": {"who", "network"}, "server": {...},
+ *  "user"?: {"who", "name"?, ...}, "source": {"observer", "site"?},
+ *  "data" | "query", "patient"?, "transaction"?} — conformant to the IHE BALP
+ * profile for that kind and validated on the way out: {"resource": {...},
+ * "validation": {...}} — or {"error": "..."} when it could not start. The
+ * `_tx` twin takes the terminology callback. */
+uint8_t *fhir_pods_audit(const uint8_t *kind, size_t kind_len, const uint8_t *inputs, size_t inputs_len);
+uint8_t *fhir_pods_audit_tx(const uint8_t *kind, size_t kind_len, const uint8_t *inputs, size_t inputs_len,
+                            fhir_pods_tx_callback cb, void *ctx);
 
 /* Compiled terminology. Load a table (the line format tools/compile_valueset.py
  * writes from $expand responses): it answers after the bundled sets and before

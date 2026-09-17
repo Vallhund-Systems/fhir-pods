@@ -19,13 +19,14 @@ PRIMARIES=(
   "$C/package-ipa/package"      # hl7.fhir.uv.ipa 1.1.0
   "$C/package-ips/package"      # hl7.fhir.uv.ips 2.0.1
   "$C/package-au-ps/package"    # hl7.fhir.au.ps 1.0.0
+  "$C/package-balp/package"     # ihe.iti.balp 1.1.4
 )
 DEPS=(
   "$C/package-au-base/package"  # hl7.fhir.au.base 6.0.0
   "$C/package-ext/package"      # hl7.fhir.uv.extensions.r4 5.3.0 (only what the profiles reference)
 )
-R4="$C/package-r4/package"        # hl7.fhir.r4.core 4.0.1 — the element-type table, the implied vital-sign profiles
-PROVENANCE="hl7.fhir.au.core 2.0.0 + hl7.fhir.us.core 6.1.0 + hl7.fhir.uv.ipa 1.1.0 + hl7.fhir.uv.ips 2.0.1 + hl7.fhir.au.ps 1.0.0 + hl7.fhir.au.base 6.0.0 + hl7.fhir.uv.extensions.r4 5.3.0"
+R4="$C/package-r4/package"        # hl7.fhir.r4.core 4.0.1 — the element-type table, the implied vital-sign profiles, the base AuditEvent / Provenance
+PROVENANCE="hl7.fhir.au.core 2.0.0 + hl7.fhir.us.core 6.1.0 + hl7.fhir.uv.ipa 1.1.0 + hl7.fhir.uv.ips 2.0.1 + hl7.fhir.au.ps 1.0.0 + ihe.iti.balp 1.1.4 + hl7.fhir.au.base 6.0.0 + hl7.fhir.uv.extensions.r4 5.3.0 + hl7.fhir.r4.core 4.0.1 (AuditEvent, Provenance)"
 
 for d in "${PRIMARIES[@]}" "${DEPS[@]}" "$R4"; do
   [ -d "$d" ] || { echo "missing package dir $d — run: python3 conformance/make_corpus.py" >&2; exit 1; }

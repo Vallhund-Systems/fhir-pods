@@ -485,10 +485,13 @@ impl<'v, 'a> Document for TreeDoc<'v, 'a> {
     fn scalars(&self, path: &str) -> Vec<&str> {
         let mut out = Vec::new();
         let Some(root) = self.container() else { return out };
-        json::resolve_each(root, path, &mut |v| {
-            if let Value::Str(s) = v {
-                out.push(s.as_ref())
-            }
+        json::resolve_each(root, path, &mut |v| match v {
+            Value::Str(s) => out.push(s.as_ref()),
+            // a fixed / pattern value on a boolean or a number compares as text
+            Value::Bool(true) => out.push("true"),
+            Value::Bool(false) => out.push("false"),
+            Value::Number(n) => out.push(n),
+            _ => {}
         });
         out
     }

@@ -137,13 +137,45 @@ profile needs to the day (vital signs' `effective[x]`, invariant vs-1) are
 a conformance finding the host decides on (keep the one date, or accept
 the finding).
 
-## 0.6 — Audit and provenance
+## 0.6 — Audit and provenance — shipped
 
-`AuditEvent` and `Provenance` built through the lowering engine from the
-base spec's own definitions (the registry gains the base resources it needs
-as "profiles"), so a host can emit correct audit records for every read and
-write of a record — the design in `architecture.md` (audit is data, traces
-are plumbing, correlated by id).
+**What.** `fhir_pods_audit(kind, inputs)` → an `AuditEvent` conformant to
+the IHE Basic Audit Log Patterns profile for that kind of event — `read`,
+`query`, `create`, `update`, `delete`, each with or without a known
+patient — from what a host knows at the moment it happens:
+
+```json
+fhir_pods_audit("patient-read", {
+  "recorded": "2026-09-16T10:00:00Z",
+  "client": {"who": "Device/app-7", "network": "10.0.0.7"},
+  "server": {"who": {"display": "fhir.example.org"}, "network": "https://fhir.example.org/r4"},
+  "user": {"who": "Practitioner/gp1", "name": "Dr Who"},
+  "source": {"observer": "Device/audit-collector", "site": "clinic-1"},
+  "patient": "Patient/p1", "data": "Observation/hr1",
+  "transaction": "3f2a1c9e-…"
+})
+→ { "resource": { …the AuditEvent, the profile's types and codes filled… },
+    "validation": { "valid": true, "issues": [] } }
+```
+
+The correlation with the trace is the request id, as BALP's own
+`X-Request-Id` entity — the design in `architecture.md` (audit is data,
+traces are plumbing, correlated by id). `Provenance`, and a failed action's
+`AuditEvent`, are lowered from the base spec's own definitions, now
+compiled as profiles with every element an input.
+
+**How.** IG #6 (BALP 1.1.4) compiled like the others; the audit surface is
+a host-shaped front on the lowering engine — it names the profile, maps
+the host's inputs to its slots, classifies network addresses, encodes the
+query — and the engine supplies everything the profile fixes and validates
+the result. Proof: every BALP example re-lowered and de-identified, and
+one record per kind with and without a user put before the reference
+validator (1187/1187).
+
+**What it took.** Four lowering-engine gaps (gated fixed leaves, typed fixed
+values, spare cardinality on a sliced container, sibling-slice
+suppression) and one verifier gap (boolean patterns were never enforced),
+all found by the new IG's corpus — the pattern every IG has followed.
 
 ## Alongside, host-side (not pods)
 
@@ -157,7 +189,9 @@ are plumbing, correlated by id).
 ## Sequence
 
 lowering → terminology → de-identification → documents (+ IG #4) → audit
-(the first four shipped 0.3.0 → 0.5.0).
+(+ IG #6) — all shipped, 0.3.0 → 0.6.0. Next in the core: the eleven
+official FHIRPath disagreements (planning T023); then the host-side pieces
+below as they are asked for.
 Lowering first because it is what makes the verifier pay for itself; de-id
 before documents because it is small and it is a policy commitment a host
 can point at. Each pod ships as a minor version with its own release notes,

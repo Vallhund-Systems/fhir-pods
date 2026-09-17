@@ -88,8 +88,58 @@ export interface AssembledDocument {
   validation: Validation;
 }
 
+
+/** Which audit event: the RESTful action, with or without a known patient subject. */
+export type AuditKind =
+  | "read" | "patient-read" | "query" | "patient-query" | "create" | "patient-create"
+  | "update" | "patient-update" | "delete" | "patient-delete";
+
+/** A who: `Type/id` (or a URL) is a reference, any other string a display name, an object a Reference. */
+export type AuditWho = string | Record<string, unknown>;
+
+/** A network access point: a string is classified (IP, URI, email, machine name), or `{address, type}`. */
+export type AuditNetwork = string | { address: string; type: string };
+
+export interface AuditAgent {
+  who: AuditWho;
+  network?: AuditNetwork;
+  /** Whether this agent initiated the event; false for a client or server, true for the user. */
+  requestor?: boolean;
+}
+
+export interface AuditUser extends AuditAgent {
+  name?: string;
+  /** A v3-ParticipationType code (create / update / delete only; `AUT` unless given), or a CodeableConcept. */
+  type?: string | Record<string, unknown>;
+  role?: Record<string, unknown> | Record<string, unknown>[];
+  purposeOfUse?: Record<string, unknown> | Record<string, unknown>[];
+}
+
+/** What a host knows at the moment a record is read, queried, created, updated or deleted. */
+export interface AuditInputs {
+  /** An instant. */
+  recorded: string;
+  client: AuditAgent;
+  server: AuditAgent;
+  user?: AuditUser;
+  source: { observer: AuditWho; site?: string; type?: Record<string, unknown> | Record<string, unknown>[] };
+  /** The resource touched (not for a query); `{what, role}` to give the object role (`4` unless given). */
+  data?: AuditWho | { what: AuditWho; role?: string | Record<string, unknown> };
+  /** The query, as sent (a query kind); base64-encoded as the profile requires. */
+  query?: string;
+  /** The patient subject (a patient-* kind). */
+  patient?: AuditWho;
+  /** The request id (X-Request-Id): the correlation with the trace. */
+  transaction?: string;
+  /** The RESTful interaction where the profile binds rather than fixes it (`vread`, `patch`, `search-system`…). */
+  subtype?: string | Record<string, unknown>;
+  id?: string;
+  text?: Record<string, unknown>;
+  extension?: Record<string, unknown>[];
+}
+
 /** What de-identification does to an element. */
-export type DeidAction = "keep" | "remove" | "mask" | "year" | "pseudonym";
+export type DeidAction = "keep" | "remove" | "mask" | "year" | "pseudonym" | "clamp";
 
 /**
  * A de-identification policy. `base` is Safe Harbor unless "none"; `rules`
@@ -151,6 +201,14 @@ export interface Pod {
    * Bundle validated on the way out. Throws only when it cannot start.
    */
   document(kind: DocumentKind, inputs: DocumentInputs | string): AssembledDocument;
+  /**
+   * An AuditEvent for a read, query, create, update or delete of a record
+   * (with or without a known patient), conformant to the IHE Basic Audit Log
+   * Patterns profile for that kind, from host-shaped inputs, validated on the
+   * way out. Throws only when it cannot start (unknown kind, a required input
+   * missing or out of place).
+   */
+  audit(kind: AuditKind, inputs: AuditInputs | string): Lowered;
   /**
    * A de-identified copy under `policy` (Safe Harbor by default): names,
    * contact details, addresses below state, exact dates, ages over 89,
