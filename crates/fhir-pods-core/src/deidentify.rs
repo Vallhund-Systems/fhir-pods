@@ -191,6 +191,13 @@ impl Policy {
         let find = |target: &str| self.rules.iter().rev().find(|r| r.target == target).map(|r| r.action);
         find(path).or_else(|| member.and_then(find)).or_else(|| ty.and_then(find))
     }
+
+    /// A rule naming this element itself — by its path or its member-of-type
+    /// name — and not merely its type: what overrides a structural default.
+    fn explicit_action(&self, path: &str, member: Option<&str>) -> Option<Action> {
+        let find = |target: &str| self.rules.iter().rev().find(|r| r.target == target).map(|r| r.action);
+        find(path).or_else(|| member.and_then(find))
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -455,12 +462,15 @@ impl Walker<'_> {
             };
             let member = if is_type { Some(alloc::format!("{ctx}.{key}")) } else { None };
             let ty = child.ty;
-            // an element's own `id` is an anchor, not content: it stays (a
-            // resource's `id` is typed `id` and has its rule)
-            let action = if (key == "id" || key == "linkId") && ty == "string" {
-                Action::Keep
-            } else {
-                self.policy.action_for(&child_path, member.as_deref(), Some(ty)).unwrap_or(Action::Keep)
+            // an element's own `id`, or a `linkId`, is a structural key, not
+            // content: it stays unless a rule names it (a resource's `id` is
+            // typed `id` and has its own rule); the type-level `string` rule
+            // does not reach it
+            let structural = (key == "id" || key == "linkId") && ty == "string";
+            let action = match self.policy.explicit_action(&child_path, member.as_deref()) {
+                Some(a) => a,
+                None if structural => Action::Keep,
+                None => self.policy.action_for(&child_path, member.as_deref(), Some(ty)).unwrap_or(Action::Keep),
             };
             let action = match action {
                 Action::Remove if self.is_required(&child_path, path, &key) => Action::Mask,
@@ -707,7 +717,7 @@ impl Walker<'_> {
 /// A kept string the policy did not judge: free text by any name except the
 /// few strings that are not (a code's display, a unit, a state or country).
 fn is_free_text(ctx: &str, key: &str, ty: &str) -> bool {
-    if !matches!(ty, "string" | "markdown") || key == "id" {
+    if !matches!(ty, "string" | "markdown") || key == "id" || key == "linkId" {
         return false;
     }
     !matches!(

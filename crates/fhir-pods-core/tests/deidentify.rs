@@ -385,3 +385,20 @@ fn f019_an_extension_emptied_by_what_was_removed_goes_too() {
     let d = deid(c, &Policy::safe_harbor(b"s"));
     assert!(!d.resource.contains("extension"), "{}", d.resource);
 }
+
+#[test]
+fn f030_f031_structural_keys_stay_by_default_silently_and_go_when_a_rule_names_them() {
+    let qr = r#"{"resourceType":"QuestionnaireResponse","status":"completed","item":[{"id":"i1","linkId":"q1","text":"How are you?","answer":[{"valueString":"fine"}]}]}"#;
+    // the default keeps them and reports nothing: they are keys, not free text
+    let d = deid(qr, &Policy::safe_harbor(b"s"));
+    assert!(d.resource.contains(r#""linkId":"q1""#) && d.resource.contains(r#""id":"i1""#), "{}", d.resource);
+    assert!(d.residual.is_empty(), "{:?}", d.residual);
+    assert!(!d.resource.contains("How are you") && !d.resource.contains("fine"));
+    // a rule that names the element is honoured, never silently bypassed
+    let d = deid(qr, &Policy::safe_harbor(b"s").rule("QuestionnaireResponse.item.id", Action::Remove));
+    assert!(!d.resource.contains(r#""id":"i1""#) && d.resource.contains(r#""linkId":"q1""#), "{}", d.resource);
+    assert!(d.applied.iter().any(|a| a.path == "QuestionnaireResponse.item.id" && a.action == Action::Remove));
+    let d = deid(qr, &Policy::safe_harbor(b"s").rule("QuestionnaireResponse.item.linkId", Action::Mask));
+    assert!(d.resource.contains(r#""_linkId":{"extension""#), "{}", d.resource);
+    assert!(d.validation.is_valid(), "{}", wire::report(&d.validation));
+}

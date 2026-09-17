@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.6.4 — 2026-09-16
+
+The review lane's F030 and F031 (planning repository). Oracle unchanged:
+**1199/1199**.
+
+- **A rule that names an element's `id` or a `linkId` is honoured** (F030):
+  the structural default (keep) yields to an explicit path or member rule
+  (`{"target": "QuestionnaireResponse.item.linkId", "action": "mask"}`);
+  only the type-level `string` rule does not reach them. Before, such a
+  rule was silently ignored with `applied: []`.
+- **A `linkId` kept by default is not reported as residual** (F031): it is
+  a key, like an element's `id`; `residual` is empty under Safe Harbor
+  alone, as the field says.
+
+F029 (the CLI drops `residual`) is the command-line pod's own file and
+lane.
+
 ## 0.6.3 — 2026-09-16
 
 **FHIRPath, against the official R4 suite** (planning F007 / T023). Of the

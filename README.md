@@ -57,7 +57,7 @@ with terminology switched off on both sides so profiles are what is scored.
 `conformance/run.py` builds the corpus from the pinned packages, runs
 validator_cli 6.10.4 over it, and compares verdicts:
 
-- **1199/1199** at v0.6.3 — the six IGs' published examples and 60-odd
+- **1199/1199** at v0.6.4 — the six IGs' published examples and 60-odd
   probes, every corpus resource re-lowered from its own slot values, every
   one de-identified, the twelve document examples taken apart and assembled
   again, an audit record of every kind from the audit surface, and the
