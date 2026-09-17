@@ -20,17 +20,20 @@ both detectors must catch it. Additional checks cover contained reference
 integrity, Unicode identifiers, member-order stability, age units, recorded
 clamps and exact repeatability. Input and output validation reports are kept.
 
-The recorded run has **10 passes and 4 failures**:
+The current recorded run has **14 passes and no failures**, using the v0.6.4
+core with the corrected Bundle fixture. The previous v0.5.2 run recorded
+10 passes / 4 failures (planning F018/F019); those text-removal and extension
+pruning regressions now pass. Bundle entry fullUrls match the resources' IDs,
+and the repeated Patient/Observation examples have distinct entry identities.
+The generator preserves those relationships. The corrected Bundle and its
+de-identified copy also pass reference validator 6.10.4 in review T038.
 
-- `extension-free-text` and `codeable-concept-text` retain identifying
-  witnesses while the core's checker returns an empty list (planning F018).
-- `extension-human-name` and its Bundle counterpart remove the names but
-  leave URL-only extensions that fail `ext-1` (planning F019).
-
-These are intentional failing regression probes awaiting core decisions/fixes.
-They are not suppressed as expected failures. A marker-free output only
+No expectation is suppressed as an expected failure. A marker-free output only
 establishes the fate of the planted witnesses; this small corpus cannot
 certify de-identification of arbitrary data. Recorded evidence includes input
 hashes, executable hash, revision and a dirty-tree flag. The committed evidence
-was captured on 2026-09-16 in an isolated v0.5.2 checkout with these new tools
-overlaid, excluding the concurrent audit implementation.
+was captured on 2026-09-16 in an isolated v0.6.4 checkout with the review
+lane's CLI, comparison adapter and fixture changes overlaid. Concurrent engine
+work is excluded. This driver's historical report does not serialize the core's
+new `residual` field; separate CLI and ABI/WASM checks cover that reporting
+contract. The positive retention control is deliberate, not a production policy.

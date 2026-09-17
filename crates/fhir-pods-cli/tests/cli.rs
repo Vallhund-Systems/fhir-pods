@@ -95,11 +95,32 @@ fn deidentify_checks_remaining_findings_and_accepts_policy_on_stdin() {
     let policy = r#"{"salt":"synthetic-cli-test","today":"2026-09-16"}"#;
     let clean = result(&call(&["deidentify", "--policy", "-", resource.to_str().unwrap()], policy.as_bytes()), 0);
     assert_eq!(clean.member("remaining"), Some(&Node::Array(vec![])));
+    assert_eq!(clean.member("residual"), Some(&Node::Array(vec![])));
     assert!(clean.member("resource").unwrap().member("name").is_none());
     let keep = files.write("policy.json", r#"{"salt":"synthetic-cli-test","base":"none"}"#);
     let output = result(&call(&["deidentify", "--policy", keep.to_str().unwrap()], PATIENT.as_bytes()), 1);
     assert_ne!(output.member("remaining"), Some(&Node::Array(vec![])));
     assert_eq!(output.member("validation").unwrap().member("valid"), Some(&Node::Bool(true)));
+}
+
+#[test]
+fn deidentify_reports_explicitly_kept_text_even_with_no_remaining_findings() {
+    let files = Files::new();
+    let policy = files.write(
+        "keep.json",
+        r#"{"salt":"synthetic-cli-test","rules":[{"target":"CodeableConcept.text","action":"keep"}]}"#,
+    );
+    let input = r#"{"resourceType":"Observation","status":"final","code":{"text":"SYNTHETIC_KEEP"}}"#;
+    let output = result(&call(&["deidentify", "--policy", policy.to_str().unwrap()], input.as_bytes()), 0);
+    assert_eq!(output.member("remaining"), Some(&Node::Array(vec![])));
+    assert_eq!(output.member("validation").unwrap().member("valid"), Some(&Node::Bool(true)));
+    let expected =
+        Node::from_value(&json::parse(br#"[{"path":"Observation.code.text","what":"free text kept"}]"#).unwrap());
+    assert_eq!(output.member("residual"), Some(&expected));
+    assert_eq!(
+        output.member("resource").unwrap().member("code").unwrap().member("text").and_then(Node::as_str),
+        Some("SYNTHETIC_KEEP")
+    );
 }
 
 #[test]

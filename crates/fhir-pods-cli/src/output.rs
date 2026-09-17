@@ -1,5 +1,10 @@
 use fhir_pods_core::{
-    assemble::Assembled, deidentify::Deidentified, lower::Lowered, node::Node, terminology::Need, wire, Validation,
+    assemble::Assembled,
+    deidentify::{Deidentified, Finding},
+    lower::Lowered,
+    node::Node,
+    terminology::Need,
+    wire, Validation,
 };
 
 pub fn lowered(result: &Lowered) -> String {
@@ -19,9 +24,19 @@ pub fn deidentified(result: &Deidentified) -> String {
             })
             .collect(),
     );
-    let remaining = Node::Array(
-        result
-            .remaining
+    format!(
+        "{{\"resource\":{},\"applied\":{},\"validation\":{},\"remaining\":{},\"residual\":{}}}",
+        result.resource,
+        applied.to_json(),
+        wire::report(&result.validation),
+        findings(&result.remaining).to_json(),
+        findings(&result.residual).to_json()
+    )
+}
+
+fn findings(items: &[Finding]) -> Node {
+    Node::Array(
+        items
             .iter()
             .map(|f| {
                 Node::Object(vec![
@@ -30,13 +45,6 @@ pub fn deidentified(result: &Deidentified) -> String {
                 ])
             })
             .collect(),
-    );
-    format!(
-        "{{\"resource\":{},\"applied\":{},\"validation\":{},\"remaining\":{}}}",
-        result.resource,
-        applied.to_json(),
-        wire::report(&result.validation),
-        remaining.to_json()
     )
 }
 

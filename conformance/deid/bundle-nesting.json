@@ -3,7 +3,7 @@
   "type": "collection",
   "entry": [
     {
-      "fullUrl": "https://example.org/fhir/Patient/0",
+      "fullUrl": "https://example.org/fhir/Patient/p",
       "resource": {
         "resourceType": "Patient",
         "id": "p",
@@ -18,7 +18,7 @@
       }
     },
     {
-      "fullUrl": "https://example.org/fhir/Observation/1",
+      "fullUrl": "https://example.org/fhir/Observation/o",
       "resource": {
         "resourceType": "Observation",
         "id": "o",
@@ -43,7 +43,7 @@
       }
     },
     {
-      "fullUrl": "https://example.org/fhir/Condition/2",
+      "fullUrl": "https://example.org/fhir/Condition/c",
       "resource": {
         "resourceType": "Condition",
         "id": "c",
@@ -59,10 +59,10 @@
       }
     },
     {
-      "fullUrl": "https://example.org/fhir/Patient/3",
+      "fullUrl": "https://example.org/fhir/Patient/p-photo",
       "resource": {
         "resourceType": "Patient",
-        "id": "p",
+        "id": "p-photo",
         "photo": [
           {
             "title": "PHI_PHOTO_TITLE",
@@ -72,10 +72,10 @@
       }
     },
     {
-      "fullUrl": "https://example.org/fhir/Observation/4",
+      "fullUrl": "https://example.org/fhir/Observation/o-display",
       "resource": {
         "resourceType": "Observation",
-        "id": "o",
+        "id": "o-display",
         "status": "final",
         "code": {
           "text": "Synthetic observation"

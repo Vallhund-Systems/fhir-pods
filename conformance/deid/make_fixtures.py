@@ -29,9 +29,12 @@ add("attachment", attachment, ["PHI_PHOTO_TITLE", "PHI_PHOTO_URL"], "Removing an
 reference = {"resourceType": "Observation", "id": "o", "status": "final", "code": {"text": "Synthetic observation"},
              "subject": {"reference": "Patient/p", "display": "PHI_REFERENCE_DISPLAY"}}
 add("reference-display", reference, ["PHI_REFERENCE_DISPLAY"], "Reference display strings must be removed.")
+bundle_resources = copy.deepcopy([name, contained, annotation, attachment, reference])
+bundle_resources[3]["id"] = "p-photo"
+bundle_resources[4]["id"] = "o-display"
 bundle = {"resourceType": "Bundle", "type": "collection", "entry": [
-    {"fullUrl": f"https://example.org/fhir/{r['resourceType']}/{i}", "resource": copy.deepcopy(r)}
-    for i, r in enumerate([name, contained, annotation, attachment, reference])]}
+    {"fullUrl": f"https://example.org/fhir/{r['resourceType']}/{r['id']}", "resource": r}
+    for r in bundle_resources]}
 add("bundle-nesting", bundle, ["PHI_EXTENSION_NAME", "PHI_CONTAINED_NAME", "PHI_NOTE_AUTHOR", "PHI_NOTE_TEXT", "PHI_PHOTO_TITLE", "PHI_PHOTO_URL", "PHI_REFERENCE_DISPLAY"],
     "The same type policies must work through Bundle.entry.resource.")
 for order in ("system-first", "value-first"):

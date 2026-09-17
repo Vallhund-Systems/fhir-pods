@@ -1,8 +1,8 @@
 {
-  "recorded_at": "2026-09-17T02:36:55.443360+00:00",
-  "source_revision": "20d6fb6a432446238c7e19066057817f652a1891",
+  "recorded_at": "2026-09-17T06:00:44.161079+00:00",
+  "source_revision": "f44a182d9ce2e912c7fb8730d1ae87e2fccd1e4c",
   "source_dirty": true,
-  "binary_sha256": "cd59a86a940f48bf96623b7e6825bd9d61e621ce89b0748a4d48f63cedb2b388",
+  "binary_sha256": "94a6a3f8d986dc0317191ae3d5f6edcf6c33d4b5008a0a979a9e7dbc44e831e8",
   "deterministic_repeat": true,
   "policy": {
     "salt": "synthetic-probe-salt-only",
@@ -11,8 +11,8 @@
   },
   "counts": {
     "total": 14,
-    "pass": 10,
-    "fail": 4
+    "pass": 14,
+    "fail": 0
   },
   "cases": [
     {
@@ -24,10 +24,8 @@
       "reason": "HumanName must be handled by its type inside an extension.",
       "sha256": "00eca1593953821f4317240125966b6b129c3bca2fa16758c1517185a172cb66",
       "surviving_markers": [],
-      "failures": [
-        "invalid-output"
-      ],
-      "pass": false,
+      "failures": [],
+      "pass": true,
       "result": {
         "id": "extension-human-name",
         "inputValidation": {
@@ -50,12 +48,7 @@
         ],
         "resource": {
           "resourceType": "Patient",
-          "id": "d",
-          "extension": [
-            {
-              "url": "https://example.org/synthetic-name"
-            }
-          ]
+          "id": "d"
         },
         "applied": [
           {
@@ -65,18 +58,16 @@
           {
             "path": "Patient.extension.valueHumanName",
             "action": "remove"
+          },
+          {
+            "path": "Patient.extension",
+            "action": "remove"
           }
         ],
         "validation": {
           "resourceType": "Patient",
-          "valid": false,
+          "valid": true,
           "issues": [
-            {
-              "severity": "error",
-              "code": "invariant",
-              "path": "Patient.extension",
-              "message": "ext-1: Patient.extension must have either extensions or a value, not both"
-            },
             {
               "severity": "warning",
               "code": "invariant",
@@ -132,7 +123,12 @@
           "id": "m",
           "status": "final",
           "code": {
-            "text": "Synthetic observation"
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+                "valueCode": "masked"
+              }
+            ]
           },
           "subject": {
             "reference": "#d"
@@ -148,6 +144,14 @@
           {
             "path": "Observation.id",
             "action": "pseudonym"
+          },
+          {
+            "path": "Observation.code.text",
+            "action": "remove"
+          },
+          {
+            "path": "Observation.code",
+            "action": "mask"
           },
           {
             "path": "Observation.subject.reference",
@@ -351,7 +355,12 @@
           "id": "m",
           "status": "final",
           "code": {
-            "text": "Synthetic observation"
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+                "valueCode": "masked"
+              }
+            ]
           },
           "subject": {
             "reference": "Patient/d"
@@ -361,6 +370,14 @@
           {
             "path": "Observation.id",
             "action": "pseudonym"
+          },
+          {
+            "path": "Observation.code.text",
+            "action": "remove"
+          },
+          {
+            "path": "Observation.code",
+            "action": "mask"
           },
           {
             "path": "Observation.subject.reference",
@@ -400,12 +417,10 @@
         "PHI_REFERENCE_DISPLAY"
       ],
       "reason": "The same type policies must work through Bundle.entry.resource.",
-      "sha256": "a25202bb150cbfa018f757a4ba937dec6a42d11824ac76e82604885a52d5d2fe",
+      "sha256": "be1f9717761b42d53444b7cf14140cfc074931bc58378945db91c6aa3c88ca3b",
       "surviving_markers": [],
-      "failures": [
-        "invalid-output"
-      ],
-      "pass": false,
+      "failures": [],
+      "pass": true,
       "result": {
         "id": "bundle-nesting",
         "inputValidation": {
@@ -477,25 +492,25 @@
           "type": "collection",
           "entry": [
             {
-              "fullUrl": "https://example.org/fhir/Patient/8",
+              "fullUrl": "https://example.org/fhir/Patient/d",
               "resource": {
                 "resourceType": "Patient",
-                "id": "d",
-                "extension": [
-                  {
-                    "url": "https://example.org/synthetic-name"
-                  }
-                ]
+                "id": "d"
               }
             },
             {
-              "fullUrl": "https://example.org/fhir/Observation/0",
+              "fullUrl": "https://example.org/fhir/Observation/m",
               "resource": {
                 "resourceType": "Observation",
                 "id": "m",
                 "status": "final",
                 "code": {
-                  "text": "Synthetic observation"
+                  "extension": [
+                    {
+                      "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+                      "valueCode": "masked"
+                    }
+                  ]
                 },
                 "subject": {
                   "reference": "#d"
@@ -509,7 +524,7 @@
               }
             },
             {
-              "fullUrl": "https://example.org/fhir/Condition/1",
+              "fullUrl": "https://example.org/fhir/Condition/a",
               "resource": {
                 "resourceType": "Condition",
                 "id": "a",
@@ -519,20 +534,25 @@
               }
             },
             {
-              "fullUrl": "https://example.org/fhir/Patient/2",
+              "fullUrl": "https://example.org/fhir/Patient/r-lllef",
               "resource": {
                 "resourceType": "Patient",
-                "id": "d"
+                "id": "r-lllef"
               }
             },
             {
-              "fullUrl": "https://example.org/fhir/Observation/4",
+              "fullUrl": "https://example.org/fhir/Observation/p-oihtbkp",
               "resource": {
                 "resourceType": "Observation",
-                "id": "m",
+                "id": "p-oihtbkp",
                 "status": "final",
                 "code": {
-                  "text": "Synthetic observation"
+                  "extension": [
+                    {
+                      "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+                      "valueCode": "masked"
+                    }
+                  ]
                 },
                 "subject": {
                   "reference": "Patient/d"
@@ -555,12 +575,24 @@
             "action": "remove"
           },
           {
+            "path": "Patient.extension",
+            "action": "remove"
+          },
+          {
             "path": "Bundle.entry.fullUrl",
             "action": "pseudonym"
           },
           {
             "path": "Observation.id",
             "action": "pseudonym"
+          },
+          {
+            "path": "Observation.code.text",
+            "action": "remove"
+          },
+          {
+            "path": "Observation.code",
+            "action": "mask"
           },
           {
             "path": "Observation.subject.reference",
@@ -611,6 +643,14 @@
             "action": "pseudonym"
           },
           {
+            "path": "Observation.code.text",
+            "action": "remove"
+          },
+          {
+            "path": "Observation.code",
+            "action": "mask"
+          },
+          {
             "path": "Observation.subject.reference",
             "action": "pseudonym"
           },
@@ -621,14 +661,8 @@
         ],
         "validation": {
           "resourceType": "Bundle",
-          "valid": false,
+          "valid": true,
           "issues": [
-            {
-              "severity": "error",
-              "code": "invariant",
-              "path": "Bundle.entry.resource.extension",
-              "message": "ext-1: Bundle.entry.resource.extension must have either extensions or a value, not both"
-            },
             {
               "severity": "warning",
               "code": "invariant",
@@ -979,13 +1013,9 @@
       ],
       "reason": "A valid extension can contain an identifier in a generic string; test beyond the built-in type checker.",
       "sha256": "0f71b55fd8c22e4a61c4f2794b38572206ef8029fa9df2c7e4ed7e142d1f540f",
-      "surviving_markers": [
-        "PHI_GENERIC_EXTENSION"
-      ],
-      "failures": [
-        "identifying-marker-survives"
-      ],
-      "pass": false,
+      "surviving_markers": [],
+      "failures": [],
+      "pass": true,
       "result": {
         "id": "extension-free-text",
         "inputValidation": {
@@ -1002,15 +1032,18 @@
         },
         "checkBefore": [],
         "resource": {
-          "resourceType": "Patient",
-          "extension": [
-            {
-              "url": "https://example.org/synthetic-patient-note",
-              "valueString": "PHI_GENERIC_EXTENSION"
-            }
-          ]
+          "resourceType": "Patient"
         },
-        "applied": [],
+        "applied": [
+          {
+            "path": "Patient.extension.valueString",
+            "action": "remove"
+          },
+          {
+            "path": "Patient.extension",
+            "action": "remove"
+          }
+        ],
         "validation": {
           "resourceType": "Patient",
           "valid": true,
@@ -1035,13 +1068,9 @@
       ],
       "reason": "CodeableConcept.text is free text and may contain an identifier.",
       "sha256": "8758701b49a7c0e262f1f44e006bbe567154ae83cfaa15f5e4837773dcd7a480",
-      "surviving_markers": [
-        "PHI_CODE_TEXT"
-      ],
-      "failures": [
-        "identifying-marker-survives"
-      ],
-      "pass": false,
+      "surviving_markers": [],
+      "failures": [],
+      "pass": true,
       "result": {
         "id": "codeable-concept-text",
         "inputValidation": {
@@ -1061,10 +1090,24 @@
           "resourceType": "Observation",
           "status": "final",
           "code": {
-            "text": "Synthetic measurement for PHI_CODE_TEXT"
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+                "valueCode": "masked"
+              }
+            ]
           }
         },
-        "applied": [],
+        "applied": [
+          {
+            "path": "Observation.code.text",
+            "action": "remove"
+          },
+          {
+            "path": "Observation.code",
+            "action": "mask"
+          }
+        ],
         "validation": {
           "resourceType": "Observation",
           "valid": true,

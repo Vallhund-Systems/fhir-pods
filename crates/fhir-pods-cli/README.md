@@ -36,6 +36,10 @@ Results go to stdout as one JSON object. `validate --outcome` emits a FHIR
 OperationOutcome; default validation emits the pod report. `lower`,
 `audit`, `deidentify`, and `document` use the same result shapes as the WASM pod,
 including the output resource, validation and operation-specific findings.
+De-identification includes both `remaining` (the bounded identifying-field
+check) and `residual` (free text kept by the policy). A nonempty `residual`
+is reported even when validation passes and `remaining` is empty; it does
+not change the exit-code rules below.
 `needs` emits both `needs` and `validation`, so an invalid input cannot look
 successful merely because it has no terminology questions.
 
