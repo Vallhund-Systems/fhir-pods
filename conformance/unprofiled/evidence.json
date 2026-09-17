@@ -1,0 +1,2269 @@
+{
+  "recorded_at": "2026-09-17T03:27:35.809227+00:00",
+  "source_revision": "26e04868715e37906df57c98728f41d9a4e7d717",
+  "source_dirty": false,
+  "probe_sha256": "86894dfd47390f0b17d2982ffef17fe2efe34edae66fc6c66d2e866a04e844a5",
+  "runner_sha256": "15b430a8b6394b750e1631ec88dcb6cb14b8904b0e9deb69b3359c9a95767042",
+  "oracle_version": "6.10.4",
+  "oracle_sha256": "1106b9d58f9e363e47bea7c4fc065841e5fc91fe9d062775c3bfdd212bd653cc",
+  "oracle_options": [
+    "-version",
+    "4.0",
+    "-tx",
+    "n/a",
+    "-allow-example-urls",
+    "true",
+    "-ig",
+    "hl7.fhir.au.core#2.0.0",
+    "-ig",
+    "hl7.fhir.us.core#6.1.0",
+    "-ig",
+    "hl7.fhir.uv.ipa#1.1.0",
+    "-ig",
+    "hl7.fhir.uv.ips#2.0.1",
+    "-ig",
+    "hl7.fhir.au.ps#1.0.0",
+    "-ig",
+    "ihe.iti.balp#1.1.4"
+  ],
+  "oracle_exit": 0,
+  "mode": "No jurisdiction default; recursively remove meta.profile. Normal R4 implied profiles and known extension definitions remain.",
+  "packages": [
+    {
+      "id": "hl7.fhir.au.core",
+      "version": "2.0.0",
+      "example_count": 65,
+      "selected": 1,
+      "package_metadata_sha256": "58ded69c3971ac19caedfa9a081e19711c92e6a4cea1f36bb225dbc31b54a817"
+    },
+    {
+      "id": "hl7.fhir.us.core",
+      "version": "6.1.0",
+      "example_count": 183,
+      "selected": 9,
+      "package_metadata_sha256": "3cc578cfa93b1d3df757bcf9b7add8c09c9c237464abf58adc3bb6ab94d33087"
+    },
+    {
+      "id": "hl7.fhir.uv.ipa",
+      "version": "1.1.0",
+      "example_count": 15,
+      "selected": 0,
+      "package_metadata_sha256": "1f89528e9734ac64c9e74be19722fd368deac92cc5a42ba17f94ec4a39440377"
+    },
+    {
+      "id": "hl7.fhir.uv.ips",
+      "version": "2.0.1",
+      "example_count": 44,
+      "selected": 0,
+      "package_metadata_sha256": "5d1d767dbd2772b6d0dd69b2ce433a6d7c47bbd178c4aaf2a0a3a8889716ba2d"
+    },
+    {
+      "id": "hl7.fhir.au.ps",
+      "version": "1.0.0",
+      "example_count": 7,
+      "selected": 0,
+      "package_metadata_sha256": "5eb3c19a0e21d465c98d1e3eaf6c4cd303d36c8010faf462fdd4093e1afde3ec"
+    },
+    {
+      "id": "ihe.iti.balp",
+      "version": "1.1.4",
+      "example_count": 58,
+      "selected": 12,
+      "package_metadata_sha256": "82c2985c0bd83becbcd82a7212f42337b48deb2eccf66ef87ee07eebef7b4a58"
+    }
+  ],
+  "counts": {
+    "total": 22,
+    "agree": 19,
+    "differ": 3
+  },
+  "cases": [
+    {
+      "file": "hl7.fhir.au.core--Specimen-nasoswab.json",
+      "package": "hl7.fhir.au.core",
+      "version": "2.0.0",
+      "example": "example/Specimen-nasoswab.json",
+      "resource_type": "Specimen",
+      "original_sha256": "0d17ddf8551d672e1cc60d825f771cb3105b09a1076a1a2050bbb408364d3758",
+      "input_sha256": "d9d9c5906ad9612dc40b282e4c145eb91cd4c64424ce4f05fc25a3acc087c057",
+      "removed_profiles": [],
+      "local_valid": true,
+      "oracle_valid": true,
+      "agrees": true,
+      "applied_profile": null,
+      "local_issues": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "paths": [],
+          "issue_sha256": "8eb2ebd489fb7c3eac1ff2194021059b250b3ef541745997b708e2f01242bc70"
+        }
+      ]
+    },
+    {
+      "file": "hl7.fhir.us.core--Bundle-66c8856b-ba11-4876-8aa8-467aad8c11a2.json",
+      "package": "hl7.fhir.us.core",
+      "version": "6.1.0",
+      "example": "example/Bundle-66c8856b-ba11-4876-8aa8-467aad8c11a2.json",
+      "resource_type": "Bundle",
+      "original_sha256": "6275984b3876fefaaa867b7190fae0b97a4c0eda1b4457cfff34195a8f036932",
+      "input_sha256": "4e0436f2cb2eb188a9a089ec70ea7ef9bb52de233139b39e7e29b472ff90742a",
+      "removed_profiles": [
+        {
+          "path": "$.entry[0].resource.meta.profile",
+          "profiles": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitionerrole"
+          ]
+        },
+        {
+          "path": "$.entry[1].resource.meta.profile",
+          "profiles": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitioner"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "oracle_valid": false,
+      "agrees": false,
+      "applied_profile": null,
+      "local_issues": [],
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "paths": [
+            "Bundle.entry[0].resource/*PractitionerRole/PractitionerRole-1*/.text.div"
+          ],
+          "issue_sha256": "2de67981d8eda472688eca82b049958b145dd08c78339b9b0ea8029a48ec6f00"
+        },
+        {
+          "severity": "error",
+          "code": "invalid",
+          "paths": [
+            "Bundle.entry[0].resource/*PractitionerRole/PractitionerRole-1*/.text.div"
+          ],
+          "issue_sha256": "bb8ae1996dabe46cecdc3b3fb9fdc9580fcc860c3370523208f31f00c691042f"
+        },
+        {
+          "severity": "error",
+          "code": "invalid",
+          "paths": [
+            "Bundle.entry[0].resource/*PractitionerRole/PractitionerRole-1*/.text.div"
+          ],
+          "issue_sha256": "d81f7461019a161efea53e7d4d8f4c2ebd661b9c8fed93cbd985543603ef1f7e"
+        },
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "paths": [
+            "Bundle.entry[0].resource/*PractitionerRole/PractitionerRole-1*/.code[0].coding[1].system"
+          ],
+          "issue_sha256": "ca02131dd5cf9dc7370bce65a0a3878f7eb3132aff840d4da62cc5b8cab58fa2"
+        },
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "paths": [
+            "Bundle.entry[0].resource/*PractitionerRole/PractitionerRole-1*/.specialty[0].coding[0].system"
+          ],
+          "issue_sha256": "df4b2eb9b16d4419824c17a24bc76cf712b5090e3ad42b9981f64982eff81073"
+        },
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "paths": [
+            "Bundle.entry[1].resource/*Practitioner/Practitioner-1011*/.qualification[0].code.coding[0].system"
+          ],
+          "issue_sha256": "f93e095d3ef1bd9e9a54db9e08b68fba128514f12b3754b1dc6b8f57038c5a5b"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Bundle.entry[2].resource/*Endpoint/71*/.payloadType[0].coding[0]"
+          ],
+          "issue_sha256": "3c66c53b3abc4bc3a41291e2c23304494c5c8c82ca32ecd5bb7100e3b15ce12f"
+        },
+        {
+          "severity": "information",
+          "code": "code-invalid",
+          "paths": [
+            "Bundle.entry[2].resource/*Endpoint/71*/.payloadMimeType[0]"
+          ],
+          "issue_sha256": "0c86c6d6f0c6829eb3fb04e3408ef4b85f714cde4a47a3ad955e5070447babe1"
+        },
+        {
+          "severity": "error",
+          "code": "invalid",
+          "paths": [
+            "Bundle.entry[0]"
+          ],
+          "issue_sha256": "ab457a851461980247eb26f78ac49450fdc892b33bceb8ea9dec4defd0c49a08"
+        }
+      ]
+    },
+    {
+      "file": "hl7.fhir.us.core--Bundle-c887e62f-6166-419f-8268-b5ecd6c7b901.json",
+      "package": "hl7.fhir.us.core",
+      "version": "6.1.0",
+      "example": "example/Bundle-c887e62f-6166-419f-8268-b5ecd6c7b901.json",
+      "resource_type": "Bundle",
+      "original_sha256": "a208b160617c19acbec046d608f18212e4de7f2ab0d22b6f89c048df8bc2c2cb",
+      "input_sha256": "ebda3f0f16c07a76a5a5117fb6aa8e5f00c5bae2c977eb718e5c57567912d1a6",
+      "removed_profiles": [
+        {
+          "path": "$.entry[0].resource.meta.profile",
+          "profiles": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-allergyintolerance"
+          ]
+        },
+        {
+          "path": "$.entry[1].resource.meta.profile",
+          "profiles": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "oracle_valid": false,
+      "agrees": false,
+      "applied_profile": null,
+      "local_issues": [],
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "paths": [
+            "Bundle.entry[1].resource/*Provenance/79614*/.text.div"
+          ],
+          "issue_sha256": "64029b00b43026cf5dd4f29a717e56f047efe771e84351264dbc32ee96a60ad4"
+        }
+      ]
+    },
+    {
+      "file": "hl7.fhir.us.core--Bundle-docref-example-1.json",
+      "package": "hl7.fhir.us.core",
+      "version": "6.1.0",
+      "example": "example/Bundle-docref-example-1.json",
+      "resource_type": "Bundle",
+      "original_sha256": "1c318c1657ee08f6f371cc5ce4da48fff00d30427dbf692ffe3b1e3c6e322afd",
+      "input_sha256": "64cdd75233f5e469b7fbaa9ff7a82a52890577cf7f55623196755859450f379e",
+      "removed_profiles": [
+        {
+          "path": "$.entry[0].resource.meta.profile",
+          "profiles": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-documentreference"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "oracle_valid": true,
+      "agrees": true,
+      "applied_profile": null,
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "paths": [
+            "Bundle.entry[0].resource.DocumentReference"
+          ],
+          "issue_sha256": "4abf20ca8432e9c489d9f9d3ddc4c1d22e8fbf087b5c68ba2d91cd1ad44a4648"
+        }
+      ],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "code-invalid",
+          "paths": [
+            "Bundle.entry[0].resource/*DocumentReference/ccd123*/.content[0].attachment.contentType"
+          ],
+          "issue_sha256": "95fa73ebbc293b94c132dba792d4abf749517447c5dc463fc4d15d909900abf5"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Bundle.entry[0].resource/*DocumentReference/ccd123*/.content[0].format"
+          ],
+          "issue_sha256": "5576a37b9acb01724233872728899dc688b8ed42ce958d2949cbbfccb6a9000c"
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "paths": [
+            "Bundle.entry[0].resource/*DocumentReference/ccd123*/"
+          ],
+          "issue_sha256": "681e189ced6079407989321d80b8276d2aca0cd03cbc79a38e1aa6fd5987f126"
+        },
+        {
+          "severity": "information",
+          "code": "invalid",
+          "paths": [
+            "Bundle"
+          ],
+          "issue_sha256": "a4ae64ca86f0fad1abce31f4e94107199920245deb71c6ac4fe1f39820f5d13f"
+        }
+      ]
+    },
+    {
+      "file": "hl7.fhir.us.core--Bundle-docref-example-2.json",
+      "package": "hl7.fhir.us.core",
+      "version": "6.1.0",
+      "example": "example/Bundle-docref-example-2.json",
+      "resource_type": "Bundle",
+      "original_sha256": "3cc8226ade6c0c134517753c65e97239beab2a5394c944b5fbbe1815c5f32df6",
+      "input_sha256": "c009ce89126de7a8e7543bafcab98b636546e2991cafc7fa88e60eeacb2c79c0",
+      "removed_profiles": [
+        {
+          "path": "$.entry[0].resource.meta.profile",
+          "profiles": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-documentreference"
+          ]
+        },
+        {
+          "path": "$.entry[1].resource.meta.profile",
+          "profiles": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-documentreference"
+          ]
+        },
+        {
+          "path": "$.entry[2].resource.meta.profile",
+          "profiles": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-documentreference"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "oracle_valid": false,
+      "agrees": false,
+      "applied_profile": null,
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "paths": [
+            "Bundle.entry[0].resource.DocumentReference"
+          ],
+          "issue_sha256": "4abf20ca8432e9c489d9f9d3ddc4c1d22e8fbf087b5c68ba2d91cd1ad44a4648"
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "paths": [
+            "Bundle.entry[1].resource.DocumentReference"
+          ],
+          "issue_sha256": "61ce7e446ac9ff4f2564ac2100155497eaf567801f8af6f1fd25896f32406968"
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "paths": [
+            "Bundle.entry[2].resource.DocumentReference"
+          ],
+          "issue_sha256": "cf37487e1edb62d9f55501b21d182f9fdf71f0e03c628731ec093c778d56974a"
+        }
+      ],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "code-invalid",
+          "paths": [
+            "Bundle.entry[0].resource/*DocumentReference/procedure-note123*/.content[0].attachment.contentType"
+          ],
+          "issue_sha256": "ef30a6c16f48553d04af7bf6e0e9429dfd1db29b7fca8893fb01a6ed90901e0d"
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "paths": [
+            "Bundle.entry[0].resource/*DocumentReference/procedure-note123*/"
+          ],
+          "issue_sha256": "d69a129769cfc0f261ba6452e33085f6d66844e9bf4e45b64b65e9671a3bde29"
+        },
+        {
+          "severity": "information",
+          "code": "code-invalid",
+          "paths": [
+            "Bundle.entry[1].resource/*DocumentReference/procedure-note456*/.content[0].attachment.contentType"
+          ],
+          "issue_sha256": "d5c8518e46088294de5407eec947458afcc3f2fa7679bec89a03894788751455"
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "paths": [
+            "Bundle.entry[1].resource/*DocumentReference/procedure-note456*/"
+          ],
+          "issue_sha256": "2ebe170c7a172aa8072662354ae60c5a77567d2f06929e0c9dcee9b99823edbf"
+        },
+        {
+          "severity": "information",
+          "code": "code-invalid",
+          "paths": [
+            "Bundle.entry[2].resource/*DocumentReference/discharge*/.content[0].attachment.contentType"
+          ],
+          "issue_sha256": "e4172703b570786dd8f02ba9f536047ab4c8bcde567b8629c4aea4425507e1d7"
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "paths": [
+            "Bundle.entry[2].resource/*DocumentReference/discharge*/"
+          ],
+          "issue_sha256": "a1345848701c301e0362be2468f9898c980364f18c47619a4d237c356e7a07c1"
+        },
+        {
+          "severity": "information",
+          "code": "invalid",
+          "paths": [
+            "Bundle"
+          ],
+          "issue_sha256": "a4ae64ca86f0fad1abce31f4e94107199920245deb71c6ac4fe1f39820f5d13f"
+        },
+        {
+          "severity": "error",
+          "code": "invalid",
+          "paths": [
+            "Bundle.entry[0]"
+          ],
+          "issue_sha256": "03b150cd017bb07d0b968f119ffa55e96736d1e339c13ddb291262d578f8cf6a"
+        }
+      ]
+    },
+    {
+      "file": "hl7.fhir.us.core--Media-chest-xray.json",
+      "package": "hl7.fhir.us.core",
+      "version": "6.1.0",
+      "example": "example/Media-chest-xray.json",
+      "resource_type": "Media",
+      "original_sha256": "4b4ba151f7c312a784437169cb90f029bbd126d86e94610ec7ad5d42e795d331",
+      "input_sha256": "f48088a6477d5db1cbc950e140e4aa6df01dcefa7a6647d98c96f86025381d51",
+      "removed_profiles": [],
+      "local_valid": true,
+      "oracle_valid": true,
+      "agrees": true,
+      "applied_profile": null,
+      "local_issues": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "code-invalid",
+          "paths": [
+            "Media.content.contentType"
+          ],
+          "issue_sha256": "8352c6762d0d20ba0a97f4865c71ff5254181a253e85ca841b5969d54a78d386"
+        }
+      ]
+    },
+    {
+      "file": "hl7.fhir.us.core--Media-ekg-strip.json",
+      "package": "hl7.fhir.us.core",
+      "version": "6.1.0",
+      "example": "example/Media-ekg-strip.json",
+      "resource_type": "Media",
+      "original_sha256": "5e18950d73983d0ad8ef4e741211779f66e7807ab7ef46ef1be19d4dd0cf7cb4",
+      "input_sha256": "4b73851d3e54470e861fc89f8809425cb8cbed6e1e245c0b37208f41afbb80d2",
+      "removed_profiles": [],
+      "local_valid": true,
+      "oracle_valid": true,
+      "agrees": true,
+      "applied_profile": null,
+      "local_issues": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "code-invalid",
+          "paths": [
+            "Media.content.contentType"
+          ],
+          "issue_sha256": "349cb5a9379d740ddb98d938daef23d3c648f2aa1177357841e9cfbd86d4bfda"
+        }
+      ]
+    },
+    {
+      "file": "hl7.fhir.us.core--Questionnaire-hunger-vital-sign-example.json",
+      "package": "hl7.fhir.us.core",
+      "version": "6.1.0",
+      "example": "example/Questionnaire-hunger-vital-sign-example.json",
+      "resource_type": "Questionnaire",
+      "original_sha256": "12debc6d8fbd13b4ca32c8988114f74a485e0d3a88bd7e204d4d4e098a5c8eaf",
+      "input_sha256": "0a1c6ee85b01829ff4d3d16ac3c69e832488cf422a6ff01bafd1aa14a5c6cd01",
+      "removed_profiles": [
+        {
+          "path": "$.meta.profile",
+          "profiles": [
+            "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "oracle_valid": true,
+      "agrees": true,
+      "applied_profile": null,
+      "local_issues": [],
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "paths": [
+            "Questionnaire.jurisdiction[0].coding[0].system"
+          ],
+          "issue_sha256": "9d08e30578e67e7ef346c9d844af30174e320c74565ecdd59151a68972f4c746"
+        },
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "paths": [
+            "Questionnaire.jurisdiction[0].coding[0].system"
+          ],
+          "issue_sha256": "1bd445cff1df92dfe135197c2f69c30e8d5b39458f94e36bbba386995e007577"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.code[0]"
+          ],
+          "issue_sha256": "7649c9ed5f4258ab0a5c9e627fca383c3e7b2c9bbd2c9ca54080257443e8aa95"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].code[0]"
+          ],
+          "issue_sha256": "e3354c2c31c7f34c064f8ff65002644ae582e3742739379d6207fe94e6a41c21"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "4db58b7e6baeb4f147457b73ac320b2f7a5e1b6977d393b7f32237bbb498e7c5"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "d954cbf44bc86012373cc9d26a4569714ef7dfe02d2f8a4fc3b4b822e0c47eec"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "49b6ee83b40d6b095b2faa6f01f15d19e7dad4780ca03a3163ebed6b2f8dff48"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].answerOption[3].value.ofType(Coding)"
+          ],
+          "issue_sha256": "c95b96758ae3ea829cd8f7d7678336d0b676a6f8ebcbe8f048a9776855d8ba7a"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[1].code[0]"
+          ],
+          "issue_sha256": "e1fd18b86cedfbbc329119fded8c0e2aa7aa2e868959b9a7946b4e22182a84d2"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[1].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "321f2fc21658a35ffe9303583837a99f6262ebf20a03453fe339b9a501d3ede4"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[1].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "9f4fe0316a80cac7e4957ea464b1b300626d517cae5a141272bc62806a0e1158"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[1].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "54bb453d31fc9aad69058602ad121438a507a24c2175508bc69ed8bed917c524"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[1].answerOption[3].value.ofType(Coding)"
+          ],
+          "issue_sha256": "0e2c07371afb895224547b24a860ed459ab5125dd52d55d9b759919dc90ae69a"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[2].code[0]"
+          ],
+          "issue_sha256": "cd1ccfac3e9df171b40994498c467adf7d07ae5be56eee490d6979b9c327d726"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[2].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "acf379c2daabc59256c83dffef90484ceaa79e6bc4ed8260ffc6137f637347ed"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[2].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "1759e1c13949750d0b61325435c900d1db44c48a579fb24b7e4d5487c0ec5860"
+        }
+      ]
+    },
+    {
+      "file": "hl7.fhir.us.core--Questionnaire-phq-9-example.json",
+      "package": "hl7.fhir.us.core",
+      "version": "6.1.0",
+      "example": "example/Questionnaire-phq-9-example.json",
+      "resource_type": "Questionnaire",
+      "original_sha256": "0ed914800d116a6a317c9805379b68f39d6269f24a901de187343e68b7286b59",
+      "input_sha256": "e7163bd0a5d07e4f5d6717233263b9b1b942d31d059c2c136311a49d09c577fd",
+      "removed_profiles": [
+        {
+          "path": "$.meta.profile",
+          "profiles": [
+            "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "oracle_valid": true,
+      "agrees": true,
+      "applied_profile": null,
+      "local_issues": [],
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "paths": [
+            "Questionnaire.jurisdiction[0].coding[0].system"
+          ],
+          "issue_sha256": "9d08e30578e67e7ef346c9d844af30174e320c74565ecdd59151a68972f4c746"
+        },
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "paths": [
+            "Questionnaire.jurisdiction[0].coding[0].system"
+          ],
+          "issue_sha256": "1bd445cff1df92dfe135197c2f69c30e8d5b39458f94e36bbba386995e007577"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.code[0]"
+          ],
+          "issue_sha256": "d723efc0daf3fd73d961c61009686a5f946320cfd73568b5a45d686b90fa717b"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].code[0]"
+          ],
+          "issue_sha256": "cb64b6584de5ab5197123d2b0880a6148e27e9eee61ea6128f4b59939307f2a3"
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].answerOption[0].extension[1]"
+          ],
+          "issue_sha256": "62dda829b6cd62bf091223020faec0a4251220bb74f1d6d0eaa49209e1b8b733"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "216054cd4e99be56af9787e2394cb1194657b6794043b40cc457a05fd9a673ae"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "b743062b4beaaddc03236477b134a1343857c4491e7fb8f6bc9d4fcdf9ab90e7"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "c85b9902f89114dc6eb2cba65b34be1fc56a560948cf4d44f353cb18259ec860"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].answerOption[3].value.ofType(Coding)"
+          ],
+          "issue_sha256": "7b1bc9efa60c82de52d48613e1b106148017867903454724953f44568a9f36cd"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[1].code[0]"
+          ],
+          "issue_sha256": "bf9f1fa2b0c1793fa7447a068e2bfc3f5d7869e5f60ff9933968a4796980fa5f"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[1].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "f31b4328f6919189a8d14249667471eeb24736cb377652c0369052106b361ed1"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[1].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "ba767f91acf98b251ab9b0094bf378a1e6ab50bb6869ac4f1b45a2272eaffa6d"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[1].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "cc7e1f259db7eaff73adb3f17aff4faaadc790c97a74cdfe198f0bd660aab130"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[1].answerOption[3].value.ofType(Coding)"
+          ],
+          "issue_sha256": "b860f11f2b381fd646d7d3d802e81d99c3f2269188b83c0f6c1acd79e056cba2"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[2].code[0]"
+          ],
+          "issue_sha256": "35ac83d047ae868dbec1ee500b664b683f91352ae52f15e6de90697a725c5e34"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[2].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "718433d2722e0315af9a0c586bdea93e2c7a7b4c37fd5fedafa6ed5a3fb1e59f"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[2].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "7ab85f5b39544a4e2174a1f114dd9a75e3e9f88161ea0bbf513eabd6dd01568b"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[2].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "beb04e6c21940306d645e4e49b03ef8c34bf9cba2040f6254d43a989ce0c795b"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[2].answerOption[3].value.ofType(Coding)"
+          ],
+          "issue_sha256": "0855cb6f53816cc802a014d3004013ecba600dbb77a41a5c2e4595d154c1670a"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[3].code[0]"
+          ],
+          "issue_sha256": "72e695f87ca641d930f176ad3b56341dc6c96cc9cec7131ef261cb13bf6d52c7"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[3].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "427c3c938868a02a5405ad0386461594dba687c5dbfbf03ffd0039a6eef1e349"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[3].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "bf0f545b01000a3669dad543d0c3bf0badb14885ba8630a90b7c76ddc0dea5a7"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[3].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "95b1d14e8a7e1d35187603befa81149449522eb6b4d253a62868bfb20d7b5963"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[3].answerOption[3].value.ofType(Coding)"
+          ],
+          "issue_sha256": "87ec358effb1f16ef1bf2ab96b93f891657d234c0dbfa9128d6519ba69b94fba"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[4].code[0]"
+          ],
+          "issue_sha256": "fdff0cd092b13d0e9f85222a09818868b47154caf98271b80ac29b0c92c8f08e"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[4].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "47eaec4e6cc5f0946fbcb0dc5ed546385e29e7f7ad8829bba79d660445f43ca8"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[4].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "50de2b892a970b3b15185f05b2ca4a4d081fe5096d883c3f5c1ee11d3511a41b"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[4].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "7b5b6cb6bbdb97c1e0dc9e292e912c780e90b2045be7901d733df978681d0ade"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[4].answerOption[3].value.ofType(Coding)"
+          ],
+          "issue_sha256": "1d7e9e1e01919c01537a89ab92f88a4a58a0984069e88ba555d0fd78f76dbbc9"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[5].code[0]"
+          ],
+          "issue_sha256": "05ac8ac6924411af52b83ae2cc71cebb83f5807f062986e2578477dd44a78b30"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[5].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "3f6b66d98f80ffd4f2160fad2e4b2b31eaa4b9d01769a91a42ee4ce96a245c3e"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[5].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "b50321fc0db03d1fa74d0089504b59a032303e89342bcc8298bf7a6c132cbb45"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[5].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "2c5d4d599ee02421a06f2fbb58f5bd87180ddbbc2915901ba4d9cbba35affc54"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[5].answerOption[3].value.ofType(Coding)"
+          ],
+          "issue_sha256": "22c840ce1bd038564caa4da12e2fa6c8c801c62efdb3ad2225d1ce7c8680eb43"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[6].code[0]"
+          ],
+          "issue_sha256": "1b9c316ea3b98cc8881af296d518e235ef9b6e1f62a9bd2bdb1f9430f8c77880"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[6].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "b73fd6ca93ff6cd2423cfdc7f67a431f223a8dacf58b717888cd82f25af1288d"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[6].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "d5c5369cf67781a251d6d81d718f3dde39193c03b7a9ab7620b38d6d3561463e"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[6].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "b438c47cae640bfa3f34b5aa6d6f58e3cab5b9df8524aa85a7ff0c6d7ab31d70"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[6].answerOption[3].value.ofType(Coding)"
+          ],
+          "issue_sha256": "123107258f234baf38f51468db56e6b74b5d5daaa14ab43ae95a494d5bebba7c"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[7].code[0]"
+          ],
+          "issue_sha256": "0ee5eff3b05dcf35b8fcdfc67721d78ecf0da9bd12bf854ac2b5ab4fefce448c"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[7].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "b7f87eea3ce6856329826c090eff4f54007a005af0d62edbe3d87f66aaff23f8"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[7].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "77607641db4a35a919a848c6b87ff66f35396be6fa311234501e76b78842df5c"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[7].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "a9b915b41d29324ed895e961b4fe4c01814976db7bf195070c1844d70b9353ea"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[7].answerOption[3].value.ofType(Coding)"
+          ],
+          "issue_sha256": "b7017b32589460f3ff62821c0e197a54ef009a8482da6e669a9bc60b08049385"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[8].code[0]"
+          ],
+          "issue_sha256": "db50cec57f917f173e81aa41cf8dcd664df06ec6f0f02a9f5baa302d369783ac"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[8].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "0450722d0f6427f4fb5524a6444977203b43e6843649f5e8489202ab90f8421e"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[8].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "782f04ab0c2e656db19971ef41195ed2458a447f59bbefe3eaac9d7c2fb2cbb3"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[8].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "a57eebd614eca0c1e096fbceab6ffbfcd195f4a361cae8cbf8415a5ac37d093c"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[8].answerOption[3].value.ofType(Coding)"
+          ],
+          "issue_sha256": "ccf3d37ae32ff943b29e44d92d36ee3c19e6ababd671f016a3f7744d496b4946"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[9].code[0]"
+          ],
+          "issue_sha256": "061fdb479f14d548cb477d957d1a050ea292cc3f8a6e0b5c0d346ddeab3b1ab2"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[10].code[0]"
+          ],
+          "issue_sha256": "8f0de0f690487a519496df3cff0c24dad5fbffbdeb701494b8f5dc82219ec707"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[10].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "300b5fa2ae55f085668f3844963d14c2855bf6a2563c84c6488cf1ab13d49932"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[10].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "d2d31195830798b7f0f19bbcb149c16b79793fa650ee226f184c6123dd6903c9"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[10].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "1b8e656dc718c1289b38a6467f6217d7bd6b639b4f38e0c8f310d161aa35691b"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[10].answerOption[3].value.ofType(Coding)"
+          ],
+          "issue_sha256": "c7b1faaeda6d272bc468f42221006f891048fa2fcc089b8b1171aa2a14091534"
+        }
+      ]
+    },
+    {
+      "file": "hl7.fhir.us.core--Questionnaire-prapare-example.json",
+      "package": "hl7.fhir.us.core",
+      "version": "6.1.0",
+      "example": "example/Questionnaire-prapare-example.json",
+      "resource_type": "Questionnaire",
+      "original_sha256": "f2ad0e54b6d8f2291ca8b53830bdf1de7d87a92428add533b2740146398e122c",
+      "input_sha256": "44eebf71fe2d6d28d9aaf43bf0dcf220364d94b2afc2795a5e6ecb7dbecca55d",
+      "removed_profiles": [
+        {
+          "path": "$.meta.profile",
+          "profiles": [
+            "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "oracle_valid": true,
+      "agrees": true,
+      "applied_profile": null,
+      "local_issues": [],
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "paths": [
+            "Questionnaire.jurisdiction[0].coding[0].system"
+          ],
+          "issue_sha256": "86ef68dd38f8f95ca388105096daf46f5adbc5e3d328297f54051e058634987a"
+        },
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "paths": [
+            "Questionnaire.jurisdiction[0].coding[0].system"
+          ],
+          "issue_sha256": "32204963df5e3424fc0ea9773ef816814a5ba3adb5a311b7ee97fd949195903f"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.code[0]"
+          ],
+          "issue_sha256": "cb1fc28ab15325d0638c62ac162da13265032560bcace6530a610d16c2b322b8"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].code[0]"
+          ],
+          "issue_sha256": "8a5e3178384b47901344b1e0fbdc33a8721cac4541d4d62fc4bf837f2d94e564"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[0].code[0]"
+          ],
+          "issue_sha256": "e701b978a84b0d72199f46a7df7eb99ceeb234bb5aec503c98e4ad283d0fe238"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[0].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "6d6b5635ea61e7476a8dd7dd7865e489653a0b42952e394cee9e6239f8f42781"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[0].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "2fb403e3e67be6352f4dda40b56b46326431b03fdd0cc45f5fac5735243aca35"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[0].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "77c5d14f05568d6f3bb2ff7008b178648e62c6699d6217276cb50de9578f425b"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[1].code[0]"
+          ],
+          "issue_sha256": "dfaeecb6a933673aed245b0f642cb5c6a11434fafaef800aff8073801aa11a79"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[1].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "109c322743924f62a513153501914ccf423846109a335a2b0a822333da0c8e27"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[1].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "850c6e8df4c3d02906b368eafa514699f6ff19d362aa2a04aaa533df97cd45ee"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[1].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "92ec6fbbdca3fa49c0aad73fbca8b9dec4178e8af6b98825755d0c7d3ee97570"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[1].answerOption[3].value.ofType(Coding)"
+          ],
+          "issue_sha256": "bb913292a3fd70077cbca1d4a427ce24f2b22ab8f375f56b13e68183f5114de7"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[1].answerOption[4].value.ofType(Coding)"
+          ],
+          "issue_sha256": "bd5f143ae2e7d8cd21b7d371c19e061d0848eba402ff019bce183a8d97f3481a"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[1].answerOption[5].value.ofType(Coding)"
+          ],
+          "issue_sha256": "81d45001d30b0e7736065d8a3d294d962053a119fd3c5ea842550ca1f846c97e"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[1].answerOption[6].value.ofType(Coding)"
+          ],
+          "issue_sha256": "2cca4d9fc798a2196ef561b14d120d84742257f730038ac4ed1d2fef5121f5e7"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[1].answerOption[7].value.ofType(Coding)"
+          ],
+          "issue_sha256": "14a8484132a664cb0900b703e1317eb0a0b32c602d8de6d6bc0466e5fcf67b04"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[2].code[0]"
+          ],
+          "issue_sha256": "a08562c89880ebf8efadb1bbfdc659e9462faf36756c54adbe9834347b5e8668"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[2].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "7113b14f12964a5ec9a828cb7df2f34a1aae02798eb520ce2784819665d7093f"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[2].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "37b92ac4eed6467e3660a86b5cbbde5b70286d5bdbd5577c6706ccdc306a82f2"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[2].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "cf03b3db05305ea21e290af3a495cbff2a0344337dbbaa96bd9181028832b32d"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[3].code[0]"
+          ],
+          "issue_sha256": "1251466ea7b018e1538aeb7dcba6294bd0d37bdb1330f41f814879d236f9b342"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[3].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "4f6a2b88dae2149e08545843d7e504f9f5716bf77af3cc0adb6aba70c3eda928"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[3].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "080cd5fe2e7c6ee4f285090b76c44c2bac9929ec8a9858dd14b93ef1498cb63a"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[3].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "6b576c968fa337c7b2691d8c8f2d23d29f6d3531634fbe1516892e2915c072e7"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[4].code[0]"
+          ],
+          "issue_sha256": "42aef5d34778fbd726d074c795e5c9c07f1d7de3f82aa5293d7174009efb9974"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[4].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "5ad4f6db8987e361f7eabd48a0c44888090c2b541264c84ca1539cf31c49fddd"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[4].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "a7df18a3b0ed33294eb3afdbdb48b9bdd90cfa9495e5ee1a70679154ceb153b1"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[0].item[4].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "2b66e643279d4c853e34ef0ce1d1a93ad68562b1686ff0087a64ab66504813a6"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[1].code[0]"
+          ],
+          "issue_sha256": "bb2cd8021035fbb2f3e53937d0d6473e77b41d5026e28b209b28365384f29ff3"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[1].item[0].code[0]"
+          ],
+          "issue_sha256": "eec6e717360731c7e42f065e69518fb6c48831833e44561b3fcb33cb385f4cea"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[1].item[1].code[0]"
+          ],
+          "issue_sha256": "8a8a3acc9550450f647606813d48e3ba196eb5e60ca55666424e9feefcd873d9"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[1].item[1].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "d7d61c8d0c78e26d1bb212f74cd422be8deb13928fae064eb20929c2abcd55d9"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[1].item[1].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "dddf3be44f202c975a97859902cf2a2421ac78ca8853e8be98073c0abe11b332"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[1].item[1].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "ef4e848ff65396b56a7c09487686267bcbcffdb62903c262519ab1ffdf4a52a6"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[1].item[2].code[0]"
+          ],
+          "issue_sha256": "df10a0f07c80578fa776de0bd9184f2dabb7bff7ea3622022c2b66655934f8df"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[1].item[2].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "d37b6ba6a6b9b09e454786402e70c054550d860fe3fc4079efc350e55a63dda2"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[1].item[2].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "5fb0e65180ff45b509b5b23a99b35e1fe43d2710d3809dbfe36fb3c4e98ef7c6"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[1].item[2].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "b24790131bb45c2adfc069f3bb3993df9b981046a7b0046b5efa27000bbf8e9e"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[1].item[3].code[0]"
+          ],
+          "issue_sha256": "7b31e5ffa4b7f8a1d49a4145f86b71c1502541e7df8660d197cade871b4786e6"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].code[0]"
+          ],
+          "issue_sha256": "bd3d890d51bfce91be67a8cd9c737d5b331e3c22747d914a83f781cda51c22d9"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[0].code[0]"
+          ],
+          "issue_sha256": "0746e237310757ede590244367bc3fcbc074ae6bdaaa74a3c3bb69647fb354b4"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[0].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "9e04c5a4514e093b46b48d09374e674890760fb9dae21242724c3a6f4a1103de"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[0].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "f9ea918dc5a4cae189d338e258259340e70efb873a50c93202c0630e2c6e5efe"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[0].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "a8542d3cd4a1b964193d118fdbaf8b1cbff5ffcc036467732a5898879bdd2848"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[0].answerOption[3].value.ofType(Coding)"
+          ],
+          "issue_sha256": "bbc87c7dda64ff6cd7832f751995fba9b4d27c8ccca5f56263cd5b94f221fe3a"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[1].code[0]"
+          ],
+          "issue_sha256": "6d705ed5d6025d8cadcc1a81880735ac150c8ceab065954d4e927d09be9846eb"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[1].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "9f91dba11ab32e4110e8c4c46ab332650489e5a120a1f869bed6a89f8e954d32"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[1].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "4a5207e6ebbef8b648825c55c8bb6e03ed02f9ef900c89a15c9a5a4b2f535cab"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[1].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "030bff598395786dfc1c60133a0d6bb2bde3c63ad509d9103a4b37bd917ac039"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[1].answerOption[3].value.ofType(Coding)"
+          ],
+          "issue_sha256": "55667967474966e11ba6939d1ddd948f08e215dff559608aeac677fbb7963c62"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[1].answerOption[4].value.ofType(Coding)"
+          ],
+          "issue_sha256": "adcf2f1668d0aa37c319a5b7accf3b7b54ceb334cd0ac6d06081422a87439531"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[2].code[0]"
+          ],
+          "issue_sha256": "0427fbb286827081b2f0616cbf9a6ad5e617bd4929661825de4becd96153a285"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[2].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "5fe6b9173d3e5c1e6a17b63ee4d4feafad4394f5419f12815eec106ba55c9ddf"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[2].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "08159d1dbe1662f69e32b7f11ab21089a477cca1ba435537fe15f4026940a337"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[2].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "b05fab4201f7c8948a7cd0dba9b4e4473f2e871cfbcd9719b6cecb2aa903194b"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[2].answerOption[3].value.ofType(Coding)"
+          ],
+          "issue_sha256": "bdcf60865b4711f33d1e5209f4a1f983ec319b670230938f58c44cf3ab12dcf2"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[2].answerOption[4].value.ofType(Coding)"
+          ],
+          "issue_sha256": "719b3d6ade540bda23aaa534870de5f7ce7bc6ece5e68d2499fab7d41354016c"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[2].answerOption[5].value.ofType(Coding)"
+          ],
+          "issue_sha256": "48c030ce5d965d08785983e79c0a77ddedcd872f6c31bb4bae0f755a577fc7b4"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[2].answerOption[6].value.ofType(Coding)"
+          ],
+          "issue_sha256": "5b69657423c892c79655889ed856e25ab233506093044fb05b1ceae289606512"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[3].code[0]"
+          ],
+          "issue_sha256": "cb1ffaea65a0ff95ce789bc5d9988f406f07d7184c1f439acabbe9e1089eacb9"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[4].code[0]"
+          ],
+          "issue_sha256": "0c089bb151290a8a5bcded8d1dd76153aec94c857083719ed910461562e3351e"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[4].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "95e0fb41b9f05cc4147d616744347bbe589b16a8be94c350e67da7b5eeb60dcf"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[4].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "642898445880029558e826125da58b5e164c0363242e6914b8464374c8d9795c"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[4].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "7bd7217f80aae0834a9742cbc296067b3672c973b2b6451e370c05b2ac480e49"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[4].answerOption[3].value.ofType(Coding)"
+          ],
+          "issue_sha256": "9623422067edccb1b6d02555b605774cfbb65989be7703183f78e4fcaebd342c"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[4].answerOption[4].value.ofType(Coding)"
+          ],
+          "issue_sha256": "2f9bfbfeb6f567317a39f2619c48a1efb6d7366472809fdcbf132d1a03ee5137"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[4].answerOption[5].value.ofType(Coding)"
+          ],
+          "issue_sha256": "a2c26c998c388cf2ecbc642d4adc48e940cdbf0f1df0876d5c5ce5ce17f351a0"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[4].answerOption[6].value.ofType(Coding)"
+          ],
+          "issue_sha256": "d44109e774485c55c788b35e38da1bb140869e20de54a206a4268dee44ccb7f8"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[4].answerOption[7].value.ofType(Coding)"
+          ],
+          "issue_sha256": "9d58e08b52c003d5f9488c6ada9e980c1c3dca796d71d75b15075b814a1e0bc4"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[5].code[0]"
+          ],
+          "issue_sha256": "dd1deab2c9b2f2cd997c46068b55cc90d8f502bdc9fbe7de8cba03eff4f92e8b"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[5].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "8a17fd84097b59aee10f79eb795bb2d6a6551467ac3c40a7f96e85a811f36023"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[5].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "0fad75d05af183c96f31411f65700041db3d94e983994a474b0b0996b3f59704"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[5].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "a229d8ce47f6d1f59d558b09e3c970c3ecdfacb5453876b3265cce30b1c5ca41"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[2].item[5].answerOption[3].value.ofType(Coding)"
+          ],
+          "issue_sha256": "0460feefe7e1e8fddff4b6cb360f6ef28edafa4026a04d13ebaf961a4785e103"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[3].code[0]"
+          ],
+          "issue_sha256": "f432d1ca36940df938077683f431d7d8a503605086367dba6b7af805858c798d"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[3].item[0].code[0]"
+          ],
+          "issue_sha256": "e5cc07d4f50e1f6436938a54b32fa2224daa8cd02cec1cc1fcfa05a4df338545"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[3].item[0].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "adf59d914d796e6751d423ecdce3345e8938cde0106e691a7ed7da4605e2f0e6"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[3].item[0].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "03731ce86a1680d933d6c6b8720ee1ea0098e9b18ba2f7fcab390ebb80eae7fa"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[3].item[0].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "7a0a2d473987af32e220adc23c52efefe7a982da29e32541dcc43b5c56d1b74f"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[3].item[0].answerOption[3].value.ofType(Coding)"
+          ],
+          "issue_sha256": "1e145e62ae26a971b23a0949d80264e4678a4889da1fdcb26ba7c810f3300ef2"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[3].item[0].answerOption[4].value.ofType(Coding)"
+          ],
+          "issue_sha256": "2f9d3aa85d9a4322937aa9606fb5dd36d19e04404b10e114585fe13f1d6712ea"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[3].item[1].code[0]"
+          ],
+          "issue_sha256": "9a0300f720d09f2ef20fd53d9b6358d54c62f8b184eb26bbcdcf948b3b6a0c11"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[3].item[1].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "f35ab762b2500add0f42c902a51ccbdf79bc27ddd968cd46e4f87b6a307e08fd"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[3].item[1].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "cbc006b13be10e782b7abb62c35fb9b19d5000f40a1b5dcc2d56a37e22d0b041"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[3].item[1].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "08bf7c34bcf9381b182897db0c6b5385ceab9614723e4fc4e1796bc6b39ddf2b"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[3].item[1].answerOption[3].value.ofType(Coding)"
+          ],
+          "issue_sha256": "aafe1e39c81eb3b9c8a867ea9cb8ff891f9bd1492f6ca1b248522ccc30228d06"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[3].item[1].answerOption[4].value.ofType(Coding)"
+          ],
+          "issue_sha256": "f8c1e413c622e429f3809d399ead7d4c9ba57360ed8aa3d53c8548c3cd7f8ae7"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[3].item[1].answerOption[5].value.ofType(Coding)"
+          ],
+          "issue_sha256": "37b38c9a452bfacbbd3d2e3131d90b08a5ea2a199b0b8b94b1e6826f52708bb5"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[4].code[0]"
+          ],
+          "issue_sha256": "54f21471646a97c7db07c2def82007fec0b793d50125f7c1713abef3670de8a3"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[4].item[0].code[0]"
+          ],
+          "issue_sha256": "8aea576d34dbd8008b4d54b367b6ed6c7ad6c886fd50831ce670cff4c14acbf2"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[4].item[0].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "2c2e2c5dc8176155f7b2864666823204128f8266a37028d125e500e3c04c21b1"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[4].item[0].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "6204715b94e77944e3594beb621d57fe88fcfcc6b306b1096c3de8de17f6747c"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[4].item[0].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "5812969d8233a0b9b7a6ac7895d9a511127b63dd1a5d9185e5ab9f20b82eb231"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[4].item[1].code[0]"
+          ],
+          "issue_sha256": "35693293b3562ba1d478dcb43a88ae8fa9c886cf01bbc7cccc9ef5252adc929b"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[4].item[1].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "47bc0ed83ea544e0620f46849f8f160b691fd941680086c5d10cd1846a534e28"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[4].item[1].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "e05891f998d588b8d9578d9b7c867a320695817be31f30a2c68cbe5abb303176"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[4].item[1].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "a22c801c004e3ba0fc81be4986770d376d9183b7dd0546454a8961a059a64ad8"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[4].item[2].code[0]"
+          ],
+          "issue_sha256": "c965a5337d58c9ede9b05edc3097e28740444722c0d30a0581cf7b16a29b7972"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[4].item[2].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "5a6cdce080810566a771eb2d4c41b587597416d913bd7f6e814cd098454e538a"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[4].item[2].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "69cbc7418a4724b32af3ee801df6bede630edf5618238ab4f11e19b42c542166"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[4].item[2].answerOption[2].value.ofType(Coding)"
+          ],
+          "issue_sha256": "7ba15e23921e64e2ed5735971563c94974de938b4339086a0a7b5d2369261200"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[4].item[2].answerOption[3].value.ofType(Coding)"
+          ],
+          "issue_sha256": "7399b78ce917773f851e036e0a3d4344261fbc32bd9b645ccffed4953a438567"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[4].item[3].code[0]"
+          ],
+          "issue_sha256": "0006ca5896c58203212c8c386a8ca642311697ada90f7ee29da1b6eef8a88b60"
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[4].item[3].answerOption[0].extension[1]"
+          ],
+          "issue_sha256": "6b93c42e2a3bf6e6fd2c6405ab7aa986546f56cfb643f4b6e58c178bf1d32240"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[4].item[3].answerOption[0].value.ofType(Coding)"
+          ],
+          "issue_sha256": "b8458b8e4b8cd2eaa92b3014e417fe65348d8334ef4fc67b455dbd7aa823d492"
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "paths": [
+            "Questionnaire.item[0].item[4].item[3].answerOption[1].value.ofType(Coding)"
+          ],
+          "issue_sha256": "10d36a5383f77cedecf76b7d3c61d8b2a368905e474fb2d4e08272c61d932baa"
+        }
+      ]
+    },
+    {
+      "file": "ihe.iti.balp--Binary-ex-b-binary.json",
+      "package": "ihe.iti.balp",
+      "version": "1.1.4",
+      "example": "example/Binary-ex-b-binary.json",
+      "resource_type": "Binary",
+      "original_sha256": "1803d326940f3e1b656ebe67c97af71317173db4a7b7b5778d48abcbc0f05f15",
+      "input_sha256": "88cea0b578f326e1649cbcc0213ddb24ca6f78c17ecbbfb1791fe83e00a54860",
+      "removed_profiles": [],
+      "local_valid": true,
+      "oracle_valid": true,
+      "agrees": true,
+      "applied_profile": null,
+      "local_issues": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "code-invalid",
+          "paths": [
+            "Binary.contentType"
+          ],
+          "issue_sha256": "e57eb67792fb9c6d059f532b9d9c2dcb41db989b03e5ff2db5e9515452f3772c"
+        }
+      ]
+    },
+    {
+      "file": "ihe.iti.balp--Consent-ex-consent.json",
+      "package": "ihe.iti.balp",
+      "version": "1.1.4",
+      "example": "example/Consent-ex-consent.json",
+      "resource_type": "Consent",
+      "original_sha256": "8a25809baec6483dd04bd68e37902e7ab75c343531c2be797ef611f8740ef0b0",
+      "input_sha256": "a0d3f88ba8dc32ca0e4d09b3330636bae3f1542446e4d43d9b7cbe4e3e68caa8",
+      "removed_profiles": [],
+      "local_valid": true,
+      "oracle_valid": true,
+      "agrees": true,
+      "applied_profile": null,
+      "local_issues": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "code-invalid",
+          "paths": [
+            "Consent.category[0]"
+          ],
+          "issue_sha256": "2158994e2278a4373eb67a525ce03d652e6400f6e6453389d72d0792b561ff62"
+        }
+      ]
+    },
+    {
+      "file": "ihe.iti.balp--Device-ex-authz.json",
+      "package": "ihe.iti.balp",
+      "version": "1.1.4",
+      "example": "example/Device-ex-authz.json",
+      "resource_type": "Device",
+      "original_sha256": "9f6b4d0c57a4a975b4d852d7895ccf8cd476caa107c6271a2ecb1cc2688803e2",
+      "input_sha256": "0ca878183f32aee7f40da009f60729e44acc0c20058d09f03f2532c40145bc3f",
+      "removed_profiles": [],
+      "local_valid": true,
+      "oracle_valid": true,
+      "agrees": true,
+      "applied_profile": null,
+      "local_issues": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "paths": [],
+          "issue_sha256": "8eb2ebd489fb7c3eac1ff2194021059b250b3ef541745997b708e2f01242bc70"
+        }
+      ]
+    },
+    {
+      "file": "ihe.iti.balp--Device-ex-device.json",
+      "package": "ihe.iti.balp",
+      "version": "1.1.4",
+      "example": "example/Device-ex-device.json",
+      "resource_type": "Device",
+      "original_sha256": "be7819d7a1f1829bc42ed34d832f10361e71875c7d111d3921aad12d2d8298fb",
+      "input_sha256": "ba97d0356483ad3fc3c7185f379b584d837e2b4b68f3e478b91a8dd29b4e91cb",
+      "removed_profiles": [],
+      "local_valid": true,
+      "oracle_valid": true,
+      "agrees": true,
+      "applied_profile": null,
+      "local_issues": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "paths": [],
+          "issue_sha256": "8eb2ebd489fb7c3eac1ff2194021059b250b3ef541745997b708e2f01242bc70"
+        }
+      ]
+    },
+    {
+      "file": "ihe.iti.balp--DocumentReference-Dr-SAML-QDI.json",
+      "package": "ihe.iti.balp",
+      "version": "1.1.4",
+      "example": "example/DocumentReference-Dr-SAML-QDI.json",
+      "resource_type": "DocumentReference",
+      "original_sha256": "e7ee4bbf2871e06caf85cd0192f9d2b8bcaee086e3e66e41fb512246e22be426",
+      "input_sha256": "ba2ebc045021bc0c1e2d1e85eff7a7b8551dafcaa79e5b3dd5f4fb87181d12bb",
+      "removed_profiles": [],
+      "local_valid": true,
+      "oracle_valid": true,
+      "agrees": true,
+      "applied_profile": null,
+      "local_issues": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "code-invalid",
+          "paths": [
+            "DocumentReference.content[0].attachment.contentType"
+          ],
+          "issue_sha256": "c5e77f8b0455994fa75975be3391f42e50cab0bed4c339d19b655c70e1627651"
+        }
+      ]
+    },
+    {
+      "file": "ihe.iti.balp--DocumentReference-ex-documentreference.json",
+      "package": "ihe.iti.balp",
+      "version": "1.1.4",
+      "example": "example/DocumentReference-ex-documentreference.json",
+      "resource_type": "DocumentReference",
+      "original_sha256": "1ffd738bd7d13a70f66721722585f9c9b213f4cc907376bb674db7c68b1ee600",
+      "input_sha256": "15293ad81ab96020a5fe260ac3b69ec942e87c7608cb6e2315e2518c1cb656d8",
+      "removed_profiles": [],
+      "local_valid": true,
+      "oracle_valid": true,
+      "agrees": true,
+      "applied_profile": null,
+      "local_issues": [],
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "informational",
+          "paths": [
+            "DocumentReference.content[0].attachment.language"
+          ],
+          "issue_sha256": "6fb7522a208e37354a0d6b07a9ebfa7344996ef868179a2a5e67765f9b1c6295"
+        }
+      ]
+    },
+    {
+      "file": "ihe.iti.balp--DocumentReference-ex-documentreference2.json",
+      "package": "ihe.iti.balp",
+      "version": "1.1.4",
+      "example": "example/DocumentReference-ex-documentreference2.json",
+      "resource_type": "DocumentReference",
+      "original_sha256": "01b5f777915de3e0b229a6c7e665a2abe6fbb9b8c43c722483dddf9e8c771141",
+      "input_sha256": "585525441d3f63eb8a2aed6b69fe6cb63082228daf00d2a9e5ab1a96ae5bd78f",
+      "removed_profiles": [],
+      "local_valid": true,
+      "oracle_valid": true,
+      "agrees": true,
+      "applied_profile": null,
+      "local_issues": [],
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "informational",
+          "paths": [
+            "DocumentReference.content[0].attachment.language"
+          ],
+          "issue_sha256": "6fb7522a208e37354a0d6b07a9ebfa7344996ef868179a2a5e67765f9b1c6295"
+        }
+      ]
+    },
+    {
+      "file": "ihe.iti.balp--List-ex-list.json",
+      "package": "ihe.iti.balp",
+      "version": "1.1.4",
+      "example": "example/List-ex-list.json",
+      "resource_type": "List",
+      "original_sha256": "d3ce3a119c363eee9354d4fc774f0eaae4fce9b0d27b24a0143dc9c4f8af7a2c",
+      "input_sha256": "9bf9970eb324e58673d4209a6c590eb499a7bbf4697b87f010e16458d21cff91",
+      "removed_profiles": [],
+      "local_valid": true,
+      "oracle_valid": true,
+      "agrees": true,
+      "applied_profile": null,
+      "local_issues": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "paths": [],
+          "issue_sha256": "8eb2ebd489fb7c3eac1ff2194021059b250b3ef541745997b708e2f01242bc70"
+        }
+      ]
+    },
+    {
+      "file": "ihe.iti.balp--MeasureReport-ex-measurereport.json",
+      "package": "ihe.iti.balp",
+      "version": "1.1.4",
+      "example": "example/MeasureReport-ex-measurereport.json",
+      "resource_type": "MeasureReport",
+      "original_sha256": "a76d97771d728d6d9b26f0d9b65c4572a02a0f37b13fbee9867856f5a8075d55",
+      "input_sha256": "8adb4eaa65ced7234652ff00cfddde313007eb2901a76e246ca760f9a84b65eb",
+      "removed_profiles": [],
+      "local_valid": true,
+      "oracle_valid": true,
+      "agrees": true,
+      "applied_profile": null,
+      "local_issues": [],
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "required",
+          "paths": [
+            "MeasureReport"
+          ],
+          "issue_sha256": "eb9f2645c881110739a3a5bedc7e028731b7fba0004dd94ddbb0be4f19264912"
+        }
+      ]
+    },
+    {
+      "file": "ihe.iti.balp--Organization-ex-organization.json",
+      "package": "ihe.iti.balp",
+      "version": "1.1.4",
+      "example": "example/Organization-ex-organization.json",
+      "resource_type": "Organization",
+      "original_sha256": "e70d0b6fc5ea345bd3ed7d9ac22d24119a1eb1919e2063e9894fe7a819365c72",
+      "input_sha256": "7ecd06ceb173d30a5293f7277b2927e52f42130a36d2a7c614815fd57decdd23",
+      "removed_profiles": [],
+      "local_valid": true,
+      "oracle_valid": true,
+      "agrees": true,
+      "applied_profile": null,
+      "local_issues": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "paths": [],
+          "issue_sha256": "8eb2ebd489fb7c3eac1ff2194021059b250b3ef541745997b708e2f01242bc70"
+        }
+      ]
+    },
+    {
+      "file": "ihe.iti.balp--Patient-ex-patient.json",
+      "package": "ihe.iti.balp",
+      "version": "1.1.4",
+      "example": "example/Patient-ex-patient.json",
+      "resource_type": "Patient",
+      "original_sha256": "114b5f86edd1f177412f8833ea2d48619c9482b0d7de9109de897a12d729ca45",
+      "input_sha256": "bc5129a840f02d735754fd26d21670f67a1742c8ab501d0204bc879e6f68214d",
+      "removed_profiles": [],
+      "local_valid": true,
+      "oracle_valid": true,
+      "agrees": true,
+      "applied_profile": null,
+      "local_issues": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "paths": [],
+          "issue_sha256": "8eb2ebd489fb7c3eac1ff2194021059b250b3ef541745997b708e2f01242bc70"
+        }
+      ]
+    },
+    {
+      "file": "ihe.iti.balp--Practitioner-ex-practitioner.json",
+      "package": "ihe.iti.balp",
+      "version": "1.1.4",
+      "example": "example/Practitioner-ex-practitioner.json",
+      "resource_type": "Practitioner",
+      "original_sha256": "f3e5048932ad87f2625e2a678590c747ca6039a611ad5183e2262c24c77ddf05",
+      "input_sha256": "568f23a89a058e2f11fab23c06268011d535f4e5710ad662ea1eed82b08b7846",
+      "removed_profiles": [],
+      "local_valid": true,
+      "oracle_valid": true,
+      "agrees": true,
+      "applied_profile": null,
+      "local_issues": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "paths": [],
+          "issue_sha256": "8eb2ebd489fb7c3eac1ff2194021059b250b3ef541745997b708e2f01242bc70"
+        }
+      ]
+    }
+  ]
+}
