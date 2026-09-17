@@ -82,6 +82,8 @@ uint8_t *fhir_pods_deidentify(const uint8_t *resource, size_t resource_len, cons
  * validated against the kind's Bundle profile: {"document": {...}, "placed":
  * [{"fullUrl","section"}], "validation": {...}} — or {"error": "..."}. */
 uint8_t *fhir_pods_document(const uint8_t *kind, size_t kind_len, const uint8_t *inputs, size_t inputs_len);
+uint8_t *fhir_pods_document_tx(const uint8_t *kind, size_t kind_len, const uint8_t *inputs, size_t inputs_len,
+                               fhir_pods_tx_callback cb, void *ctx);
 
 /* Audit: an AuditEvent for a kind of event ("read", "patient-read", "query",
  * "patient-query", "create", "patient-create", "update", "patient-update",

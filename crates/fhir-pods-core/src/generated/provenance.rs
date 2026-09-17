@@ -71,5 +71,6 @@ pub static LOWERING: Lowering = Lowering {
         },
         Slot { path: "agent", ty: "BackboneElement", choices: &[], min: 1, max: Max::Star, must_support: false },
         Slot { path: "entity", ty: "BackboneElement", choices: &[], min: 0, max: Max::Star, must_support: false },
+        Slot { path: "signature", ty: "Signature", choices: &[], min: 0, max: Max::Star, must_support: false },
     ],
 };

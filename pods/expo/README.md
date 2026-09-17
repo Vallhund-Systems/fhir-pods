@@ -84,6 +84,11 @@ const { document: bundle, placed, omitted, validation } = document("au-ps", {
 });
 ```
 
+A loaded terminology table, or the `terminology` callback, reaches the
+document's validation too — the IPS pregnancy profiles, told apart only by
+LOINC sets the pod does not ship, need one (`tools/compile_valueset.py` on
+the IG's own `ValueSet`s writes the table).
+
 `ips` or `au-ps`: sections from the kind's Composition profile, each resource
 placed by what it is, narrative generated, references rewritten to the
 entries, resources nothing reaches left out (`omitted`), required sections
@@ -140,6 +145,16 @@ copy stays conformant wherever the profile permits (`validation` says where
 it does not). `applied` is the audit trail; `remaining` is what a Safe
 Harbor check still finds, empty under the default policy. Rules target a
 type, a member of a type or an element; the most specific wins.
+
+Free text goes under Safe Harbor — a concept's `text`, a note, an
+organisation's name, an extension's string payload — except a coding's
+display, a quantity's unit, an address's state and country, and an
+element's own `id` / `linkId`. A host that keeps a free-text site by rule
+(`{ target: "CodeableConcept.text", action: "keep" }`) gets every kept site
+back in `residual`, so an empty `remaining` never reads as "all free text
+gone". What the base resource or an applied profile requires is masked
+(`data-absent-reason: masked`) rather than dropped, required children
+included; an extension whose value went goes with it.
 
 ## Terminology
 

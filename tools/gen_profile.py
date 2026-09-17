@@ -304,7 +304,9 @@ SLOT_TYPES = {
     "uri", "url", "canonical", "oid", "uuid", "date", "dateTime", "instant", "time", "base64Binary",
     "Reference", "Quantity", "SimpleQuantity", "Age", "Duration", "Count", "Distance", "CodeableConcept",
     "Coding", "Period", "Identifier", "HumanName", "Address", "ContactPoint", "Attachment", "Annotation",
-    "Range", "Ratio", "Timing", "Dosage", "Narrative", "Money",
+    "Range", "Ratio", "Timing", "Dosage", "Narrative", "Money", "Signature", "SampledData", "ContactDetail",
+    "Contributor", "DataRequirement", "Expression", "ParameterDefinition", "RelatedArtifact", "TriggerDefinition",
+    "UsageContext", "Meta",
 }
 SKIP_SLOTS = {"id", "meta", "implicitRules", "language", "text", "contained", "modifierExtension"}
 

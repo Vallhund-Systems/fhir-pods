@@ -88,6 +88,27 @@ pub fn required_children(ty: &str) -> impl Iterator<Item = &'static str> {
     span.iter().filter(|(rel, _, _, required)| *required && !rel.contains('.')).map(|(rel, _, _, _)| *rel)
 }
 
+/// The direct children a resource's backbone requires
+/// (`QuestionnaireResponse.item` → `linkId`): the base's word inside a
+/// resource, where a profile that applies restates it.
+pub fn required_backbone_children(ctx: &str) -> alloc::vec::Vec<&'static str> {
+    let (ty, rest) = split_ctx(ctx);
+    let span = if rest.is_empty() || crate::typemap::RESOURCES.binary_search(&ty).is_err() {
+        &[][..]
+    } else {
+        range_of(ty).unwrap_or(&[])
+    };
+    let start = span.partition_point(|(rel, _, _, _)| cmp_rel(rel, rest, "") == core::cmp::Ordering::Less);
+    span[start..]
+        .iter()
+        .take_while(|(rel, _, _, _)| rel.strip_prefix(rest).is_some_and(|r| r.starts_with('.')))
+        .filter_map(|(rel, _, _, required)| {
+            let name = rel.strip_prefix(rest)?.strip_prefix('.')?;
+            (*required && !name.contains('.')).then_some(name)
+        })
+        .collect()
+}
+
 /// The direct children a resource type itself requires (`Observation.status`,
 /// `Observation.code`) — what the base resource says when no profile, which
 /// restates them, applies.

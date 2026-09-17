@@ -77,6 +77,7 @@ export async function instantiate(source, options = {}) {
   const outcome = terminology ? ex.fhir_pods_operation_outcome_host_tx : ex.fhir_pods_operation_outcome;
   const lowerEntry = terminology ? ex.fhir_pods_lower_host_tx : ex.fhir_pods_lower;
   const auditEntry = terminology ? ex.fhir_pods_audit_host_tx : ex.fhir_pods_audit;
+  const documentEntry = terminology ? ex.fhir_pods_document_host_tx : ex.fhir_pods_document;
 
   return {
     abiVersion: abi,
@@ -95,7 +96,7 @@ export async function instantiate(source, options = {}) {
     },
     // Documents: an IPS / AU Patient Summary bundle from a patient and their resources.
     document: (kind, inputs) => {
-      const out = JSON.parse(call(ex.fhir_pods_document, kind, typeof inputs === "string" ? inputs : JSON.stringify(inputs)));
+      const out = JSON.parse(call(documentEntry, kind, typeof inputs === "string" ? inputs : JSON.stringify(inputs)));
       if (out.error) throw new Error(`fhir-pods: ${out.error}`);
       return out;
     },

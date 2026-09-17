@@ -227,6 +227,8 @@ export interface Deidentified {
   validation: Validation;
   /** What a Safe Harbor check still finds in the copy — empty under the default policy. */
   remaining: { path: string; what: string }[];
+  /** Free text the policy kept in place (a CodeableConcept.text, a Dosage.text…), named so an empty `remaining` never reads as "all free text gone". */
+  residual: { path: string; what: string }[];
 }
 
 /**

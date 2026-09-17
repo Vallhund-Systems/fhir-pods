@@ -428,6 +428,18 @@ fn rewrite_references(node: &mut Node, entries: &[(String, String)]) {
 ///  "timestamp": "2026-09-16T10:00:00+10:00"} // optional when date is already an instant
 /// ```
 pub fn assemble(kind: Kind, inputs: &Value<'_>, validator: &Validator) -> Result<Assembled, AssembleError> {
+    assemble_with(kind, inputs, validator, &crate::terminology::Bundled)
+}
+
+/// [`assemble`] with a terminology provider for the document's validation:
+/// the bindings the bundled sets cannot decide, and the profile slices
+/// that turn on them, are answered by it.
+pub fn assemble_with(
+    kind: Kind,
+    inputs: &Value<'_>,
+    validator: &Validator,
+    tx: &dyn crate::terminology::TerminologyProvider,
+) -> Result<Assembled, AssembleError> {
     let composition_profile = kind.composition().ok_or(AssembleError::UnknownKind)?;
     let Value::Object(members) = inputs else { return Err(AssembleError::InputsNotAnObject) };
     let member = |k: &str| members.iter().find(|(m, _)| m.as_ref() == k).map(|(_, v)| v);
@@ -676,15 +688,27 @@ pub fn assemble(kind: Kind, inputs: &Value<'_>, validator: &Validator) -> Result
         ("entry".into(), Node::Array(entries)),
     ]);
     let document = bundle.to_json();
-    let validation = validator.validate(document.as_bytes());
+    let validation = validator.validate_with(document.as_bytes(), tx);
     Ok(Assembled { document, placed, omitted, validation })
 }
 
 impl Validator {
     /// Assemble a patient summary document: see [`assemble`].
     pub fn document(&self, kind: &str, inputs: &[u8]) -> Result<Assembled, AssembleError> {
+        self.document_with(kind, inputs, &crate::terminology::Bundled)
+    }
+
+    /// [`Validator::document`] with a terminology provider: the document's
+    /// validation — and the profile slices that turn on a binding the
+    /// bundled sets cannot decide — asks it.
+    pub fn document_with(
+        &self,
+        kind: &str,
+        inputs: &[u8],
+        tx: &dyn crate::terminology::TerminologyProvider,
+    ) -> Result<Assembled, AssembleError> {
         let kind = Kind::parse(kind).ok_or(AssembleError::UnknownKind)?;
         let parsed = crate::json::parse(inputs).map_err(|_| AssembleError::InputsNotAnObject)?;
-        assemble(kind, &parsed, self)
+        assemble_with(kind, &parsed, self, tx)
     }
 }

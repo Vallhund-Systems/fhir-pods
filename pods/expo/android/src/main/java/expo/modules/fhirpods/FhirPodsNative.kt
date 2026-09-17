@@ -40,7 +40,7 @@ internal object FhirPodsNative {
   external fun slots(profile: ByteArray): ByteArray
 
   /** {"document","placed","validation"} — an assembled patient summary, or {"error"}. */
-  external fun document(kind: ByteArray, inputs: ByteArray): ByteArray
+  external fun document(kind: ByteArray, inputs: ByteArray, terminology: FhirPodsTerminology?): ByteArray
 
   /** {"resource","validation"} — an IHE BALP AuditEvent for a kind of event, or {"error"}. */
   external fun audit(kind: ByteArray, inputs: ByteArray, terminology: FhirPodsTerminology?): ByteArray

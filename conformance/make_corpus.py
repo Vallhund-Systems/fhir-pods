@@ -183,6 +183,11 @@ HAND_WRITTEN = [
         "class": {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "AMB"},
         "contained": [{"resourceType": "Patient", "id": "p"}],
     }),
+    # the base's required elements inside a backbone, and an extension held to its own profile by url
+    ("empty-carrier-object", None, False, {"resourceType": "Patient", "gender": "male", "_gender": {}}),
+    ("qr-item-without-linkid", None, False, {"resourceType": "QuestionnaireResponse", "status": "completed", "item": [{"text": "How are you?", "answer": [{"valueString": "fine"}]}]}),
+    ("translation-without-content", None, False, {"resourceType": "Patient", "gender": "male", "name": [{"family": "Smith", "_family": {"extension": [{"url": "http://hl7.org/fhir/StructureDefinition/translation", "extension": [{"url": "lang", "valueCode": "fr"}]}]}}]}),
+    ("translation-complete", None, True, {"resourceType": "Patient", "gender": "male", "name": [{"family": "Smith", "_family": {"extension": [{"url": "http://hl7.org/fhir/StructureDefinition/translation", "extension": [{"url": "lang", "valueCode": "fr"}, {"url": "content", "valueString": "Forgeron"}]}]}}]}),
     ("heartrate-valid", HR, True, HEARTRATE),
     ("heartrate-missing-snomed", HR, False, mutate(HEARTRATE, lambda d: d["code"]["coding"].pop(1))),
     ("heartrate-bad-ucum-code", HR, False, mutate(HEARTRATE, lambda d: d["valueQuantity"].update(code="min"))),

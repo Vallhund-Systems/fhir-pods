@@ -1,5 +1,84 @@
 # Changelog
 
+## 0.6.1 — 2026-09-16
+
+The review lane's F018–F024 (planning repository), all taken; every fix
+found by their corpora or by the de-identified copies in front of the
+oracle. Oracle: **1191/1191**. No ABI change (ABI 8).
+
+**De-identification**
+- **Free text goes under Safe Harbor** (F018): every `string` / `markdown`
+  leaf — a concept's `text`, a note, an organisation's name, an
+  extension's payload — except a coding's display and version, a
+  quantity's unit, an address's state and country, and an element's own
+  `id` / `linkId` (structural keys, not text). A host that keeps a
+  free-text site by rule (`{"target": "CodeableConcept.text", "action":
+  "keep"}`) gets every kept site back in a new **`residual`** list on the
+  result (`{path, what: "free text kept"}`), so an empty `remaining` never
+  reads as "all free text gone". The README's claim is what is done.
+- **What is required is masked, never dropped**: what the base resource
+  itself requires (`Observation.code`, `Encounter.class`) — at the root
+  of this resource and of every nested one — and what every applied
+  profile requires *through its slices* (`AuditEvent.agent:client.who`,
+  `Composition.section:sectionProblems.text`); a masked element carries a
+  mask for each required child (`Practitioner.name` → `_family`), and
+  the checker knows such a stub. De-identified copies still conformant:
+  287 of 368 (0.6.0: 247 of 372).
+- **An extension emptied by what went goes with it** (F019): a URL-only
+  extension is not an extension (`ext-1`); a compiled extension that lost
+  a sub-extension its profile requires (a `translation` without its
+  `content`) goes whole; a primitive's carrier emptied of its only
+  extension goes too, never an empty `{}` behind.
+
+**Documents** (F020)
+- **A terminology provider reaches assembly**: `Validator::document_with`,
+  `fhir_pods_document_tx`, wasm / Expo `document` under the `terminology`
+  option, and the *loaded* table — which never reached document
+  validation before. The IPS pregnancy profiles are told apart only by
+  two LOINC sets the pod does not ship (bundling them parts us from the
+  offline oracle on four published examples); supplied through the seam
+  they validate, as `tests/document.rs` shows with the IG's own
+  enumerations in the table format.
+
+**Verifier**
+- **An extension is held to its own compiled profile by url wherever it
+  sits** — on a coding's display, inside a primitive's carrier — unless an
+  applied profile already reaches it through a slice. Found by the
+  de-identified IPS Immunization example (a `translation` missing its
+  `content` passed).
+- **The base's required elements inside backbones**
+  (`QuestionnaireResponse.item.linkId`) apply when no profile does — found
+  by the de-identified US Core QuestionnaireResponse examples.
+- **An empty extension carrier (`"_gender": {}`) is an element with
+  nothing in it** (`ele-1`), as the reference has it.
+- Probes for all three; the scalar reader renders booleans and numbers so
+  a fixed boolean compares (0.6.0's pattern fix, completed).
+
+**ABI and audit**
+- **F021 (P1): a terminology callback may load a table while being
+  asked.** The loaded table is taken as a snapshot and the lock released
+  before host code runs; `fhir_pods_terminology_load` inside the callback
+  no longer deadlocks native (or traps wasm) — the table answers from the
+  next call on. Test: a loading callback, asked once, then not at all.
+- **F022: control characters are escaped, never replaced** — `\n`, `\r`,
+  `\t`, `\u00XX` — in every JSON the pods write (one writer).
+- **F023: every element of a base definition is an input**: `Signature`,
+  `SampledData`, `ContactDetail`, `Contributor`, `DataRequirement`,
+  `Expression`, `ParameterDefinition`, `RelatedArtifact`,
+  `TriggerDefinition`, `UsageContext` and `Meta` join the slot types
+  (`Provenance.signature` lowers).
+- **F024: addresses classified as the pattern has them**: a scoped IPv6
+  address (`fe80::1%en0`) is an IP address; any scheme (`mailto:`,
+  `urn:`, not only `://` forms) is a URI; the host's `{address, type}`
+  still wins.
+
+Tests: 140. `.wasm`: 1.1 MB (277 KB gzipped). The review lane's own
+runners against this tree: `conformance/deid/run.py` 14/14;
+`conformance/documents/run.py` 45/50 with 48/48 oracle agreement, the
+five being its valid-output expectations for the pregnancy / laboratory
+cases that need the seam (its `diagnostic-terminology.txt` through
+`document_with` meets them).
+
 ## 0.6.0 — 2026-09-16
 
 **Audit and provenance.** ABI 8: `fhir_pods_audit(kind, inputs)` (+ `_tx`);

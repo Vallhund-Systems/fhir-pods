@@ -11,6 +11,7 @@
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
+use crate::document::Document;
 use crate::document::Parsed;
 use crate::json::Value;
 use crate::node::Node;
@@ -115,6 +116,22 @@ impl Policy {
             ("Meta.versionId", Action::Remove),
             ("Device.serialNumber", Action::Remove),
             ("Device.udiCarrier", Action::Remove),
+            // free text goes — a concept's text, a note, an extension's
+            // payload, an organisation's name — except the few strings that
+            // are not free text: a code's display, a unit, a state, a country
+            ("string", Action::Remove),
+            ("markdown", Action::Remove),
+            ("Coding.display", Action::Keep),
+            ("Coding.version", Action::Keep),
+            ("Quantity.unit", Action::Keep),
+            ("SimpleQuantity.unit", Action::Keep),
+            ("Age.unit", Action::Keep),
+            ("Duration.unit", Action::Keep),
+            ("Count.unit", Action::Keep),
+            ("Distance.unit", Action::Keep),
+            ("MoneyQuantity.unit", Action::Keep),
+            ("Address.state", Action::Keep),
+            ("Address.country", Action::Keep),
         ] {
             p = p.rule(target, action);
         }
@@ -243,6 +260,11 @@ pub struct Deidentified {
     pub validation: Validation,
     /// What [`check`] still finds in the copy — empty under Safe Harbor.
     pub remaining: Vec<Finding>,
+    /// Free text a policy rule kept in place — a `CodeableConcept.text` the
+    /// host chose to keep, a `Dosage.text` — named so an empty `remaining`
+    /// never reads as "all free text gone". Empty under Safe Harbor alone;
+    /// the host judges these, or drops the rule.
+    pub residual: Vec<Finding>,
 }
 
 const DAR: &str = "http://hl7.org/fhir/StructureDefinition/data-absent-reason";
@@ -277,11 +299,38 @@ fn masked_stub() -> Node {
 struct Walker<'p> {
     policy: &'p Policy,
     /// Element paths the resource's profiles require (`min >= 1`).
-    required: Vec<&'static str>,
+    required: Vec<String>,
+    /// What the base resource itself requires of its root (`Observation.code`),
+    /// profile or no profile: an element that goes is masked, never dropped.
+    base_required: Vec<&'static str>,
     applied: Vec<Applied>,
+    residual: Vec<Finding>,
 }
 
 impl Walker<'_> {
+    /// Must this element stay (masked) when its content goes? By the
+    /// profiles applied, or — at a resource's root — by the base resource.
+    fn is_required(&self, child_path: &str, path: &str, key: &str) -> bool {
+        self.required.iter().any(|r| r == child_path) || (!path.contains('.') && self.base_required.contains(&key))
+    }
+
+    /// The direct children the profiles require under a masked element
+    /// (`Practitioner.name` → `family`): each gets its own mask, so the stub
+    /// is as conformant as a masked element can be.
+    fn required_children(&self, child_path: &str) -> Vec<String> {
+        let prefix = alloc::format!("{child_path}.");
+        let mut out: Vec<String> = self
+            .required
+            .iter()
+            .filter_map(|r| r.strip_prefix(&prefix))
+            .filter(|rest| !rest.contains('.'))
+            .map(String::from)
+            .collect();
+        out.sort();
+        out.dedup();
+        out
+    }
+
     /// A pseudonym with the shape of the value: every digit becomes a digit,
     /// every ASCII letter a letter of the same case, everything else stays —
     /// so a 10-digit NPI stays 10 digits, a URI keeps its scheme and
@@ -406,19 +455,28 @@ impl Walker<'_> {
             };
             let member = if is_type { Some(alloc::format!("{ctx}.{key}")) } else { None };
             let ty = child.ty;
-            let action = self.policy.action_for(&child_path, member.as_deref(), Some(ty)).unwrap_or(Action::Keep);
+            // an element's own `id` is an anchor, not content: it stays (a
+            // resource's `id` is typed `id` and has its rule)
+            let action = if (key == "id" || key == "linkId") && ty == "string" {
+                Action::Keep
+            } else {
+                self.policy.action_for(&child_path, member.as_deref(), Some(ty)).unwrap_or(Action::Keep)
+            };
             let action = match action {
-                Action::Remove if self.required.contains(&child_path.as_str()) => Action::Mask,
+                Action::Remove if self.is_required(&child_path, path, &key) => Action::Mask,
                 // clamping is what the walk does to an Age on the way through; as a rule it means keep
                 Action::Clamp => Action::Keep,
                 a => a,
             };
             match action {
                 Action::Keep | Action::Clamp => {
+                    if is_free_text(ctx, &key, ty) {
+                        self.residual.push(Finding { path: child_path.clone(), what: "free text kept".into() });
+                    }
                     self.keep(&mut value, child, &child_path);
                     // an element emptied by what was removed inside it goes too
                     if prune_empty(&mut value) {
-                        if self.required.contains(&child_path.as_str()) {
+                        if self.is_required(&child_path, path, &key) {
                             self.note(&child_path, Action::Mask);
                             out.push((key, masked_stub()));
                         } else {
@@ -435,11 +493,23 @@ impl Walker<'_> {
                 }
                 Action::Mask => {
                     self.note(&child_path, Action::Mask);
-                    let stub = if matches!(value, Node::Array(_)) {
-                        Node::Array(alloc::vec![masked_stub_for(ty)])
-                    } else {
-                        masked_stub_for(ty)
-                    };
+                    let mut one = masked_stub_for(ty);
+                    // what the profiles require inside it is masked too
+                    if let Node::Object(stub) = &mut one {
+                        for name in self.required_children(&child_path) {
+                            if stub.iter().any(|(k, _)| *k == name || *k == alloc::format!("_{name}")) {
+                                continue;
+                            }
+                            match typing::child(child.ctx, &name) {
+                                Some(c) if is_primitive_type(c.ty) => {
+                                    stub.push((alloc::format!("_{name}"), masked_stub()))
+                                }
+                                Some(c) => stub.push((name.clone(), masked_stub_for(c.ty))),
+                                None => {}
+                            }
+                        }
+                    }
+                    let stub = if matches!(value, Node::Array(_)) { Node::Array(alloc::vec![one]) } else { one };
                     if is_primitive_type(ty) {
                         // a primitive is masked through its carrier: no value, the extension on `_key`
                         masked.push(key.clone());
@@ -467,7 +537,7 @@ impl Walker<'_> {
                     if all_ok {
                         self.note(&child_path, Action::Year);
                         out.push((key, value));
-                    } else if self.required.contains(&child_path.as_str()) {
+                    } else if self.is_required(&child_path, path, &key) {
                         self.note(&child_path, Action::Mask);
                         masked.push(key.clone());
                         out.push((alloc::format!("_{key}"), masked_stub()));
@@ -503,6 +573,28 @@ impl Walker<'_> {
             }
             let child_path = alloc::format!("{path}.{bare}");
             self.walk_carrier(&mut cv, &child_path);
+            // a carrier emptied by what went from it (its only extension) goes too
+            let emptied = match &mut cv {
+                Node::Object(m) => {
+                    m.retain(|(_, v)| !matches!(v, Node::Array(xs) if xs.is_empty()));
+                    m.is_empty()
+                }
+                Node::Array(xs) => {
+                    for x in xs.iter_mut() {
+                        if let Node::Object(m) = x {
+                            m.retain(|(_, v)| !matches!(v, Node::Array(ys) if ys.is_empty()));
+                            if m.is_empty() {
+                                *x = Node::Null;
+                            }
+                        }
+                    }
+                    xs.iter().all(|x| matches!(x, Node::Null))
+                }
+                _ => false,
+            };
+            if emptied {
+                continue;
+            }
             out.push((ck, cv));
         }
         *kvs = out;
@@ -562,6 +654,38 @@ impl Walker<'_> {
         if child.ty == "Age" && clamp_age(kvs) {
             self.note(path, Action::Clamp);
         }
+        // an extension whose value (or every nested extension) went is a
+        // URL and nothing else — not an extension any more (ext-1): it goes
+        // with its value
+        if child.ty == "Extension" && kvs.iter().all(|(k, _)| k == "url" || k == "id") {
+            kvs.clear();
+        }
+        // an extension whose compiled profile requires a sub-extension that
+        // went (a translation without its content) is not that extension any
+        // more: it goes whole
+        if child.ty == "Extension" && !kvs.is_empty() {
+            let url = kvs.iter().find(|(k, _)| k == "url").and_then(|(_, v)| v.as_str()).unwrap_or("");
+            if let Some(p) = crate::generated::REGISTRY.iter().find(|p| p.resource_type == "Extension" && p.url == url)
+            {
+                let has_sub = |sub_url: &str| match kvs.iter().find(|(k, _)| k == "extension") {
+                    Some((_, Node::Array(xs))) => {
+                        xs.iter().any(|x| x.member("url").and_then(Node::as_str) == Some(sub_url))
+                    }
+                    _ => false,
+                };
+                let missing = p.slicings.iter().filter(|sl| sl.path == "Extension.extension").any(|sl| {
+                    sl.slices.iter().filter(|s| s.min >= 1).any(|s| {
+                        s.discriminators.iter().any(|d| {
+                            matches!(d, crate::compiled::Discriminator::Value { path: "$this.url", value } if !has_sub(value))
+                        })
+                    })
+                });
+                if missing {
+                    self.note(path, Action::Remove);
+                    kvs.clear();
+                }
+            }
+        }
     }
 
     /// A primitive's `_name` carrier: an Element whose extensions are walked.
@@ -578,6 +702,21 @@ impl Walker<'_> {
             _ => {}
         }
     }
+}
+
+/// A kept string the policy did not judge: free text by any name except the
+/// few strings that are not (a code's display, a unit, a state or country).
+fn is_free_text(ctx: &str, key: &str, ty: &str) -> bool {
+    if !matches!(ty, "string" | "markdown") || key == "id" {
+        return false;
+    }
+    !matches!(
+        (ctx, key),
+        ("Coding", "display" | "version")
+            | ("Quantity" | "SimpleQuantity" | "Age" | "Duration" | "Count" | "Distance" | "MoneyQuantity", "unit")
+            | ("Address", "state" | "country")
+            | ("Meta", _)
+    )
 }
 
 /// Drop empty objects from an array; `true` when nothing is left of the value.
@@ -731,19 +870,60 @@ pub fn deidentify(input: &[u8], policy: &Policy, validator: &Validator) -> Resul
         return Err(DeidError::UnknownResourceType);
     }
     let doc = parsed.doc();
-    let required: Vec<&'static str> = crate::select_profiles(rt, &doc, &validator.defaults)
-        .iter()
-        .flat_map(|p| p.elements.iter().filter(|e| e.min >= 1).map(|e| e.path))
-        .collect();
+    // what the profiles require — of this resource and of every resource
+    // nested in it (a Bundle's entries, contained resources), each in its
+    // own path space: an element that goes is masked, never dropped
+    // (slice labels dropped: `AuditEvent.agent:client.who` is required of
+    // the `agent` instance the walk sees as `AuditEvent.agent.who`)
+    let unlabel = |path: &str| -> String {
+        path.split('.').map(|seg| seg.split(':').next().unwrap_or(seg)).collect::<Vec<_>>().join(".")
+    };
+    // a slice's own required sub-elements (`agent:client` requires `$this.who`)
+    fn slice_required(slicings: &[crate::compiled::Slicing], unlabel: &dyn Fn(&str) -> String, out: &mut Vec<String>) {
+        for slicing in slicings {
+            for slice in slicing.slices {
+                for e in slice.elements.iter().filter(|e| e.min >= 1) {
+                    if let Some(rest) = e.path.strip_prefix("$this.") {
+                        out.push(unlabel(&alloc::format!("{}.{rest}", slicing.path)));
+                    }
+                }
+                slice_required(slice.slicings, unlabel, out);
+            }
+        }
+    }
+    let paths_for = |rt: &str, d: &crate::document::TreeDoc<'_, '_>| -> Vec<String> {
+        let mut out = Vec::new();
+        for p in crate::select_profiles(rt, d, &validator.defaults) {
+            out.extend(p.elements.iter().filter(|e| e.min >= 1).map(|e| unlabel(e.path)));
+            slice_required(p.slicings, &unlabel, &mut out);
+        }
+        out
+    };
+    let mut required: Vec<String> = paths_for(rt, &doc);
+    let (_, nested) = parsed.structure();
+    for (_, nd) in &nested {
+        if let Some(nrt) = nd.scalars("$this.resourceType").first().and_then(|t| typing::known_type(t)) {
+            required.extend(paths_for(nrt, nd));
+        }
+    }
     let mut root = Node::from_value(parsed.value());
-    let mut walker = Walker { policy, required, applied: Vec::new() };
+    // every resource root in the document — this one, contained ones, entries —
+    // owes its own base what it requires; the union is what the walk masks
+    let mut types: Vec<&str> = doc.scalars("$this.resourceType");
+    types.extend(doc.scalars("$this.contained.resourceType"));
+    types.extend(doc.scalars("$this.entry.resource.resourceType"));
+    let mut base_required: Vec<&'static str> = Vec::new();
+    for t in types.into_iter().filter_map(typing::known_type) {
+        base_required.extend(typing::required_resource_children(t));
+    }
+    let mut walker = Walker { policy, required, base_required, applied: Vec::new(), residual: Vec::new() };
     if let Node::Object(kvs) = &mut root {
         walker.walk_object(kvs, rt, rt);
     }
     let resource = root.to_json();
     let validation = validator.validate(resource.as_bytes());
     let remaining = check(resource.as_bytes());
-    Ok(Deidentified { resource, applied: walker.applied, validation, remaining })
+    Ok(Deidentified { resource, applied: walker.applied, validation, remaining, residual: walker.residual })
 }
 
 /// What Safe Harbor would still object to in `input`: identifying types
@@ -864,9 +1044,12 @@ fn is_masked_value(v: &Value<'_>) -> bool {
     if kvs.len() == 1 && matches!(member("text"), Some(Value::Str(t)) if t.as_ref() == "Masked") {
         return true;
     }
-    kvs.len() == 1
-        && kvs[0].0.as_ref() == "extension"
-        && matches!(&kvs[0].1, Value::Array(xs) if xs.iter().any(|x| matches!(x, Value::Object(e) if e.iter().any(|(k, v)| k.as_ref() == "url" && matches!(v, Value::Str(u) if u.as_ref() == DAR)))))
+    // a data-absent-reason stub — possibly carrying masked required children
+    // (`_family`, a nested masked element) and nothing else
+    let dar = |v: &Value<'_>| matches!(v, Value::Array(xs) if xs.iter().any(|x| matches!(x, Value::Object(e) if e.iter().any(|(k, v)| k.as_ref() == "url" && matches!(v, Value::Str(u) if u.as_ref() == DAR)))));
+    !kvs.is_empty()
+        && kvs.iter().any(|(k, v)| k.as_ref() == "extension" && dar(v))
+        && kvs.iter().all(|(k, v)| (k.as_ref() == "extension" && dar(v)) || is_masked_value(v))
 }
 
 impl Validator {

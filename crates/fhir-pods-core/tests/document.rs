@@ -188,3 +188,25 @@ fn f016_the_document_identity_comes_from_every_input_not_the_patient_and_date_al
     assert_ne!(base, ids(r#","status":"final""#, &[PATIENT, PRACTITIONER, CONDITION]), "so is other metadata");
     assert_ne!(base.0, base.1);
 }
+
+/// The two IPS pregnancy sets — the IG's own LOINC enumerations, code-only —
+/// in the seam's table format (`tools/compile_valueset.py` writes it).
+const IPS_PREGNANCY_SETS: &str = "fhir-pods-terminology 1\n= http://hl7.org/fhir/uv/ips/ValueSet/edd-method-uv-ips\nhttp://loinc.org\t11778-8\t\nhttp://loinc.org\t11779-6\t\nhttp://loinc.org\t11780-4\t\n= http://hl7.org/fhir/uv/ips/ValueSet/pregnancies-summary-uv-ips\nhttp://loinc.org\t11636-8\t\nhttp://loinc.org\t11637-6\t\nhttp://loinc.org\t11638-4\t\nhttp://loinc.org\t11639-2\t\nhttp://loinc.org\t11640-0\t\nhttp://loinc.org\t11612-9\t\nhttp://loinc.org\t11613-7\t\nhttp://loinc.org\t11614-5\t\nhttp://loinc.org\t33065-4\t\n";
+
+#[test]
+fn f020_the_ips_pregnancy_profiles_need_their_loinc_sets_and_a_provider_reaches_assembly() {
+    use fhir_pods_core::terminology::Expansions;
+    let v = Validator::new();
+    let pregnancy = r#"{"resourceType":"Observation","id":"pregnancy","status":"final","category":[{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/observation-category","code":"survey"}]}],"code":{"coding":[{"system":"http://loinc.org","code":"82810-3"}]},"subject":{"reference":"Patient/p1"},"effectiveDateTime":"2026-09-16T12:00:00Z","dataAbsentReason":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/data-absent-reason","code":"unknown"}]}}"#;
+    // offline, the three pregnancy profiles are told apart only by LOINC sets the pod does not ship:
+    // the observation matches more than one slice, as it does for the reference validator run offline
+    let offline = v.document("ips", inputs(&[PATIENT, PRACTITIONER, pregnancy], "").as_bytes()).unwrap();
+    assert!(!offline.validation.is_valid(), "{}", wire::report(&offline.validation));
+    assert!(wire::report(&offline.validation).contains("more than one slice"), "{}", wire::report(&offline.validation));
+    // with the IG's own sets supplied through the seam, the document is what it should be
+    let table = Expansions::parse(IPS_PREGNANCY_SETS).unwrap();
+    let with = v.document_with("ips", inputs(&[PATIENT, PRACTITIONER, pregnancy], "").as_bytes(), &table).unwrap();
+    assert!(with.validation.is_valid(), "{}", wire::report(&with.validation));
+    assert!(with.placed.iter().any(|(_, s)| s == "10162-6"), "{:?}", with.placed);
+    assert_eq!(with.document, offline.document, "the provider changes the verdict, never the document");
+}

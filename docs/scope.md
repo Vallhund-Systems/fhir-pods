@@ -81,6 +81,11 @@ the 294/294.
   has a date, a `time` has no zone, an offset stops at ±14:00, and year
   0000 is outside the grammar. Not checked: the regular expressions on
   `id`, `code`, `uri` and friends, and the `_name` / `name` array pairing.
+- **An extension whose `url` names a compiled extension profile is held to
+  it wherever it sits** — on a coding's display, inside a primitive's
+  carrier — unless an applied profile already reaches it through a slice.
+  The base's required elements inside a resource's backbones
+  (`QuestionnaireResponse.item.linkId`) apply when no profile does.
 - **A resource nested in another — a Bundle entry, a contained resource, a
   `Parameters` resource, however deep — is validated against the profiles
   it declares, in the outer bundle's scope,** its findings prefixed with the

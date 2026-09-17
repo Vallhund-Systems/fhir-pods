@@ -55,3 +55,17 @@ fn wire_expression_rewrites_slice_labels_to_fhirpath() {
         "Observation.category.coding.system"
     );
 }
+
+#[test]
+fn f022_control_characters_are_escaped_never_replaced() {
+    let mut out = String::new();
+    fhir_pods_core::wire::escape(&mut out, "line one\nline two\ttab\rcr \u{1} \"q\" \\");
+    assert_eq!(out, r#"line one\nline two\ttab\rcr \u0001 \"q\" \\"#);
+    // through an operation: a user's name with a newline comes back as it went in
+    let a = fhir_pods_core::Validator::new()
+        .audit("read", br#"{"recorded":"2026-09-16T10:00:00Z","client":{"who":"Device/a","network":"10.0.0.7"},"server":{"who":"Device/b","network":"10.0.0.8"},"user":{"who":"Practitioner/p","name":"Dr\nWho"},"source":{"observer":"Device/c"},"data":"Observation/o"}"#)
+        .unwrap();
+    assert!(a.resource.contains(r#""name":"Dr\nWho""#), "{}", a.resource);
+    let parsed = fhir_pods_core::json::parse(a.resource.as_bytes()).unwrap();
+    assert!(!a.resource.is_empty() && matches!(parsed, fhir_pods_core::json::Value::Object(_)));
+}

@@ -57,5 +57,12 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
 pub static LOWERING: Lowering = Lowering {
     fixed: &[("url", "http://hl7.org/fhir/StructureDefinition/questionnaireresponse-signature")],
     slices: &[],
-    slots: &[],
+    slots: &[Slot {
+        path: "valueSignature",
+        ty: "Signature",
+        choices: &[],
+        min: 1,
+        max: Max::Bounded(1),
+        must_support: false,
+    }],
 };

@@ -69,6 +69,9 @@ class Expander:
                         res[(s, c)] = d
                 continue
             system = inc.get("system")
+            # SNOMED CT and LOINC content never ships, enumerated or not: the
+            # seam (the reference validator, run offline, cannot confirm these
+            # codes either — bundling them would part us from the oracle)
             if system in LICENSED:
                 return None, "licensed " + system
             if inc.get("concept"):

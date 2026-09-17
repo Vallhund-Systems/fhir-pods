@@ -381,6 +381,12 @@ fn f012_dates_and_times_are_held_to_the_full_grammar() {
 }
 
 #[test]
+fn an_empty_extension_carrier_is_an_element_with_nothing_in_it() {
+    let r = probe_str(r#"{"resourceType":"Patient","gender":"male","_gender":{}}"#);
+    assert!(r.contains("\"valid\":false") && r.contains("extension carrier must have some content"), "{r}");
+}
+
+#[test]
 fn f013_an_extension_whose_value_arrives_through_its_carrier_satisfies_ext_1() {
     let r = probe_str(
         r#"{"resourceType":"Patient","gender":"male","extension":[{"url":"http://example.org/x","_valueString":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/data-absent-reason","valueCode":"unknown"}]}}]}"#,

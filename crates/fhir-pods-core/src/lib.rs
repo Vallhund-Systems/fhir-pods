@@ -125,7 +125,7 @@ fn validate_bytes_impl(
     };
     // The base spec's shape rules, profile or no profile: what every element
     // is, its JSON kind, whether it repeats, what a datatype requires.
-    let (gaps, nested) = parsed.structure();
+    let (gaps, nested, extensions) = parsed.structure_full();
     for (path, kind, message) in gaps {
         report.push(Severity::Error, kind, &path, message);
     }
@@ -143,6 +143,17 @@ fn validate_bytes_impl(
             continue;
         };
         validate_resource(nrt, &nested, &label, tx, cache, bundle, &[], &mut report);
+    }
+    // every extension whose url names a compiled extension profile is held
+    // to it, wherever it sits (a translation on a coding's display…)
+    for (label, ext, profile) in extensions {
+        let evaluated = engine::Evaluated::default();
+        for mut issue in engine::validate_at_with(profile, &ext, &ext, tx, 0, cache, bundle, Some(&evaluated)).issues {
+            issue.path = format!("{label}.{}", issue.path);
+            if !report.issues.contains(&issue) {
+                report.issues.push(issue);
+            }
+        }
     }
     // No declared profile we have compiled (and no default configured on the
     // validator): the base resource applies — the shape walk and the base's

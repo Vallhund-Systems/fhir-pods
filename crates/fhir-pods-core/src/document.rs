@@ -75,15 +75,40 @@ impl<'a> Parsed<'a> {
     /// element path it sits at (`Bundle.entry[2].resource`), each as a
     /// document of its own so its declared profiles can be validated.
     pub fn structure(&self) -> (Vec<Gap>, Vec<(alloc::string::String, TreeDoc<'_, 'a>)>) {
-        let Some(rt) = resource_ctx(&self.value) else { return (Vec::new(), Vec::new()) };
-        let mut w = Walk { root: rt, gaps: Vec::new(), nested: Vec::new(), segs: Vec::new() };
+        let (gaps, nested, _) = self.structure_full();
+        (gaps, nested)
+    }
+
+    /// [`structure`](Self::structure), plus every extension instance whose
+    /// `url` names a compiled extension profile, at its label, with that
+    /// profile — each is validated against it, wherever it sits.
+    #[allow(clippy::type_complexity)]
+    pub fn structure_full(
+        &self,
+    ) -> (
+        Vec<Gap>,
+        Vec<(alloc::string::String, TreeDoc<'_, 'a>)>,
+        Vec<(alloc::string::String, TreeDoc<'_, 'a>, &'static crate::compiled::CompiledProfile)>,
+    ) {
+        let Some(rt) = resource_ctx(&self.value) else { return (Vec::new(), Vec::new(), Vec::new()) };
+        let mut w = Walk {
+            root: rt,
+            gaps: Vec::new(),
+            nested: Vec::new(),
+            extensions: Vec::new(),
+            segs: Vec::new(),
+            profiled: Vec::new(),
+            profiles: Vec::new(),
+        };
         structure_in(&self.value, rt, rt, &mut w);
         let nested = w
             .nested
             .into_iter()
             .filter_map(|(label, v)| resource_ctx(v).map(|rt| (label, TreeDoc::at(v, Some(rt)))))
             .collect();
-        (w.gaps, nested)
+        let extensions =
+            w.extensions.into_iter().map(|(label, v, p)| (label, TreeDoc::at(v, Some("Extension")), p)).collect();
+        (w.gaps, nested, extensions)
     }
 
     /// A top-level member by key (the JSON type tag lives here).
@@ -161,7 +186,32 @@ fn items_of<'x, 'a>(value: &'x Value<'a>, repeats: bool, path: &str) -> Result<V
     }
 }
 
+/// The compiled profiles this resource declares (for its type).
+fn compiled_profiles_of(
+    kvs: &[(alloc::borrow::Cow<'_, str>, Value<'_>)],
+) -> Vec<&'static crate::compiled::CompiledProfile> {
+    let rt = kvs.iter().find(|(k, _)| k.as_ref() == "resourceType").and_then(|(_, v)| match v {
+        Value::Str(s) => Some(s.as_ref()),
+        _ => None,
+    });
+    let Some((_, Value::Object(meta))) = kvs.iter().find(|(k, _)| k.as_ref() == "meta") else { return Vec::new() };
+    let Some((_, Value::Array(profiles))) = meta.iter().find(|(k, _)| k.as_ref() == "profile") else {
+        return Vec::new();
+    };
+    profiles
+        .iter()
+        .filter_map(|p| match p {
+            Value::Str(u) => {
+                let base = u.split('|').next().unwrap_or(u);
+                crate::generated::REGISTRY.iter().find(|c| c.url == base && Some(c.resource_type) == rt).copied()
+            }
+            _ => None,
+        })
+        .collect()
+}
+
 /// Does this resource declare a profile the registry has compiled (for its type)?
+#[allow(dead_code)]
 fn declares_compiled_profile(kvs: &[(alloc::borrow::Cow<'_, str>, Value<'_>)]) -> bool {
     let rt = kvs.iter().find(|(k, _)| k.as_ref() == "resourceType").and_then(|(_, v)| match v {
         Value::Str(s) => Some(s.as_ref()),
@@ -186,7 +236,31 @@ struct Walk<'v, 'a> {
     root: &'static str,
     gaps: Vec<Gap>,
     nested: Vec<(alloc::string::String, &'v Value<'a>)>,
+    /// Extension instances whose `url` names a compiled extension profile,
+    /// with the label they sit at: validated against it by the caller.
+    extensions: Vec<(alloc::string::String, &'v Value<'a>, &'static crate::compiled::CompiledProfile)>,
     segs: Vec<(&'v str, Option<usize>)>,
+    /// Whether the resource being walked (innermost) declares a compiled
+    /// profile — which then restates the base's required elements itself.
+    profiled: Vec<bool>,
+    /// The compiled profiles the resource being walked (innermost) declares:
+    /// an extension one of them reaches through a slice is theirs to check.
+    profiles: Vec<Vec<&'static crate::compiled::CompiledProfile>>,
+}
+
+/// Does a profile reach an extension of this url through a slice (an
+/// inherited extension profile, or a profile discriminator)?
+fn profile_reaches(slicings: &[crate::compiled::Slicing], url: &str) -> bool {
+    slicings.iter().any(|sl| {
+        sl.slices.iter().any(|s| {
+            s.profile == Some(url)
+                || s.profiles.iter().any(|(_, urls)| urls.contains(&url))
+                || s.discriminators
+                    .iter()
+                    .any(|d| matches!(d, crate::compiled::Discriminator::Profile { url: u, .. } if *u == url))
+                || profile_reaches(s.slicings, url)
+        })
+    })
 }
 
 impl<'v, 'a> Walk<'v, 'a> {
@@ -238,9 +312,21 @@ fn structure_at<'v, 'a>(
         }
     }
     // a resource with no compiled profile declared is held to what the base
-    // resource itself requires; a profile restates those and reports them
-    if is_resource && !declares_compiled_profile(kvs) {
-        for child in crate::typing::required_resource_children(ctx) {
+    // resource itself requires — at its root and inside its backbones; a
+    // profile restates those and reports them
+    if is_resource {
+        let declared = compiled_profiles_of(kvs);
+        w.profiled.push(!declared.is_empty());
+        w.profiles.push(declared);
+        if w.profiled.last() == Some(&false) {
+            for child in crate::typing::required_resource_children(ctx) {
+                if !has(child) {
+                    w.gaps.push((path.into(), Required, alloc::format!("{ctx}.{child} is required (min 1, found 0)")));
+                }
+            }
+        }
+    } else if ctx.contains('.') && w.profiled.last() == Some(&false) {
+        for child in crate::typing::required_backbone_children(ctx) {
             if !has(child) {
                 w.gaps.push((path.into(), Required, alloc::format!("{ctx}.{child} is required (min 1, found 0)")));
             }
@@ -252,6 +338,21 @@ fn structure_at<'v, 'a>(
     // ele-1: an element has a value or children — `{}` (or only an `id`) is neither
     if needs_content && !is_resource && !kvs.iter().any(|(k, _)| k.as_ref() != "id") {
         w.gaps.push((path.into(), Invariant, alloc::format!("ele-1: {path} must have a value or children")));
+    }
+    // an extension whose url names a compiled extension profile is held to it
+    if ctx == "Extension" {
+        if let Some((_, Value::Str(url))) = kvs.iter().find(|(k, _)| k.as_ref() == "url") {
+            let base = url.split('|').next().unwrap_or(url);
+            let reached = w.profiles.last().is_some_and(|ps| ps.iter().any(|p| profile_reaches(p.slicings, base)));
+            if !reached {
+                if let Some(p) =
+                    crate::generated::REGISTRY.iter().find(|p| p.resource_type == "Extension" && p.url == base)
+                {
+                    let label = w.label(w.root);
+                    w.extensions.push((label, v, p));
+                }
+            }
+        }
     }
     // ext-1: an extension carries a value or nested extensions, not both
     if ctx == "Extension" {
@@ -328,6 +429,11 @@ fn structure_at<'v, 'a>(
             };
             for x in items {
                 match x {
+                    Value::Object(m) if m.is_empty() => w.gaps.push((
+                        child_path.clone(),
+                        Invariant,
+                        alloc::format!("ele-1: {child_path}'s extension carrier must have some content"),
+                    )),
                     Value::Object(_) => {
                         let paired = kvs.iter().any(|(k, _)| k.as_ref() == bare);
                         structure_at(x, "Element", &child_path, contained, !paired, w)
@@ -410,6 +516,10 @@ fn structure_at<'v, 'a>(
             Structure,
             alloc::format!("{path}.{stem}[x] allows one choice; found {}", keys.join(", ")),
         ));
+    }
+    if is_resource {
+        w.profiled.pop();
+        w.profiles.pop();
     }
 }
 

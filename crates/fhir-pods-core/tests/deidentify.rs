@@ -324,3 +324,64 @@ fn f015_an_age_clamp_reads_the_unit_and_is_recorded() {
     let weeks = check(cond(r#"{"value":1100,"code":"wk"}"#).as_bytes());
     assert!(!weeks.iter().any(|f| f.what == "age over 89"), "{weeks:?}");
 }
+
+#[test]
+fn f018_an_extensions_free_text_goes_and_kept_free_text_is_named_as_residual() {
+    // an unknown extension's string payload is removed, and recorded
+    let p = r#"{"resourceType":"Patient","gender":"male","extension":[{"url":"https://example.org/synthetic-patient-note","valueString":"PHI_GENERIC_EXTENSION"}]}"#;
+    let d = deid(p, &Policy::safe_harbor(b"s"));
+    assert!(!d.resource.contains("PHI_GENERIC_EXTENSION"), "{}", d.resource);
+    assert!(!d.resource.contains("extension"), "an extension left with only its url goes: {}", d.resource);
+    assert!(
+        d.applied.iter().any(|a| a.path == "Patient.extension.valueString" && a.action == Action::Remove),
+        "{:?}",
+        d.applied
+    );
+    assert!(d.validation.is_valid(), "{}", wire::report(&d.validation));
+    // a concept's text is free text: gone by default, the concept masked where it is required
+    let o =
+        r#"{"resourceType":"Observation","status":"final","code":{"text":"Synthetic measurement for PHI_CODE_TEXT"}}"#;
+    let d = deid(o, &Policy::safe_harbor(b"s"));
+    assert!(!d.resource.contains("PHI_CODE_TEXT") && d.residual.is_empty(), "{} {:?}", d.resource, d.residual);
+    assert!(d.validation.is_valid(), "{}", wire::report(&d.validation));
+    // a host that keeps it is told, site by site, what it kept
+    let d = deid(o, &Policy::safe_harbor(b"s").rule("CodeableConcept.text", Action::Keep));
+    assert!(d.resource.contains("PHI_CODE_TEXT"));
+    assert_eq!(d.residual.len(), 1, "{:?}", d.residual);
+    assert!(d.residual[0].path == "Observation.code.text" && d.residual[0].what == "free text kept");
+    // an organisation's name is free text too; a coding's display and an element's id are not
+    let org = r#"{"resourceType":"Organization","id":"o","name":"PHI_ORG_NAME","type":[{"id":"t1","coding":[{"system":"http://terminology.hl7.org/CodeSystem/organization-type","code":"prov","display":"Healthcare Provider"}]}]}"#;
+    let d = deid(org, &Policy::safe_harbor(b"s"));
+    assert!(
+        !d.resource.contains("PHI_ORG_NAME")
+            && d.resource.contains("Healthcare Provider")
+            && d.resource.contains(r#""id":"t1""#),
+        "{}",
+        d.resource
+    );
+    // a coded resource has no residual: displays and units are not free text
+    let coded = r#"{"resourceType":"Observation","status":"final","code":{"coding":[{"system":"http://loinc.org","code":"8867-4","display":"Heart rate"}]},"valueQuantity":{"value":72,"unit":"beats/minute","system":"http://unitsofmeasure.org","code":"/min"}}"#;
+    assert!(deid(coded, &Policy::safe_harbor(b"s")).residual.is_empty());
+}
+
+#[test]
+fn f019_an_extension_emptied_by_what_was_removed_goes_too() {
+    let p = r#"{"resourceType":"Patient","id":"p","extension":[{"url":"https://example.org/synthetic-name","valueHumanName":{"family":"PHI_EXTENSION_NAME"}}],"gender":"male"}"#;
+    let d = deid(p, &Policy::safe_harbor(b"s"));
+    assert!(!d.resource.contains("PHI_EXTENSION_NAME") && !d.resource.contains("extension"), "{}", d.resource);
+    assert!(d.validation.is_valid(), "{}", wire::report(&d.validation));
+    // inside a Bundle entry too
+    let b = format!(r#"{{"resourceType":"Bundle","type":"collection","entry":[{{"resource":{p}}}]}}"#);
+    let d = deid(&b, &Policy::safe_harbor(b"s"));
+    assert!(!d.resource.contains("PHI_EXTENSION_NAME") && !d.resource.contains("extension"), "{}", d.resource);
+    assert!(d.validation.is_valid(), "{}", wire::report(&d.validation));
+    // a carrier whose only extension went goes too, never an empty object behind
+    let c2 = r#"{"resourceType":"Patient","gender":"male","name":[{"family":"Smith","_family":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/translation","extension":[{"url":"lang","valueCode":"fr"},{"url":"content","valueString":"Forgeron"}]}]}}]}"#;
+    let d = deid(c2, &Policy::safe_harbor(b"s"));
+    assert!(!d.resource.contains("_family") && !d.resource.contains("Forgeron"), "{}", d.resource);
+    assert!(d.validation.is_valid(), "{}", wire::report(&d.validation));
+    // a complex extension whose every sub-extension went goes as well
+    let c = r#"{"resourceType":"Patient","gender":"male","extension":[{"url":"https://example.org/complex","extension":[{"url":"who","valueHumanName":{"family":"X"}}]}]}"#;
+    let d = deid(c, &Policy::safe_harbor(b"s"));
+    assert!(!d.resource.contains("extension"), "{}", d.resource);
+}

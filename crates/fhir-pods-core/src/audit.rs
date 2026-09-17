@@ -218,16 +218,25 @@ pub fn base64(bytes: &[u8]) -> String {
 /// `2` an IP address (v4 or v6), `1` a machine name — deterministic, and a
 /// host that knows better gives `{"address", "type"}` itself.
 pub fn network_type(address: &str) -> &'static str {
-    if address.contains("://") {
+    // an IP address first — v4, or v6 with or without a zone (`fe80::1%en0`)
+    let ipv4 = address.matches('.').count() == 3 && address.bytes().all(|b| b.is_ascii_digit() || b == b'.');
+    let unscoped = address.split('%').next().unwrap_or(address);
+    let ipv6 =
+        unscoped.matches(':').count() >= 2 && unscoped.bytes().all(|b| b.is_ascii_hexdigit() || b == b':' || b == b'.');
+    if ipv4 || ipv6 {
+        return "2";
+    }
+    // a URI: any scheme (`https:`, `mailto:`, `urn:`), not just the `://` forms
+    let scheme_end = address.find(':').unwrap_or(0);
+    let scheme = &address[..scheme_end];
+    if scheme_end > 0
+        && scheme.as_bytes()[0].is_ascii_alphabetic()
+        && scheme.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'+' | b'.' | b'-'))
+    {
         return "5";
     }
     if address.contains('@') {
         return "4";
-    }
-    let ipv4 = address.matches('.').count() == 3 && address.bytes().all(|b| b.is_ascii_digit() || b == b'.');
-    let ipv6 = address.contains(':') && address.bytes().all(|b| b.is_ascii_hexdigit() || b == b':' || b == b'.');
-    if ipv4 || ipv6 {
-        return "2";
     }
     "1"
 }

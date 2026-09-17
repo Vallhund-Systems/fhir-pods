@@ -141,10 +141,23 @@ pub fn report(v: &Validation) -> String {
 pub fn escape(out: &mut String, s: &str) {
     let mut start = 0;
     for (i, b) in s.bytes().enumerate() {
-        let rep = match b {
+        let rep: &str = match b {
             b'"' => "\\\"",
             b'\\' => "\\\\",
-            b if b < 0x20 => " ",
+            b'\n' => "\\n",
+            b'\r' => "\\r",
+            b'\t' => "\\t",
+            // every other control character as its `\u00XX` escape: text is
+            // never changed on the way out, only written as JSON
+            b if b < 0x20 => {
+                out.push_str(&s[start..i]);
+                const HEX: &[u8; 16] = b"0123456789abcdef";
+                out.push_str("\\u00");
+                out.push(HEX[(b >> 4) as usize] as char);
+                out.push(HEX[(b & 0xf) as usize] as char);
+                start = i + 1;
+                continue;
+            }
             _ => continue,
         };
         out.push_str(&s[start..i]);

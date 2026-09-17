@@ -53,7 +53,7 @@ public class FhirPodsExpoModule: Module {
 
     // Documents: {"document","placed","validation"} or {"error"}.
     Function("document") { (kind: String, inputsJson: String) -> String in
-      call2({ a, al, b, bl, _, _ in fhir_pods_document(a, al, b, bl) }, kind, inputsJson)
+      call2(fhir_pods_document_tx, kind, inputsJson)
     }
 
     // Audit: {"resource","validation"} or {"error"}.

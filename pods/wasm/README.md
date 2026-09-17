@@ -81,6 +81,11 @@ const { document, placed, omitted, validation } = pod.document("au-ps", {
 });
 ```
 
+A loaded terminology table, or the `terminology` callback, reaches the
+document's validation too — the IPS pregnancy profiles, told apart only by
+LOINC sets the pod does not ship, need one (`tools/compile_valueset.py` on
+the IG's own `ValueSet`s writes the table).
+
 `ips` (IPS 2.0.1) or `au-ps` (AU Patient Summary 1.0.0). The sections come
 from the kind's Composition profile; each resource is placed by what it is
 (a Condition in Problems, or History of Past Illness when inactive; a
@@ -145,6 +150,16 @@ target a type (`HumanName`), a member of a type (`Address.city`) or an
 element (`Patient.address.city`); the most specific wins; `base: "none"`
 starts from nothing. Free text outside narrative and notes is the host's
 call — name it in the rules.
+
+Free text goes under Safe Harbor — a concept's `text`, a note, an
+organisation's name, an extension's string payload — except a coding's
+display, a quantity's unit, an address's state and country, and an
+element's own `id` / `linkId`. A host that keeps a free-text site by rule
+(`{ target: "CodeableConcept.text", action: "keep" }`) gets every kept site
+back in `residual`, so an empty `remaining` never reads as "all free text
+gone". What the base resource or an applied profile requires is masked
+(`data-absent-reason: masked`) rather than dropped, required children
+included; an extension whose value went goes with it.
 
 ### Terminology
 

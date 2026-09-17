@@ -177,6 +177,12 @@ fn addresses_are_classified_and_base64_is_standard() {
     assert_eq!(network_type("https://fhir.example.org/r4"), "5");
     assert_eq!(network_type("ops@example.org"), "4");
     assert_eq!(network_type("myMachine.example.org"), "1");
+    // F024: a scoped IPv6 address is an address, a mailto: or a urn: is a URI
+    assert_eq!(network_type("fe80::1%en0"), "2");
+    assert_eq!(network_type("::1"), "2");
+    assert_eq!(network_type("mailto:reviewer@example.org"), "5");
+    assert_eq!(network_type("urn:uuid:3f2a1c9e-7b1d-4f0e-9a8c-1d2e3f4a5b6c"), "5");
+    assert_eq!(network_type("urn:oid:1.2.3"), "5");
     assert_eq!(base64(b""), "");
     assert_eq!(base64(b"f"), "Zg==");
     assert_eq!(base64(b"fo"), "Zm8=");
@@ -195,6 +201,19 @@ fn addresses_are_classified_and_base64_is_standard() {
 #[test]
 fn provenance_is_lowered_from_the_base_definition() {
     let v = Validator::new();
+    // F023: every element of the base definition is an input, a Signature included
+    let signed = v
+        .lower(
+            "http://hl7.org/fhir/StructureDefinition/Provenance",
+            br#"{"target":["Observation/hr1"],"recorded":"2026-09-16T10:00:00Z","agent":[{"who":{"reference":"Practitioner/gp1"}}],"signature":[{"type":[{"system":"urn:iso-astm:E1762-95:2013","code":"1.2.840.10065.1.12.1.1"}],"when":"2026-09-16T10:00:00Z","who":{"reference":"Practitioner/gp1"}}]}"#,
+        )
+        .unwrap();
+    assert!(signed.validation.is_valid(), "{}", wire::report(&signed.validation));
+    assert!(
+        signed.resource.contains(r#""signature":[{"type":[{"system":"urn:iso-astm:E1762-95:2013""#),
+        "{}",
+        signed.resource
+    );
     let p = v
         .lower(
             "http://hl7.org/fhir/StructureDefinition/Provenance",

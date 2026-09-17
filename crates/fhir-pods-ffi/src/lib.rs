@@ -48,13 +48,15 @@ pub const ABI_VERSION: u32 = 8;
 
 /// The compiled terminology table the host loaded (`fhir_pods_terminology_load`),
 /// consulted after the bundled sets and before any host callback.
-static TABLE: RwLock<Option<Expansions>> = RwLock::new(None);
+static TABLE: RwLock<Option<std::sync::Arc<Expansions>>> = RwLock::new(None);
 
 /// Run `f` with the providers in order: bundled sets, the loaded table, the
-/// host's callback.
+/// host's callback. The table is taken as a snapshot and the lock released
+/// before any host code runs, so a callback may itself load a table
+/// (`fhir_pods_terminology_load`) — it takes effect for the calls that follow.
 fn with_providers<R>(host: Option<&dyn TerminologyProvider>, f: impl FnOnce(&dyn TerminologyProvider) -> R) -> R {
-    let table = TABLE.read().unwrap_or_else(|e| e.into_inner());
-    match (table.as_ref(), host) {
+    let table = TABLE.read().unwrap_or_else(|e| e.into_inner()).clone();
+    match (table.as_deref(), host) {
         (Some(t), Some(h)) => f(&Chain(&[&Bundled, t, h])),
         (Some(t), None) => f(&Chain(&[&Bundled, t])),
         (None, Some(h)) => f(&Chain(&[&Bundled, h])),
@@ -231,6 +233,17 @@ fn deidentify_json(resource: &[u8], policy: &[u8]) -> String {
         wire::escape(&mut s, &f.what);
         s.push_str("\"}");
     }
+    s.push_str("],\"residual\":[");
+    for (i, f) in d.residual.iter().enumerate() {
+        if i > 0 {
+            s.push(',');
+        }
+        s.push_str("{\"path\":\"");
+        wire::escape(&mut s, &f.path);
+        s.push_str("\",\"what\":\"");
+        wire::escape(&mut s, &f.what);
+        s.push_str("\"}");
+    }
     s.push_str("]}");
     s
 }
@@ -247,7 +260,21 @@ pub unsafe extern "C" fn fhir_pods_document(
     inputs: *const u8,
     inputs_len: usize,
 ) -> *mut u8 {
-    pack(document_json(input(kind, kind_len), input(inputs, inputs_len)).as_bytes())
+    with_providers(None, |tx| pack(document_json(input(kind, kind_len), input(inputs, inputs_len), tx).as_bytes()))
+}
+
+/// [`fhir_pods_document`] with a host terminology callback: the document's
+/// validation, and the profile slices that turn on a binding, ask it.
+#[no_mangle]
+pub unsafe extern "C" fn fhir_pods_document_tx(
+    kind: *const u8,
+    kind_len: usize,
+    inputs: *const u8,
+    inputs_len: usize,
+    cb: Option<TxCallback>,
+    ctx: *mut c_void,
+) -> *mut u8 {
+    with_tx(cb, ctx, |tx| pack(document_json(input(kind, kind_len), input(inputs, inputs_len), tx).as_bytes()))
 }
 
 /// Audit: an `AuditEvent` for a `kind` of event (`read`, `patient-read`,
@@ -294,9 +321,9 @@ fn audit_json(kind: &[u8], inputs: &[u8], tx: &dyn TerminologyProvider) -> Strin
     }
 }
 
-fn document_json(kind: &[u8], inputs: &[u8]) -> String {
+fn document_json(kind: &[u8], inputs: &[u8], tx: &dyn TerminologyProvider) -> String {
     let kind = core::str::from_utf8(kind).unwrap_or("");
-    let a = match validator().document(kind, inputs) {
+    let a = match validator().document_with(kind, inputs, tx) {
         Ok(a) => a,
         Err(e) => {
             let mut s = String::from("{\"error\":\"");
@@ -349,7 +376,7 @@ pub unsafe extern "C" fn fhir_pods_terminology_load(ptr: *const u8, len: usize) 
     }
     match core::str::from_utf8(text).ok().and_then(|t| Expansions::parse(t).ok()) {
         Some(t) => {
-            *slot = Some(t);
+            *slot = Some(std::sync::Arc::new(t));
             1
         }
         None => 0,
@@ -572,6 +599,18 @@ mod wasm_host {
     }
 
     #[no_mangle]
+    pub unsafe extern "C" fn fhir_pods_document_host_tx(
+        kind: *const u8,
+        kind_len: usize,
+        inputs: *const u8,
+        inputs_len: usize,
+    ) -> *mut u8 {
+        with_providers(Some(&ImportTx), |tx| {
+            pack(document_json(input(kind, kind_len), input(inputs, inputs_len), tx).as_bytes())
+        })
+    }
+
+    #[no_mangle]
     pub unsafe extern "C" fn fhir_pods_audit_host_tx(
         kind: *const u8,
         kind_len: usize,
@@ -732,9 +771,10 @@ mod android {
         _this: JObject<'l>,
         kind: JByteArray<'l>,
         inputs: JByteArray<'l>,
+        provider: JObject<'l>,
     ) -> jbyteArray {
         let (k, i) = (bytes_in(&mut env, &kind), bytes_in(&mut env, &inputs));
-        let doc = document_json(&k, &i);
+        let doc = with_java(&mut env, &provider, |tx| document_json(&k, &i, tx));
         bytes_out(&mut env, &doc)
     }
 
@@ -949,6 +989,51 @@ mod tests {
             let bad = "cda";
             let err = unpack(fhir_pods_document(bad.as_ptr(), bad.len(), inputs.as_ptr(), inputs.len()));
             assert_eq!(err, "{\"error\":\"kind must be ips or au-ps\"}");
+        }
+    }
+
+    /// F021: a host callback that installs a table while being asked must
+    /// not deadlock (the table lock is never held across host code); the
+    /// table answers from the next call on.
+    #[test]
+    fn a_callback_may_load_a_table_while_being_asked() {
+        let _serial = TABLE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe extern "C" fn loading_cb(
+            ctx: *mut c_void,
+            _vs: *const u8,
+            _vs_len: usize,
+            _sys: *const u8,
+            _sys_len: usize,
+            _code: *const u8,
+            _code_len: usize,
+        ) -> i32 {
+            let calls = &mut *(ctx as *mut u32);
+            *calls += 1;
+            let table = "fhir-pods-terminology 1\n= https://healthterminologies.gov.au/fhir/ValueSet/date-accuracy-indicator-1\nhttps://healthterminologies.gov.au/fhir/CodeSystem/date-accuracy-indicator-1\tAAA\tAccurate\n";
+            assert_eq!(fhir_pods_terminology_load(table.as_ptr(), table.len()), 1);
+            2 // unknown: the table, from now on, knows
+        }
+        let json = r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},"identifier":[{"system":"http://h.example.org/mrn","value":"1"}],"name":[{"family":"D"}],"gender":"male","birthDate":"1970-01-01","_birthDate":{"extension":[{"url":"http://hl7.org.au/fhir/StructureDefinition/date-accuracy-indicator","valueCoding":{"system":"https://healthterminologies.gov.au/fhir/CodeSystem/date-accuracy-indicator-1","code":"AAA"}}]}}"#;
+        let mut calls = 0u32;
+        unsafe {
+            fhir_pods_terminology_load(std::ptr::null(), 0);
+            let first = unpack(fhir_pods_validate_tx(
+                json.as_ptr(),
+                json.len(),
+                Some(loading_cb),
+                &mut calls as *mut u32 as *mut c_void,
+            ));
+            assert_eq!(calls, 1, "asked once, and the call returned");
+            assert!(first.contains("date-accuracy-indicator"), "the answer during the load was unknown: {first}");
+            let second = unpack(fhir_pods_validate_tx(
+                json.as_ptr(),
+                json.len(),
+                Some(loading_cb),
+                &mut calls as *mut u32 as *mut c_void,
+            ));
+            assert_eq!(calls, 1, "the loaded table answers now; the host is not asked");
+            assert!(!second.contains("date-accuracy-indicator") && second.contains("\"valid\":true"), "{second}");
+            fhir_pods_terminology_load(std::ptr::null(), 0);
         }
     }
 

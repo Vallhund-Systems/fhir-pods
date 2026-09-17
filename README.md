@@ -15,7 +15,7 @@ decision to proceed.
 | --- | --- | --- |
 | **Verify** | a resource (JSON) | the findings against the base spec's shape and resource rules and against the profiles it declares — and the profiles every nested resource declares — as a report or a FHIR `OperationOutcome`; must-support gaps as information; what could not be checked, named |
 | **Lower** | a profile URL and the variable inputs (`status`, `subject`, `valueQuantity.value`…) | the conformant resource — the profile supplies the codings, categories, units and slices — validated on the way out |
-| **De-identify** | a resource and a policy (Safe Harbor by default) | a copy with names, contacts, addresses below state, exact dates and free text gone, identifiers pseudonymised under the host's salt, masked where the profile requires an element; an audit trail; what a Safe Harbor check still finds |
+| **De-identify** | a resource and a policy (Safe Harbor by default) | a copy with names, contacts, addresses below state, exact dates, narrative, notes, attachments and free text gone (a code's display, a unit, a state and a country stay), identifiers pseudonymised under the host's salt, masked where the base or a profile requires an element; an audit trail; what a Safe Harbor check still finds; what free text a host's own rule kept, site by site |
 | **Document** | a patient and their resources | an IPS or AU Patient Summary `Bundle`: sections from the profile, narrative generated, references rewritten, validated |
 | **Audit** | what a host knows when a record is read, queried, created, updated or deleted: who asked, from where, which server, on whose behalf, which resource or patient, the request id | an `AuditEvent` conformant to the IHE Basic Audit Log Patterns profile for that kind of event, validated; `Provenance` and a failed action's `AuditEvent` lowered from the base definitions |
 | **Terminology** | the bindings the bundled sets cannot decide | answered by a compiled expansion table the host loads, by an ask-then-answer loop against a terminology server, or by a synchronous provider — never by shipped licensed content |
@@ -57,7 +57,7 @@ with terminology switched off on both sides so profiles are what is scored.
 `conformance/run.py` builds the corpus from the pinned packages, runs
 validator_cli 6.10.4 over it, and compares verdicts:
 
-- **1187/1187** at v0.6.0 — the six IGs' published examples and 60-odd
+- **1191/1191** at v0.6.1 — the six IGs' published examples and 60-odd
   probes, every corpus resource re-lowered from its own slot values, every
   one de-identified, the twelve document examples taken apart and assembled
   again, an audit record of every kind from the audit surface, and the

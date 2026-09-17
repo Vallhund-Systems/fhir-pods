@@ -43,7 +43,7 @@ class FhirPodsExpoModule : Module() {
 
     // Documents: {"document","placed","validation"} or {"error"}.
     Function("document") { kind: String, inputsJson: String ->
-      String(FhirPodsNative.document(kind.toByteArray(Charsets.UTF_8), inputsJson.toByteArray(Charsets.UTF_8)), Charsets.UTF_8)
+      String(FhirPodsNative.document(kind.toByteArray(Charsets.UTF_8), inputsJson.toByteArray(Charsets.UTF_8), terminology), Charsets.UTF_8)
     }
 
     // Audit: {"resource","validation"} or {"error"}.
