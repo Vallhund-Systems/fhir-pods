@@ -1,0 +1,20 @@
+{
+  "resourceType": "Goal",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/core/StructureDefinition/us-core-goal"
+    ]
+  },
+  "lifecycleStatus": "active",
+  "description": {
+    "extension": [
+      {
+        "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+        "valueCode": "masked"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/example"
+  }
+}

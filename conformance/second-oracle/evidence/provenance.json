@@ -1,0 +1,70 @@
+{
+  "core_revision": "1860d48057dedfd17d828493b43e7e44d5d56e63",
+  "overlay_sha256": {
+    "conformance/audit/run.py": "9154d62160097fbb9d4433f18dfbfc8a8d22f6be07421d177800270263530944",
+    "conformance/audit/cases.py": "cc79b3dbcabf908401275520986771b0c6dea8e6d706735aae57effcb012d1a8",
+    "conformance/audit/README.md": "6dfd0b191c923cee3545bd9d30d7d477414ae8c5213af4903f310c4864d42dca",
+    "conformance/lowering/run.py": "8a58442e2d80269234d7c4a66f2228d8daa5deb0a80bb9f12c1b063cf8b5f5b2",
+    "conformance/lowering/cases.py": "b100f2bb34ddbb5f665848cd9bf65ce180bfb7cb9ab68f1c37b2e5392d6c10cd",
+    "conformance/lowering/README.md": "bbfc73c618d4552ebffa6c84d839f71fdb82dc99735309d72eaf0dd5a747c6f4"
+  },
+  "retained_output_sha256": {
+    "second-oracle-final-checked": {
+      "summary.json": "8e818cf44a6a81200366540b9ad06095bfbf3aae0a0050dcf47e1d99e2e1099f",
+      "firely.jsonl": "053fb93e9ba18d61f32bd285e02fe167a5f6704ab779dc52b8ef9c92fb846f0c",
+      "firely.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "native.json": "475b4e90e2bb1ea8a43c834ad75240a74520c93daaf276384389dcfca6a642f9",
+      "java-outcomes.json": "919711b090dc2ad8f42bf0a5003285e25cc0d7257544629d6528465faa9473e4",
+      "java.log": "48b3d5314f77cee225709e598baa5502de915161f194ca8c815ff9151c1fa45e",
+      "requests.jsonl": "1b0e0f325de1bb9d5fe70d6a961822ec75ef967af70459fad1d06d155d5c8c98",
+      "packages.json": "9032d50352437d92cab88486c9ac4449189e58d2ad45423943a5afc03ae12983"
+    },
+    "second-oracle-followup": {
+      "summary.json": "86db324b6a303dcf1af89ba2f63ff810904b91367fe7a1e2074ff459e63de78c",
+      "firely.jsonl": "fd21938028c6ab84073cd5c5a3789adcdb237a2dcec6729ba04cd96ac87c218a",
+      "firely.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "native.json": "51898ad88a6dff95228e88eb5b23c7043015ab71ea4469c986a8caf83c244eeb",
+      "java-outcomes.json": "7e09cf3701a976dd7dea6547add4643158ae6c943369387dc9df90c21f469399",
+      "java.log": "e6578cd3659d5f0a7b18d89ca9001e46e6059d33037161256e88763cbb9387ef",
+      "requests.jsonl": "c9dc8cef1656d315d21774f0443395590e7d3909514bc206c08e60bd476508a8",
+      "packages.json": "9032d50352437d92cab88486c9ac4449189e58d2ad45423943a5afc03ae12983"
+    }
+  },
+  "rust_gates": [
+    {
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "returncode": 0,
+      "seconds": 1.243
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "returncode": 0,
+      "seconds": 3.967
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--workspace"
+      ],
+      "returncode": 0,
+      "seconds": 58.916
+    }
+  ],
+  "workspace_tests_passed": 174,
+  "source_explanation": "v0.8.4 plus committed audit/lowering adapters and the exact second-oracle runner hashes in corpus.json; no executable runner changes after the recorded comparison"
+}

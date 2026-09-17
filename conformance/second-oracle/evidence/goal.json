@@ -1,0 +1,382 @@
+{
+  "summary.json": {
+    "recorded_at": "2026-09-17T21:48:13.680816+00:00",
+    "revision": "1860d48057dedfd17d828493b43e7e44d5d56e63",
+    "dirty_paths": [
+      "?? conformance/audit/",
+      "?? conformance/lowering/",
+      "?? conformance/second-oracle/"
+    ],
+    "dotnet": "10.0.107",
+    "java": "openjdk version \"17.0.20.1\" 2026-08-18\nOpenJDK Runtime Environment Homebrew (build 17.0.20.1+0)\nOpenJDK 64-Bit Server VM Homebrew (build 17.0.20.1+0, mixed mode, sharing)",
+    "validator": "Hl7.Fhir.Validation.Legacy.R4 5.11.0 / Hl7.Fhir.R4 5.13.2",
+    "remote_terminology": "off; local code checks remain enabled",
+    "external_resource_resolution": false,
+    "control_verdicts": {
+      "__control-valid": "valid",
+      "__control-normalized": "normalized-input",
+      "__control-required": "invalid",
+      "__control-primitive": "invalid",
+      "__control-unresolved": "incomplete"
+    },
+    "counts": {
+      "total": 3,
+      "comparable": 3,
+      "native_java_agree": 3,
+      "three_agree": 2,
+      "firely_states": {
+        "invalid": 1,
+        "valid": 2
+      },
+      "firely_parse_rejections": 0
+    },
+    "packages": {
+      "hl7.fhir.r4.core#4.0.1": "7614377a54db343e48a9b3b862114f9f63ad1d5f746f6f0f7af68e55ac81c6f7",
+      "hl7.fhir.au.core#2.0.0": "58ded69c3971ac19caedfa9a081e19711c92e6a4cea1f36bb225dbc31b54a817",
+      "hl7.fhir.us.core#6.1.0": "3cc578cfa93b1d3df757bcf9b7add8c09c9c237464abf58adc3bb6ab94d33087",
+      "hl7.fhir.uv.ipa#1.1.0": "1f89528e9734ac64c9e74be19722fd368deac92cc5a42ba17f94ec4a39440377",
+      "hl7.fhir.uv.ips#2.0.1": "5d1d767dbd2772b6d0dd69b2ce433a6d7c47bbd178c4aaf2a0a3a8889716ba2d",
+      "hl7.fhir.au.ps#1.0.0": "5eb3c19a0e21d465c98d1e3eaf6c4cd303d36c8010faf462fdd4093e1afde3ec",
+      "ihe.iti.balp#1.1.4": "82c2985c0bd83becbcd82a7212f42337b48deb2eccf66ef87ee07eebef7b4a58",
+      "hl7.fhir.au.base#6.0.0": "b137a3b3eec7fc5f52ac5e37b3732f1b80b3e5566b4ec60b447dfb8efe21dac6",
+      "hl7.fhir.uv.extensions.r4#5.3.0": "ab1c3a03af21de41af05c61a404232267d312eea9884ec5488a5d12b0f7a97a6"
+    },
+    "library_sha256": "723e2385880a8eba3b76646a7d9afbd3071d45f766ae65858bdc0143c3a02460",
+    "java_jar_sha256": "1106b9d58f9e363e47bea7c4fc065841e5fc91fe9d062775c3bfdd212bd653cc",
+    "firely_dll_sha256": "b0a7b843decbe8dc079a626923bbdabcc061214b1cd14e29af18b8e1183fc824",
+    "runner_sha256": {
+      "packages.lock.json": "3684b13b13a573064b6a8b94933f2ef3f2a9d41dba236bcb831c1ac01e5bc17c",
+      "run.py": "9ce2be9b413e091dbb51a2e0d7f61f3fbdadde9eb990b24631897d6c45fb1ef4",
+      "sdk-oracle.csproj": "4e7aa67b26d48af7500d5b153af7f0023e1da9a7cb9dca3a5c14b73c205f6327",
+      ".gitignore": "fc08a64d494e6bd86fcae168dc6ced37f71271e7fa60fa390f94809c66fbfb8a",
+      "Program.cs": "41065171039778ece301aaba12ae9b2ebb1f3b91603984a9d2baac854b5d491f"
+    },
+    "rows": [
+      {
+        "file": "us-goal-masked-extension.json",
+        "sha256": "cf0cfb0d16817e08465c9583df1100118da9161e761fedec51e89bc26ef5a4e3",
+        "native": "valid",
+        "java": "valid",
+        "firely": "invalid",
+        "firely_parse_rejection": false,
+        "firely_input_shape_changes": []
+      },
+      {
+        "file": "us-goal-unknown-coding.json",
+        "sha256": "7865f8129d00e5e62f5ef87195076929e44b4a3eb520c800db42b1d166cc8fa7",
+        "native": "valid",
+        "java": "valid",
+        "firely": "valid",
+        "firely_parse_rejection": false,
+        "firely_input_shape_changes": []
+      },
+      {
+        "file": "base-goal-masked-extension.json",
+        "sha256": "5338cac562cde266caa46294fa9b5ed10e728157d26ffa50f403df7774b5625c",
+        "native": "valid",
+        "java": "valid",
+        "firely": "valid",
+        "firely_parse_rejection": false,
+        "firely_input_shape_changes": []
+      }
+    ]
+  },
+  "native.json": {
+    "us-goal-masked-extension.json": {
+      "resourceType": "Goal",
+      "profile": "US Core Goal Profile",
+      "valid": true,
+      "issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "path": "Goal",
+          "message": "dom-6: A resource should have narrative for robust management"
+        }
+      ]
+    },
+    "us-goal-unknown-coding.json": {
+      "resourceType": "Goal",
+      "profile": "US Core Goal Profile",
+      "valid": true,
+      "issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "path": "Goal",
+          "message": "dom-6: A resource should have narrative for robust management"
+        }
+      ]
+    },
+    "base-goal-masked-extension.json": {
+      "resourceType": "Goal",
+      "valid": true,
+      "issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "path": "Goal",
+          "message": "dom-6: A resource should have narrative for robust management"
+        }
+      ]
+    }
+  },
+  "java-outcomes.json": {
+    "resourceType": "Bundle",
+    "type": "collection",
+    "entry": [
+      {
+        "resource": {
+          "resourceType": "OperationOutcome",
+          "text": {
+            "status": "generated",
+            "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p class=\"res-header-id\"><b>OperationOutcome </b></p><table class=\"grid\"><tr><td><b>Severity</b></td><td><b>Location</b></td><td><b>Code</b></td><td><b>Details</b></td><td><b>Diagnostics</b></td><td><b>Source</b></td></tr><tr><td>Warning</td><td>Goal</td><td>Validation rule failed</td><td>Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)</td><td/><td>InstanceValidator</td></tr><tr><td>Warning</td><td>Goal.description</td><td>Invalid Code</td><td>No code provided, and a code should be provided from the value set 'US Core Goal Codes' (http://hl7.org/fhir/us/core/ValueSet/us-core-goal-description|6.1.0)</td><td/><td>InstanceValidator</td></tr></table></div>"
+          },
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-file",
+              "valueString": "/private/var/folders/w8/6xxtk2_94317m20zztsxcxvc0000gn/T/fhir-pods-backlog-2i4rx7q9/second-oracle-followup/corpus/us-goal-masked-extension.json"
+            }
+          ],
+          "issue": [
+            {
+              "extension": [
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-line",
+                  "valueInteger": 1
+                },
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-col",
+                  "valueInteger": 2
+                },
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-source",
+                  "valueString": "InstanceValidator"
+                },
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-message-id",
+                  "valueCode": "http://hl7.org/fhir/StructureDefinition/DomainResource#dom-6"
+                },
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-context",
+                  "valueString": "http://hl7.org/fhir/StructureDefinition/Goal|4.0.1"
+                }
+              ],
+              "severity": "warning",
+              "code": "invariant",
+              "details": {
+                "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)"
+              },
+              "expression": [
+                "Goal"
+              ]
+            },
+            {
+              "extension": [
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-line",
+                  "valueInteger": 9
+                },
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-col",
+                  "valueInteger": 4
+                },
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-source",
+                  "valueString": "InstanceValidator"
+                },
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-message-id",
+                  "valueCode": "Terminology_TX_Code_ValueSet_Ext"
+                },
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-context",
+                  "valueString": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-goal|6.1.0"
+                }
+              ],
+              "severity": "warning",
+              "code": "code-invalid",
+              "details": {
+                "text": "No code provided, and a code should be provided from the value set 'US Core Goal Codes' (http://hl7.org/fhir/us/core/ValueSet/us-core-goal-description|6.1.0)"
+              },
+              "expression": [
+                "Goal.description"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "resource": {
+          "resourceType": "OperationOutcome",
+          "text": {
+            "status": "generated",
+            "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p class=\"res-header-id\"><b>OperationOutcome </b></p><table class=\"grid\"><tr><td><b>Severity</b></td><td><b>Location</b></td><td><b>Code</b></td><td><b>Details</b></td><td><b>Diagnostics</b></td><td><b>Source</b></td></tr><tr><td>Warning</td><td>Goal</td><td>Validation rule failed</td><td>Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)</td><td/><td>InstanceValidator</td></tr><tr><td>Warning</td><td>Goal.description</td><td>Invalid Code</td><td>None of the codings provided are in the value set 'US Core Goal Codes' (http://hl7.org/fhir/us/core/ValueSet/us-core-goal-description|6.1.0), and a coding should come from this value set unless it has no suitable code (note that the validator cannot judge what is suitable) (codes = http://terminology.hl7.org/CodeSystem/data-absent-reason#unknown)</td><td/><td>TerminologyEngine</td></tr></table></div>"
+          },
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-file",
+              "valueString": "/private/var/folders/w8/6xxtk2_94317m20zztsxcxvc0000gn/T/fhir-pods-backlog-2i4rx7q9/second-oracle-followup/corpus/us-goal-unknown-coding.json"
+            }
+          ],
+          "issue": [
+            {
+              "extension": [
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-line",
+                  "valueInteger": 1
+                },
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-col",
+                  "valueInteger": 2
+                },
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-source",
+                  "valueString": "InstanceValidator"
+                },
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-message-id",
+                  "valueCode": "http://hl7.org/fhir/StructureDefinition/DomainResource#dom-6"
+                },
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-context",
+                  "valueString": "http://hl7.org/fhir/StructureDefinition/Goal|4.0.1"
+                }
+              ],
+              "severity": "warning",
+              "code": "invariant",
+              "details": {
+                "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)"
+              },
+              "expression": [
+                "Goal"
+              ]
+            },
+            {
+              "extension": [
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-line",
+                  "valueInteger": 9
+                },
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-col",
+                  "valueInteger": 4
+                },
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-source",
+                  "valueString": "TerminologyEngine"
+                },
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-message-id",
+                  "valueCode": "Terminology_TX_NoValid_2_CC"
+                },
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-context",
+                  "valueString": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-goal|6.1.0"
+                }
+              ],
+              "severity": "warning",
+              "code": "code-invalid",
+              "details": {
+                "text": "None of the codings provided are in the value set 'US Core Goal Codes' (http://hl7.org/fhir/us/core/ValueSet/us-core-goal-description|6.1.0), and a coding should come from this value set unless it has no suitable code (note that the validator cannot judge what is suitable) (codes = http://terminology.hl7.org/CodeSystem/data-absent-reason#unknown)"
+              },
+              "expression": [
+                "Goal.description"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "resource": {
+          "resourceType": "OperationOutcome",
+          "text": {
+            "status": "generated",
+            "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p class=\"res-header-id\"><b>OperationOutcome </b></p><table class=\"grid\"><tr><td><b>Severity</b></td><td><b>Location</b></td><td><b>Code</b></td><td><b>Details</b></td><td><b>Diagnostics</b></td><td><b>Source</b></td></tr><tr><td>Warning</td><td>Goal</td><td>Validation rule failed</td><td>Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)</td><td/><td>InstanceValidator</td></tr></table></div>"
+          },
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-file",
+              "valueString": "/private/var/folders/w8/6xxtk2_94317m20zztsxcxvc0000gn/T/fhir-pods-backlog-2i4rx7q9/second-oracle-followup/corpus/base-goal-masked-extension.json"
+            }
+          ],
+          "issue": [
+            {
+              "extension": [
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-line",
+                  "valueInteger": 1
+                },
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-col",
+                  "valueInteger": 2
+                },
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-source",
+                  "valueString": "InstanceValidator"
+                },
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-message-id",
+                  "valueCode": "http://hl7.org/fhir/StructureDefinition/DomainResource#dom-6"
+                },
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/operationoutcome-issue-context",
+                  "valueString": "http://hl7.org/fhir/StructureDefinition/Goal|4.0.1"
+                }
+              ],
+              "severity": "warning",
+              "code": "invariant",
+              "details": {
+                "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)"
+              },
+              "expression": [
+                "Goal"
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "firely": [
+    {
+      "id": "us-goal-masked-extension.json",
+      "outcome": {
+        "resourceType": "OperationOutcome",
+        "issue": [
+          {
+            "severity": "error",
+            "code": "code-invalid",
+            "details": {
+              "coding": [
+                {
+                  "system": "http://hl7.org/fhir/dotnet-api-operation-outcome",
+                  "code": "6005"
+                }
+              ],
+              "text": "Extensible binding requires code or text."
+            },
+            "expression": [
+              "Goal.description[0]"
+            ]
+          }
+        ]
+      },
+      "input_shape_changes": []
+    },
+    {
+      "id": "us-goal-unknown-coding.json",
+      "outcome": {
+        "resourceType": "OperationOutcome"
+      },
+      "input_shape_changes": []
+    },
+    {
+      "id": "base-goal-masked-extension.json",
+      "outcome": {
+        "resourceType": "OperationOutcome"
+      },
+      "input_shape_changes": []
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "resourceType": "Goal",
+  "lifecycleStatus": "active",
+  "description": {
+    "extension": [
+      {
+        "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+        "valueCode": "masked"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/example"
+  }
+}

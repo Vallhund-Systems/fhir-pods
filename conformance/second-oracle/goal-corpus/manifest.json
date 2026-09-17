@@ -1,0 +1,11 @@
+[
+  {
+    "file": "us-goal-masked-extension.json"
+  },
+  {
+    "file": "us-goal-unknown-coding.json"
+  },
+  {
+    "file": "base-goal-masked-extension.json"
+  }
+]
