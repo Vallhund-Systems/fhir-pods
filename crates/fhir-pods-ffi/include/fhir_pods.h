@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-/* ABI version; a host refuses a mismatched module. This header is ABI 7. */
+/* ABI version; a host refuses a mismatched module. This header is ABI 8. */
 #define FHIR_PODS_ABI_VERSION 8u
 uint32_t fhir_pods_abi_version(void);
 

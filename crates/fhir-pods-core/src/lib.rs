@@ -210,7 +210,9 @@ fn validate_resource<D: Document>(
     if profiles.is_empty() {
         // the base's own rules for a domain resource: dom-3 (contained
         // resources referenced) and dom-6 (narrative); dom-2/4/5 are in the walk
-        if !matches!(rt, "Bundle" | "Binary" | "Parameters") {
+        if rt == "Bundle" {
+            issues.extend(engine::bundle_invariants(doc, cache, bundle).issues);
+        } else if !matches!(rt, "Binary" | "Parameters") {
             issues.extend(engine::domain_invariants(doc, rt, cache, bundle).issues);
         }
     }
@@ -402,6 +404,9 @@ impl Validator {
     pub fn new() -> Self {
         let mut keys: Vec<(usize, &'static str)> = Vec::new();
         for (_, _, _, expr) in typemap::DOMAIN_INVARIANTS {
+            keys.push((expr.as_ptr() as usize, expr));
+        }
+        for (_, _, _, _, expr) in typemap::BUNDLE_INVARIANTS {
             keys.push((expr.as_ptr() as usize, expr));
         }
         for p in generated::REGISTRY {

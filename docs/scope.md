@@ -1,8 +1,13 @@
 # Scope — what "agrees with the reference validator" means
 
-`conformance/run.py` reports **294/294 agree** across AU Core 2.0.0, US Core
-6.1.0 and IPA 1.1.0. This note says precisely what that claim covers and what it deliberately
-does not, so nobody reads more into it than it says.
+`conformance/run.py` reports **1191/1191 agree** at v0.6.1 across the six
+pinned IGs (AU Core 2.0.0, US Core 6.1.0, IPA 1.1.0, IPS 2.0.1, AU PS 1.0.0,
+IHE BALP 1.1.4): every IG's published examples, the probes, every example
+re-lowered from its slot values, every one de-identified, the documents
+assembled again, and an audit record of every kind. This note says precisely
+what that claim covers and what it deliberately does not, so nobody reads
+more into it than it says. The count moves with every release and is in the
+changelog.
 
 ## The claim
 
@@ -46,13 +51,14 @@ pattern / type discriminators, closed slicing, nested-slice discriminator
 resolution, slice → profile inheritance for `Identifier` and complex
 `Extension` types), and FHIRPath invariants with typed traversal. Every
 error-level finding either side raised on the corpus is in this set — that is
-the 294/294.
+the count above.
 
 ## What we skip, never guess
 
 - FHIRPath outside the supported core: `htmlChecks()` (xhtml validity),
-  `resolve()` (reference resolution — a library has no resolver; a seam,
-  later), `memberOf`, string concatenation `&`, equivalence `~`, decimals.
+  `memberOf`, equivalence `~`, decimal arithmetic. (`resolve()` resolves
+  inside the resource and its bundle — `#id`, `fullUrl`, `Type/id` — and
+  string concatenation `&` is supported, since 0.5.0.)
   Every one of the registry's invariant expressions parses and, on a typed
   resource, evaluates — except the two above (`txt-1`/`txt-2`, `ctm-1`).
   Type tests and casts (`is`, `as`, `ofType`) resolve against the element's

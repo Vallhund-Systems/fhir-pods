@@ -184,6 +184,15 @@ HAND_WRITTEN = [
         "contained": [{"resourceType": "Patient", "id": "p"}],
     }),
     # the base's required elements inside a backbone, and an extension held to its own profile by url
+    # Bundle identity and the base Bundle invariants, profile or no profile (F026)
+    ("bundle-url-id-mismatch", None, False, {"resourceType": "Bundle", "type": "collection", "entry": [{"fullUrl": "https://example.org/fhir/Patient/other", "resource": {"resourceType": "Patient", "id": "p1", "gender": "male"}}]}),
+    ("bundle-url-type-mismatch", None, False, {"resourceType": "Bundle", "type": "collection", "entry": [{"fullUrl": "https://example.org/fhir/Observation/p1", "resource": {"resourceType": "Patient", "id": "p1", "gender": "male"}}]}),
+    ("bundle-duplicate-fullurl", None, False, {"resourceType": "Bundle", "type": "collection", "entry": [{"fullUrl": "https://example.org/fhir/Patient/p1", "resource": {"resourceType": "Patient", "id": "p1", "gender": "male"}}, {"fullUrl": "https://example.org/fhir/Patient/p1", "resource": {"resourceType": "Patient", "id": "p1", "gender": "female"}}]}),
+    ("bundle-distinct-versions", None, True, {"resourceType": "Bundle", "type": "collection", "entry": [{"fullUrl": "https://example.org/fhir/Patient/p1", "resource": {"resourceType": "Patient", "id": "p1", "meta": {"versionId": "1"}, "gender": "male"}}, {"fullUrl": "https://example.org/fhir/Patient/p1", "resource": {"resourceType": "Patient", "id": "p1", "meta": {"versionId": "2"}, "gender": "female"}}]}),
+    ("bundle-urn-fullurl", None, True, {"resourceType": "Bundle", "type": "collection", "entry": [{"fullUrl": "urn:uuid:00000000-0000-4000-8000-000000000001", "resource": {"resourceType": "Patient", "id": "p1", "gender": "male"}}]}),
+    ("bundle-collection-total", None, False, {"resourceType": "Bundle", "type": "collection", "total": 1, "entry": [{"fullUrl": "https://example.org/fhir/Patient/p1", "resource": {"resourceType": "Patient", "id": "p1", "gender": "male"}}]}),
+    ("bundle-transaction-without-request", None, False, {"resourceType": "Bundle", "type": "transaction", "entry": [{"fullUrl": "https://example.org/fhir/Patient/p1", "resource": {"resourceType": "Patient", "id": "p1", "gender": "male"}}]}),
+    ("bundle-transaction", None, True, {"resourceType": "Bundle", "type": "transaction", "entry": [{"fullUrl": "https://example.org/fhir/Patient/p1", "resource": {"resourceType": "Patient", "id": "p1", "gender": "male"}, "request": {"method": "PUT", "url": "Patient/p1"}}]}),
     ("empty-carrier-object", None, False, {"resourceType": "Patient", "gender": "male", "_gender": {}}),
     ("qr-item-without-linkid", None, False, {"resourceType": "QuestionnaireResponse", "status": "completed", "item": [{"text": "How are you?", "answer": [{"valueString": "fine"}]}]}),
     ("translation-without-content", None, False, {"resourceType": "Patient", "gender": "male", "name": [{"family": "Smith", "_family": {"extension": [{"url": "http://hl7.org/fhir/StructureDefinition/translation", "extension": [{"url": "lang", "valueCode": "fr"}]}]}}]}),

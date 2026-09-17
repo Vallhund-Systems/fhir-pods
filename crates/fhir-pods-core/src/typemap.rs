@@ -546,6 +546,21 @@ pub static DOMAIN_INVARIANTS: &[(&str, bool, &str, &str)] = &[
     ("dom-6", false, "A resource should have narrative for robust management", "text.`div`.exists()"),
 ];
 
+/// `Bundle`'s invariants: (element path, key, is_error, human, expression).
+pub static BUNDLE_INVARIANTS: &[(&str, &str, bool, &str, &str)] = &[
+    ("Bundle", "bdl-1", true, "total only when a search or history", "total.empty() or (type = 'searchset') or (type = 'history')"),
+    ("Bundle", "bdl-2", true, "entry.search only when a search", "entry.search.empty() or (type = 'searchset')"),
+    ("Bundle", "bdl-3", true, "entry.request mandatory for batch/transaction/history, otherwise prohibited", "entry.all(request.exists() = (%resource.type = 'batch' or %resource.type = 'transaction' or %resource.type = 'history'))"),
+    ("Bundle", "bdl-4", true, "entry.response mandatory for batch-response/transaction-response/history, otherwise prohibited", "entry.all(response.exists() = (%resource.type = 'batch-response' or %resource.type = 'transaction-response' or %resource.type = 'history'))"),
+    ("Bundle", "bdl-7", true, "FullUrl must be unique in a bundle, or else entries with the same fullUrl must have different meta.versionId (except in history bundles)", "(type = 'history') or entry.where(fullUrl.exists()).select(fullUrl&resource.meta.versionId).isDistinct()"),
+    ("Bundle", "bdl-9", true, "A document must have an identifier with a system and a value", "type = 'document' implies (identifier.system.exists() and identifier.value.exists())"),
+    ("Bundle", "bdl-10", true, "A document must have a date", "type = 'document' implies (timestamp.hasValue())"),
+    ("Bundle", "bdl-11", true, "A document must have a Composition as the first resource", "type = 'document' implies entry.first().resource.is(Composition)"),
+    ("Bundle", "bdl-12", true, "A message must have a MessageHeader as the first resource", "type = 'message' implies entry.first().resource.is(MessageHeader)"),
+    ("Bundle.entry", "bdl-5", true, "must be a resource unless there's a request or response", "resource.exists() or request.exists() or response.exists()"),
+    ("Bundle.entry", "bdl-8", true, "fullUrl cannot be a version specific reference", "fullUrl.contains('/_history/').not()"),
+];
+
 /// The distinct type codes: `type|type…`, `#Backbone.path` (a backbone or
 /// content reference), `~Element.path` (an inline Element).
 pub static CODES: &[&str] = &[

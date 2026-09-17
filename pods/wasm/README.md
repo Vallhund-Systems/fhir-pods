@@ -10,9 +10,10 @@ JS  ──validate(json)──►  hand-written wrapper  ──C ABI──►  R
 ```
 
 No wasm-bindgen, no glue runtime: the wrapper is ~70 lines over `pod_alloc` /
-`pod_free` and the entrypoints. The `.wasm` carries the 168 compiled
-AU Core + US Core + IPA profiles (and the datatypes they inherit),
-the bundled value sets and the FHIRPath engine — ~980 KB, 249 KB gzipped.
+`pod_free` and the entrypoints. The `.wasm` carries the 259 compiled
+profiles of the six pinned IGs (AU Core, US Core, IPA, IPS, AU Patient
+Summary, IHE BALP — and the datatypes they inherit), the 72 bundled value
+sets and the FHIRPath engine — ~1.1 MB, 277 KB gzipped at v0.6.2.
 
 ## Build
 
@@ -196,8 +197,13 @@ bundled sets and the loaded table could not decide; resolve those with
 
 ```js
 for (const { valueSet, system, code } of pod.terminologyNeeds(json)) {
-  const r = await fetch(`${tx}/ValueSet/$validate-code?url=${valueSet}&system=${system}&code=${code}`);
-  cache.set(`${valueSet}|${system}|${code}`, (await r.json()).parameter.find((p) => p.name === "result").valueBoolean);
+  // every parameter encoded (a code may carry `+`, `&` or `#`), the answer
+  // cached only when the server actually answered
+  const q = new URLSearchParams({ url: valueSet, system, code });
+  const r = await fetch(`${tx}/ValueSet/$validate-code?${q}`);
+  if (!r.ok) continue;
+  const result = (await r.json()).parameter?.find((p) => p.name === "result");
+  if (typeof result?.valueBoolean === "boolean") cache.set(`${valueSet}|${system}|${code}`, result.valueBoolean);
 }
 ```
 

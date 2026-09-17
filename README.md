@@ -57,7 +57,7 @@ with terminology switched off on both sides so profiles are what is scored.
 `conformance/run.py` builds the corpus from the pinned packages, runs
 validator_cli 6.10.4 over it, and compares verdicts:
 
-- **1191/1191** at v0.6.1 — the six IGs' published examples and 60-odd
+- **1199/1199** at v0.6.2 — the six IGs' published examples and 60-odd
   probes, every corpus resource re-lowered from its own slot values, every
   one de-identified, the twelve document examples taken apart and assembled
   again, an audit record of every kind from the audit surface, and the
@@ -97,7 +97,9 @@ terminology seam.
   a native terminology provider seam. [`pods/expo`](pods/expo/README.md).
 - **Rust / C** — `fhir_pods_core` directly, or the C ABI in
   `crates/fhir-pods-ffi/include/fhir_pods.h`.
-- 40–70 µs per profiled resource native, about 80 µs in wasm; the same
+- Tens of microseconds per profiled resource (81 / 78 / 152 µs for an AU
+  Core heart rate / AU Core patient / US Core patient, native, measured at
+  v0.6.1 on one 2026 laptop; `examples/bench.rs` reproduces); the same
   inputs always give the same outputs.
 
 ## Use

@@ -124,6 +124,16 @@ def main():
                 if c.get("key") and c.get("expression"):
                     f.write(f'    ({rs(c["key"])}, {str(c.get("severity") == "error").lower()}, {rs(c.get("human", ""))}, {rs(c["expression"])}),\n')
         f.write("];\n\n")
+        # Bundle's own invariants (bdl-1 … bdl-12), root and entry: what every
+        # Bundle owes when no profile applies
+        bsd = sds.get("Bundle") or {}
+        f.write("/// `Bundle`'s invariants: (element path, key, is_error, human, expression).\n")
+        f.write("pub static BUNDLE_INVARIANTS: &[(&str, &str, bool, &str, &str)] = &[\n")
+        for e in (bsd.get("snapshot") or {}).get("element", []):
+            for c in e.get("constraint", []):
+                if c.get("key", "").startswith("bdl") and c.get("expression"):
+                    f.write(f'    ({rs(e["path"])}, {rs(c["key"])}, {str(c.get("severity") == "error").lower()}, {rs(c.get("human", ""))}, {rs(c["expression"])}),\n')
+        f.write("];\n\n")
         f.write("/// The distinct type codes: `type|type…`, `#Backbone.path` (a backbone or\n")
         f.write("/// content reference), `~Element.path` (an inline Element).\n")
         f.write("pub static CODES: &[&str] = &[\n")

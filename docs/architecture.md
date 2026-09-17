@@ -187,10 +187,12 @@ Structural validation should be effectively free, and that is a design
 constraint, not a hope. A FHIR resource is a few KB. Three things are true
 at once here, and they are kept apart:
 
-**Measured (v0.5.0, release build, Apple M-series; the README carries the
-current numbers):** 37 µs for a profiled Patient, 66 µs for an AU Core
-heart rate, about 80 µs in wasm under Node; the `.wasm` is 951 KB
-(242 KB gzipped). The conformance corpus the numbers come from is
+**Measured (v0.6.1, release build, one 2026 Apple M-series laptop,
+`examples/bench.rs`):** 78 µs for an AU Core Patient, 81 µs for an AU Core
+heart rate, 152 µs for a US Core Patient; the `.wasm` is 1.1 MB (277 KB
+gzipped). Earlier releases measured 37 / 66 µs on a quieter machine — the
+absolute number is the machine's; what the releases hold to is no
+regression back to back (planning T020 makes it reproducible). The conformance corpus the numbers come from is
 reproducible from `conformance/run.py`.
 
 **Current implementation:** profiles are compiled into `'static` constraint

@@ -26,7 +26,7 @@ have to know any of it:
 ```json
 fhir_pods_lower("…/au-core-heartrate", {
   "subject": "Patient/1", "effectiveDateTime": "2026-09-16T08:00:00+10:00",
-  "value": 72, "status": "final"
+  "valueQuantity.value": 72, "valueQuantity.unit": "beats/minute", "status": "final"
 })
 → { "resource": { …the full Observation, fixed parts filled… },
     "validation": { "valid": true, "issues": [] } }
@@ -44,7 +44,7 @@ validation, never silently dropped. Inputs that need terminology (a code
 with a display) go through the seam.
 
 **ABI.** `fhir_pods_lower(profile_url, inputs_json)` → `{resource,
-validation}`; `fhir_pods_inputs(profile_url)` → the slot list, so a host can
+validation}`; `fhir_pods_slots(profile_url)` → the slot list, so a host can
 generate its own typed bindings. Pods: `lower(profileUrl, inputs)` in JS /
 Swift / Kotlin.
 

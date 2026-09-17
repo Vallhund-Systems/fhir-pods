@@ -381,6 +381,38 @@ fn f012_dates_and_times_are_held_to_the_full_grammar() {
 }
 
 #[test]
+fn f026_an_unprofiled_bundle_owes_its_identity_and_the_base_bundle_rules() {
+    let entry = |full: &str, id: &str, extra: &str| {
+        format!(r#"{{"fullUrl":"{full}","resource":{{"resourceType":"Patient","id":"{id}","gender":"male"{extra}}}}}"#)
+    };
+    let bundle = |kind: &str, top: &str, entries: &[String]| {
+        format!(r#"{{"resourceType":"Bundle","type":"{kind}"{top},"entry":[{}]}}"#, entries.join(","))
+    };
+    let ok = bundle("collection", "", &[entry("https://x.example.org/fhir/Patient/p1", "p1", "")]);
+    assert!(probe_str(&ok).contains("\"valid\":true"), "{}", probe_str(&ok));
+    let r = probe_str(&bundle("collection", "", &[entry("https://x.example.org/fhir/Patient/other", "p1", "")]));
+    assert!(r.contains("does not end in the resource's type and id (Patient/p1)"), "{r}");
+    let r = probe_str(&bundle("collection", "", &[entry("https://x.example.org/fhir/Observation/p1", "p1", "")]));
+    assert!(r.contains("\"valid\":false"), "{r}");
+    // a urn is its own identity
+    let r = probe_str(&bundle("collection", "", &[entry("urn:uuid:00000000-0000-4000-8000-000000000001", "p1", "")]));
+    assert!(r.contains("\"valid\":true"), "{r}");
+    // bdl-7: the same fullUrl twice, unless the versions differ
+    let dup = entry("https://x.example.org/fhir/Patient/p1", "p1", "");
+    let r = probe_str(&bundle("collection", "", &[dup.clone(), dup.clone()]));
+    assert!(r.contains("bdl-7"), "{r}");
+    let v1 = entry("https://x.example.org/fhir/Patient/p1", "p1", r#","meta":{"versionId":"1"}"#);
+    let v2 = entry("https://x.example.org/fhir/Patient/p1", "p1", r#","meta":{"versionId":"2"}"#);
+    assert!(probe_str(&bundle("collection", "", &[v1, v2])).contains("\"valid\":true"));
+    // bdl-1: total only on a searchset or history; bdl-3: a transaction entry needs its request
+    assert!(probe_str(&bundle("collection", r#","total":1"#, std::slice::from_ref(&dup))).contains("bdl-1"));
+    assert!(probe_str(&bundle("transaction", "", std::slice::from_ref(&dup))).contains("bdl-3"));
+    let with_request =
+        dup.replace(r#""gender":"male"}}"#, r#""gender":"male"},"request":{"method":"PUT","url":"Patient/p1"}}"#);
+    assert!(probe_str(&bundle("transaction", "", &[with_request])).contains("\"valid\":true"));
+}
+
+#[test]
 fn an_empty_extension_carrier_is_an_element_with_nothing_in_it() {
     let r = probe_str(r#"{"resourceType":"Patient","gender":"male","_gender":{}}"#);
     assert!(r.contains("\"valid\":false") && r.contains("extension carrier must have some content"), "{r}");

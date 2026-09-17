@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.6.2 — 2026-09-16
+
+The review lane's F025–F028 (planning repository), all taken. Oracle:
+**1199/1199**. No ABI change (ABI 8).
+
+- **Unprofiled Bundles owe their identity and the base Bundle rules**
+  (F026): a REST-shaped `fullUrl` must end in the resource's type and id
+  (a `urn:` is its own identity), and `Bundle`'s own invariants — `bdl-1`
+  (`total` only on a searchset or history), `bdl-3` (a transaction entry
+  has its request), `bdl-7` (one fullUrl once, unless the versions
+  differ), `bdl-9`…`bdl-12` — apply when no profile does, from a generated
+  table like `DomainResource`'s. Eight probes, both sides.
+- **`tools/compile_valueset.py` refuses a partial expansion** (F025): a
+  paged one (`offset`, `count`, or a `total` beyond what it carries) is
+  compiled only when every page is given and they add up; a limited
+  expansion (`limitedExpansion`, `too-costly`) is refused. A table is
+  complete for the sets it lists, so completeness is checked, never
+  inferred from a response parsing. The review lane's four fixtures
+  behave as they should.
+- **Docs say what the code does** (F027): the roadmap's lowering example
+  and ABI symbol (`fhir_pods_slots`), the header's ABI comment, the scope
+  note's headline and its FHIRPath list (`resolve()` and `&` are
+  supported), the wasm README's inventory (259 profiles, six IGs, 1.1 MB),
+  the Expo README's simulator status labelled as the v0.1.0 / ABI 3
+  measurement it is, and the README's and architecture note's timing as a
+  dated measurement.
+- **The terminology request example encodes its parameters** (F028):
+  `URLSearchParams`, a status check, and the answer cached only when the
+  server gave one.
+
+Tests: 141.
+
 ## 0.6.1 — 2026-09-16
 
 The review lane's F018–F024 (planning repository), all taken; every fix

@@ -385,6 +385,25 @@ fn matches<D: Document>(slice: &Slice, inst: &D, scope: &Scope<'_, D>) -> bool {
     })
 }
 
+/// `Bundle`'s own invariants (bdl-1 … bdl-12) on a Bundle no compiled
+/// profile applies to.
+pub(crate) fn bundle_invariants<D: Document>(doc: &D, cache: Option<&crate::Validator>, bundle: Option<&D>) -> Report {
+    let mut r = Report::default();
+    let scope = Scope { root: doc, bundle, tx: &Bundled, depth: 0, cache, evaluated: None };
+    for (path, key, is_error, human, expression) in crate::typemap::BUNDLE_INVARIANTS {
+        let inv = ProfileInvariant {
+            path,
+            key,
+            severity: if *is_error { InvariantSeverity::Error } else { InvariantSeverity::Warning },
+            human,
+            expression,
+            types: &[],
+        };
+        check_invariant(&inv, path, doc, &scope, &mut r);
+    }
+    r
+}
+
 /// `DomainResource`'s own invariants on a resource no compiled profile
 /// applies to — the ones the shape walk does not already enforce.
 pub(crate) fn domain_invariants<D: Document>(
@@ -427,6 +446,29 @@ fn references_in<D: Document>(node: &D, path: &str, out: &mut Vec<(String, Strin
 /// bundle, and every entry is reachable from the Composition by following
 /// references forward or backward.
 pub(crate) fn check_document<D: Document>(bundle: &D, r: &mut Report) {
+    // a REST-shaped fullUrl names the resource it carries: its last two
+    // segments are the resource's type and id (a `urn:` is an identity of
+    // its own; a version is what distinguishes two of the same fullUrl)
+    for (i, entry) in bundle.instances("$this.entry").iter().enumerate() {
+        let Some(full) = entry.scalars("$this.fullUrl").first().copied() else { continue };
+        if full.starts_with("urn:") {
+            continue;
+        }
+        let rt = entry.scalars("$this.resource.resourceType").first().copied();
+        let id = entry.scalars("$this.resource.id").first().copied();
+        if let (Some(rt), Some(id)) = (rt, id) {
+            let mut segs = full.trim_end_matches('/').rsplit('/');
+            let (last, before) = (segs.next(), segs.next());
+            if last != Some(id) || before != Some(rt) {
+                r.push(
+                    Severity::Error,
+                    IssueType::Invariant,
+                    &format!("Bundle.entry[{i}].fullUrl"),
+                    format!("fullUrl '{full}' does not end in the resource's type and id ({rt}/{id})"),
+                );
+            }
+        }
+    }
     if bundle.scalars("$this.type") != ["document"] {
         return;
     }

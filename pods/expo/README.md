@@ -201,6 +201,11 @@ asked what they can't answer. `system` is "" for a bare `code` element.
 
 ## Status
 
+**Measured at v0.1.0 (ABI 3, 2026-09-15) — historical.** The pod at v0.6.1
+is ABI 8 with six IGs, 259 profiles and the lower / de-identify / document /
+audit operations; those have not been re-proven on the simulators since
+(planning task T019). What was proven then:
+
 Wired end to end and proven on the simulator: the pod, packed with `npm pack`
 and installed into a fresh Expo SDK 57 app as a vendored tarball, autolinks
 (`FhirPodsExpo` in `Podfile.lock`, deployment target raised to 16.4 by Expo),
