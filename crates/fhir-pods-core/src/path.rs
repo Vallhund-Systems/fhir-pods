@@ -571,6 +571,12 @@ pub(crate) enum Item<D> {
     Bool(bool),
 }
 
+/// Every item a plain string (the result of `&`, `toString()`, a string
+/// literal) — then equality is string equality and a sort will do.
+fn all_strings<D: Document>(coll: &[Item<D>]) -> Option<Vec<&str>> {
+    coll.iter().map(|it| if let Item::Str(s) = it { Some(s.as_str()) } else { None }).collect()
+}
+
 fn scalar_of<D: Document>(it: &Item<D>) -> Option<String> {
     match it {
         Item::Node(d) => d.as_scalar().map(String::from),
@@ -1207,10 +1213,37 @@ fn eval<D: Document>(e: &Expr, ctx: &Item<D>, env: &Env<'_, D>) -> Result<Vec<It
                     })]
                 }
                 ("isDistinct", 0) => {
-                    let distinct = coll.iter().enumerate().all(|(i, a)| !coll[..i].iter().any(|b| items_equal(a, b)));
+                    // a collection of plain strings (a bundle's fullUrls) is
+                    // sorted once rather than compared pairwise
+                    let distinct = match all_strings(&coll) {
+                        Some(mut keys) => {
+                            keys.sort_unstable();
+                            keys.windows(2).all(|w| w[0] != w[1])
+                        }
+                        None => coll.iter().enumerate().all(|(i, a)| !coll[..i].iter().any(|b| items_equal(a, b))),
+                    };
                     vec![Item::Bool(distinct)]
                 }
                 ("distinct", 0) => {
+                    if let Some(keys) = all_strings(&coll) {
+                        let mut seen: Vec<&str> = Vec::with_capacity(keys.len());
+                        let mut keep = Vec::with_capacity(keys.len());
+                        for (i, k) in keys.iter().enumerate() {
+                            match seen.binary_search(k) {
+                                Ok(_) => {}
+                                Err(at) => {
+                                    seen.insert(at, k);
+                                    keep.push(i);
+                                }
+                            }
+                        }
+                        return Ok(coll
+                            .into_iter()
+                            .enumerate()
+                            .filter(|(i, _)| keep.binary_search(i).is_ok())
+                            .map(|(_, it)| it)
+                            .collect());
+                    }
                     let mut out: Vec<Item<D>> = Vec::new();
                     for it in coll {
                         if !out.iter().any(|o| items_equal(o, &it)) {

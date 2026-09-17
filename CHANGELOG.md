@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.8.5 — 2026-09-17
+
+**Bundles validate in linear time** (F057, seen by two reviews). Two
+quadratic steps, both per entry: the FHIRPath `isDistinct()` / `distinct()`
+behind `bdl-7` compared every fullUrl with every other — a collection of
+plain strings is now sorted once (same answers; mixed collections keep the
+pairwise path); and every nested resource's issues were checked for
+duplicates against the whole report — a duplicate can only come from the
+resource's own profiles, so the check is local now. A collection Bundle of
+8,000 Observations: ~4.5 s → 0.67 s (release, one 2026 Apple M-series
+laptop; 1k 0.11 s, 4k 0.34 s). No stated ceiling: memory is the input plus
+the report.
+
+Tests: 175. Oracle: **1206/1206**.
+
 ## 0.8.4 — 2026-09-17
 
 **Verifier: extension contexts on recursive backbones** (F051, found by

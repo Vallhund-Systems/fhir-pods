@@ -469,3 +469,29 @@ fn dom3_contained_resources_must_be_referenced() {
     let r = probe_str(&profiled);
     assert!(r.contains("dom-3"), "{r}");
 }
+
+/// `isDistinct()` / `distinct()` over plain strings take the sorted path
+/// (a bundle of thousands of fullUrls, F057) with the same answers as the
+/// pairwise one: order kept, duplicates found wherever they sit.
+#[test]
+fn fhirpath_distinct_over_strings_keeps_order_and_finds_far_duplicates() {
+    use fhir_pods_core::document::Parsed;
+    use fhir_pods_core::path::{check, parse, Verdict};
+    let bundle = Parsed::parse(
+        br#"{"resourceType":"Bundle","type":"collection","entry":[{"fullUrl":"urn:uuid:b"},{"fullUrl":"urn:uuid:a"},{"fullUrl":"urn:uuid:c"},{"fullUrl":"urn:uuid:a"}]}"#,
+    )
+    .unwrap();
+    let dup = parse("entry.fullUrl.isDistinct()").unwrap();
+    assert_eq!(check(&dup, &bundle.doc()), Verdict::Fail);
+    let three = parse("entry.fullUrl.distinct().count() = 3").unwrap();
+    assert_eq!(check(&three, &bundle.doc()), Verdict::Pass);
+    let order =
+        parse("entry.fullUrl.distinct().first() = 'urn:uuid:b' and entry.fullUrl.distinct().last() = 'urn:uuid:c'")
+            .unwrap();
+    assert_eq!(check(&order, &bundle.doc()), Verdict::Pass);
+    let clean = Parsed::parse(
+        br#"{"resourceType":"Bundle","type":"collection","entry":[{"fullUrl":"urn:uuid:b"},{"fullUrl":"urn:uuid:a"}]}"#,
+    )
+    .unwrap();
+    assert_eq!(check(&dup, &clean.doc()), Verdict::Pass);
+}

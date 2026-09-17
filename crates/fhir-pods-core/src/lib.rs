@@ -219,11 +219,15 @@ fn validate_resource<D: Document>(
     for profile in &profiles {
         issues.extend(engine::validate_at_with(profile, doc, doc, tx, 0, cache, bundle, Some(&evaluated)).issues);
     }
+    // a duplicate can only come from this resource's own profiles (the same
+    // invariant reached through two of them), so the check stays local: a
+    // bundle of thousands of entries must not pay for every earlier entry
+    let start = report.issues.len();
     for mut issue in issues {
         if !label.is_empty() {
             issue.path = at(&issue.path);
         }
-        if !report.issues.contains(&issue) {
+        if !report.issues[start..].contains(&issue) {
             report.issues.push(issue);
         }
     }
