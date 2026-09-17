@@ -13,8 +13,8 @@ No wasm-bindgen, no glue runtime: the wrapper is ~70 lines over `pod_alloc` /
 `pod_free` and the entrypoints. The `.wasm` carries the 259 compiled
 profiles of the six pinned IGs (AU Core, US Core, IPA, IPS, AU Patient
 Summary, IHE BALP — and the datatypes they inherit), the 72 bundled value
-sets, the FHIRPath engine and the HL7 v2 maps — ~1.5 MB, 358 KB gzipped
-at v0.8.0.
+sets, the FHIRPath engine and the HL7 v2 maps — ~1.5 MiB, 362 KiB gzipped
+at v0.8.1.
 
 ## Build
 
@@ -102,8 +102,8 @@ take) with where and why; `unplaced` names the segments the structure has no
 place for (`ZPI[1]`). What FHIR requires and the message does not carry is
 in `validation`, never invented. `timezone` is the zone of a time the
 message states without one (else such a time is truncated to its date and
-reported); `codeSystems` maps coding-system names (`L`, `99LAB`) to uris
-beyond the standard ones the pod knows. The same message gives the same
+reported); `codeSystems` maps coding-system names (`L`, `99LAB`) to uris —
+the host's names first, then the standard ones the pod knows. The same message gives the same
 bundle. Throws only when it cannot start.
 
 ### Documents

@@ -60,12 +60,13 @@ with terminology switched off on both sides so profiles are what is scored.
 `conformance/run.py` builds the corpus from the pinned packages, runs
 validator_cli 6.10.4 over it, and compares verdicts:
 
-- **1205/1205** at v0.8.0 — the six IGs' published examples and 60-odd
+- **1206/1206** at v0.8.1 — the six IGs' published examples and 60-odd
   probes, every corpus resource lifted into its slots and lowered again, every
   one de-identified, the twelve document examples taken apart and assembled
-  again, an audit record of every kind from the audit surface, four HL7 v2
+  again, an audit record of every kind from the audit surface, five HL7 v2
   messages converted to message bundles (each side's verdict, valid or not,
-  the same), and the review lane's adversarial probes. A run in which either
+  the same — which proves shape, not meaning: the converter's content is
+  held by its own tests), and the review lane's adversarial probes. A run in which either
   side crashed, returned a foreign exit code or a report that disagrees
   with its own exit code counts as a failure, never as agreement. Every
   engine change is proven this way before it ships; the record is in the
@@ -95,7 +96,7 @@ terminology seam.
 
 ## Delivery
 
-- **wasm** — a ~1.5 MB `.wasm` (358 KB gzipped) with a dependency-free JS
+- **wasm** — a ~1.5 MiB `.wasm` (362 KiB gzipped) with a dependency-free JS
   wrapper; browser, edge runtimes, Node, Bun, Deno. [`pods/wasm`](pods/wasm/README.md).
 - **Expo** — the core as a native module: iOS XCFramework + Android jniLibs,
   a native terminology provider seam. [`pods/expo`](pods/expo/README.md).
@@ -109,7 +110,7 @@ terminology seam.
 ## Use
 
 ```rust
-use fhir_pods_core::{deidentify::Policy, Validator};
+use fhir_pods_core::{deidentify::Policy, v2, Validator};
 
 let v = Validator::new();                       // parses the registry's invariants once
 let report = v.validate(json);                   // Validation: profiles applied, issues
@@ -118,7 +119,7 @@ let lifted = v.lift(HEART_RATE, json)?;          // Lifted: inputs + validation 
 let copy = v.deidentify(json, &Policy::safe_harbor(b"salt").today(2026))?;
 let summary = v.document("au-ps", inputs)?;      // Assembled: document + placed + validation
 let record = v.audit("patient-read", event)?;    // Lowered: a BALP AuditEvent + validation
-let msg = v.v2(er7, &Options::default())?;       // Converted: bundle + validation + skipped + unplaced
+let msg = v.v2(er7, &v2::Options::default())?;   // Converted: bundle + validation + skipped + unplaced
 let needs = v.terminology_needs(json);           // what the bundled sets could not decide
 ```
 

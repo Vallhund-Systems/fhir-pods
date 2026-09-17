@@ -10,6 +10,8 @@ pub mod compiled;
 pub mod convert;
 pub mod generated;
 
+pub use convert::{ConvertError, Converted, Options, Skip};
+
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
@@ -183,7 +185,8 @@ impl Message {
                 });
                 let enc_text: String = enc.iter().collect();
                 fields.push(Field { reps: alloc::vec![Rep { components: alloc::vec![alloc::vec![enc_text]] }] });
-                let after = rest.get(4..).map(|r| r.strip_prefix(sep.field).unwrap_or("")).unwrap_or("");
+                let enc_len: usize = enc.iter().map(|c| c.len_utf8()).sum();
+                let after = rest.get(enc_len..).map(|r| r.strip_prefix(sep.field).unwrap_or("")).unwrap_or("");
                 for raw in split_top(after, sep.field) {
                     fields.push(parse_field(raw, &sep));
                 }
@@ -264,7 +267,7 @@ pub fn unescape(s: &str, sep: &Separators) -> String {
             "R" => out.push(sep.repetition),
             "E" => out.push(sep.escape),
             ".br" => out.push('\n'),
-            c if c.starts_with('X') && c.len() > 1 && c.len() % 2 == 1 => {
+            c if c.starts_with('X') && c.len() > 1 && c.len() % 2 == 1 && c.is_ascii() => {
                 let bytes: Option<Vec<u8>> =
                     (1..c.len()).step_by(2).map(|k| u8::from_str_radix(&c[k..k + 2], 16).ok()).collect();
                 match bytes.and_then(|b| String::from_utf8(b).ok()) {

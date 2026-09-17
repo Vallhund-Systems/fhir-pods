@@ -155,12 +155,25 @@ pub struct MsgRow {
     pub cond: Cond,
 }
 
+/// A segment group of a message structure and how often it may occur —
+/// the standard's abstract message syntax, which the maps do not carry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Group {
+    /// The structural path (`ORU_R01.PATIENT_RESULT.ORDER_OBSERVATION`).
+    pub path: &'static str,
+    pub min: i32,
+    /// `-1` for unbounded.
+    pub max: i32,
+}
+
 /// A v2 message structure (`ORU_R01`) to the resources of a Bundle.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MessageMap {
     pub id: &'static str,
     pub name: &'static str,
     pub rows: &'static [MsgRow],
+    /// Every group the rows sit in, with its cardinality.
+    pub groups: &'static [Group],
 }
 
 /// A vocabulary table: v2 code → FHIR code, with the target system per pair.

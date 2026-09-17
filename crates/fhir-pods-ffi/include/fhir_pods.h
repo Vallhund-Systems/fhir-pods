@@ -78,8 +78,8 @@ uint8_t *fhir_pods_lift_tx(const uint8_t *profile, size_t profile_len, const uin
  * validated on the way out. Options are JSON ({} for none): {"timezone":
  * "+10:00"} — the zone of a v2 time stated without one (else such a time is
  * truncated to its date, and reported) — and {"codeSystems": {"L": "http://
- * example.org/local"}} — coding-system names to uris beyond the standard
- * ones the pod knows. Returns {"bundle": {...}, "validation": {...},
+ * example.org/local"}} — coding-system names to uris, the host's names
+ * first, then the standard ones the pod knows. Returns {"bundle": {...}, "validation": {...},
  * "skipped": [{"at": "PID[1]-3.4", "target": "...", "why": "..."}] — what the
  * maps state for data the message carried and the pod did not do — and
  * "unplaced": ["ZPI[1]"] — segments the structure has no place for}, or

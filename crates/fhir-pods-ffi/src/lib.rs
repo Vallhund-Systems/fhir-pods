@@ -5,7 +5,9 @@
 //! wasm-bindgen, no UniFFI runtime) — the boundary is: pass a UTF-8 JSON
 //! resource as `(ptr, len)`, get a length-prefixed JSON document back.
 //!
-//! Three entrypoints:
+//! The entrypoints — those below in detail, and `fhir_pods_lift`,
+//! `fhir_pods_deidentify`, `fhir_pods_document`, `fhir_pods_audit`,
+//! `fhir_pods_v2`, `fhir_pods_terminology_load` / `_needs` alongside:
 //! - [`fhir_pods_validate`] — the `Validation` JSON (`valid`, `profile(s)`, `issues[]`).
 //! - [`fhir_pods_operation_outcome`] — the spec resource, for the wire.
 //! - [`fhir_pods_must_support`] — must-support gaps, information only.

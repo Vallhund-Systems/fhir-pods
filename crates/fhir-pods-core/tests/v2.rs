@@ -62,6 +62,7 @@ fn an_oru_r01_becomes_a_message_bundle_with_the_patient_the_report_and_its_obser
         eprintln!("skipped {} -> {}: {}", s.at, s.target, s.why);
     }
     eprintln!("{}", wire::report(&c.validation));
+    eprintln!("unplaced {:?}", c.unplaced);
     assert!(b.starts_with(r#"{"resourceType":"Bundle","id":""#) && b.contains(r#""type":"message""#), "{b}");
     assert!(b.contains(r#""resourceType":"MessageHeader""#), "{b}");
     // the sending facility's ISO universal id under urn:ietf:rfc:3986 is the URN the IG spells for it
@@ -211,5 +212,261 @@ fn an_adt_a01_becomes_an_admission_with_what_the_message_carries_and_names_what_
             "Coverage.status is required (min 1, found 0)",
         ],
         "{report}"
+    );
+}
+
+/// Two orders, four results, notes on two of them, and one patient — the
+/// shape the first review found collapsed (F036/F037).
+const ORU_TWO_ORDERS: &str = "MSH|^~\\&|LAB|ACME|EHR|CLINIC|20260916100000+1000||ORU^R01^ORU_R01|MSG0002|P|2.5.1\r\
+PID|1||MRN12345^^^ACME^MR||Doe^Jane||19700615|F\r\
+ORC|RE|PLC-A1^EHR|FIL-A1^LAB\r\
+OBR|1|PLC-A1^EHR|FIL-A1^LAB|24331-1^Lipid panel^LN|||20260916090000+1000||||||||||||||||||F\r\
+NTE|1||Order note A1\r\
+OBX|1|NM|2093-3^Cholesterol^LN||5.2|mmol/L^^UCUM|||||F|||20260916093000+1000\r\
+NTE|1||Chol note\r\
+NTE|2||Chol note two\r\
+OBX|2|NM|2571-8^Triglycerides^LN||1.1|mmol/L^^UCUM|||||F|||20260916093000+1000\r\
+ORC|RE|PLC-A2^EHR|FIL-A2^LAB\r\
+OBR|2|PLC-A2^EHR|FIL-A2^LAB|58410-2^CBC panel^LN|||20260916090000+1000||||||||||||||||||F\r\
+OBX|1|NM|718-7^Hemoglobin^LN||140|g/L^^UCUM|||||F|||20260916094000+1000\r\
+OBX|2|ST|11475-1^Microorganism^LN||No growth||||||F\r\
+NTE|1||Micro note\r";
+
+fn entries(bundle: &str) -> Vec<serde_like::Entry> {
+    serde_like::entries(bundle)
+}
+
+/// A hand-rolled reader for the bits of the bundle the tests look at, so
+/// the assertions read as facts about resources rather than as substrings.
+mod serde_like {
+    use fhir_pods_core::json::{parse, Value};
+
+    pub struct Entry {
+        pub full_url: String,
+        pub resource_type: String,
+        pub json: String,
+    }
+
+    pub fn entries(bundle: &str) -> Vec<Entry> {
+        let v = parse(bundle.as_bytes()).unwrap();
+        let Value::Object(kvs) = &v else { panic!() };
+        let entry = kvs.iter().find(|(k, _)| k.as_ref() == "entry").map(|(_, v)| v).unwrap();
+        let Value::Array(items) = entry else { panic!() };
+        items
+            .iter()
+            .map(|e| {
+                let Value::Object(ekvs) = e else { panic!() };
+                let full_url = match ekvs.iter().find(|(k, _)| k.as_ref() == "fullUrl") {
+                    Some((_, Value::Str(s))) => s.to_string(),
+                    _ => String::new(),
+                };
+                let res = ekvs.iter().find(|(k, _)| k.as_ref() == "resource").map(|(_, v)| v).unwrap();
+                let Value::Object(rkvs) = res else { panic!() };
+                let resource_type = match rkvs.iter().find(|(k, _)| k.as_ref() == "resourceType") {
+                    Some((_, Value::Str(s))) => s.to_string(),
+                    _ => String::new(),
+                };
+                Entry { full_url, resource_type, json: fhir_pods_core::node::Node::from_value(res).to_json() }
+            })
+            .collect()
+    }
+}
+
+#[test]
+fn two_orders_stay_two_reports_with_their_own_results_and_notes() {
+    let v = Validator::new();
+    let c = v.v2(ORU_TWO_ORDERS.as_bytes(), &Options::default()).unwrap();
+    for sk in &c.skipped {
+        eprintln!("skipped {} -> {}: {}", sk.at, sk.target, sk.why);
+    }
+    eprintln!("unplaced {:?}", c.unplaced);
+    let es = entries(&c.bundle);
+    let reports: Vec<&serde_like::Entry> = es.iter().filter(|e| e.resource_type == "DiagnosticReport").collect();
+    let obs: Vec<&serde_like::Entry> = es.iter().filter(|e| e.resource_type == "Observation").collect();
+    assert_eq!(reports.len(), 2, "{}", c.bundle);
+    assert_eq!(obs.len(), 4, "{}", c.bundle);
+    // each report's results are its own group's observations, in order
+    let ids: Vec<&str> = obs.iter().map(|e| e.full_url.as_str()).collect();
+    assert!(
+        reports[0].json.contains(r#""value":"PLC-A1""#) && reports[0].json.contains("Lipid panel"),
+        "{}",
+        reports[0].json
+    );
+    assert!(
+        reports[0].json.contains(&format!(r#""result":[{{"reference":"{}"}},{{"reference":"{}"}}]"#, ids[0], ids[1])),
+        "{}",
+        reports[0].json
+    );
+    assert!(
+        reports[1].json.contains(r#""value":"PLC-A2""#) && reports[1].json.contains("CBC panel"),
+        "{}",
+        reports[1].json
+    );
+    assert!(
+        reports[1].json.contains(&format!(r#""result":[{{"reference":"{}"}},{{"reference":"{}"}}]"#, ids[2], ids[3])),
+        "{}",
+        reports[1].json
+    );
+    // every result keeps its own code and value
+    assert!(obs[0].json.contains("2093-3") && obs[0].json.contains(r#""value":5.2"#), "{}", obs[0].json);
+    assert!(obs[1].json.contains("2571-8") && obs[1].json.contains(r#""value":1.1"#), "{}", obs[1].json);
+    assert!(obs[2].json.contains("718-7") && obs[2].json.contains(r#""value":140"#), "{}", obs[2].json);
+    assert!(obs[3].json.contains("11475-1") && obs[3].json.contains(r#""valueString":"No growth""#), "{}", obs[3].json);
+    // notes sit on the observation they follow; two NTEs are two notes; the order's note is named, not invented
+    assert!(obs[0].json.contains(r#""note":[{"text":"Chol note"},{"text":"Chol note two"}]"#), "{}", obs[0].json);
+    assert!(!obs[1].json.contains("note"), "{}", obs[1].json);
+    assert!(obs[3].json.contains(r#""note":[{"text":"Micro note"}]"#), "{}", obs[3].json);
+    assert!(c.skipped.iter().any(|s| s.at == "NTE[1]" && s.why.contains("order's notes")), "{:?}", c.skipped);
+    assert!(c.unplaced.is_empty(), "{:?}", c.unplaced);
+    assert!(c.validation.is_valid(), "{}", wire::report(&c.validation));
+}
+
+#[test]
+fn two_patients_keep_their_own_results() {
+    let v = Validator::new();
+    let msg = format!(
+        "{}PID|2||MRN99999^^^ACME^MR||Roe^Richard||19800101|M\r\
+ORC|RE|PLC-B1^EHR|FIL-B1^LAB\r\
+OBR|1|PLC-B1^EHR|FIL-B1^LAB|24331-1^Lipid panel^LN|||20260916090000+1000||||||||||||||||||F\r\
+OBX|1|NM|2093-3^Cholesterol^LN||6.9|mmol/L^^UCUM|||||F|||20260916093000+1000\r",
+        ORU_TWO_ORDERS
+    );
+    let c = v.v2(msg.as_bytes(), &Options::default()).unwrap();
+    let es = entries(&c.bundle);
+    let patients: Vec<&serde_like::Entry> = es.iter().filter(|e| e.resource_type == "Patient").collect();
+    assert_eq!(patients.len(), 2, "{}", c.bundle);
+    let (jane, richard) = (&patients[0].full_url, &patients[1].full_url);
+    let obs: Vec<&serde_like::Entry> = es.iter().filter(|e| e.resource_type == "Observation").collect();
+    assert_eq!(obs.len(), 5);
+    for o in &obs[..4] {
+        assert!(o.json.contains(&format!(r#""subject":{{"reference":"{jane}"}}"#)), "{}", o.json);
+    }
+    assert!(
+        obs[4].json.contains(&format!(r#""subject":{{"reference":"{richard}"}}"#))
+            && obs[4].json.contains(r#""value":6.9"#),
+        "{}",
+        obs[4].json
+    );
+    let reports: Vec<&serde_like::Entry> = es.iter().filter(|e| e.resource_type == "DiagnosticReport").collect();
+    assert_eq!(reports.len(), 3);
+    assert!(reports[2].json.contains(&format!(r#""subject":{{"reference":"{richard}"}}"#)), "{}", reports[2].json);
+    assert!(c.validation.is_valid(), "{}", wire::report(&c.validation));
+}
+
+#[test]
+fn typed_values_follow_obx_2_and_repeating_values_become_components() {
+    let v = Validator::new();
+    let base = ORU.split("OBX|1|").next().unwrap();
+    let msg = format!(
+        "{base}OBX|1|CWE|32624-9^Blood group^LN||112144000^Blood group A^SCT||||||F\r\
+OBX|2|TS|11778-8^Delivery date^LN||20260901||||||F\r\
+OBX|3|ST|11475-1^Microorganism^LN||first~second||||||F\r\
+OBX|4|DT|21112-8^Birth date^LN||20260901||||||F\r"
+    );
+    let c = v.v2(msg.as_bytes(), &Options::default()).unwrap();
+    for sk in &c.skipped {
+        eprintln!("skipped {} -> {}: {}", sk.at, sk.target, sk.why);
+    }
+    eprintln!("unplaced {:?}", c.unplaced);
+    let es = entries(&c.bundle);
+    let obs: Vec<&serde_like::Entry> = es.iter().filter(|e| e.resource_type == "Observation").collect();
+    assert_eq!(obs.len(), 4, "{}", c.bundle);
+    assert!(obs[0].json.contains(r#""valueCodeableConcept":{"coding":[{"code":"112144000","display":"Blood group A","system":"http://snomed.info/sct"}]}"#), "{}", obs[0].json);
+    assert!(obs[1].json.contains(r#""valueDateTime":"2026-09-01""#), "{}", obs[1].json);
+    assert!(
+        obs[2].json.contains(r#""component":[{"code":{"coding":[{"code":"11475-1""#)
+            && obs[2].json.contains(r#""valueString":"first"}"#)
+            && obs[2].json.contains(r#""valueString":"second"}"#)
+            && !obs[2].json.contains(r#""valueString":"first","#),
+        "{}",
+        obs[2].json
+    );
+    assert!(obs[3].json.contains(r#""valueDateTime":"2026-09-01""#), "{}", obs[3].json);
+    assert!(c.validation.is_valid(), "{}", wire::report(&c.validation));
+}
+
+#[test]
+fn names_stay_whole_and_a_birth_time_keeps_the_birth_date() {
+    let v = Validator::new();
+    let msg = ORU.replace("|19700615|F", "|19700615103000+1000|F");
+    let c = v.v2(msg.as_bytes(), &Options::default()).unwrap();
+    let es = entries(&c.bundle);
+    let pract = es.iter().find(|e| e.resource_type == "Practitioner").unwrap();
+    assert!(pract.json.contains(r#""name":[{"family":"Who","given":["Doctor"],"prefix":["Dr"]}]"#), "{}", pract.json);
+    let patient = es.iter().find(|e| e.resource_type == "Patient").unwrap();
+    assert!(patient.json.contains(r#""birthDate":"1970-06-15","_birthDate":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/patient-birthTime","valueDateTime":"1970-06-15T10:30:00+10:00"}]}"#), "{}", patient.json);
+    assert!(c.validation.is_valid(), "{}", wire::report(&c.validation));
+}
+
+#[test]
+fn different_messages_get_different_ids_and_the_same_message_the_same() {
+    let v = Validator::new();
+    let a = v.v2(ORU.as_bytes(), &Options::default()).unwrap().bundle;
+    let b = v.v2(ORU.replace("MSG0001", "MSG0002").as_bytes(), &Options::default()).unwrap().bundle;
+    let again = v.v2(ORU.as_bytes(), &Options::default()).unwrap().bundle;
+    assert_eq!(a, again);
+    let id = |s: &str| s.split(r#""id":""#).nth(1).unwrap().split('"').next().unwrap().to_string();
+    assert_ne!(id(&a), id(&b));
+    let urls = |s: &str| s.matches("urn:uuid:").count();
+    assert!(urls(&a) > 5 && !b.contains(a.split("urn:uuid:").nth(1).unwrap().split('"').next().unwrap()), "{a}\n{b}");
+}
+
+#[test]
+fn a_cross_segment_condition_reads_the_segment_it_names() {
+    // an order: ORC-2 is the placer number, and OBR-2 is empty — the IG puts the
+    // identifier on the ServiceRequest from ORC when OBR-2 is not valued
+    let v = Validator::new();
+    let msg = "MSH|^~\\&|EHR|CLINIC|LAB|ACME|20260916120000+1000||OML^O21^OML_O21|MSG0003|P|2.5.1\r\
+PID|1||MRN12345^^^ACME^MR||Doe^Jane^A||19700615|F\r\
+ORC|NW|PLC003^EHR|||||||20260916115500+1000|1234^Who^Doctor\r\
+OBR|1|||24331-1^Lipid panel^LN\r";
+    let c = v.v2(msg.as_bytes(), &Options::default()).unwrap();
+    for sk in &c.skipped {
+        eprintln!("skipped {} -> {}: {}", sk.at, sk.target, sk.why);
+    }
+    let es = entries(&c.bundle);
+    let sr = es.iter().find(|e| e.resource_type == "ServiceRequest").unwrap();
+    assert!(sr.json.contains(r#""identifier":[{"value":"PLC003","type":{"coding":[{"code":"PLAC","system":"http://terminology.hl7.org/CodeSystem/v2-0203"}]}}]"#), "{}", sr.json);
+    assert!(sr.json.contains(r#""authoredOn":"2026-09-16T11:55:00+10:00""#), "{}", sr.json);
+}
+
+#[test]
+fn hostile_bytes_are_errors_or_skips_never_panics() {
+    let v = Validator::new();
+    // a multibyte character inside an escape, and inside a zone
+    let esc = "MSH|^~\\&|A|B|C|D|20260101||ADT^A01|1|P|2.5\rPID|1||1||Sm\\X€1\\ith\r";
+    assert!(v.v2(esc.as_bytes(), &Options::default()).is_ok());
+    let zone = ORU.replace("20260916093000+1000", "20260916093000+1é0");
+    let c = v.v2(zone.as_bytes(), &Options::default()).unwrap();
+    assert!(c.skipped.iter().any(|s| s.why.contains("malformed zone")), "{:?}", c.skipped);
+    // multibyte encoding characters
+    let enc =
+        "MSH|αβγδ|LAB|ACME|EHR|CLINIC|20260916100000+1000||ORUαR01αORU_R01|MSG0001|P|2.5.1\rPID|1||MRN1||DoeαJane\r";
+    let c = v.v2(enc.as_bytes(), &Options::default()).unwrap();
+    assert!(c.bundle.contains(r#""endpoint":"LAB""#), "{}", c.bundle);
+    // options are validated at the boundary
+    for bad in [
+        r#"{"timezone":"+1000"}"#,
+        r#"{"timezone":"AEST"}"#,
+        r#"{"timezone":""}"#,
+        r#"{"timezone":"+15:00"}"#,
+        r#"{"codeSystems":{"L":""}}"#,
+    ] {
+        assert_eq!(Options::from_json(bad.as_bytes()).unwrap_err(), ConvertError::BadOptions, "{bad}");
+    }
+    assert!(Options::from_json(br#"{"timezone":"Z"}"#).is_ok());
+}
+
+#[test]
+fn a_trigger_event_finds_its_structure() {
+    let v = Validator::new();
+    let msg = ADT.replace("ADT^A01^ADT_A01", "ADT^A04");
+    let c = v.v2(msg.as_bytes(), &Options::default()).unwrap();
+    assert!(c.bundle.contains(r#""eventCoding":{"code":"A04""#), "{}", c.bundle);
+    assert!(c.bundle.contains(r#""resourceType":"Encounter""#));
+    let msg = ADT.replace("ADT^A01^ADT_A01", "ADT^A99");
+    assert_eq!(
+        v.v2(msg.as_bytes(), &Options::default()).unwrap_err(),
+        ConvertError::UnknownStructure("ADT_A99".into())
     );
 }

@@ -105,8 +105,8 @@ take) with where and why; `unplaced` names the segments the structure has no
 place for (`ZPI[1]`). What FHIR requires and the message does not carry is
 in `validation`, never invented. `timezone` is the zone of a time the
 message states without one (else such a time is truncated to its date and
-reported); `codeSystems` maps coding-system names (`L`, `99LAB`) to uris
-beyond the standard ones the pod knows. The same message gives the same
+reported); `codeSystems` maps coding-system names (`L`, `99LAB`) to uris —
+the host's names first, then the standard ones the pod knows. The same message gives the same
 bundle. Throws only when it cannot start.
 
 ## Documents

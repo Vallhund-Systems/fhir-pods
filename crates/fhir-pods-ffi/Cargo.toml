@@ -1,6 +1,6 @@
 [package]
 name = "fhir-pods-ffi"
-version = "0.8.0"
+version = "0.8.1"
 edition = "2021"
 license = "MIT"
 description = "Lean C-ABI surface for fhir-pods. One ABI, compiled per target: wasm32 for web/edge, native staticlib for the expo pod."

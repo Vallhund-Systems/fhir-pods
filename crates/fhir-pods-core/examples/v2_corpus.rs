@@ -52,7 +52,19 @@ fn main() {
     let validator = Validator::new();
     let mut manifest_lines = Vec::new();
     let mut not_valid = 0;
-    for (name, message) in [("oru-r01", ORU_R01), ("adt-a01", ADT_A01), ("vxu-v04", VXU_V04), ("oml-o21", OML_O21)] {
+    let two_patients = format!(
+        "{ORU_R01}PID|2||MRN99999^^^ACME^MR||Roe^Richard||19800101|M\r\
+ORC|RE|PLC-B1^EHR|FIL-B1^LAB\r\
+OBR|1|PLC-B1^EHR|FIL-B1^LAB|24331-1^Lipid panel^LN|||20260916090000+1000||||||||||||||||||F\r\
+OBX|1|NM|2093-3^Cholesterol^LN||6.9|mmol/L^millimole per liter^UCUM|<5.5|H|||F|||20260916093000+1000\r"
+    );
+    for (name, message) in [
+        ("oru-r01", ORU_R01),
+        ("oru-r01-two-patients", two_patients.as_str()),
+        ("adt-a01", ADT_A01),
+        ("vxu-v04", VXU_V04),
+        ("oml-o21", OML_O21),
+    ] {
         let c = validator.v2(message.as_bytes(), &Options::default()).expect("a synthetic message converts");
         let valid = c.validation.is_valid();
         if !valid {

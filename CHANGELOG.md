@@ -1,5 +1,79 @@
 # Changelog
 
+## 0.8.1 — 2026-09-17
+
+**HL7 v2, reviewed.** Three independent reviews of 0.8.0 (the converter,
+the generator against the ConceptMap JSON, the ABI and docs) filed
+F036–F050 in the planning repo; this release takes them. The row
+compilation was faithful; the engine around it was not.
+
+- **The structure walk is a tree** (F036, F037): the message structure as
+  segments and groups with their cardinalities — the groups' from the
+  standard's abstract message syntax, compiled in (`Group`,
+  `MessageMap::groups`, `GROUP_CARDINALITY` in `tools/gen_v2.py`) —
+  matched greedily: the next expected segment, another occurrence of the
+  last, or the start of a group that may still occur; what matches nothing
+  closes the group and is tried a level up; what matches nowhere is
+  `unplaced`. Two orders are two reports with their own results; two
+  patients keep their own; an order's NTE after OBR (a segment the IG has
+  no row for; `STRUCTURE_SUPPLEMENT`) is consumed where it belongs and
+  reported, never an Observation. `v2::convert::structure_tree(name)`
+  renders what the walk expects.
+- **A condition naming another segment reads that segment** (F039, F043):
+  `IF OBR-2 NOT VALUED` on an ORC row finds the OBR of the same order (the
+  nearest in the structure: this occurrence, an enclosing one, or a
+  once-only group beside it); `IF ORC VALUED` is the segment's presence; a
+  condition on the field's own components (`CWE.3` of SCH-7) sees them.
+  `ORC.1` for a segment's field is read as `ORC-1` (a stated correction).
+- **OBX-2 types the value** (F045): `varies` is the type OBX-2 names, `TS`
+  is DTM before v2.6 (conditions naming DTM admit it); a repeating OBX-5
+  goes through the component map the IG's own comment names (F040), one
+  component per repetition, the code on each.
+- **Placement** (F041, F042): an extension on a primitive lives in its
+  `_name` carrier (the birth time keeps the birth date); a value already
+  in place is never overwritten by a container (reported instead); an
+  unmarked repeating container is the map's first item, so an XCN is one
+  name.
+- **Ids come from the message** (F044): every entry's `urn:uuid` and the
+  Bundle id are seeded from a hash of the message bytes — different
+  messages, different ids; the same message, the same bundle.
+- **Options are validated** (F046): `timezone` is `Z` or `±HH:MM` within
+  ±14; a coding-system name and uri are non-empty. A trigger event without
+  MSH-9.3 finds its structure through HL7 table 0354 (`ADT^A04` converts
+  with the ADT_A01 map).
+- **No panics from message bytes** (F038): a multibyte character in an
+  `\X…\` escape or a zone, and multibyte encoding characters in MSH-2.
+- **Rows the pod cannot judge are skipped, and say so** (F049): a
+  narrative that reads as a condition ("If …") beside a computable one
+  gates the row; a remark does not. Concatenations naming a datatype the
+  row does not carry are refused. The condition grammar takes no-space
+  lists, `IF` inside parentheses, shared predicates over any number of
+  references (`AND` or `OR`), `X NOT "v"` and single-quoted strings: 15
+  conditions remain outside it, down from 28.
+- **Smaller** (F047, F048, F050): a bare `code` target takes a table pair
+  from the table's own target system only (XTN.3 `CP` no longer yields
+  `ContactPoint.system: mobile`); a composite source (PL, XCN) for a
+  primitive target goes through a datatype map or is reported, never
+  copied as text; a resource only the map's literals reached (an `Account`
+  from a PID) is left out and reported; `ISO3166_2` is
+  `urn:iso:std:iso:3166:-2`, and `ISO` / `HL7` are no coding systems;
+  identical skips are reported once; the fuzz target exercises the options.
+
+Generator: 2055 rows, 1500 executed (21 concatenations, 5 extension blocks
+moved, 17 OBX rows bound to the component map), 555 skipped with a reason
+(309 target forms, 136 narrative conditions, 56 prose assignments, 18
+ambiguous segment maps, 15 outside the grammar, 10 with no segment map, 7
+source forms, 2 literals for a reference, one concatenation naming a
+datatype its row does not carry, one order-note row the IG lacks). Tests: 170 (13 for v2: two
+orders, two patients, typed and repeating values, whole names and birth
+times, ids, cross-segment conditions, hostile bytes, trigger events).
+Oracle: **1206/1206** (1201 + five v2 bundles: three valid on both
+sides, two invalid on both sides for the same reasons). `.wasm`: 1.48 MiB (362 KiB gzipped).
+
+Known, not yet taken: extension contexts in the verifier (T041); a valued
+field no map row names is silent (F050); DG1 stays a narrative condition;
+datatype maps yielding several resources (`PL`).
+
 ## 0.8.0 — 2026-09-17
 
 **HL7 v2.** ABI 10: `fhir_pods_v2(message, options)` (+ `_tx`); wasm

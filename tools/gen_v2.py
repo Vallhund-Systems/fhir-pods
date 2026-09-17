@@ -39,6 +39,12 @@ def typeinfo(exts):
 REF = re.compile(r"^([A-Z][A-Z0-9]{1,3})(?:-(\d+)(?:\.(\d+)(?:\.(\d+))?)?|\.(\d+)(?:\.(\d+))?)?$")
 
 
+# The segments the package maps (filled in main): a condition that spells
+# `ORC.1` for a segment's field (the maps' own slip; a datatype is never named
+# like a segment) is read as `ORC-1`. One of the generator's stated corrections.
+SEGMENT_NAMES = set()
+
+
 def parse_ref(tok):
     """`PID-7`, `OBX-5.1`, `XPN.12`, `CX.4.1`, `PRT-4` → (segment|datatype, field, component, sub)."""
     m = REF.match(tok)
@@ -48,6 +54,8 @@ def parse_ref(tok):
     if f is not None:
         return (seg, int(f), int(c or 0), int(s or 0))
     if dc is not None:
+        if seg in SEGMENT_NAMES:
+            return (seg, int(dc), int(ds or 0), 0)
         return (seg, 0, int(dc), int(ds or 0))
     return (seg, 0, 0, 0)
 
@@ -64,7 +72,7 @@ class CondParser:
         t = text.strip()
         t = re.sub(r"\s+", " ", t)
         # tokens: strings, parens, words/refs/numbers
-        self.toks = re.findall(r'"[^"]*"|\(|\)|[^\s()]+', t)
+        self.toks = re.findall(r'"[^"]*"|\'[^\']*\'|\(|\)|,|[^\s(),]+', t)
         self.i = 0
 
     def peek(self):
@@ -104,6 +112,7 @@ class CondParser:
 
     def atom(self):
         if self.eat("("):
+            self.eat("IF")
             e = self.or_()
             self.expect(")")
             return e
@@ -114,25 +123,30 @@ class CondParser:
         if ref is None:
             raise ValueError(f"not a reference: {tok!r}")
         self.i += 1
-        # `X AND Y VALUED` / `X AND Y NOT VALUED`: a shared predicate
+        # `X AND Y VALUED`, `X AND Y AND Z NOT VALUED`, `X OR Y VALUED`: one
+        # predicate shared by several references, joined one way
         refs = [ref]
-        save = self.i
-        while self.eat("AND"):
-            t2 = self.peek()
-            r2 = parse_ref(t2) if t2 else None
-            nxt = self.toks[self.i + 1].upper() if r2 and self.i + 1 < len(self.toks) else None
-            if r2 and nxt in ("VALUED", "NOT", "IS", "ARE", "AREA"):
-                self.i += 1
-                refs.append(r2)
-            else:
-                self.i = save
+        joiner = None
+        j = self.i
+        toks = self.toks
+        while j + 1 < len(toks) and toks[j].upper() in ("AND", "OR") and (joiner is None or toks[j].upper() == joiner):
+            r2 = parse_ref(toks[j + 1])
+            if r2 is None:
                 break
-            save = self.i
+            refs.append(r2)
+            joiner = toks[j].upper()
+            j += 2
+        nxt = toks[j].upper() if j < len(toks) else None
+        if len(refs) > 1 and nxt in ("VALUED", "VALUE", "NOT", "IS", "ARE", "AREA", "IN", "EQUALS", "EQUAL", "EXISTS", "DOES"):
+            self.i = j
+        else:
+            refs = [ref]
+            joiner = None
         pred = self.predicate()
         out = None
         for r in refs:
             p = (pred[0], r) + tuple(pred[1:])
-            out = p if out is None else ("and", out, p)
+            out = p if out is None else (joiner.lower() if joiner else "and", out, p)
         return out
 
     def predicate(self):
@@ -181,6 +195,8 @@ class CondParser:
                 return ("not_equals", self.string())
             if self.eat("IN"):
                 return ("not_in", self.list_())
+            if self.peek() and (self.peek().startswith('"') or self.peek().startswith("'")):
+                return ("not_equals", self.string())
             raise ValueError("NOT predicate")
         if self.eat("DOES"):
             self.expect("NOT")
@@ -201,7 +217,7 @@ class CondParser:
 
     def string(self):
         tok = self.peek()
-        if tok is None or not (tok.startswith('"') and tok.endswith('"')):
+        if tok is None or not ((tok.startswith('"') and tok.endswith('"')) or (tok.startswith("'") and tok.endswith("'"))):
             raise ValueError(f"string at {tok!r}")
         self.i += 1
         return tok[1:-1]
@@ -213,6 +229,9 @@ class CondParser:
             tok = self.peek()
             if tok is None:
                 raise ValueError("list")
+            if tok == ",":
+                self.i += 1
+                continue
             if tok == ")":
                 self.i += 1
                 break
@@ -240,13 +259,16 @@ def cond_rs(e):
     if kind == "not_valued":
         return f"CondExpr::NotValued({r})"
     if kind == "equals":
+        if ref[:2] == ("OBX", 2) and e[2] == "DTM":
+            return f"CondExpr::In({r}, &[{rs('DTM')}, {rs('TS')}])"
         return f"CondExpr::Equals({r}, {rs(e[2])})"
     if kind == "not_equals":
         return f"CondExpr::NotEquals({r}, {rs(e[2])})"
-    if kind == "in":
-        return f"CondExpr::In({r}, &[{', '.join(rs(x) for x in e[2])}])"
-    if kind == "not_in":
-        return f"CondExpr::NotIn({r}, &[{', '.join(rs(x) for x in e[2])}])"
+    if kind in ("in", "not_in"):
+        items = list(e[2])
+        if ref[:2] == ("OBX", 2) and "DTM" in items and "TS" not in items:
+            items.append("TS")  # TS is the pre-2.6 name of DTM
+        return f"CondExpr::{'In' if kind == 'in' else 'NotIn'}({r}, &[{', '.join(rs(x) for x in items)}])"
     if kind == "count_gt":
         return f"CondExpr::CountGt({r}, {e[2]})"
     if kind == "count_le":
@@ -278,8 +300,13 @@ def compile_cond(target):
     narrative = [n for n in narrative if n.strip() not in INSTRUCTION_NARRATIVES]
     if not antlr and not narrative:
         return "Cond::Always", None
-    if not antlr:
-        return None, "narrative condition: " + narrative[0][:80]
+    # a narrative beside a computable condition that reads as a condition
+    # ("If …", "When …", "Only …", "Unless …") is a further gate the pod
+    # cannot judge: the row is skipped and the narrative is the reason; a
+    # remark ("Any markup in ST … may not present properly") is not a gate
+    gates = [n for n in narrative if re.match(r"^\s*(if|when|only|unless|where)\b", n, re.I)]
+    if not antlr or gates:
+        return None, "narrative condition: " + (gates or narrative)[0][:80]
     try:
         e = CondParser(antlr[0]).parse()
         return f"Cond::When(&{cond_rs(e)})", None
@@ -412,6 +439,43 @@ FHIR_TYPE_NAMES = {t.lower(): t for t in [
 
 ext_contexts = {}
 
+# The standard's abstract message syntax for the groups the maps name: how
+# often each group may occur (HL7 v2.8 chapters 3, 4, 7, 9, 10). The maps
+# carry a segment's cardinality but not its group's, and a walk that cannot
+# tell a repeating group from an optional one files a second patient's
+# results under the first. The IG's own wrappers (COMMON_ORDER, NEXT_OF_KIN,
+# ORDER_DETAIL as a sibling) take the cardinality of what they wrap.
+GROUP_CARDINALITY = {
+    "ADT_A01.NEXT_OF_KIN": (0, -1), "ADT_A01.OBSERVATION": (0, -1), "ADT_A01.PROCEDURE": (0, -1), "ADT_A01.INSURANCE": (0, -1),
+    "ADT_A02.OBSERVATION": (0, -1),
+    "ADT_A05.NEXT_OF_KIN": (0, -1), "ADT_A05.OBSERVATION": (0, -1), "ADT_A05.PROCEDURE": (0, -1), "ADT_A05.INSURANCE": (0, -1),
+    "ADT_A06.NEXT_OF_KIN": (0, -1), "ADT_A06.OBSERVATION": (0, -1), "ADT_A06.PROCEDURE": (0, -1), "ADT_A06.INSURANCE": (0, -1),
+    "ADT_A09.OBSERVATION": (0, -1), "ADT_A11.OBSERVATION": (0, -1), "ADT_A17.OBSERVATION": (0, -1),
+    "MDM_T02.COMMON_ORDER": (0, -1), "MDM_T02.COMMON_ORDER.TIMING": (0, -1), "MDM_T02.OBSERVATION": (0, -1),
+    "OML_O21.PATIENT": (0, 1), "OML_O21.PATIENT.INSURANCE": (0, -1), "OML_O21.PATIENT.PATIENT_VISIT": (0, 1),
+    "OML_O21.ORDER": (1, -1), "OML_O21.ORDER.TIMING": (0, -1), "OML_O21.ORDER.OBSERVATION_REQUEST": (0, 1),
+    "OML_O21.ORDER.OBSERVATION_REQUEST.OBSERVATION": (0, -1), "OML_O21.ORDER.OBSERVATION_REQUEST.SPECIMEN": (0, -1),
+    "ORM_O01.PATIENT": (0, 1), "ORM_O01.PATIENT.INSURANCE": (0, -1), "ORM_O01.PATIENT.VISIT": (0, 1),
+    "ORM_O01.ORDER": (1, -1), "ORM_O01.ORDER_DETAIL": (0, -1), "ORM_O01.ORDER_DETAIL.CHOICE": (1, 1), "ORM_O01.ORDER_DETAIL.OBSERVATION": (0, -1),
+    "ORU_R01.PATIENT_RESULT": (1, -1), "ORU_R01.PATIENT_RESULT.PATIENT": (0, 1),
+    "ORU_R01.PATIENT_RESULT.PATIENT.PATIENT_OBSERVATION": (0, -1), "ORU_R01.PATIENT_RESULT.PATIENT.VISIT": (0, 1),
+    "ORU_R01.PATIENT_RESULT.ORDER_OBSERVATION": (1, -1), "ORU_R01.PATIENT_RESULT.ORDER_OBSERVATION.COMMON_ORDER": (0, 1),
+    "ORU_R01.PATIENT_RESULT.ORDER_OBSERVATION.OBSERVATION": (0, -1), "ORU_R01.PATIENT_RESULT.ORDER_OBSERVATION.SPECIMEN": (0, -1),
+    "ORU_R01.PATIENT_RESULT.ORDER_OBSERVATION.SPECIMEN.SPECIMEN_OBSERVATION": (0, -1),
+    "SIU_S12.PATIENT": (0, -1), "SIU_S12.RESOURCES": (1, -1), "SIU_S12.RESOURCES.SERVICE": (0, -1),
+    "SIU_S12.RESOURCES.GENERAL_RESOURCE": (0, -1), "SIU_S12.RESOURCES.LOCATION_RESOURCE": (0, -1), "SIU_S12.RESOURCES.PERSONNEL_RESOURCE": (0, -1),
+    "VXU_V04.PATIENT_VISIT": (0, 1), "VXU_V04.PERSON_OBSERVATION": (0, -1), "VXU_V04.ORDER": (0, -1), "VXU_V04.ORDER.OBSERVATION": (0, -1),
+}
+
+# Segments the standard places that the IG has no row for, inserted after the
+# named row so the walk consumes them where they belong (an order's NTE after
+# OBR would otherwise open the OBSERVATION group it cannot start): (after
+# path, path, min, max, why).
+STRUCTURE_SUPPLEMENT = {
+    "ORU_R01": [("ORU_R01.PATIENT_RESULT.ORDER_OBSERVATION.OBR", "ORU_R01.PATIENT_RESULT.ORDER_OBSERVATION.NTE", 0, -1,
+                 "no map row in the IG for the order's notes (NTE after OBR)")],
+}
+
 
 def main():
     global ext_contexts
@@ -422,8 +486,12 @@ def main():
     for f in glob.glob(os.path.join(pkg, "ConceptMap-*.json")):
         c = json.load(open(f))
         cms[c["id"]] = c
+    for cid in cms:
+        m0 = re.match(r"^segment-([a-z0-9]+)-", cid)
+        if m0:
+            SEGMENT_NAMES.add(m0.group(1).upper())
     ids = set(cms)
-    stats = {"rows": 0, "compiled": 0, "skipped": {}, "context moves": 0, "concatenations": 0}
+    stats = {"rows": 0, "compiled": 0, "skipped": {}, "context moves": 0, "concatenations": 0, "component bindings": 0}
 
     def skip(why):
         stats["skipped"][why.split(":")[0]] = stats["skipped"].get(why.split(":")[0], 0) + 1
@@ -450,7 +518,7 @@ def main():
                 moves[m.group(1)] = "_" + elems[0].split(".", 1)[1] + "." + m.group(1)
         return moves
 
-    def emit_rows(rows, kind, fhir=None, owner=None):
+    def emit_rows(rows, kind, fhir=None, owner=None, v2=None):
         """rows: list of (source code, source display, source typeinfo,
         target, target typeinfo); `fhir` the datatype map's own FHIR type,
         whose name some rows prefix their targets with (`Quantity.code`);
@@ -488,6 +556,14 @@ def main():
                     concat = parse_concat(a)
                     if concat is None:
                         reason = f"assignment: {a[:60]}"
+                    else:
+                        # what the row can see: the datatype being mapped (a datatype row) or the field's own type
+                        carried = v2 or (sinfo.get("type") or "").split("(")[0]
+                        foreign = sorted({m2.group(1) for m2 in re.finditer(r"Part::Ref\(Ref \{ name: \"([A-Z0-9]+)\", field: 0", concat)
+                                          if m2.group(1) != carried and m2.group(1) not in SEGMENT_NAMES})
+                        if foreign:
+                            reason = f"assignment names {', '.join(foreign)}, which the row's source does not carry"
+                            concat = None
             if reason is None and fixed is not None and tgt and tgt[1]:
                 reason = "a literal for a reference"
             cond, creason = compile_cond(t)
@@ -545,7 +621,7 @@ def main():
         v2, qualifier, fhir = m.group(1).upper(), m.group(2), m.group(3)
         lines.append(f"    DatatypeMap {{ id: {rs(n)}, v2: {rs(v2)}, qualifier: {rs(qualifier or '')}, fhir: {rs(fhir)}, rows: &[")
         owner = FHIR_TYPE_NAMES.get(fhir.lower())
-        lines += ["    " + l for l in emit_rows(list(rows_of(cms[n])), "datatype", fhir=fhir, owner=owner)]
+        lines += ["    " + l for l in emit_rows(list(rows_of(cms[n])), "datatype", fhir=fhir, owner=owner, v2=v2)]
         lines.append("    ] },")
     lines.append("];\n")
 
@@ -576,7 +652,14 @@ def main():
             continue
         name = f"{m.group(1).upper()}_{m.group(2).upper()}"
         lines.append(f"    MessageMap {{ id: {rs(n)}, name: {rs(name)}, rows: &[")
-        for src, _sdisplay, sinfo, t, tinfo in rows_of(cms[n]):
+        group_paths = []
+        msg_rows = list(rows_of(cms[n]))
+        # the standard's segments the IG has no row for, consumed at their
+        # place so they neither start a group they cannot start nor hide
+        for after, spath, smn, smx, why in STRUCTURE_SUPPLEMENT.get(name, []):
+            idx = max(i for i, (src0, *_r) in enumerate(msg_rows) if src0.strip() == after)
+            msg_rows.insert(idx + 1, (spath, "", {"cardinalityMin": smn, "cardinalityMax": smx}, {"code": ""}, {"supplement": why}))
+        for src, _sdisplay, sinfo, t, tinfo in msg_rows:
             stats["rows"] += 1
             path = src.strip()
             seg = path.rsplit(".", 1)[-1].split(":")[-1]
@@ -586,6 +669,11 @@ def main():
             group = path.rsplit(".", 1)[0] if "." in path else path
             if ":follow:" in group:
                 group = group.split(":follow:")[0]
+            parts = group.split(".")
+            for i in range(2, len(parts) + 1):
+                gp = ".".join(parts[:i])
+                if gp not in group_paths:
+                    group_paths.append(gp)
             mn = sinfo.get("cardinalityMin")
             mx = sinfo.get("cardinalityMax")
             mn = 0 if mn is None else int(mn)
@@ -597,7 +685,10 @@ def main():
             tm = re.match(r"^([A-Z][A-Za-z]+)(?:\[([^\]]+)\])?(?:\.([a-z][A-Za-z.]*))?$", display)
             reason = None
             at = ""
-            if not tm:
+            if tinfo.get("supplement"):
+                reason = tinfo["supplement"]
+                res, inst = "", "Each"
+            elif not tm:
                 reason = f"target form: {display}"
                 res, inst = "", "Each"
             else:
@@ -613,6 +704,12 @@ def main():
                 cands = seg_by_key.get((seg, res.lower()), [])
                 if res == "Bundle":
                     cands = [c for c in cands]
+                # an OBX whose value repeats goes through the component map, as
+                # the IG's own comment says ("see OBX[Observation-Component] map")
+                antlr = " ".join(d.get("value") or "" for d in t.get("dependsOn", []) if d.get("property") == "Computable-ANTLR")
+                if seg == "OBX" and re.search(r"OBX-5\s+LST\.count\s+GREATER THAN 1", antlr) and "segment-obx-component-to-observation" in cands:
+                    cands = ["segment-obx-component-to-observation"]
+                    stats["component bindings"] += 1
                 if len(cands) == 1:
                     map_id = cands[0]
                 elif len(cands) > 1:
@@ -633,6 +730,12 @@ def main():
                 continue
             stats["compiled"] += 1
             lines.append(f"        MsgRow {{ path: {rs(path)}, group: {rs(group)}, segment: {rs(seg)}, min: {mn}, max: {mx}, resource: {rs(res)}, instance: Instance::{inst}, at: {rs(at)}, map: Some({rs(map_id)}), cond: {cond} }},")
+        lines.append("    ], groups: &[")
+        for gp in group_paths:
+            if gp not in GROUP_CARDINALITY:
+                sys.exit(f"gen_v2: no cardinality for group {gp} — add it to GROUP_CARDINALITY from the standard's abstract message syntax")
+            gmn, gmx = GROUP_CARDINALITY[gp]
+            lines.append(f"        Group {{ path: {rs(gp)}, min: {gmn}, max: {gmx} }},")
         lines.append("    ] },")
     lines.append("];\n")
 
@@ -660,7 +763,8 @@ def main():
         f.write("\n".join(lines) + "\n")
     print(f"wrote {out_path}: {len(dts)} datatype maps, {len(segs)} segment maps, {len(msgs)} message maps, {len(tbls)} tables; "
           f"rows {stats['rows']}, compiled {stats['compiled']} ({stats['concatenations']} concatenations, "
-          f"{stats['context moves']} extension blocks moved to their context), skipped {stats['rows'] - stats['compiled']}")
+          f"{stats['context moves']} extension blocks moved to their context, {stats['component bindings']} OBX rows bound to the component map), "
+          f"skipped {stats['rows'] - stats['compiled']}")
     for why, n in sorted(stats["skipped"].items(), key=lambda kv: -kv[1]):
         print(f"  skipped {n:>4}  {why}")
 

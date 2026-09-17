@@ -54,6 +54,21 @@ pub struct Options {
     pub code_systems: Vec<(String, String)>,
 }
 
+/// A FHIR zone: `Z` or `±HH:MM`, the hour within ±14.
+fn is_zone(s: &str) -> bool {
+    if s == "Z" {
+        return true;
+    }
+    let b = s.as_bytes();
+    b.len() == 6
+        && matches!(b[0], b'+' | b'-')
+        && b[1..3].iter().all(u8::is_ascii_digit)
+        && b[3] == b':'
+        && b[4..6].iter().all(u8::is_ascii_digit)
+        && s[1..3].parse::<u8>().is_ok_and(|h| h <= 14)
+        && s[4..6].parse::<u8>().is_ok_and(|m| m < 60)
+}
+
 /// The uri of a coding-system name as HL7 table 0396 (and the FHIR
 /// terminology registry) states it, for the names in general use;
 /// `HL7nnnn` names the v2 table `nnnn`. A name not here is the host's to
@@ -81,10 +96,8 @@ pub fn code_system_uri(name: &str) -> Option<String> {
         ("NUCC", "http://nucc.org/provider-taxonomy"),
         ("MDC", "urn:iso:std:iso:11073:10101"),
         ("ISO3166_1", "urn:iso:std:iso:3166"),
-        ("ISO3166_2", "urn:iso:std:iso:3166-2"),
+        ("ISO3166_2", "urn:iso:std:iso:3166:-2"),
         ("ISO4217", "urn:iso:std:iso:4217"),
-        ("ISO", "urn:ietf:rfc:3986"),
-        ("HL7", "http://terminology.hl7.org/CodeSystem/v2-tables"),
     ];
     if let Some((_, uri)) = known.iter().find(|(n, _)| *n == name) {
         return Some((*uri).into());
@@ -106,11 +119,19 @@ impl Options {
         let mut o = Options::default();
         for (k, v) in kvs {
             match (k.as_ref(), v) {
-                ("timezone", crate::json::Value::Str(s)) => o.timezone = Some(s.to_string()),
+                ("timezone", crate::json::Value::Str(s)) => {
+                    if !is_zone(s) {
+                        return Err(ConvertError::BadOptions);
+                    }
+                    o.timezone = Some(s.to_string())
+                }
                 ("timezone", crate::json::Value::Null) => {}
                 ("codeSystems", crate::json::Value::Object(m)) => {
                     for (name, uri) in m {
                         let crate::json::Value::Str(u) = uri else { return Err(ConvertError::BadOptions) };
+                        if name.is_empty() || u.is_empty() || u.contains(char::is_whitespace) {
+                            return Err(ConvertError::BadOptions);
+                        }
                         o.code_systems.push((name.to_string(), u.to_string()));
                     }
                 }
@@ -158,9 +179,9 @@ impl core::fmt::Display for ConvertError {
             ConvertError::Parse(e) => write!(f, "{e}"),
             ConvertError::UnknownStructure(s) if s.is_empty() => f.write_str("MSH-9 names no message structure"),
             ConvertError::UnknownStructure(s) => write!(f, "no map for message structure '{s}'"),
-            ConvertError::BadOptions => {
-                f.write_str("options must be a JSON object with an optional \"timezone\" and \"codeSystems\"")
-            }
+            ConvertError::BadOptions => f.write_str(
+                "options must be a JSON object with an optional \"timezone\" (Z or ±HH:MM) and \"codeSystems\" (name → uri)",
+            ),
         }
     }
 }
@@ -181,6 +202,8 @@ struct Built {
     scope: String,
     uuid: String,
     body: Node,
+    /// A row carrying the message's data (not only a map literal) reached it.
+    has_data: bool,
 }
 
 /// The list blocks of one segment application: (`extension[1]`) → index
@@ -194,6 +217,9 @@ struct Converter<'a> {
     instances: Vec<Built>,
     skipped: Vec<Skip>,
     seq: u32,
+    /// The message's own mark (a hash of its bytes): ids differ between
+    /// messages and repeat for the same one.
+    salt: String,
 }
 
 fn uuid(seed: &str) -> String {
@@ -234,7 +260,9 @@ fn dtm(value: &str, ty: &str, tz_default: Option<&str>) -> Result<String, String
         }
     }
     let zone = match zone {
-        Some(z) if z.len() == 5 => Some(alloc::format!("{}:{}", &z[..3], &z[3..])),
+        Some(z) if z.len() == 5 && z.is_ascii() && z[1..].bytes().all(|b| b.is_ascii_digit()) => {
+            Some(alloc::format!("{}:{}", &z[..3], &z[3..]))
+        }
         Some(_) => return Err(alloc::format!("'{value}' has a malformed zone")),
         None => tz_default.map(String::from),
     };
@@ -274,30 +302,41 @@ fn dtm(value: &str, ty: &str, tz_default: Option<&str>) -> Result<String, String
     }
 }
 
-/// The text a source reference names in a segment (or in a datatype value,
-/// when `seg` is that value's own components).
-fn value_of<'s>(seg: &'s Segment, r: &Ref) -> Option<&'s Rep> {
-    seg.rep(r.field)
-}
+/// A segment another one's condition names (`IF OBR-2 NOT VALUED` on an
+/// ORC row): the nearest one in the structure, or none.
+type Lookup<'m> = dyn Fn(&str) -> Option<&'m Segment> + 'm;
 
-fn eval_cond(e: &CondExpr, seg: &Segment, dt: Option<&Rep>) -> bool {
+fn eval_cond(e: &CondExpr, seg: &Segment, dt: Option<&Rep>, lookup: &Lookup<'_>) -> bool {
+    let seg_for = |r: &Ref| -> Option<&Segment> {
+        if r.name == seg.name {
+            Some(seg)
+        } else {
+            lookup(r.name)
+        }
+    };
     let text = |r: &Ref| -> String {
         if r.field == 0 {
             // datatype-relative
             dt.map(|d| d.component(r.component, r.sub).to_string()).unwrap_or_default()
         } else {
-            seg.value(r.field, r.component, r.sub).to_string()
+            seg_for(r).map(|s| s.value(r.field, r.component, r.sub).to_string()).unwrap_or_default()
         }
     };
     let count = |r: &Ref| -> u32 {
         if r.field == 0 {
             return dt.map(|d| u32::from(d.is_valued())).unwrap_or(0);
         }
-        seg.field(r.field).map(|f| f.reps.iter().filter(|x| x.is_valued()).count() as u32).unwrap_or(0)
+        seg_for(r)
+            .and_then(|s| s.field(r.field))
+            .map(|f| f.reps.iter().filter(|x| x.is_valued()).count() as u32)
+            .unwrap_or(0)
     };
     let valued = |r: &Ref| -> bool {
-        if r.component == 0 && r.field != 0 {
-            value_of(seg, r).is_some_and(Rep::is_valued)
+        if r.field == 0 && r.component == 0 {
+            // `IF ORC VALUED`: the segment is in scope; `IF XPN VALUED`: the value is
+            lookup(r.name).is_some() || dt.is_some_and(Rep::is_valued)
+        } else if r.component == 0 {
+            seg_for(r).and_then(|s| s.rep(r.field)).is_some()
         } else {
             !text(r).is_empty()
         }
@@ -313,9 +352,9 @@ fn eval_cond(e: &CondExpr, seg: &Segment, dt: Option<&Rep>) -> bool {
         CondExpr::CountLe(r, n) => count(r) <= *n,
         CondExpr::CountEq(r, n) => count(r) == *n,
         CondExpr::LengthGt(r, n) => text(r).chars().count() as u32 > *n,
-        CondExpr::And(a, b) => eval_cond(a, seg, dt) && eval_cond(b, seg, dt),
-        CondExpr::Or(a, b) => eval_cond(a, seg, dt) || eval_cond(b, seg, dt),
-        CondExpr::Not(a) => !eval_cond(a, seg, dt),
+        CondExpr::And(a, b) => eval_cond(a, seg, dt, lookup) && eval_cond(b, seg, dt, lookup),
+        CondExpr::Or(a, b) => eval_cond(a, seg, dt, lookup) || eval_cond(b, seg, dt, lookup),
+        CondExpr::Not(a) => !eval_cond(a, seg, dt, lookup),
     }
 }
 
@@ -397,6 +436,15 @@ fn marked_prefix(ctx: &'static str, target: &str) -> Option<String> {
     found
 }
 
+/// A v2 type whose whole value is one text (as opposed to a composite such
+/// as PL or XCN, which a primitive target takes only through a datatype map).
+fn is_simple_v2(ty: &str) -> bool {
+    matches!(
+        ty,
+        "ST" | "ID" | "IS" | "NM" | "SI" | "DT" | "DTM" | "TM" | "TX" | "FT" | "GTS" | "varies" | "SNM" | "NUL" | ""
+    )
+}
+
 fn is_primitive(ty: &str) -> bool {
     matches!(
         ty,
@@ -426,10 +474,19 @@ fn is_primitive(ty: &str) -> bool {
 /// first.
 fn datatype_map(v2: &str, fhir: &str) -> Option<&'static DatatypeMap> {
     let fhir_lc: String = fhir.to_ascii_lowercase();
-    generated::DATATYPES
-        .iter()
-        .find(|m| m.v2.eq_ignore_ascii_case(v2) && m.fhir == fhir_lc && m.qualifier.is_empty())
-        .or_else(|| generated::DATATYPES.iter().find(|m| m.v2.eq_ignore_ascii_case(v2) && m.fhir == fhir_lc))
+    let find = |f: &str| {
+        generated::DATATYPES
+            .iter()
+            .find(|m| m.v2.eq_ignore_ascii_case(v2) && m.fhir == f && m.qualifier.is_empty())
+            .or_else(|| generated::DATATYPES.iter().find(|m| m.v2.eq_ignore_ascii_case(v2) && m.fhir == f))
+    };
+    // a map to `uri` serves every uri-shaped primitive, one to `string` every text one
+    let kin = match fhir_lc.as_str() {
+        "url" | "canonical" | "oid" | "uuid" => Some("uri"),
+        "markdown" | "id" => Some("string"),
+        _ => None,
+    };
+    find(&fhir_lc).or_else(|| kin.and_then(find))
 }
 
 fn table(id: &str) -> Option<&'static TableMap> {
@@ -442,37 +499,52 @@ fn table(id: &str) -> Option<&'static TableMap> {
 /// block remembers the index; later rows with the same marker fill that
 /// item. A path whose last element repeats and has no marker appends.
 /// `append_all`: the node is a list of items to append one by one.
-fn place(root: &mut Node, blocks: &mut Blocks, ctx: &'static str, path: &str, node: Node, data: bool) {
+fn place(
+    root: &mut Node,
+    blocks: &mut Blocks,
+    ctx: &'static str,
+    path: &str,
+    node: Node,
+    data: bool,
+) -> Result<(), String> {
     let segs: Vec<&str> = path.split('.').collect();
     let mut cur: &mut Node = root;
     let mut c: &'static str = ctx;
     let mut prefix = String::new();
     for (i, seg) in segs.iter().enumerate() {
-        let (name, marker) = match seg.find('[') {
+        let (mut name, marker) = match seg.find('[') {
             Some(j) => (&seg[..j], Some(seg[j + 1..].trim_end_matches(']'))),
             None => (*seg, None),
         };
         let last = i + 1 == segs.len();
+        let child = typing::child(c, name);
+        // an extension on a primitive lives in the primitive's `_name` carrier
+        let carrier: String;
+        if !last && child.is_some_and(|ch| is_primitive(ch.ty)) && segs[i + 1].starts_with("extension") {
+            carrier = alloc::format!("_{name}");
+            name = &carrier;
+        }
         let repeats = typing::repeats(c, name);
+        let child_ctx = if name.starts_with('_') { "Element" } else { child.map(|ch| ch.ctx).unwrap_or("Element") };
         if !prefix.is_empty() {
             prefix.push('.');
         }
-        // an unmarked repeating container on the way (`extension.url`) is
-        // the map's first item: the same block as `extension[1].…`
-        if !last && repeats && marker.is_none() {
-            prefix.push_str(name);
-            prefix.push_str("[1]");
-        } else {
-            prefix.push_str(seg);
-        }
-        let child_ctx = typing::child(c, name).map(|ch| ch.ctx).unwrap_or("Element");
+        // an unmarked repeating container (`extension.url`, `name` then
+        // `name[1].given`) is the map's first item: the same block as `name[1]`
+        let key: String = if repeats && marker.is_none() { alloc::format!("{name}[1]") } else { (*seg).into() };
+        prefix.push_str(&key);
         if last {
             if repeats {
                 let arr = cur.member_or_insert(name, Node::Array(Vec::new()));
                 if !matches!(arr, Node::Array(_)) {
-                    *arr = Node::Array(Vec::new());
+                    return Err(alloc::format!("{prefix} already holds a value"));
                 }
                 let Node::Array(items) = arr else { unreachable!() };
+                let register = |blocks: &mut Blocks, at: usize| {
+                    if marker.is_none() && !blocks.iter().any(|(p, _, _)| *p == prefix) {
+                        blocks.push((prefix.clone(), at, data));
+                    }
+                };
                 match (marker, node) {
                     // a block of several items (a repeating field): appended, the block at the first
                     (Some(k), Node::Array(xs)) if k != "n" => {
@@ -492,30 +564,42 @@ fn place(root: &mut Node, blocks: &mut Blocks, ctx: &'static str, path: &str, no
                             blocks.push((prefix.clone(), items.len() - 1, data));
                         }
                     },
-                    (_, Node::Array(xs)) => items.extend(xs),
-                    (_, node) => items.push(node),
+                    (_, Node::Array(xs)) => {
+                        if !xs.is_empty() {
+                            register(blocks, items.len());
+                        }
+                        items.extend(xs)
+                    }
+                    (_, node) => {
+                        register(blocks, items.len());
+                        items.push(node)
+                    }
                 }
             } else {
                 let slot = cur.member_or_insert(name, Node::Null);
+                let compatible =
+                    matches!(slot, Node::Null) || matches!((&*slot, &node), (Node::Object(_), Node::Object(_)));
+                if !compatible {
+                    return Err(alloc::format!("{prefix} already holds a value"));
+                }
                 merge(slot, node);
             }
-            return;
+            return Ok(());
         }
         if repeats {
             let arr = cur.member_or_insert(name, Node::Array(Vec::new()));
             if !matches!(arr, Node::Array(_)) {
-                *arr = Node::Array(Vec::new());
+                return Err(alloc::format!("{prefix} already holds a value"));
             }
             let Node::Array(items) = arr else { unreachable!() };
-            let key = prefix.clone();
-            let idx = match blocks.iter_mut().find(|(p, _, _)| *p == key) {
+            let idx = match blocks.iter_mut().find(|(p, _, _)| *p == prefix) {
                 Some((_, idx, d)) => {
                     *d |= data;
                     *idx
                 }
                 None => {
                     items.push(Node::Object(Vec::new()));
-                    blocks.push((key, items.len() - 1, data));
+                    blocks.push((prefix.clone(), items.len() - 1, data));
                     items.len() - 1
                 }
             };
@@ -523,14 +607,14 @@ fn place(root: &mut Node, blocks: &mut Blocks, ctx: &'static str, path: &str, no
         } else {
             cur = cur.member_or_insert(name, Node::Object(Vec::new()));
             if !matches!(cur, Node::Object(_)) {
-                *cur = Node::Object(Vec::new());
+                return Err(alloc::format!("{prefix} already holds a value"));
             }
         }
         c = child_ctx;
     }
+    Ok(())
 }
 
-/// Merge `node` into `slot`: objects member by member, anything else replaced.
 /// The node a block-qualified path names (`location[1]` → that item).
 fn node_at<'n>(root: &'n mut Node, path: &str, blocks: &Blocks) -> Option<&'n mut Node> {
     let mut cur = root;
@@ -554,6 +638,7 @@ fn node_at<'n>(root: &'n mut Node, path: &str, blocks: &Blocks) -> Option<&'n mu
     Some(cur)
 }
 
+/// Merge `node` into `slot`: objects member by member, anything else replaced.
 fn merge(slot: &mut Node, node: Node) {
     match (slot, node) {
         (Node::Object(a), Node::Object(b)) => {
@@ -629,7 +714,14 @@ impl<'a> Converter<'a> {
             self.skip(at.into(), target, alloc::format!("table {id} is not compiled"));
             return None;
         };
-        match t.pairs.iter().find(|(from, _, _)| *from == text) {
+        // a bare code target takes the pair from the table's own target system;
+        // a coded target keeps whichever system the pair names
+        let pair = if is_primitive(ty) {
+            t.pairs.iter().find(|(from, _, system)| *from == text && *system == t.target)
+        } else {
+            t.pairs.iter().find(|(from, _, _)| *from == text)
+        };
+        match pair {
             Some((_, to, system)) => {
                 if is_primitive(ty) {
                     Some(Node::Str((*to).into()))
@@ -666,7 +758,14 @@ impl<'a> Converter<'a> {
     }
 
     /// A FHIR datatype value from a v2 repetition through a datatype map.
-    fn datatype(&mut self, at: &str, map: &'static DatatypeMap, rep: &Rep, seg: &Segment) -> Option<Node> {
+    fn datatype(
+        &mut self,
+        at: &str,
+        map: &'static DatatypeMap,
+        rep: &Rep,
+        seg: &Segment,
+        lookup: &Lookup<'_>,
+    ) -> Option<Node> {
         let ctx = type_named(map.fhir).unwrap_or("Element");
         let mut body = Node::Object(Vec::new());
         let mut blocks = Vec::new();
@@ -682,7 +781,7 @@ impl<'a> Converter<'a> {
                     continue;
                 }
                 Cond::When(e) => {
-                    if !eval_cond(e, seg, Some(rep)) {
+                    if !eval_cond(e, seg, Some(rep), lookup) {
                         continue;
                     }
                 }
@@ -729,16 +828,19 @@ impl<'a> Converter<'a> {
                         .map(|subs| subs.iter().map(|s| alloc::vec![s.clone()]).collect())
                         .unwrap_or_default(),
                 };
-                self.datatype(&at_row, inner, &sub_rep, seg)
+                self.datatype(&at_row, inner, &sub_rep, seg, lookup)
             } else {
-                self.skip(at_row, row.target, alloc::format!("no datatype map {} to {ty}", row.src_ty));
+                self.skip(at_row.clone(), row.target, alloc::format!("no datatype map {} to {ty}", row.src_ty));
                 None
             };
             let Some(node) = node else { continue };
             if row.target == "$value" {
                 return Some(node);
             }
-            place(&mut body, &mut blocks, ctx, row.target, node, row.fixed.is_none());
+            if let Err(why) = place(&mut body, &mut blocks, ctx, row.target, node, row.fixed.is_none()) {
+                self.skip(at_row, row.target, why);
+                continue;
+            }
             any = true;
         }
         if !any {
@@ -762,10 +864,32 @@ impl<'a> Converter<'a> {
     }
 
     /// Apply a segment map to a resource instance.
-    fn apply_segment(&mut self, seg: &Segment, seg_at: &str, map: &'static SegmentMap, inst: usize) {
+    fn apply_segment(
+        &mut self,
+        seg: &Segment,
+        seg_at: &str,
+        map: &'static SegmentMap,
+        inst: usize,
+        lookup: &Lookup<'_>,
+    ) {
         let ctx: &'static str = self.instances[inst].resource;
         let mut blocks: Blocks = Vec::new();
         let mut failed: Vec<String> = Vec::new();
+        // `component[n]`: one item per repetition of the repeating field the
+        // map spreads over it; a row from a field that does not repeat
+        // (`component[n].code` from OBX-3) reaches every item
+        let mut n_items: Vec<(String, usize)> = Vec::new();
+        for row in map.rows {
+            if matches!(row.cond, Cond::Skipped(_)) || row.field == 0 {
+                continue;
+            }
+            let Some(prefix) = row.target.split('.').next().filter(|s| s.ends_with("[n]")) else { continue };
+            let reps = seg.field(row.field).map(|f| f.reps.iter().filter(|r| r.is_valued()).count()).unwrap_or(0);
+            match n_items.iter_mut().find(|(p, _)| p == prefix) {
+                Some((_, n)) => *n = (*n).max(reps),
+                None => n_items.push((prefix.into(), reps)),
+            }
+        }
         for row in map.rows {
             // a container row (`MSH-3 → source[1]`, no type): its parts are rows of their own
             if row.ty.is_empty()
@@ -779,6 +903,18 @@ impl<'a> Converter<'a> {
             let at = if row.field == 0 { seg_at.to_string() } else { alloc::format!("{seg_at}-{}", row.field) };
             let field = if row.field == 0 { None } else { seg.field(row.field) };
             let valued = row.field == 0 || field.is_some_and(|f| f.reps.iter().any(Rep::is_valued));
+            // a condition on the field's own components (`CWE.3` of SCH-7) sees its first repetition
+            let own = field.and_then(|f| f.reps.iter().find(|r| r.is_valued()));
+            // `varies` (OBX-5) is the type OBX-2 names; `TS` is DTM before v2.6
+            let src_ty: &str = if row.src_ty == "varies" && seg.name == "OBX" {
+                match seg.value(2, 0, 0) {
+                    "TS" => "DTM",
+                    "" => row.src_ty,
+                    t => t,
+                }
+            } else {
+                row.src_ty
+            };
             match row.cond {
                 Cond::Skipped(why) => {
                     if valued && row.field != 0 {
@@ -787,7 +923,7 @@ impl<'a> Converter<'a> {
                     continue;
                 }
                 Cond::When(e) => {
-                    if !eval_cond(e, seg, None) {
+                    if !eval_cond(e, seg, own, lookup) {
                         continue;
                     }
                 }
@@ -802,6 +938,9 @@ impl<'a> Converter<'a> {
                 None => Vec::new(),
             };
             let mut nodes: Vec<Node> = Vec::new();
+            if row.fixed.is_none() && valued {
+                self.instances[inst].has_data = true;
+            }
             if let Some(fixed) = row.fixed {
                 nodes.push(Node::Str(fixed.into()));
             } else if let Some(parts) = row.concat {
@@ -812,14 +951,14 @@ impl<'a> Converter<'a> {
                 }
             } else if let Some(refty) = row.reference {
                 // a referenced resource built from the field by its datatype map
-                let Some(dmap) = datatype_map(row.src_ty, refty) else {
+                let Some(dmap) = datatype_map(src_ty, refty) else {
                     let _ = ty;
-                    self.skip(at, row.target, alloc::format!("no datatype map {} to {refty}", row.src_ty));
+                    self.skip(at, row.target, alloc::format!("no datatype map {src_ty} to {refty}"));
                     continue;
                 };
                 for (i, rep) in reps.iter().enumerate() {
                     let at_rep = if reps.len() > 1 { alloc::format!("{at}[{}]", i + 1) } else { at.clone() };
-                    let Some(body) = self.datatype(&at_rep, dmap, rep, seg) else {
+                    let Some(body) = self.datatype(&at_rep, dmap, rep, seg, lookup) else {
                         if let Some(p) = marked_prefix(ctx, row.target) {
                             failed.push(p);
                         }
@@ -827,6 +966,7 @@ impl<'a> Converter<'a> {
                     };
                     let rt = typing::known_type(refty).unwrap_or("Basic");
                     let id = self.open(rt, None, &self.instances[inst].scope.clone());
+                    self.instances[id].has_data = true;
                     if let Node::Object(kvs) = &mut self.instances[id].body {
                         if let Node::Object(b) = body {
                             kvs.extend(b);
@@ -846,12 +986,12 @@ impl<'a> Converter<'a> {
                         self.via_table(&at_rep, row.target, ty, id, text)
                     } else if row.via == Via::CodeSystem {
                         self.code_system(&at_rep, row.target, text)
-                    } else if is_primitive(ty) {
+                    } else if is_primitive(ty) && (row.component != 0 || is_simple_v2(src_ty)) {
                         self.primitive(&at_rep, row.target, ty, text)
-                    } else if let Some(dmap) = datatype_map(row.src_ty, ty) {
-                        self.datatype(&at_rep, dmap, rep, seg)
+                    } else if let Some(dmap) = datatype_map(src_ty, ty) {
+                        self.datatype(&at_rep, dmap, rep, seg, lookup)
                     } else {
-                        self.skip(at_rep, row.target, alloc::format!("no datatype map {} to {ty}", row.src_ty));
+                        self.skip(at_rep, row.target, alloc::format!("no datatype map {src_ty} to {ty}"));
                         None
                     };
                     if let Some(n) = node {
@@ -884,17 +1024,60 @@ impl<'a> Converter<'a> {
                 (rep, spread)
             };
             if last_repeats {
-                place(
+                if let Err(why) = place(
                     &mut self.instances[inst].body,
                     &mut blocks,
                     ctx,
                     row.target,
                     Node::Array(nodes),
                     row.fixed.is_none(),
-                );
+                ) {
+                    self.skip(at.clone(), row.target, why);
+                }
                 continue;
             }
+            // `X[n]` at the head: item k of the map's spread
+            let each = segs.first().filter(|s| s.ends_with("[n]")).and_then(|p| n_items.iter().find(|(q, _)| q == p));
+            let item_path = |k: usize| -> String {
+                let mut parts: Vec<String> = segs.iter().map(|s| (*s).into()).collect();
+                if k > 0 {
+                    parts[0] = alloc::format!("{}[r{}]", segs[0].trim_end_matches("[n]"), k + 1);
+                }
+                parts.join(".")
+            };
             let count = nodes.len();
+            if let Some((_, n)) = each {
+                if count == 1 && *n > 1 {
+                    // one value for every item
+                    let node = nodes.into_iter().next().unwrap();
+                    for k in 0..*n {
+                        if let Err(why) = place(
+                            &mut self.instances[inst].body,
+                            &mut blocks,
+                            ctx,
+                            &item_path(k),
+                            node.clone(),
+                            row.fixed.is_none(),
+                        ) {
+                            self.skip(at.clone(), row.target, why);
+                        }
+                    }
+                    continue;
+                }
+                for (k, node) in nodes.into_iter().enumerate() {
+                    if let Err(why) = place(
+                        &mut self.instances[inst].body,
+                        &mut blocks,
+                        ctx,
+                        &item_path(k),
+                        node,
+                        row.fixed.is_none(),
+                    ) {
+                        self.skip(at.clone(), row.target, why);
+                    }
+                }
+                continue;
+            }
             for (i, node) in nodes.into_iter().enumerate() {
                 let path: String = if i == 0 {
                     row.target.into()
@@ -915,7 +1098,11 @@ impl<'a> Converter<'a> {
                         }
                     }
                 };
-                place(&mut self.instances[inst].body, &mut blocks, ctx, &path, node, row.fixed.is_none());
+                if let Err(why) =
+                    place(&mut self.instances[inst].body, &mut blocks, ctx, &path, node, row.fixed.is_none())
+                {
+                    self.skip(at.clone(), row.target, why);
+                }
             }
         }
         prune_fixed_only(&mut self.instances[inst].body, &mut blocks, &failed, seg_at, &mut self.skipped);
@@ -945,7 +1132,7 @@ impl<'a> Converter<'a> {
         self.seq += 1;
         let uuid = alloc::format!(
             "urn:uuid:{}",
-            uuid(&alloc::format!("v2:{}:{resource}:{scope}:{}", self.seq, number.unwrap_or(0)))
+            uuid(&alloc::format!("v2:{}:{}:{resource}:{scope}:{}", self.salt, self.seq, number.unwrap_or(0)))
         );
         self.instances.push(Built {
             resource,
@@ -953,6 +1140,7 @@ impl<'a> Converter<'a> {
             scope: scope.into(),
             uuid,
             body: Node::Object(alloc::vec![("resourceType".into(), Node::Str(resource.into()))]),
+            has_data: false,
         });
         self.instances.len() - 1
     }
@@ -1074,6 +1262,161 @@ fn urn_identifiers(node: &mut Node) {
     }
 }
 
+/// HL7 table 0354: the trigger events each compiled message structure
+/// serves, for a message that does not name its structure in MSH-9.3.
+const TRIGGERS: &[(&str, &[&str], &str)] = &[
+    ("ADT", &["A01", "A04", "A08", "A13"], "ADT_A01"),
+    ("ADT", &["A02"], "ADT_A02"),
+    ("ADT", &["A05", "A14", "A28", "A31"], "ADT_A05"),
+    ("ADT", &["A06", "A07"], "ADT_A06"),
+    ("ADT", &["A09", "A10"], "ADT_A09"),
+    ("ADT", &["A11"], "ADT_A11"),
+    ("ADT", &["A17"], "ADT_A17"),
+    ("MDM", &["T02", "T04", "T06", "T08", "T10"], "MDM_T02"),
+    ("OML", &["O21"], "OML_O21"),
+    ("ORM", &["O01"], "ORM_O01"),
+    ("ORU", &["R01"], "ORU_R01"),
+    (
+        "SIU",
+        &["S12", "S13", "S14", "S15", "S16", "S17", "S18", "S19", "S20", "S21", "S22", "S23", "S24", "S26"],
+        "SIU_S12",
+    ),
+    ("VXU", &["V04"], "VXU_V04"),
+];
+
+/// The message structure to convert with: MSH-9.3 when it names one the pod
+/// compiles, else the structure table 0354 gives the trigger event, else
+/// `code_trigger` (which then names no map, and says so).
+fn structure_of(message: &Message) -> String {
+    let compiled = |s: &str| generated::MESSAGES.iter().any(|m| m.name == s);
+    let Some(msh) = message.segments.first().filter(|s| s.name == "MSH") else { return String::new() };
+    let Some(rep) = msh.rep(9) else { return String::new() };
+    let (code, trigger, named) = (rep.component(1, 0), rep.component(2, 0), rep.component(3, 0));
+    if !named.is_empty() && compiled(named) {
+        return named.into();
+    }
+    if let Some((_, _, st)) = TRIGGERS.iter().find(|(c, ts, _)| *c == code && ts.contains(&trigger)) {
+        return (*st).into();
+    }
+    message.structure().unwrap_or_default()
+}
+
+/// A node of the message structure: a segment (with its rows) or a group.
+struct GNode {
+    name: String,
+    is_group: bool,
+    min: i32,
+    max: i32,
+    children: Vec<GNode>,
+    /// Indices into the message map's rows (a segment node).
+    rows: Vec<usize>,
+    /// The segment names that can begin this node.
+    first_set: Vec<String>,
+}
+
+fn build_tree(map: &'static MessageMap) -> GNode {
+    let mut root = GNode {
+        name: map.name.into(),
+        is_group: true,
+        min: 1,
+        max: 1,
+        children: Vec::new(),
+        rows: Vec::new(),
+        first_set: Vec::new(),
+    };
+    for (i, row) in map.rows.iter().enumerate() {
+        let mut node = &mut root;
+        let mut path = String::new();
+        for part in row.group.split('.').skip(1) {
+            if !path.is_empty() {
+                path.push('.');
+            }
+            path.push_str(part);
+            let full = alloc::format!("{}.{path}", map.name);
+            let pos = match node.children.iter().position(|c| c.is_group && c.name == part) {
+                Some(p) => p,
+                None => {
+                    let (min, max) =
+                        map.groups.iter().find(|g| g.path == full).map(|g| (g.min, g.max)).unwrap_or((0, -1));
+                    node.children.push(GNode {
+                        name: part.into(),
+                        is_group: true,
+                        min,
+                        max,
+                        children: Vec::new(),
+                        rows: Vec::new(),
+                        first_set: Vec::new(),
+                    });
+                    node.children.len() - 1
+                }
+            };
+            node = &mut node.children[pos];
+        }
+        let pos = match node.children.iter().position(|c| !c.is_group && c.name == row.segment) {
+            Some(p) => p,
+            None => {
+                node.children.push(GNode {
+                    name: row.segment.into(),
+                    is_group: false,
+                    min: row.min,
+                    max: row.max,
+                    children: Vec::new(),
+                    rows: Vec::new(),
+                    first_set: alloc::vec![row.segment.into()],
+                });
+                node.children.len() - 1
+            }
+        };
+        node.children[pos].rows.push(i);
+    }
+    fn first_sets(node: &mut GNode) {
+        if !node.is_group {
+            return;
+        }
+        for child in node.children.iter_mut() {
+            first_sets(child);
+        }
+        let mut set: Vec<String> = Vec::new();
+        for child in node.children.iter() {
+            for f in &child.first_set {
+                if !set.contains(f) {
+                    set.push(f.clone());
+                }
+            }
+            if child.min >= 1 {
+                break;
+            }
+        }
+        node.first_set = set;
+    }
+    first_sets(&mut root);
+    root
+}
+
+/// The message structure the pod walks for `name` (`ORU_R01`), one line per
+/// segment or group with its cardinality and the segments that can begin
+/// it — for a host or a reviewer to see what the walk expects.
+pub fn structure_tree(name: &str) -> Option<String> {
+    let map = generated::MESSAGES.iter().find(|m| m.name == name)?;
+    fn render(n: &GNode, depth: usize, out: &mut String) {
+        for _ in 0..depth {
+            out.push_str("  ");
+        }
+        let max = if n.max < 0 { String::from("*") } else { alloc::format!("{}", n.max) };
+        if n.is_group {
+            out.push_str(&alloc::format!("{} [{}..{}] begins with {}\n", n.name, n.min, max, n.first_set.join(" | ")));
+        } else {
+            out.push_str(&alloc::format!("{} [{}..{}] rows {}\n", n.name, n.min, max, n.rows.len()));
+        }
+        for c in &n.children {
+            render(c, depth + 1, out);
+        }
+    }
+    let mut out = String::new();
+    render(&build_tree(map), 0, &mut out);
+    Some(out)
+}
+
 /// The type the maps spell in lower case (`humanname`, `codeableconcept`).
 fn type_named(lower: &str) -> Option<&'static str> {
     typing::type_names().find(|t| t.eq_ignore_ascii_case(lower))
@@ -1097,88 +1440,141 @@ pub fn convert_with(
     tx: &dyn TerminologyProvider,
 ) -> Result<Converted, ConvertError> {
     let message = Message::parse(input)?;
-    let structure = message.structure().unwrap_or_default();
+    let structure = structure_of(&message);
     let map = generated::MESSAGES
         .iter()
         .find(|m| m.name == structure)
         .ok_or_else(|| ConvertError::UnknownStructure(structure.clone()))?;
-    let mut cv = Converter { options, instances: Vec::new(), skipped: Vec::new(), seq: 0 };
+    let salt = crate::hash::hex(&crate::hash::sha256(input)[..16]);
+    let mut cv = Converter { options, instances: Vec::new(), skipped: Vec::new(), seq: 0, salt };
     let mut unplaced = Vec::new();
 
-    // the structure walk: rows in order; a segment matching a row at or
-    // before the cursor starts a new occurrence of that row's group
-    let mut cursor = 0usize;
-    let mut occurrences: Vec<(String, u32)> = Vec::new();
-    let mut counts: Vec<(String, u32)> = Vec::new(); // segment name → occurrences seen, for labels
-    let scope_of = |occ: &[(String, u32)], group: &str| -> String {
-        let mut parts: Vec<String> = Vec::new();
-        let mut prefix = String::new();
-        for seg in group.split('.') {
-            if !prefix.is_empty() {
-                prefix.push('.');
-            }
-            prefix.push_str(seg);
-            let n = occ.iter().find(|(g, _)| *g == prefix).map(|(_, n)| *n).unwrap_or(1);
-            parts.push(alloc::format!("{seg}#{n}"));
-        }
-        parts.join(".")
-    };
-    for seg in &message.segments {
-        let n = match counts.iter_mut().find(|(s, _)| *s == seg.name) {
+    // the structure walk: the message structure as a tree (segments and
+    // groups, each with its cardinality — the groups' from the standard,
+    // compiled in), matched greedily in order: a segment is the next
+    // expected one, another occurrence of the last, or the start of a group
+    // that may (still) occur; what matches nothing at this level closes the
+    // group and is tried one level up; what matches nowhere is unplaced
+    let tree = build_tree(map);
+    struct Frame<'t> {
+        node: &'t GNode,
+        occurrence: u32,
+        cursor: usize,
+        counts: Vec<u32>,
+    }
+    struct Placed<'r> {
+        seg: usize,
+        rows: &'r [usize],
+        scope: String,
+        /// The group the segment sits in may occur once at most.
+        single: bool,
+    }
+    let mut stack: Vec<Frame<'_>> =
+        alloc::vec![Frame { node: &tree, occurrence: 1, cursor: 0, counts: alloc::vec![0; tree.children.len()] }];
+    let mut placed: Vec<Placed<'_>> = Vec::new();
+    let mut counts_by_name: Vec<(String, u32)> = Vec::new(); // segment name → occurrences seen, for labels
+    let mut labels: Vec<String> = Vec::new();
+    for (si, seg) in message.segments.iter().enumerate() {
+        let n = match counts_by_name.iter_mut().find(|(s, _)| *s == seg.name) {
             Some((_, n)) => {
                 *n += 1;
                 *n
             }
             None => {
-                counts.push((seg.name.clone(), 1));
+                counts_by_name.push((seg.name.clone(), 1));
                 1
             }
         };
         let seg_at = alloc::format!("{}[{n}]", seg.name);
-        // the rows for this segment, from the cursor on, else from the start
-        let forward: Vec<usize> = (cursor..map.rows.len()).filter(|&i| map.rows[i].segment == seg.name).collect();
-        let first_forward = forward.first().copied();
-        let first_any = (0..map.rows.len()).find(|&i| map.rows[i].segment == seg.name);
-        let Some(first) = first_forward.or(first_any) else {
-            unplaced.push(seg_at);
-            continue;
-        };
-        // every row of this segment at that structural place (same path)
-        let path = map.rows[first].path;
-        let rows: Vec<&MsgRow> = map.rows.iter().filter(|r| r.path == path).collect();
-        let group = map.rows[first].group;
-        if first_forward.is_none() || first == cursor {
-            // a new occurrence of the row's group; deeper groups start over
-            match occurrences.iter_mut().find(|(g, _)| *g == group) {
-                Some((_, k)) => *k += 1,
-                None => occurrences.push((group.into(), 1)),
+        labels.push(seg_at.clone());
+        loop {
+            let depth = stack.len();
+            let frame = &mut stack[depth - 1];
+            let node = frame.node;
+            let mut found = None;
+            for ci in frame.cursor..node.children.len() {
+                let child = &node.children[ci];
+                let count = frame.counts[ci];
+                let can_repeat = child.max < 0 || count < child.max as u32;
+                let matches = if child.is_group { child.first_set.contains(&seg.name) } else { child.name == seg.name };
+                if !matches {
+                    continue;
+                }
+                if ci == frame.cursor && count > 0 && !can_repeat {
+                    continue;
+                }
+                found = Some(ci);
+                break;
             }
-            let deeper = alloc::format!("{group}.");
-            occurrences.retain(|(g, _)| !g.starts_with(&deeper));
+            match found {
+                Some(ci) => {
+                    frame.cursor = ci;
+                    frame.counts[ci] += 1;
+                    let occ = frame.counts[ci];
+                    let child = &node.children[ci];
+                    if child.is_group {
+                        let counts = alloc::vec![0; child.children.len()];
+                        stack.push(Frame { node: child, occurrence: occ, cursor: 0, counts });
+                        continue;
+                    }
+                    let scope = stack
+                        .iter()
+                        .map(|f| alloc::format!("{}#{}", f.node.name, f.occurrence))
+                        .collect::<Vec<_>>()
+                        .join(".");
+                    let single = stack.last().is_some_and(|f| f.node.max == 1);
+                    placed.push(Placed { seg: si, rows: &child.rows, scope, single });
+                    break;
+                }
+                None => {
+                    if stack.len() == 1 {
+                        unplaced.push(seg_at.clone());
+                        break;
+                    }
+                    stack.pop();
+                }
+            }
         }
-        // groups entered for the first time
-        let mut prefix = String::new();
-        for part in group.split('.') {
-            if !prefix.is_empty() {
-                prefix.push('.');
+    }
+
+    // the rows, in message order; a condition naming another segment finds
+    // the nearest one in the structure: in this occurrence or an enclosing
+    // one, or in a once-only group beside it (ORC in COMMON_ORDER for the
+    // OBR of the same order)
+    let lookup_in = |name: &str, scope: &str| -> Option<&Segment> {
+        let mut best: Option<(usize, usize)> = None; // (shared prefix length, placed index)
+        for (pi, p) in placed.iter().enumerate() {
+            if message.segments[p.seg].name != name {
+                continue;
             }
-            prefix.push_str(part);
-            if !occurrences.iter().any(|(g, _)| *g == prefix) {
-                occurrences.push((prefix.clone(), 1));
+            let parent = p.scope.rsplit_once('.').map(|(a, _)| a).unwrap_or(&p.scope);
+            let within = |s: &str| scope == s || scope.starts_with(&alloc::format!("{s}."));
+            if !(within(&p.scope) || (p.single && within(parent))) {
+                continue;
+            }
+            let shared = p.scope.split('.').zip(scope.split('.')).take_while(|(a, b)| a == b).count();
+            if best.is_none_or(|(b, _)| shared > b) {
+                best = Some((shared, pi));
             }
         }
-        cursor = first;
-        let scope = scope_of(&occurrences, group);
+        best.map(|(_, pi)| &message.segments[placed[pi].seg])
+    };
+    for p in &placed {
+        let seg = &message.segments[p.seg];
+        let seg_at = labels[p.seg].clone();
+        let scope = p.scope.clone();
+        let lookup = |name: &str| lookup_in(name, &scope);
         let mut applied: Vec<(&str, Instance)> = Vec::new();
         let mut deferred: Vec<(&str, Instance, &str)> = Vec::new();
-        for row in rows {
+        for &ri in p.rows {
+            let row = &map.rows[ri];
             match row.cond {
                 Cond::Skipped(why) => {
                     deferred.push((row.resource, row.instance, why));
                     continue;
                 }
                 Cond::When(e) => {
-                    if !eval_cond(e, seg, None) {
+                    if !eval_cond(e, seg, None, &lookup) {
                         continue;
                     }
                 }
@@ -1195,14 +1591,15 @@ pub fn convert_with(
                 Instance::Numbered(k) => Some(k),
             };
             let inst = cv.open(rt, number, &scope);
-            cv.apply_segment(seg, &seg_at, smap, inst);
+            cv.apply_segment(seg, &seg_at, smap, inst, &lookup);
             applied.push((row.resource, row.instance));
         }
         // an alternative the pod could not judge is a skip only when no
         // sibling row for the same resource applied
         for (res, instance, why) in deferred {
             if !applied.iter().any(|(r, i)| *r == res && *i == instance) {
-                cv.skip(seg_at.clone(), res, why.into());
+                let target = if res.is_empty() { seg.name.as_str() } else { res };
+                cv.skip(seg_at.clone(), target, why.into());
             }
         }
     }
@@ -1217,7 +1614,14 @@ pub fn convert_with(
     // PATIENT_RESULT has its own)
     let in_scope = |set: &[(String, String)], scope: &str| -> Option<String> {
         let shared = |a: &str, b: &str| a.split('.').zip(b.split('.')).take_while(|(x, y)| x == y).count();
-        set.iter().max_by_key(|(s, _)| shared(s, scope)).map(|(_, u)| u.clone())
+        let mut best: Option<(usize, &String)> = None;
+        for (s, u) in set {
+            let n = shared(s, scope);
+            if best.is_none_or(|(b, _)| n > b) {
+                best = Some((n, u));
+            }
+        }
+        best.map(|(_, u)| u.clone())
     };
     let observations: Vec<(String, String)> = cv
         .instances
@@ -1291,6 +1695,7 @@ pub fn convert_with(
     let mut bundle_fields: Vec<(String, Node)> = Vec::new();
     let mut header_first: Vec<usize> = Vec::new();
     let mut others: Vec<usize> = Vec::new();
+    let mut literal_only: Vec<&'static str> = Vec::new();
     for (i, inst) in cv.instances.iter().enumerate() {
         match inst.resource {
             "Bundle" => {
@@ -1308,9 +1713,15 @@ pub fn convert_with(
     }
     for i in header_first.into_iter().chain(others) {
         let inst = &cv.instances[i];
-        // an instance no row filled beyond its type carries nothing: left out
+        // an instance no row filled beyond its type carries nothing: left out;
+        // one only the map's literals reached (`Account.status = active` from
+        // a PID) states nothing of the message: left out, and said so
         let filled = matches!(&inst.body, Node::Object(kvs) if kvs.len() > 1);
         if !filled {
+            continue;
+        }
+        if !inst.has_data {
+            literal_only.push(inst.resource);
             continue;
         }
         let mut body = inst.body.clone();
@@ -1323,7 +1734,7 @@ pub fn convert_with(
         ]));
     }
     let mut bundle: Vec<(String, Node)> = alloc::vec![("resourceType".into(), Node::Str("Bundle".into()))];
-    bundle.push(("id".into(), Node::Str(uuid(&alloc::format!("v2:bundle:{}", entries.len())))));
+    bundle.push(("id".into(), Node::Str(uuid(&alloc::format!("v2:bundle:{}", cv.salt)))));
     let mut has_type = false;
     for (k, v) in bundle_fields {
         if k == "type" {
@@ -1335,9 +1746,19 @@ pub fn convert_with(
         bundle.push(("type".into(), Node::Str("message".into())));
     }
     bundle.push(("entry".into(), Node::Array(entries)));
+    for r in literal_only {
+        cv.skip(String::from("-"), r, "nothing of the message reached it: only the map's literals".into());
+    }
+    // the same row reported once per place it applies, not once per attempt
+    let mut skipped: Vec<Skip> = Vec::new();
+    for k in cv.skipped {
+        if !skipped.contains(&k) {
+            skipped.push(k);
+        }
+    }
     let text = Node::Object(bundle).to_json();
     let validation = validator.validate_with(text.as_bytes(), tx);
-    Ok(Converted { bundle: text, validation, skipped: cv.skipped, unplaced })
+    Ok(Converted { bundle: text, validation, skipped, unplaced })
 }
 
 impl Validator {
