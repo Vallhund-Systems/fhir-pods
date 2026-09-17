@@ -76,6 +76,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "CarePlan.text.div",
         "CarePlan.text.status",
     ],
+    contexts: &[
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

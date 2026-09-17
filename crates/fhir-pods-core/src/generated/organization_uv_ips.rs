@@ -41,6 +41,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Organization.name",
         "Organization.telecom",
     ],
+    contexts: &[
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

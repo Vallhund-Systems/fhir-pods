@@ -68,6 +68,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Immunization.status",
         "Immunization.vaccineCode",
     ],
+    contexts: &[
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

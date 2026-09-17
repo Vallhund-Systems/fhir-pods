@@ -910,6 +910,10 @@ def emit(sd, provenance, load=None):
     out += ["    ],", "    lowering: &LOWERING,", "    must_support: &["]
     for path in must_support_of(sd):
         out.append(f"        {rs(path)},")
+    out += ["    ],", "    contexts: &["]
+    for cx in sd.get("context") or []:
+        if cx.get("type") and cx.get("expression"):
+            out.append(f"        ({rs(cx['type'])}, {rs(cx['expression'])}),")
     out += ["    ],", "};", ""]
     fixed, slices, slots = lowering_of(sd, load)
     out += ["/// How to build a resource for this profile (see `compiled::Lowering`).", "pub static LOWERING: Lowering = Lowering {", "    fixed: &["]

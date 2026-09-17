@@ -174,4 +174,10 @@ pub struct CompiledProfile {
     /// populate them when it has the data, so gaps are reported separately
     /// as information (see [`crate::must_support_gaps`]).
     pub must_support: &'static [&'static str],
+    /// Where an extension may sit (`StructureDefinition.context`): the kind
+    /// (`element`, `fhirpath`, `extension`) and the expression — an element
+    /// path (`Patient.birthDate`), a type (`ContactPoint`, `Element`), `*`,
+    /// or for `extension` the url of the extension it nests in. Empty for
+    /// anything but an extension profile.
+    pub contexts: &'static [(&'static str, &'static str)],
 }

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.8.2 — 2026-09-17
+
+**Verifier: extension contexts** (T041, found by the v2 bundles in front of
+the oracle in 0.8.0). Every compiled extension profile now carries its
+definition's `context` (`CompiledProfile::contexts`), and the shape walk
+holds an extension to it wherever it sits: the owner answers by its type,
+its path from the resource (`Patient.birthDate`, `Patient.deceased[x]`),
+its path from the datatype (`ContactPoint.value`) and the base types
+(`Element`, `Resource`, `DomainResource`, `BackboneElement`, `*`); a
+`fhirpath` context is not evaluated (allowed), an `extension` context is
+met by sitting inside an extension. Out of place is an error with the
+reference validator's wording. The walk now keeps the (context, key) of
+every object on the way down, so a nested resource's extensions are judged
+from that resource, and a primitive's carrier (`_birthDate`) from the
+primitive. Tests: 171. Oracle: **1206/1206** (unchanged: every published example sits its extensions where they belong).
+
 ## 0.8.1 — 2026-09-17
 
 **HL7 v2, reviewed.** Three independent reviews of 0.8.0 (the converter,

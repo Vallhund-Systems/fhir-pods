@@ -67,6 +67,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Patient.link",
         "Patient.name",
     ],
+    contexts: &[
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

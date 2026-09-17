@@ -701,6 +701,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Bundle.timestamp",
         "Bundle.type",
     ],
+    contexts: &[
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

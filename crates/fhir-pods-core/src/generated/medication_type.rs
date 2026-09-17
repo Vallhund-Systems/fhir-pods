@@ -45,6 +45,18 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     invariants: &[],
     lowering: &LOWERING,
     must_support: &[],
+    contexts: &[
+        ("fhirpath", "Medication.code.ofType(CodeableConcept).coding"),
+        ("fhirpath", "Medication.ingredient.item.ofType(CodeableConcept).coding"),
+        ("fhirpath", "MedicationRequest.medication.ofType(CodeableConcept).coding"),
+        ("fhirpath", "MedicationDispense.medication.ofType(CodeableConcept).coding"),
+        ("fhirpath", "MedicationStatement.medication.ofType(CodeableConcept).coding"),
+        ("fhirpath", "MedicationAdministration.medication.ofType(CodeableConcept).coding"),
+        ("element", "ValueSet.expansion.contains"),
+        ("element", "ValueSet.expansion.contains.contains"),
+        ("element", "CodeSystem.concept"),
+        ("element", "CodeSystem.concept.concept"),
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

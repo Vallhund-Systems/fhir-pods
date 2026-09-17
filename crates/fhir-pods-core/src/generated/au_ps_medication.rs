@@ -48,6 +48,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Medication.ingredient.item[x]",
         "Medication.ingredient.strength",
     ],
+    contexts: &[
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

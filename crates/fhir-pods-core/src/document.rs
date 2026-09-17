@@ -96,6 +96,7 @@ impl<'a> Parsed<'a> {
             gaps: Vec::new(),
             nested: Vec::new(),
             extensions: Vec::new(),
+            ctxs: Vec::new(),
             segs: Vec::new(),
             profiled: Vec::new(),
             profiles: Vec::new(),
@@ -250,6 +251,11 @@ struct Walk<'v, 'a> {
     /// The ids of the contained resources of each resource being walked,
     /// innermost last: what a local reference (`#id`) must name (ref-1).
     contained: Vec<Vec<alloc::string::String>>,
+    /// Every object on the way down (root first): its typing context (a
+    /// resource type, a datatype, a backbone path, `Element` for a
+    /// primitive's carrier) and the JSON key it was reached by — what an
+    /// extension's context is judged against.
+    ctxs: Vec<(&'static str, &'v str)>,
 }
 
 /// Does a profile reach an extension of this url through a slice (an
@@ -284,7 +290,7 @@ impl<'v, 'a> Walk<'v, 'a> {
 }
 
 fn structure_in<'v, 'a>(v: &'v Value<'a>, ctx: &'static str, path: &str, w: &mut Walk<'v, 'a>) {
-    structure_at(v, ctx, path, false, true, w)
+    structure_at(v, ctx, path, "", false, true, w)
 }
 
 /// `contained`: this object is a contained resource (or inside one), which
@@ -292,6 +298,97 @@ fn structure_in<'v, 'a>(v: &'v Value<'a>, ctx: &'static str, path: &str, w: &mut
 /// applies to this object on its own — false for a primitive's `_name`
 /// carrier whose value is present (the element has its value).
 fn structure_at<'v, 'a>(
+    v: &'v Value<'a>,
+    ctx: &'static str,
+    path: &str,
+    key: &'v str,
+    contained: bool,
+    needs_content: bool,
+    w: &mut Walk<'v, 'a>,
+) {
+    w.ctxs.push((ctx, key));
+    structure_object(v, ctx, path, contained, needs_content, w);
+    w.ctxs.pop();
+}
+
+/// The element paths an extension's owner answers to: the owner's type, the
+/// path from its resource (`Patient.telecom.value`) and from its datatype
+/// (`ContactPoint.value`), with the base types everything is.
+fn owner_names(w: &Walk<'_, '_>) -> Vec<alloc::string::String> {
+    use alloc::string::{String, ToString};
+    let n = w.ctxs.len();
+    let mut names: Vec<String> = alloc::vec![String::from("*"), String::from("Element")];
+    if n < 2 {
+        return names;
+    }
+    let owner = n - 2;
+    let (owner_ctx, owner_key) = w.ctxs[owner];
+    let is_resource = |c: &str| crate::typemap::RESOURCES.binary_search(&c).is_ok();
+    // the owner's own type: what the element it was reached by is typed as
+    let owner_type: &str = if owner >= 1 && !owner_key.is_empty() {
+        let bare = owner_key.strip_prefix('_').unwrap_or(owner_key);
+        crate::typing::child(w.ctxs[owner - 1].0, bare).map(|c| c.ty).unwrap_or(owner_ctx)
+    } else {
+        owner_ctx
+    };
+    if owner_ctx.contains('.') {
+        names.push(String::from("BackboneElement"));
+    } else {
+        names.push(owner_type.to_string());
+    }
+    if is_resource(owner_ctx) {
+        names.push(String::from("Resource"));
+        if !matches!(owner_ctx, "Bundle" | "Parameters" | "Binary") {
+            names.push(String::from("DomainResource"));
+        }
+    }
+    // the path from the nearest resource, and from the nearest datatype
+    let path_from = |start: usize| -> String {
+        let mut p = String::from(w.ctxs[start].0);
+        for k in start + 1..=owner {
+            let key = w.ctxs[k].1;
+            let name = key.strip_prefix('_').unwrap_or(key);
+            let choice = crate::typing::child(w.ctxs[k - 1].0, name).and_then(|c| c.choice);
+            p.push('.');
+            match choice {
+                Some(stem) => {
+                    p.push_str(stem);
+                    p.push_str("[x]");
+                }
+                None => p.push_str(name),
+            }
+        }
+        p
+    };
+    let is_datatype =
+        |c: &str| !c.contains('.') && !is_resource(c) && c != "Element" && crate::typing::known_type(c).is_some();
+    if let Some(r) = (0..=owner).rev().find(|&i| is_resource(w.ctxs[i].0)) {
+        names.push(path_from(r));
+    }
+    if let Some(d) = (0..=owner).rev().find(|&i| is_datatype(w.ctxs[i].0)) {
+        names.push(path_from(d));
+    }
+    let mut unique: Vec<String> = Vec::new();
+    for n in names {
+        if !unique.contains(&n) {
+            unique.push(n);
+        }
+    }
+    unique
+}
+
+/// Does an extension's definition allow it where it sits? A `fhirpath`
+/// context is not evaluated (allowed); an `extension` context is met by
+/// sitting inside an extension.
+fn context_allows(p: &crate::compiled::CompiledProfile, names: &[alloc::string::String], owner_ctx: &str) -> bool {
+    p.contexts.iter().any(|(kind, expr)| match *kind {
+        "element" => names.iter().any(|n| n == expr),
+        "extension" => owner_ctx == "Extension",
+        _ => true,
+    })
+}
+
+fn structure_object<'v, 'a>(
     v: &'v Value<'a>,
     ctx: &'static str,
     path: &str,
@@ -394,15 +491,30 @@ fn structure_at<'v, 'a>(
             }
         }
     }
-    // an extension whose url names a compiled extension profile is held to it
+    // an extension whose url names a compiled extension profile is held to
+    // it — and to where its definition says it may sit
     if ctx == "Extension" {
         if let Some((_, Value::Str(url))) = kvs.iter().find(|(k, _)| k.as_ref() == "url") {
             let base = url.split('|').next().unwrap_or(url);
-            let reached = w.profiles.last().is_some_and(|ps| ps.iter().any(|p| profile_reaches(p.slicings, base)));
-            if !reached {
-                if let Some(p) =
-                    crate::generated::REGISTRY.iter().find(|p| p.resource_type == "Extension" && p.url == base)
-                {
+            if let Some(p) = crate::generated::REGISTRY.iter().find(|p| p.resource_type == "Extension" && p.url == base)
+            {
+                let owner_ctx = w.ctxs.len().checked_sub(2).map(|i| w.ctxs[i].0).unwrap_or("");
+                let names = owner_names(w);
+                if !p.contexts.is_empty() && !context_allows(p, &names, owner_ctx) {
+                    let here: Vec<&str> = names.iter().map(|s| s.as_str()).filter(|n| *n != "*").collect();
+                    let allowed: Vec<&str> = p.contexts.iter().map(|(_, e)| *e).collect();
+                    w.gaps.push((
+                        path.into(),
+                        Structure,
+                        alloc::format!(
+                            "The extension {base} is not allowed to be used at this point (this element is [{}]; allowed = [{}])",
+                            here.join(", "),
+                            allowed.join(", ")
+                        ),
+                    ));
+                }
+                let reached = w.profiles.last().is_some_and(|ps| ps.iter().any(|p| profile_reaches(p.slicings, base)));
+                if !reached {
                     let label = w.label(w.root);
                     w.extensions.push((label, v, p));
                 }
@@ -491,7 +603,7 @@ fn structure_at<'v, 'a>(
                     )),
                     Value::Object(_) => {
                         let paired = kvs.iter().any(|(k, _)| k.as_ref() == bare);
-                        structure_at(x, "Element", &child_path, contained, !paired, w)
+                        structure_at(x, "Element", &child_path, key, contained, !paired, w)
                     }
                     Value::Null if repeats => {}
                     other => w.gaps.push((
@@ -524,7 +636,7 @@ fn structure_at<'v, 'a>(
                         w.nested.push((label, x));
                         // deeper labels read as the issues do: `…resource.Bundle.entry[1]…`
                         w.segs.push((rt, None));
-                        structure_at(x, rt, &child_path, contained || bare == "contained", true, w);
+                        structure_at(x, rt, &child_path, bare, contained || bare == "contained", true, w);
                         w.segs.pop();
                     }
                     _ => w.gaps.push((
@@ -554,7 +666,7 @@ fn structure_at<'v, 'a>(
                 }
             } else {
                 match x {
-                    Value::Object(_) => structure_at(x, ch.ctx, &child_path, contained, true, w),
+                    Value::Object(_) => structure_at(x, ch.ctx, &child_path, bare, contained, true, w),
                     other => w.gaps.push((
                         child_path.clone(),
                         ValueIssue,

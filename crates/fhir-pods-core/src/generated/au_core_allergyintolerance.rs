@@ -59,6 +59,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "AllergyIntolerance.reaction.severity",
         "AllergyIntolerance.verificationStatus",
     ],
+    contexts: &[
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

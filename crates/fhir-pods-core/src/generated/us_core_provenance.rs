@@ -78,6 +78,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Provenance.target",
         "Provenance.target.reference",
     ],
+    contexts: &[
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

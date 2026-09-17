@@ -80,6 +80,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Observation.subject",
         "Observation.subject.reference",
     ],
+    contexts: &[
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

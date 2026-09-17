@@ -52,6 +52,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Flag.subject",
         "Flag.subject.reference",
     ],
+    contexts: &[
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

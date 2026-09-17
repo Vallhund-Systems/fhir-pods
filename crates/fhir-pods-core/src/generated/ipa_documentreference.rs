@@ -76,6 +76,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "DocumentReference.subject",
         "DocumentReference.type",
     ],
+    contexts: &[
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

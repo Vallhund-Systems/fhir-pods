@@ -38,6 +38,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     must_support: &[
         "Practitioner.name",
     ],
+    contexts: &[
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

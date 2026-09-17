@@ -166,6 +166,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     must_support: &[
         "AuditEvent.source",
     ],
+    contexts: &[
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

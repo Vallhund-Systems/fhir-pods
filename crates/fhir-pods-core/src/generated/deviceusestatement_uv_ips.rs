@@ -53,6 +53,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "DeviceUseStatement.subject.reference",
         "DeviceUseStatement.timing[x]",
     ],
+    contexts: &[
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

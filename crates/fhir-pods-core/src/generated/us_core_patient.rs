@@ -140,6 +140,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Patient.telecom.use",
         "Patient.telecom.value",
     ],
+    contexts: &[
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

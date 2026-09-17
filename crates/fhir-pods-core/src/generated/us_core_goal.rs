@@ -48,6 +48,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Goal.target",
         "Goal.target.due[x]",
     ],
+    contexts: &[
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

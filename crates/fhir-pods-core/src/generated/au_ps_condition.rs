@@ -65,6 +65,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Condition.subject.reference",
         "Condition.verificationStatus",
     ],
+    contexts: &[
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

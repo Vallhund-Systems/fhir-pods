@@ -74,6 +74,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Device.udiCarrier.carrierHRF",
         "Device.udiCarrier.deviceIdentifier",
     ],
+    contexts: &[
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

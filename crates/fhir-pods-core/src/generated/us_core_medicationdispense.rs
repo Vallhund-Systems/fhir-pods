@@ -80,6 +80,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "MedicationDispense.type",
         "MedicationDispense.whenHandedOver",
     ],
+    contexts: &[
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

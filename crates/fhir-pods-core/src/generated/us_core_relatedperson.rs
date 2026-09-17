@@ -43,6 +43,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "RelatedPerson.relationship",
         "RelatedPerson.telecom",
     ],
+    contexts: &[
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

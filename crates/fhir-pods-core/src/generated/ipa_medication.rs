@@ -42,6 +42,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     must_support: &[
         "Medication.code",
     ],
+    contexts: &[
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

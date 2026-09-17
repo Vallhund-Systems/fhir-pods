@@ -413,6 +413,35 @@ fn f026_an_unprofiled_bundle_owes_its_identity_and_the_base_bundle_rules() {
 }
 
 #[test]
+fn an_extension_sits_where_its_definition_allows() {
+    let bt = r#"{"url":"http://hl7.org/fhir/StructureDefinition/patient-birthTime","valueDateTime":"1970-06-15T10:30:00+10:00"}"#;
+    // on the birth date's carrier: allowed
+    let ok = format!(r#"{{"resourceType":"Patient","birthDate":"1970-06-15","_birthDate":{{"extension":[{bt}]}}}}"#);
+    assert!(probe_str(&ok).contains("\"valid\":true"), "{}", probe_str(&ok));
+    // on the resource itself, or on another element: not allowed, as the reference validator has it
+    let root = format!(r#"{{"resourceType":"Patient","birthDate":"1970-06-15","extension":[{bt}]}}"#);
+    let r = probe_str(&root);
+    assert!(
+        r.contains("\"valid\":false")
+            && r.contains("The extension http://hl7.org/fhir/StructureDefinition/patient-birthTime is not allowed to be used at this point (this element is [Element, Patient, Resource, DomainResource]; allowed = [Patient.birthDate, Person.birthDate, RelatedPerson.birthDate, Practitioner.birthDate])"),
+        "{r}"
+    );
+    let choice = format!(
+        r#"{{"resourceType":"Patient","deceasedDateTime":"2026-01-01","_deceasedDateTime":{{"extension":[{bt}]}}}}"#
+    );
+    let r = probe_str(&choice);
+    assert!(
+        r.contains("\"valid\":false") && r.contains("this element is [Element, dateTime, Patient.deceased[x]]"),
+        "{r}"
+    );
+    // inside a Bundle entry the owner is judged from the nested resource, not the Bundle
+    let nested = format!(
+        r#"{{"resourceType":"Bundle","type":"collection","entry":[{{"fullUrl":"urn:uuid:5b8e1672-0000-4000-8000-000000000001","resource":{ok}}}]}}"#
+    );
+    assert!(probe_str(&nested).contains("\"valid\":true"), "{}", probe_str(&nested));
+}
+
+#[test]
 fn an_identifier_under_rfc_3986_carries_a_uri() {
     let ok =
         r##"{"resourceType":"Organization","identifier":[{"system":"urn:ietf:rfc:3986","value":"urn:oid:1.2.3"}]}"##;

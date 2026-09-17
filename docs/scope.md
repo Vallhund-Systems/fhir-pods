@@ -145,10 +145,14 @@ the count above.
 - Slices whose discriminator cannot be resolved from the profile (e.g.
   AU Core's `identifier:dva`, whose `type` pattern lives nowhere). Deferred.
 - Bindings to value sets we do not bundle. Warned, not failed.
-- Where an extension may sit (its definition's `context`). An extension is
-  held to its compiled definition's shape and value, not to its place; the
-  reference validator refuses one out of place. Known since the v2
-  bundles (0.8.0): next.
+- **Where an extension may sit is checked** (0.8.2): a compiled extension
+  profile carries its definition's `context`, and an instance whose owner
+  answers to none of them — by its type, by its path from the resource
+  (`Patient.birthDate`, `Observation.value[x]`), by its path from the
+  datatype (`ContactPoint.value`), or by the base types (`Element`,
+  `Resource`, `DomainResource`, `BackboneElement`, `*`) — is an error, as
+  the reference validator has it. A `fhirpath` context is not evaluated
+  (allowed); an `extension` context is met by sitting inside an extension.
 - **HL7 v2** (0.8.0): the published `hl7.fhir.uv.v2mappings` maps are
   executed as published; a row the pod cannot execute (a narrative-only
   condition, a prose formula, a target form the engine does not take, an

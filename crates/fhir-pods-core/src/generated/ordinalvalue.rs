@@ -51,6 +51,12 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     invariants: &[],
     lowering: &LOWERING,
     must_support: &[],
+    contexts: &[
+        ("element", "Coding"),
+        ("element", "Questionnaire.item.answerOption"),
+        ("element", "CodeSystem.concept"),
+        ("element", "ValueSet.compose.include.concept"),
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).
