@@ -1,0 +1,20 @@
+fhir-pods-terminology 1
+# Diagnostic only: the complete explicit include lists in hl7.fhir.uv.ips 2.0.1.
+# Source: pinned IPS 2.0.1 package, ValueSet files under package/.
+# No clinical displays; this does not change the default assembly result.
+# ValueSet-edd-method-uv-ips.json sha256=df5141d6069b503d21426c05b6a1e2d15565380382a43b897c18825e18cb6db6
+= http://hl7.org/fhir/uv/ips/ValueSet/edd-method-uv-ips
+http://loinc.org	11778-8
+http://loinc.org	11779-6
+http://loinc.org	11780-4
+# ValueSet-pregnancies-summary-uv-ips.json sha256=ecc6af1b5d1d9620a94277d1d6f17285ca769f6c2277d15e7c713df4729ec41c
+= http://hl7.org/fhir/uv/ips/ValueSet/pregnancies-summary-uv-ips
+http://loinc.org	11636-8
+http://loinc.org	11637-6
+http://loinc.org	11638-4
+http://loinc.org	11639-2
+http://loinc.org	11640-0
+http://loinc.org	11612-9
+http://loinc.org	11613-7
+http://loinc.org	11614-5
+http://loinc.org	33065-4

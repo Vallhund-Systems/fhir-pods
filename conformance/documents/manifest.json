@@ -1,0 +1,206 @@
+{
+  "kinds": [
+    "ips",
+    "au-ps"
+  ],
+  "cases": [
+    {
+      "id": "minimal",
+      "file": "minimal.json",
+      "expect_valid": true,
+      "reason": "Empty required sections use data-absent-reason; supporting patient and author resolve."
+    },
+    {
+      "id": "condition-active",
+      "file": "condition-active.json",
+      "expect_valid": true,
+      "reason": "Active Condition belongs in problems.",
+      "section": "11450-4",
+      "placed_type": "Condition"
+    },
+    {
+      "id": "condition-past",
+      "file": "condition-past.json",
+      "expect_valid": true,
+      "reason": "Resolved Condition belongs in history of past problems.",
+      "section": "11348-0",
+      "placed_type": "Condition"
+    },
+    {
+      "id": "allergy",
+      "file": "allergy.json",
+      "expect_valid": true,
+      "reason": "Route AllergyIntolerance and retain linked supporting resources.",
+      "section": "48765-2",
+      "placed_type": "AllergyIntolerance"
+    },
+    {
+      "id": "medication-statement",
+      "file": "medication-statement.json",
+      "expect_valid": true,
+      "reason": "Route MedicationStatement and retain linked supporting resources.",
+      "section": "10160-0",
+      "placed_type": "MedicationStatement"
+    },
+    {
+      "id": "medication-request",
+      "file": "medication-request.json",
+      "expect_valid": true,
+      "reason": "Route MedicationRequest and retain linked supporting resources.",
+      "section": "10160-0",
+      "placed_type": "MedicationRequest"
+    },
+    {
+      "id": "immunization",
+      "file": "immunization.json",
+      "expect_valid": true,
+      "reason": "Route Immunization and retain linked supporting resources.",
+      "section": "11369-6",
+      "placed_type": "Immunization"
+    },
+    {
+      "id": "procedure",
+      "file": "procedure.json",
+      "expect_valid": true,
+      "reason": "Route Procedure and retain linked supporting resources.",
+      "section": "47519-4",
+      "placed_type": "Procedure"
+    },
+    {
+      "id": "device-use",
+      "file": "device-use.json",
+      "expect_valid": true,
+      "reason": "Route DeviceUseStatement and retain linked supporting resources.",
+      "section": "46264-8",
+      "placed_type": "DeviceUseStatement"
+    },
+    {
+      "id": "diagnostic-report",
+      "file": "diagnostic-report.json",
+      "expect_valid": true,
+      "reason": "Route DiagnosticReport and retain linked supporting resources.",
+      "section": "30954-2",
+      "placed_type": "DiagnosticReport"
+    },
+    {
+      "id": "care-plan",
+      "file": "care-plan.json",
+      "expect_valid": true,
+      "reason": "Route CarePlan and retain linked supporting resources.",
+      "section": "18776-5",
+      "placed_type": "CarePlan"
+    },
+    {
+      "id": "immunization-recommendation",
+      "file": "immunization-recommendation.json",
+      "expect_valid": true,
+      "reason": "Route ImmunizationRecommendation and retain linked supporting resources.",
+      "section": "18776-5",
+      "placed_type": "ImmunizationRecommendation"
+    },
+    {
+      "id": "flag",
+      "file": "flag.json",
+      "expect_valid": true,
+      "reason": "Route Flag and retain linked supporting resources.",
+      "section": "104605-1",
+      "placed_type": "Flag"
+    },
+    {
+      "id": "consent",
+      "file": "consent.json",
+      "expect_valid": true,
+      "reason": "Route Consent and retain linked supporting resources.",
+      "section": "42348-3",
+      "placed_type": "Consent"
+    },
+    {
+      "id": "clinical-impression",
+      "file": "clinical-impression.json",
+      "expect_valid": true,
+      "reason": "Route ClinicalImpression and retain linked supporting resources.",
+      "section": "47420-5",
+      "placed_type": "ClinicalImpression"
+    },
+    {
+      "id": "vital-sign",
+      "file": "vital-sign.json",
+      "expect_valid": true,
+      "reason": "A complete heart-rate observation belongs in vital signs.",
+      "section": "8716-3",
+      "placed_type": "Observation"
+    },
+    {
+      "id": "social-history",
+      "file": "social-history.json",
+      "expect_valid": true,
+      "reason": "Exercise the social-history Observation route.",
+      "section": "29762-2",
+      "placed_type": "Observation"
+    },
+    {
+      "id": "pregnancy",
+      "file": "pregnancy.json",
+      "expect_valid": true,
+      "reason": "Exercise the pregnancy Observation route.",
+      "section": "10162-6",
+      "placed_type": "Observation"
+    },
+    {
+      "id": "laboratory",
+      "file": "laboratory.json",
+      "expect_valid": true,
+      "reason": "Exercise the laboratory Observation route.",
+      "section": "30954-2",
+      "placed_type": "Observation"
+    },
+    {
+      "id": "no-patient",
+      "file": "no-patient.json",
+      "expect_valid": false,
+      "reason": "Missing Patient must reject the request.",
+      "expect_error": "inputs.resources must include the Patient"
+    },
+    {
+      "id": "outside-author",
+      "file": "outside-author.json",
+      "expect_valid": false,
+      "reason": "An author outside the document must be reported by local validation or rejection.",
+      "unresolved": "Practitioner/outside",
+      "omitted": [
+        "Practitioner/a"
+      ]
+    },
+    {
+      "id": "orphan-resource",
+      "file": "orphan-resource.json",
+      "expect_valid": true,
+      "reason": "An unreachable resource must be reported in omitted and absent from the document.",
+      "omitted": [
+        "Organization/orphan"
+      ]
+    },
+    {
+      "id": "vital-year-only",
+      "file": "vital-year-only.json",
+      "expect_valid": false,
+      "reason": "Vital signs require day precision (vs-1), even when supplied without meta.profile.",
+      "section": "8716-3",
+      "placed_type": "Observation"
+    },
+    {
+      "id": "changed-content",
+      "file": "changed-content.json",
+      "expect_valid": true,
+      "reason": "F016: same counts and metadata but changed patient content must change document identities.",
+      "identity_differs_from": "minimal"
+    },
+    {
+      "id": "foreign-patient-reference",
+      "file": "foreign-patient-reference.json",
+      "expect_valid": true,
+      "reason": "F009: an absolute reference on another server must never bind to local Patient/p.",
+      "preserve_reference": "https://other.example.org/fhir/Patient/p"
+    }
+  ]
+}

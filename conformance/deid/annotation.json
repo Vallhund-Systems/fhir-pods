@@ -1,0 +1,13 @@
+{
+  "resourceType": "Condition",
+  "id": "c",
+  "subject": {
+    "reference": "Patient/p"
+  },
+  "note": [
+    {
+      "authorString": "PHI_NOTE_AUTHOR",
+      "text": "PHI_NOTE_TEXT"
+    }
+  ]
+}

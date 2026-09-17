@@ -1,0 +1,139 @@
+{
+  "policy": {
+    "salt": "synthetic-probe-salt-only",
+    "today": "2026-09-16",
+    "base": "safe-harbor"
+  },
+  "cases": [
+    {
+      "id": "extension-human-name",
+      "file": "extension-human-name.json",
+      "markers": [
+        "PHI_EXTENSION_NAME"
+      ],
+      "reason": "HumanName must be handled by its type inside an extension."
+    },
+    {
+      "id": "contained-patient",
+      "file": "contained-patient.json",
+      "markers": [
+        "PHI_CONTAINED_NAME"
+      ],
+      "reason": "Contained resources must retain local reference integrity while removing names.",
+      "contained_reference": true
+    },
+    {
+      "id": "annotation",
+      "file": "annotation.json",
+      "markers": [
+        "PHI_NOTE_AUTHOR",
+        "PHI_NOTE_TEXT"
+      ],
+      "reason": "Annotation author and body both carry identifiers."
+    },
+    {
+      "id": "attachment",
+      "file": "attachment.json",
+      "markers": [
+        "PHI_PHOTO_TITLE",
+        "PHI_PHOTO_URL"
+      ],
+      "reason": "Removing an Attachment must cover title and URL."
+    },
+    {
+      "id": "reference-display",
+      "file": "reference-display.json",
+      "markers": [
+        "PHI_REFERENCE_DISPLAY"
+      ],
+      "reason": "Reference display strings must be removed."
+    },
+    {
+      "id": "bundle-nesting",
+      "file": "bundle-nesting.json",
+      "markers": [
+        "PHI_EXTENSION_NAME",
+        "PHI_CONTAINED_NAME",
+        "PHI_NOTE_AUTHOR",
+        "PHI_NOTE_TEXT",
+        "PHI_PHOTO_TITLE",
+        "PHI_PHOTO_URL",
+        "PHI_REFERENCE_DISPLAY"
+      ],
+      "reason": "The same type policies must work through Bundle.entry.resource."
+    },
+    {
+      "id": "unicode-identifier-system-first",
+      "file": "unicode-identifier-system-first.json",
+      "markers": [
+        "患者識別子Ω"
+      ],
+      "reason": "F008/F014: Unicode identifiers must change, independently of JSON member order.",
+      "same_identifier_group": "unicode"
+    },
+    {
+      "id": "unicode-identifier-value-first",
+      "file": "unicode-identifier-value-first.json",
+      "markers": [
+        "患者識別子Ω"
+      ],
+      "reason": "F008/F014: Unicode identifiers must change, independently of JSON member order.",
+      "same_identifier_group": "unicode"
+    },
+    {
+      "id": "age-100-months",
+      "file": "age-100-months.json",
+      "markers": [],
+      "reason": "F015: clamp only ages above 89 years, in the original unit; record the change.",
+      "age_value": 100,
+      "clamp_recorded": false
+    },
+    {
+      "id": "age-1100-months",
+      "file": "age-1100-months.json",
+      "markers": [],
+      "reason": "F015: clamp only ages above 89 years, in the original unit; record the change.",
+      "age_value": 1080,
+      "clamp_recorded": true
+    },
+    {
+      "id": "old-birth-date",
+      "file": "old-birth-date.json",
+      "markers": [
+        "1910",
+        "06-12"
+      ],
+      "reason": "Birth years identifying someone over 89 must be aggregated."
+    },
+    {
+      "id": "extension-free-text",
+      "file": "extension-free-text.json",
+      "markers": [
+        "PHI_GENERIC_EXTENSION"
+      ],
+      "reason": "A valid extension can contain an identifier in a generic string; test beyond the built-in type checker."
+    },
+    {
+      "id": "codeable-concept-text",
+      "file": "codeable-concept-text.json",
+      "markers": [
+        "PHI_CODE_TEXT"
+      ],
+      "reason": "CodeableConcept.text is free text and may contain an identifier."
+    },
+    {
+      "id": "retention-control",
+      "file": "retention-control.json",
+      "markers": [
+        "PHI_CONTROL_NAME"
+      ],
+      "reason": "Positive control: no base policy deliberately retains the name; both leak detectors must notice.",
+      "policy": {
+        "salt": "synthetic-probe-salt-only",
+        "today": "2026-09-16",
+        "base": "none"
+      },
+      "retain_control": true
+    }
+  ]
+}

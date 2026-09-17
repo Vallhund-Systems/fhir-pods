@@ -1,0 +1,22 @@
+{
+  "resourceType": "Observation",
+  "id": "o",
+  "status": "final",
+  "code": {
+    "text": "Synthetic observation"
+  },
+  "subject": {
+    "reference": "#p"
+  },
+  "contained": [
+    {
+      "resourceType": "Patient",
+      "id": "p",
+      "name": [
+        {
+          "family": "PHI_CONTAINED_NAME"
+        }
+      ]
+    }
+  ]
+}

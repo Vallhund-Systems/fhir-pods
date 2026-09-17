@@ -6,6 +6,7 @@ resolver = "2"
 members = [
     "crates/fhir-pods-core",
     "crates/fhir-pods-ffi",
+    "crates/fhir-pods-cli",
 ]
 # The libFuzzer crate is standalone (needs nightly; carries libfuzzer-sys).
 exclude = ["fuzz"]

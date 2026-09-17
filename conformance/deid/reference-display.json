@@ -1,0 +1,12 @@
+{
+  "resourceType": "Observation",
+  "id": "o",
+  "status": "final",
+  "code": {
+    "text": "Synthetic observation"
+  },
+  "subject": {
+    "reference": "Patient/p",
+    "display": "PHI_REFERENCE_DISPLAY"
+  }
+}

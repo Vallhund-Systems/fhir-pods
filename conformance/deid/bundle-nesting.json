@@ -1,0 +1,90 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "entry": [
+    {
+      "fullUrl": "https://example.org/fhir/Patient/0",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "p",
+        "extension": [
+          {
+            "url": "https://example.org/synthetic-name",
+            "valueHumanName": {
+              "family": "PHI_EXTENSION_NAME"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://example.org/fhir/Observation/1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "o",
+        "status": "final",
+        "code": {
+          "text": "Synthetic observation"
+        },
+        "subject": {
+          "reference": "#p"
+        },
+        "contained": [
+          {
+            "resourceType": "Patient",
+            "id": "p",
+            "name": [
+              {
+                "family": "PHI_CONTAINED_NAME"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://example.org/fhir/Condition/2",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "c",
+        "subject": {
+          "reference": "Patient/p"
+        },
+        "note": [
+          {
+            "authorString": "PHI_NOTE_AUTHOR",
+            "text": "PHI_NOTE_TEXT"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://example.org/fhir/Patient/3",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "p",
+        "photo": [
+          {
+            "title": "PHI_PHOTO_TITLE",
+            "url": "https://example.org/PHI_PHOTO_URL"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://example.org/fhir/Observation/4",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "o",
+        "status": "final",
+        "code": {
+          "text": "Synthetic observation"
+        },
+        "subject": {
+          "reference": "Patient/p",
+          "display": "PHI_REFERENCE_DISPLAY"
+        }
+      }
+    }
+  ]
+}

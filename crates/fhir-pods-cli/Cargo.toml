@@ -1,0 +1,14 @@
+[package]
+name = "fhir-pods-cli"
+version = "0.5.2"
+edition = "2021"
+license = "MIT"
+description = "Local command-line tools for FHIR validation, construction and transformation."
+publish = false
+
+[[bin]]
+name = "fhir-pods"
+path = "src/main.rs"
+
+[dependencies]
+fhir-pods-core = { path = "../fhir-pods-core" }

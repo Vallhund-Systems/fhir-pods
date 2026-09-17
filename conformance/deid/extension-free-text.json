@@ -1,0 +1,9 @@
+{
+  "resourceType": "Patient",
+  "extension": [
+    {
+      "url": "https://example.org/synthetic-patient-note",
+      "valueString": "PHI_GENERIC_EXTENSION"
+    }
+  ]
+}

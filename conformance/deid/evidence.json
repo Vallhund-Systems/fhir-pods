@@ -1,0 +1,1159 @@
+{
+  "recorded_at": "2026-09-17T02:36:55.443360+00:00",
+  "source_revision": "20d6fb6a432446238c7e19066057817f652a1891",
+  "source_dirty": true,
+  "binary_sha256": "cd59a86a940f48bf96623b7e6825bd9d61e621ce89b0748a4d48f63cedb2b388",
+  "deterministic_repeat": true,
+  "policy": {
+    "salt": "synthetic-probe-salt-only",
+    "today": "2026-09-16",
+    "base": "safe-harbor"
+  },
+  "counts": {
+    "total": 14,
+    "pass": 10,
+    "fail": 4
+  },
+  "cases": [
+    {
+      "id": "extension-human-name",
+      "file": "extension-human-name.json",
+      "markers": [
+        "PHI_EXTENSION_NAME"
+      ],
+      "reason": "HumanName must be handled by its type inside an extension.",
+      "sha256": "00eca1593953821f4317240125966b6b129c3bca2fa16758c1517185a172cb66",
+      "surviving_markers": [],
+      "failures": [
+        "invalid-output"
+      ],
+      "pass": false,
+      "result": {
+        "id": "extension-human-name",
+        "inputValidation": {
+          "resourceType": "Patient",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Patient",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "checkBefore": [
+          {
+            "path": "Patient.extension.valueHumanName",
+            "what": "HumanName present"
+          }
+        ],
+        "resource": {
+          "resourceType": "Patient",
+          "id": "d",
+          "extension": [
+            {
+              "url": "https://example.org/synthetic-name"
+            }
+          ]
+        },
+        "applied": [
+          {
+            "path": "Patient.id",
+            "action": "pseudonym"
+          },
+          {
+            "path": "Patient.extension.valueHumanName",
+            "action": "remove"
+          }
+        ],
+        "validation": {
+          "resourceType": "Patient",
+          "valid": false,
+          "issues": [
+            {
+              "severity": "error",
+              "code": "invariant",
+              "path": "Patient.extension",
+              "message": "ext-1: Patient.extension must have either extensions or a value, not both"
+            },
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Patient",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "remaining": [],
+        "checkAfter": []
+      }
+    },
+    {
+      "id": "contained-patient",
+      "file": "contained-patient.json",
+      "markers": [
+        "PHI_CONTAINED_NAME"
+      ],
+      "reason": "Contained resources must retain local reference integrity while removing names.",
+      "contained_reference": true,
+      "sha256": "2ac0f9a04314054fc40e8ab21e92a5a45e26f405c99b141b36bc34181701adc9",
+      "surviving_markers": [],
+      "failures": [],
+      "pass": true,
+      "result": {
+        "id": "contained-patient",
+        "inputValidation": {
+          "resourceType": "Observation",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Observation",
+              "message": "dom-6: A resource should have narrative for robust management"
+            },
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Observation.contained[0].Patient",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "checkBefore": [
+          {
+            "path": "Observation.contained[Patient].name",
+            "what": "HumanName present"
+          }
+        ],
+        "resource": {
+          "resourceType": "Observation",
+          "id": "m",
+          "status": "final",
+          "code": {
+            "text": "Synthetic observation"
+          },
+          "subject": {
+            "reference": "#d"
+          },
+          "contained": [
+            {
+              "resourceType": "Patient",
+              "id": "d"
+            }
+          ]
+        },
+        "applied": [
+          {
+            "path": "Observation.id",
+            "action": "pseudonym"
+          },
+          {
+            "path": "Observation.subject.reference",
+            "action": "pseudonym"
+          },
+          {
+            "path": "Patient.id",
+            "action": "pseudonym"
+          },
+          {
+            "path": "Patient.name",
+            "action": "remove"
+          }
+        ],
+        "validation": {
+          "resourceType": "Observation",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Observation",
+              "message": "dom-6: A resource should have narrative for robust management"
+            },
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Observation.contained[0].Patient",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "remaining": [],
+        "checkAfter": []
+      }
+    },
+    {
+      "id": "annotation",
+      "file": "annotation.json",
+      "markers": [
+        "PHI_NOTE_AUTHOR",
+        "PHI_NOTE_TEXT"
+      ],
+      "reason": "Annotation author and body both carry identifiers.",
+      "sha256": "f8a546bd2a024403da6ef7dcc2040088c438f2ca571d7fa891b285950728c73a",
+      "surviving_markers": [],
+      "failures": [],
+      "pass": true,
+      "result": {
+        "id": "annotation",
+        "inputValidation": {
+          "resourceType": "Condition",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Condition",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "checkBefore": [
+          {
+            "path": "Condition.note",
+            "what": "Annotation present"
+          }
+        ],
+        "resource": {
+          "resourceType": "Condition",
+          "id": "a",
+          "subject": {
+            "reference": "Patient/d"
+          }
+        },
+        "applied": [
+          {
+            "path": "Condition.id",
+            "action": "pseudonym"
+          },
+          {
+            "path": "Condition.subject.reference",
+            "action": "pseudonym"
+          },
+          {
+            "path": "Condition.note",
+            "action": "remove"
+          }
+        ],
+        "validation": {
+          "resourceType": "Condition",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Condition",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "remaining": [],
+        "checkAfter": []
+      }
+    },
+    {
+      "id": "attachment",
+      "file": "attachment.json",
+      "markers": [
+        "PHI_PHOTO_TITLE",
+        "PHI_PHOTO_URL"
+      ],
+      "reason": "Removing an Attachment must cover title and URL.",
+      "sha256": "458bf07f5be1bebbe3fdc99bc037131d846584f42a912102fabdbba96bd2b013",
+      "surviving_markers": [],
+      "failures": [],
+      "pass": true,
+      "result": {
+        "id": "attachment",
+        "inputValidation": {
+          "resourceType": "Patient",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Patient",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "checkBefore": [
+          {
+            "path": "Patient.photo",
+            "what": "Attachment present"
+          }
+        ],
+        "resource": {
+          "resourceType": "Patient",
+          "id": "d"
+        },
+        "applied": [
+          {
+            "path": "Patient.id",
+            "action": "pseudonym"
+          },
+          {
+            "path": "Patient.photo",
+            "action": "remove"
+          }
+        ],
+        "validation": {
+          "resourceType": "Patient",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Patient",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "remaining": [],
+        "checkAfter": []
+      }
+    },
+    {
+      "id": "reference-display",
+      "file": "reference-display.json",
+      "markers": [
+        "PHI_REFERENCE_DISPLAY"
+      ],
+      "reason": "Reference display strings must be removed.",
+      "sha256": "860ffc1e2cfc39ef7aec9541644189aa84d54cc89ff5c18187705fcc4211d902",
+      "surviving_markers": [],
+      "failures": [],
+      "pass": true,
+      "result": {
+        "id": "reference-display",
+        "inputValidation": {
+          "resourceType": "Observation",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Observation",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "checkBefore": [
+          {
+            "path": "Observation.subject.display",
+            "what": "reference display"
+          }
+        ],
+        "resource": {
+          "resourceType": "Observation",
+          "id": "m",
+          "status": "final",
+          "code": {
+            "text": "Synthetic observation"
+          },
+          "subject": {
+            "reference": "Patient/d"
+          }
+        },
+        "applied": [
+          {
+            "path": "Observation.id",
+            "action": "pseudonym"
+          },
+          {
+            "path": "Observation.subject.reference",
+            "action": "pseudonym"
+          },
+          {
+            "path": "Observation.subject.display",
+            "action": "remove"
+          }
+        ],
+        "validation": {
+          "resourceType": "Observation",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Observation",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "remaining": [],
+        "checkAfter": []
+      }
+    },
+    {
+      "id": "bundle-nesting",
+      "file": "bundle-nesting.json",
+      "markers": [
+        "PHI_EXTENSION_NAME",
+        "PHI_CONTAINED_NAME",
+        "PHI_NOTE_AUTHOR",
+        "PHI_NOTE_TEXT",
+        "PHI_PHOTO_TITLE",
+        "PHI_PHOTO_URL",
+        "PHI_REFERENCE_DISPLAY"
+      ],
+      "reason": "The same type policies must work through Bundle.entry.resource.",
+      "sha256": "a25202bb150cbfa018f757a4ba937dec6a42d11824ac76e82604885a52d5d2fe",
+      "surviving_markers": [],
+      "failures": [
+        "invalid-output"
+      ],
+      "pass": false,
+      "result": {
+        "id": "bundle-nesting",
+        "inputValidation": {
+          "resourceType": "Bundle",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Bundle.entry[0].resource.Patient",
+              "message": "dom-6: A resource should have narrative for robust management"
+            },
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Bundle.entry[1].resource.Observation",
+              "message": "dom-6: A resource should have narrative for robust management"
+            },
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Bundle.entry[1].resource.Observation.contained[0].Patient",
+              "message": "dom-6: A resource should have narrative for robust management"
+            },
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Bundle.entry[2].resource.Condition",
+              "message": "dom-6: A resource should have narrative for robust management"
+            },
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Bundle.entry[3].resource.Patient",
+              "message": "dom-6: A resource should have narrative for robust management"
+            },
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Bundle.entry[4].resource.Observation",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "checkBefore": [
+          {
+            "path": "Bundle.entry.resource[Patient].extension.valueHumanName",
+            "what": "HumanName present"
+          },
+          {
+            "path": "Bundle.entry.resource[Observation].contained[Patient].name",
+            "what": "HumanName present"
+          },
+          {
+            "path": "Bundle.entry.resource[Condition].note",
+            "what": "Annotation present"
+          },
+          {
+            "path": "Bundle.entry.resource[Patient].photo",
+            "what": "Attachment present"
+          },
+          {
+            "path": "Bundle.entry.resource[Observation].subject.display",
+            "what": "reference display"
+          }
+        ],
+        "resource": {
+          "resourceType": "Bundle",
+          "type": "collection",
+          "entry": [
+            {
+              "fullUrl": "https://example.org/fhir/Patient/8",
+              "resource": {
+                "resourceType": "Patient",
+                "id": "d",
+                "extension": [
+                  {
+                    "url": "https://example.org/synthetic-name"
+                  }
+                ]
+              }
+            },
+            {
+              "fullUrl": "https://example.org/fhir/Observation/0",
+              "resource": {
+                "resourceType": "Observation",
+                "id": "m",
+                "status": "final",
+                "code": {
+                  "text": "Synthetic observation"
+                },
+                "subject": {
+                  "reference": "#d"
+                },
+                "contained": [
+                  {
+                    "resourceType": "Patient",
+                    "id": "d"
+                  }
+                ]
+              }
+            },
+            {
+              "fullUrl": "https://example.org/fhir/Condition/1",
+              "resource": {
+                "resourceType": "Condition",
+                "id": "a",
+                "subject": {
+                  "reference": "Patient/d"
+                }
+              }
+            },
+            {
+              "fullUrl": "https://example.org/fhir/Patient/2",
+              "resource": {
+                "resourceType": "Patient",
+                "id": "d"
+              }
+            },
+            {
+              "fullUrl": "https://example.org/fhir/Observation/4",
+              "resource": {
+                "resourceType": "Observation",
+                "id": "m",
+                "status": "final",
+                "code": {
+                  "text": "Synthetic observation"
+                },
+                "subject": {
+                  "reference": "Patient/d"
+                }
+              }
+            }
+          ]
+        },
+        "applied": [
+          {
+            "path": "Bundle.entry.fullUrl",
+            "action": "pseudonym"
+          },
+          {
+            "path": "Patient.id",
+            "action": "pseudonym"
+          },
+          {
+            "path": "Patient.extension.valueHumanName",
+            "action": "remove"
+          },
+          {
+            "path": "Bundle.entry.fullUrl",
+            "action": "pseudonym"
+          },
+          {
+            "path": "Observation.id",
+            "action": "pseudonym"
+          },
+          {
+            "path": "Observation.subject.reference",
+            "action": "pseudonym"
+          },
+          {
+            "path": "Patient.id",
+            "action": "pseudonym"
+          },
+          {
+            "path": "Patient.name",
+            "action": "remove"
+          },
+          {
+            "path": "Bundle.entry.fullUrl",
+            "action": "pseudonym"
+          },
+          {
+            "path": "Condition.id",
+            "action": "pseudonym"
+          },
+          {
+            "path": "Condition.subject.reference",
+            "action": "pseudonym"
+          },
+          {
+            "path": "Condition.note",
+            "action": "remove"
+          },
+          {
+            "path": "Bundle.entry.fullUrl",
+            "action": "pseudonym"
+          },
+          {
+            "path": "Patient.id",
+            "action": "pseudonym"
+          },
+          {
+            "path": "Patient.photo",
+            "action": "remove"
+          },
+          {
+            "path": "Bundle.entry.fullUrl",
+            "action": "pseudonym"
+          },
+          {
+            "path": "Observation.id",
+            "action": "pseudonym"
+          },
+          {
+            "path": "Observation.subject.reference",
+            "action": "pseudonym"
+          },
+          {
+            "path": "Observation.subject.display",
+            "action": "remove"
+          }
+        ],
+        "validation": {
+          "resourceType": "Bundle",
+          "valid": false,
+          "issues": [
+            {
+              "severity": "error",
+              "code": "invariant",
+              "path": "Bundle.entry.resource.extension",
+              "message": "ext-1: Bundle.entry.resource.extension must have either extensions or a value, not both"
+            },
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Bundle.entry[0].resource.Patient",
+              "message": "dom-6: A resource should have narrative for robust management"
+            },
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Bundle.entry[1].resource.Observation",
+              "message": "dom-6: A resource should have narrative for robust management"
+            },
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Bundle.entry[1].resource.Observation.contained[0].Patient",
+              "message": "dom-6: A resource should have narrative for robust management"
+            },
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Bundle.entry[2].resource.Condition",
+              "message": "dom-6: A resource should have narrative for robust management"
+            },
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Bundle.entry[3].resource.Patient",
+              "message": "dom-6: A resource should have narrative for robust management"
+            },
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Bundle.entry[4].resource.Observation",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "remaining": [],
+        "checkAfter": []
+      }
+    },
+    {
+      "id": "unicode-identifier-system-first",
+      "file": "unicode-identifier-system-first.json",
+      "markers": [
+        "患者識別子Ω"
+      ],
+      "reason": "F008/F014: Unicode identifiers must change, independently of JSON member order.",
+      "same_identifier_group": "unicode",
+      "sha256": "7b9dc25c0bad7b97d4cccc7e2ed1a13da429f38ed32e04720182f24846ef6a7d",
+      "surviving_markers": [],
+      "failures": [],
+      "pass": true,
+      "result": {
+        "id": "unicode-identifier-system-first",
+        "inputValidation": {
+          "resourceType": "Patient",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Patient",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "checkBefore": [],
+        "resource": {
+          "resourceType": "Patient",
+          "identifier": [
+            {
+              "system": "https://example.org/ids",
+              "value": "fzuamf"
+            }
+          ]
+        },
+        "applied": [
+          {
+            "path": "Patient.identifier.value",
+            "action": "pseudonym"
+          }
+        ],
+        "validation": {
+          "resourceType": "Patient",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Patient",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "remaining": [],
+        "checkAfter": []
+      }
+    },
+    {
+      "id": "unicode-identifier-value-first",
+      "file": "unicode-identifier-value-first.json",
+      "markers": [
+        "患者識別子Ω"
+      ],
+      "reason": "F008/F014: Unicode identifiers must change, independently of JSON member order.",
+      "same_identifier_group": "unicode",
+      "sha256": "ba7ee4f1155d162175d3b4d98e63065494ca83447fd3c3397a0be5123f8fb0d5",
+      "surviving_markers": [],
+      "failures": [],
+      "pass": true,
+      "result": {
+        "id": "unicode-identifier-value-first",
+        "inputValidation": {
+          "resourceType": "Patient",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Patient",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "checkBefore": [],
+        "resource": {
+          "resourceType": "Patient",
+          "identifier": [
+            {
+              "value": "fzuamf",
+              "system": "https://example.org/ids"
+            }
+          ]
+        },
+        "applied": [
+          {
+            "path": "Patient.identifier.value",
+            "action": "pseudonym"
+          }
+        ],
+        "validation": {
+          "resourceType": "Patient",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Patient",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "remaining": [],
+        "checkAfter": []
+      }
+    },
+    {
+      "id": "age-100-months",
+      "file": "age-100-months.json",
+      "markers": [],
+      "reason": "F015: clamp only ages above 89 years, in the original unit; record the change.",
+      "age_value": 100,
+      "clamp_recorded": false,
+      "sha256": "2b73dc542d86b45b67100abc9699f4706a62819aebcd7d8e8190cd46273fcae0",
+      "surviving_markers": [],
+      "failures": [],
+      "pass": true,
+      "result": {
+        "id": "age-100-months",
+        "inputValidation": {
+          "resourceType": "Condition",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Condition",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "checkBefore": [],
+        "resource": {
+          "resourceType": "Condition",
+          "subject": {
+            "reference": "Patient/d"
+          },
+          "onsetAge": {
+            "value": 100,
+            "system": "http://unitsofmeasure.org",
+            "code": "mo"
+          }
+        },
+        "applied": [
+          {
+            "path": "Condition.subject.reference",
+            "action": "pseudonym"
+          }
+        ],
+        "validation": {
+          "resourceType": "Condition",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Condition",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "remaining": [],
+        "checkAfter": []
+      }
+    },
+    {
+      "id": "age-1100-months",
+      "file": "age-1100-months.json",
+      "markers": [],
+      "reason": "F015: clamp only ages above 89 years, in the original unit; record the change.",
+      "age_value": 1080,
+      "clamp_recorded": true,
+      "sha256": "9943136ef24833499e3aa7ce48642f9fecd50ea914862be9b6080e4e9bbe23d5",
+      "surviving_markers": [],
+      "failures": [],
+      "pass": true,
+      "result": {
+        "id": "age-1100-months",
+        "inputValidation": {
+          "resourceType": "Condition",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Condition",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "checkBefore": [
+          {
+            "path": "Condition.onsetAge",
+            "what": "age over 89"
+          }
+        ],
+        "resource": {
+          "resourceType": "Condition",
+          "subject": {
+            "reference": "Patient/d"
+          },
+          "onsetAge": {
+            "value": 1080,
+            "system": "http://unitsofmeasure.org",
+            "code": "mo"
+          }
+        },
+        "applied": [
+          {
+            "path": "Condition.subject.reference",
+            "action": "pseudonym"
+          },
+          {
+            "path": "Condition.onsetAge",
+            "action": "clamp"
+          }
+        ],
+        "validation": {
+          "resourceType": "Condition",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Condition",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "remaining": [],
+        "checkAfter": []
+      }
+    },
+    {
+      "id": "old-birth-date",
+      "file": "old-birth-date.json",
+      "markers": [
+        "1910",
+        "06-12"
+      ],
+      "reason": "Birth years identifying someone over 89 must be aggregated.",
+      "sha256": "e96688a9a312efb30922e0067dbd9f1a3a0e5446a9fe453279090ded73970b68",
+      "surviving_markers": [],
+      "failures": [],
+      "pass": true,
+      "result": {
+        "id": "old-birth-date",
+        "inputValidation": {
+          "resourceType": "Patient",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Patient",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "checkBefore": [
+          {
+            "path": "Patient.birthDate",
+            "what": "date finer than a year"
+          }
+        ],
+        "resource": {
+          "resourceType": "Patient"
+        },
+        "applied": [
+          {
+            "path": "Patient.birthDate",
+            "action": "remove"
+          }
+        ],
+        "validation": {
+          "resourceType": "Patient",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Patient",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "remaining": [],
+        "checkAfter": []
+      }
+    },
+    {
+      "id": "extension-free-text",
+      "file": "extension-free-text.json",
+      "markers": [
+        "PHI_GENERIC_EXTENSION"
+      ],
+      "reason": "A valid extension can contain an identifier in a generic string; test beyond the built-in type checker.",
+      "sha256": "0f71b55fd8c22e4a61c4f2794b38572206ef8029fa9df2c7e4ed7e142d1f540f",
+      "surviving_markers": [
+        "PHI_GENERIC_EXTENSION"
+      ],
+      "failures": [
+        "identifying-marker-survives"
+      ],
+      "pass": false,
+      "result": {
+        "id": "extension-free-text",
+        "inputValidation": {
+          "resourceType": "Patient",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Patient",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "checkBefore": [],
+        "resource": {
+          "resourceType": "Patient",
+          "extension": [
+            {
+              "url": "https://example.org/synthetic-patient-note",
+              "valueString": "PHI_GENERIC_EXTENSION"
+            }
+          ]
+        },
+        "applied": [],
+        "validation": {
+          "resourceType": "Patient",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Patient",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "remaining": [],
+        "checkAfter": []
+      }
+    },
+    {
+      "id": "codeable-concept-text",
+      "file": "codeable-concept-text.json",
+      "markers": [
+        "PHI_CODE_TEXT"
+      ],
+      "reason": "CodeableConcept.text is free text and may contain an identifier.",
+      "sha256": "8758701b49a7c0e262f1f44e006bbe567154ae83cfaa15f5e4837773dcd7a480",
+      "surviving_markers": [
+        "PHI_CODE_TEXT"
+      ],
+      "failures": [
+        "identifying-marker-survives"
+      ],
+      "pass": false,
+      "result": {
+        "id": "codeable-concept-text",
+        "inputValidation": {
+          "resourceType": "Observation",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Observation",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "checkBefore": [],
+        "resource": {
+          "resourceType": "Observation",
+          "status": "final",
+          "code": {
+            "text": "Synthetic measurement for PHI_CODE_TEXT"
+          }
+        },
+        "applied": [],
+        "validation": {
+          "resourceType": "Observation",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Observation",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "remaining": [],
+        "checkAfter": []
+      }
+    },
+    {
+      "id": "retention-control",
+      "file": "retention-control.json",
+      "markers": [
+        "PHI_CONTROL_NAME"
+      ],
+      "reason": "Positive control: no base policy deliberately retains the name; both leak detectors must notice.",
+      "policy": {
+        "salt": "synthetic-probe-salt-only",
+        "today": "2026-09-16",
+        "base": "none"
+      },
+      "retain_control": true,
+      "sha256": "b3295f34a6ee988dd6a5aa571943078fcc859f0878e041f8fae7e23bcec5168f",
+      "surviving_markers": [
+        "PHI_CONTROL_NAME"
+      ],
+      "failures": [],
+      "pass": true,
+      "result": {
+        "id": "retention-control",
+        "inputValidation": {
+          "resourceType": "Patient",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Patient",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "checkBefore": [
+          {
+            "path": "Patient.name",
+            "what": "HumanName present"
+          }
+        ],
+        "resource": {
+          "resourceType": "Patient",
+          "name": [
+            {
+              "family": "PHI_CONTROL_NAME"
+            }
+          ]
+        },
+        "applied": [],
+        "validation": {
+          "resourceType": "Patient",
+          "valid": true,
+          "issues": [
+            {
+              "severity": "warning",
+              "code": "invariant",
+              "path": "Patient",
+              "message": "dom-6: A resource should have narrative for robust management"
+            }
+          ]
+        },
+        "remaining": [
+          {
+            "path": "Patient.name",
+            "what": "HumanName present"
+          }
+        ],
+        "checkAfter": [
+          {
+            "path": "Patient.name",
+            "what": "HumanName present"
+          }
+        ]
+      }
+    }
+  ]
+}

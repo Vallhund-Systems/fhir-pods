@@ -1,0 +1,9 @@
+{
+  "resourceType": "Patient",
+  "identifier": [
+    {
+      "value": "患者識別子Ω",
+      "system": "https://example.org/ids"
+    }
+  ]
+}

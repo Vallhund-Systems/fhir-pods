@@ -1,0 +1,57 @@
+{
+  "resources": [
+    {
+      "resourceType": "Patient",
+      "id": "p",
+      "identifier": [
+        {
+          "system": "https://example.org/ids",
+          "value": "synthetic-patient"
+        }
+      ],
+      "name": [
+        {
+          "family": "Synthetic",
+          "given": [
+            "Patient"
+          ]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1980-04-12"
+    },
+    {
+      "resourceType": "Practitioner",
+      "id": "a",
+      "name": [
+        {
+          "family": "Synthetic",
+          "given": [
+            "Author"
+          ]
+        }
+      ]
+    },
+    {
+      "resourceType": "DeviceUseStatement",
+      "id": "use",
+      "status": "active",
+      "subject": {
+        "reference": "Patient/p"
+      },
+      "timingDateTime": "2026-09-16T12:00:00Z",
+      "device": {
+        "reference": "Device/d"
+      }
+    },
+    {
+      "resourceType": "Device",
+      "id": "d",
+      "type": {
+        "text": "Synthetic device"
+      }
+    }
+  ],
+  "author": "Practitioner/a",
+  "date": "2026-09-16T12:00:00Z"
+}

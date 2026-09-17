@@ -1,0 +1,51 @@
+{
+  "resources": [
+    {
+      "resourceType": "Patient",
+      "id": "p",
+      "identifier": [
+        {
+          "system": "https://example.org/ids",
+          "value": "synthetic-patient"
+        }
+      ],
+      "name": [
+        {
+          "family": "Synthetic",
+          "given": [
+            "Patient"
+          ]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1980-04-12"
+    },
+    {
+      "resourceType": "Practitioner",
+      "id": "a",
+      "name": [
+        {
+          "family": "Synthetic",
+          "given": [
+            "Author"
+          ]
+        }
+      ]
+    },
+    {
+      "resourceType": "Immunization",
+      "id": "imm",
+      "status": "completed",
+      "vaccineCode": {
+        "text": "Synthetic vaccine"
+      },
+      "patient": {
+        "reference": "Patient/p"
+      },
+      "occurrenceDateTime": "2026-09-16T12:00:00Z",
+      "primarySource": true
+    }
+  ],
+  "author": "Practitioner/a",
+  "date": "2026-09-16T12:00:00Z"
+}

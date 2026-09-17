@@ -1,0 +1,7 @@
+{
+  "resourceType": "Observation",
+  "status": "final",
+  "code": {
+    "text": "Synthetic measurement for PHI_CODE_TEXT"
+  }
+}

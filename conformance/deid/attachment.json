@@ -1,0 +1,10 @@
+{
+  "resourceType": "Patient",
+  "id": "p",
+  "photo": [
+    {
+      "title": "PHI_PHOTO_TITLE",
+      "url": "https://example.org/PHI_PHOTO_URL"
+    }
+  ]
+}

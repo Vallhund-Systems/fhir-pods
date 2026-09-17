@@ -1,0 +1,71 @@
+{
+  "resources": [
+    {
+      "resourceType": "Patient",
+      "id": "p",
+      "identifier": [
+        {
+          "system": "https://example.org/ids",
+          "value": "synthetic-patient"
+        }
+      ],
+      "name": [
+        {
+          "family": "Synthetic",
+          "given": [
+            "Patient"
+          ]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1980-04-12"
+    },
+    {
+      "resourceType": "Practitioner",
+      "id": "a",
+      "name": [
+        {
+          "family": "Synthetic",
+          "given": [
+            "Author"
+          ]
+        }
+      ]
+    },
+    {
+      "resourceType": "Observation",
+      "id": "hr",
+      "status": "final",
+      "category": [
+        {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+              "code": "vital-signs"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "coding": [
+          {
+            "system": "http://loinc.org",
+            "code": "8867-4"
+          }
+        ]
+      },
+      "subject": {
+        "reference": "Patient/p"
+      },
+      "effectiveDateTime": "2026-09-16T12:00:00Z",
+      "valueQuantity": {
+        "value": 72,
+        "system": "http://unitsofmeasure.org",
+        "code": "/min",
+        "unit": "/min"
+      }
+    }
+  ],
+  "author": "Practitioner/a",
+  "date": "2026-09-16T12:00:00Z"
+}

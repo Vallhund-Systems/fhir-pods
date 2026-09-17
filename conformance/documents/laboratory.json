@@ -1,0 +1,73 @@
+{
+  "resources": [
+    {
+      "resourceType": "Patient",
+      "id": "p",
+      "identifier": [
+        {
+          "system": "https://example.org/ids",
+          "value": "synthetic-patient"
+        }
+      ],
+      "name": [
+        {
+          "family": "Synthetic",
+          "given": [
+            "Patient"
+          ]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1980-04-12"
+    },
+    {
+      "resourceType": "Practitioner",
+      "id": "a",
+      "name": [
+        {
+          "family": "Synthetic",
+          "given": [
+            "Author"
+          ]
+        }
+      ]
+    },
+    {
+      "resourceType": "Observation",
+      "id": "laboratory",
+      "status": "final",
+      "category": [
+        {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+              "code": "laboratory"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "coding": [
+          {
+            "system": "http://loinc.org",
+            "code": "718-7"
+          }
+        ]
+      },
+      "subject": {
+        "reference": "Patient/p"
+      },
+      "effectiveDateTime": "2026-09-16T12:00:00Z",
+      "dataAbsentReason": {
+        "coding": [
+          {
+            "system": "http://terminology.hl7.org/CodeSystem/data-absent-reason",
+            "code": "unknown"
+          }
+        ]
+      }
+    }
+  ],
+  "author": "Practitioner/a",
+  "date": "2026-09-16T12:00:00Z"
+}

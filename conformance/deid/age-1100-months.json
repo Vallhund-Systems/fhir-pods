@@ -1,0 +1,11 @@
+{
+  "resourceType": "Condition",
+  "subject": {
+    "reference": "Patient/p"
+  },
+  "onsetAge": {
+    "value": 1100,
+    "system": "http://unitsofmeasure.org",
+    "code": "mo"
+  }
+}
