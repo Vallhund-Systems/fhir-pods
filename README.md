@@ -15,6 +15,7 @@ decision to proceed.
 | --- | --- | --- |
 | **Verify** | a resource (JSON) | the findings against the base spec's shape and resource rules and against the profiles it declares — and the profiles every nested resource declares — as a report or a FHIR `OperationOutcome`; must-support gaps as information; what could not be checked, named |
 | **Lower** | a profile URL and the variable inputs (`status`, `subject`, `valueQuantity.value`…) | the conformant resource — the profile supplies the codings, categories, units and slices — validated on the way out |
+| **Lift** | a profile URL (or none: the one the resource declares) and a resource | the reverse of lowering — the profile's slots read out of the resource (`status`, `subject`, `valueQuantity.value`…), validated on the way in; the required slots it lacks and the element paths no slot covers, named, so a host's map from FHIR to its own model is a map from slot paths to fields and nothing is left behind unnamed |
 | **De-identify** | a resource and a policy (Safe Harbor by default) | a copy with names, contacts, addresses below state, exact dates, narrative, notes, attachments and free text gone (a code's display, a unit, a state and a country stay), identifiers pseudonymised under the host's salt, masked where the base or a profile requires an element; an audit trail; what a Safe Harbor check still finds; what free text a host's own rule kept, site by site |
 | **Document** | a patient and their resources | an IPS or AU Patient Summary `Bundle`: sections from the profile, narrative generated, references rewritten, validated |
 | **Audit** | what a host knows when a record is read, queried, created, updated or deleted: who asked, from where, which server, on whose behalf, which resource or patient, the request id | an `AuditEvent` conformant to the IHE Basic Audit Log Patterns profile for that kind of event, validated; `Provenance` and a failed action's `AuditEvent` lowered from the base definitions |
@@ -57,8 +58,8 @@ with terminology switched off on both sides so profiles are what is scored.
 `conformance/run.py` builds the corpus from the pinned packages, runs
 validator_cli 6.10.4 over it, and compares verdicts:
 
-- **1199/1199** at v0.6.4 — the six IGs' published examples and 60-odd
-  probes, every corpus resource re-lowered from its own slot values, every
+- **1201/1201** at v0.7.0 — the six IGs' published examples and 60-odd
+  probes, every corpus resource lifted into its slots and lowered again, every
   one de-identified, the twelve document examples taken apart and assembled
   again, an audit record of every kind from the audit surface, and the
   review lane's adversarial probes. A run in which either
@@ -91,7 +92,7 @@ terminology seam.
 
 ## Delivery
 
-- **wasm** — a ~1.1 MB `.wasm` (272 KB gzipped) with a dependency-free JS
+- **wasm** — a ~1.15 MB `.wasm` (282 KB gzipped) with a dependency-free JS
   wrapper; browser, edge runtimes, Node, Bun, Deno. [`pods/wasm`](pods/wasm/README.md).
 - **Expo** — the core as a native module: iOS XCFramework + Android jniLibs,
   a native terminology provider seam. [`pods/expo`](pods/expo/README.md).
@@ -110,6 +111,7 @@ use fhir_pods_core::{deidentify::Policy, Validator};
 let v = Validator::new();                       // parses the registry's invariants once
 let report = v.validate(json);                   // Validation: profiles applied, issues
 let lowered = v.lower(HEART_RATE, inputs)?;      // Lowered: resource + validation
+let lifted = v.lift(HEART_RATE, json)?;          // Lifted: inputs + validation + missing + extras
 let copy = v.deidentify(json, &Policy::safe_harbor(b"salt").today(2026))?;
 let summary = v.document("au-ps", inputs)?;      // Assembled: document + placed + validation
 let record = v.audit("patient-read", event)?;    // Lowered: a BALP AuditEvent + validation
@@ -120,6 +122,7 @@ let needs = v.terminology_needs(json);           // what the bundled sets could 
 const pod = await instantiate(wasmBytes);
 pod.validate(json);                              // { resourceType, profile, valid, issues }
 pod.lower(profileUrl, inputs);                   // { resource, validation }
+pod.lift(profileUrl, resource);                  // { inputs, validation, missing, extras }
 pod.deidentify(json, { salt, today });           // { resource, applied, validation, remaining }
 pod.document("ips", { resources, author, date }); // { document, placed, omitted, validation }
 pod.audit("patient-read", { recorded, client, server, user, source, patient, data, transaction });
@@ -146,7 +149,7 @@ unverified.
 ## Layout
 
 - `crates/fhir-pods-core` — the core (zero deps, no `unsafe`, `no_std`):
-  `engine`, `path` (FHIRPath), `lower`, `deidentify`, `assemble`, `audit`,
+  `engine`, `path` (FHIRPath), `lower`, `lift`, `deidentify`, `assemble`, `audit`,
   `terminology`, `generated/` (the compiled registry), `typemap` (the
   element-type table).
 - `crates/fhir-pods-ffi` — the one lean C ABI, compiled per target.

@@ -137,6 +137,36 @@ profile needs to the day (vital signs' `effective[x]`, invariant vs-1) are
 a conformance finding the host decides on (keep the one date, or accept
 the finding).
 
+## 0.7 — Lifting — shipped
+
+**What.** `fhir_pods_lift(profile_url, resource)` → the profile's slots read
+out of a resource, the exact reverse of lowering:
+
+```json
+fhir_pods_lift("…/au-core-heartrate", { …an AU Core heart rate… })
+→ { "inputs": { "status": "final", "subject": {"reference": "Patient/1"},
+                "effectiveDateTime": "2026-09-16T08:00:00+10:00",
+                "valueQuantity.value": 72, "valueQuantity.unit": "beats/minute" },
+    "validation": { "valid": true, "issues": [] },
+    "missing": [], "extras": [] }
+```
+
+`inputs` is what `lower` takes, so `lower(lift(r))` gives `r` back; a host's
+map from FHIR to its own model is a map from slot paths to fields — the
+codings, categories and units the profile fixes never reach it. `missing`
+names the required slots the resource lacks; `extras` names every element
+path no slot, fixed leaf or pass-through member covers, so nothing in a
+record is left behind unnamed. The resource is validated on the way in, and
+against the named profile when it does not declare it. An empty URL takes
+the most specific compiled profile the resource declares.
+
+**How.** The extractor the lowering proof always used, promoted into the
+core: a labelled slot path selects the slice instance by the profile's own
+discriminators; an unlabelled repeating slot takes the items no sibling
+slice claims. The conformance harness lifts every corpus example and lowers
+it again for the reference validator (the same 350 re-lowered resources,
+now through the public operation).
+
 ## 0.6 — Audit and provenance — shipped
 
 **What.** `fhir_pods_audit(kind, inputs)` → an `AuditEvent` conformant to
@@ -182,7 +212,8 @@ all found by the new IG's corpus — the pattern every IG has followed.
 - **SMART on FHIR client** — standalone launch + PKCE, patient-access
   scopes, `.well-known/smart-configuration`; the on-ramp for "bring your
   records in". Fetch → validate (pod) → lift into the host's model.
-- **Lifting** — the reverse map, FHIR → host model, gated by the verifier.
+- ~~**Lifting**~~ — shipped in 0.7.0 as the profile-driven half (below);
+  the map from slot paths to a host's own fields stays in the host.
 - **HL7 v2** — only on demand: a v2 parser is small and pod-shaped; the
   `ORU^R01` / `ADT` maps are integration work per source system.
 

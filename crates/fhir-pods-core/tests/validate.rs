@@ -413,6 +413,18 @@ fn f026_an_unprofiled_bundle_owes_its_identity_and_the_base_bundle_rules() {
 }
 
 #[test]
+fn a_local_reference_names_a_contained_resource_or_is_ref_1() {
+    let with = r##"{"resourceType":"MedicationRequest","status":"active","intent":"order","contained":[{"resourceType":"Medication","id":"med1","code":{"text":"x"}}],"medicationReference":{"reference":"#med1"},"subject":{"reference":"Patient/p1"}}"##;
+    assert!(probe_str(with).contains("\"valid\":true"), "{}", probe_str(with));
+    let without = with.replace(r#""contained":[{"resourceType":"Medication","id":"med1","code":{"text":"x"}}],"#, "");
+    let r = probe_str(&without);
+    assert!(r.contains("\"valid\":false") && r.contains("ref-1: reference '#med1' names no contained resource"), "{r}");
+    // a contained resource may name a sibling of the resource that contains it
+    let sibling = r##"{"resourceType":"MedicationRequest","status":"active","intent":"order","contained":[{"resourceType":"Medication","id":"m","code":{"text":"x"}},{"resourceType":"Practitioner","id":"p","name":[{"family":"D"}]}],"medicationReference":{"reference":"#m"},"requester":{"reference":"#p"},"subject":{"reference":"Patient/p1"}}"##;
+    assert!(probe_str(sibling).contains("\"valid\":true"), "{}", probe_str(sibling));
+}
+
+#[test]
 fn an_empty_extension_carrier_is_an_element_with_nothing_in_it() {
     let r = probe_str(r#"{"resourceType":"Patient","gender":"male","_gender":{}}"#);
     assert!(r.contains("\"valid\":false") && r.contains("extension carrier must have some content"), "{r}");

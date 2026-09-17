@@ -13,7 +13,7 @@ No wasm-bindgen, no glue runtime: the wrapper is ~70 lines over `pod_alloc` /
 `pod_free` and the entrypoints. The `.wasm` carries the 259 compiled
 profiles of the six pinned IGs (AU Core, US Core, IPA, IPS, AU Patient
 Summary, IHE BALP — and the datatypes they inherit), the 72 bundled value
-sets and the FHIRPath engine — ~1.1 MB, 277 KB gzipped at v0.6.2.
+sets and the FHIRPath engine — ~1.15 MB, 282 KB gzipped at v0.7.0.
 
 ## Build
 
@@ -70,6 +70,20 @@ pod.mustSupportGaps(JSON.stringify(patient));
 // ["Patient.telecom.system", "Patient.birthDate", …] — must-support elements
 // the selected profile expects a client to populate when it has the data
 ```
+
+### Lifting
+
+```js
+const { inputs, validation, missing, extras } = pod.lift("…/au-core-heartrate", observation);
+// inputs: { status, subject, effectiveDateTime, "valueQuantity.value", "valueQuantity.unit" }
+```
+
+The reverse of lowering: the profile's slots read out of a resource — what a
+host maps to its own model, and nothing the profile fixes. `missing` names
+the required slots the resource lacks; `extras` names element paths no slot
+covers, so nothing is left behind unnamed; `validation` is the verdict on the
+way in. `pod.lift("", resource)` takes the most specific compiled profile the
+resource declares. `pod.lower(url, inputs)` gives the resource back.
 
 ### Documents
 

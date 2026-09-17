@@ -56,6 +56,11 @@ public class FhirPodsExpoModule: Module {
       call2(fhir_pods_document_tx, kind, inputsJson)
     }
 
+    // Lifting: {"inputs","validation","missing","extras"} or {"error"}.
+    Function("lift") { (profileUrl: String, resourceJson: String) -> String in
+      call2(fhir_pods_lift_tx, profileUrl, resourceJson)
+    }
+
     // Audit: {"resource","validation"} or {"error"}.
     Function("audit") { (kind: String, inputsJson: String) -> String in
       call2(fhir_pods_audit_tx, kind, inputsJson)

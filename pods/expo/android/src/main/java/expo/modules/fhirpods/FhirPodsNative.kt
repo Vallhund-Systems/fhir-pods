@@ -36,6 +36,9 @@ internal object FhirPodsNative {
   /** {"resource","validation"} from a profile URL and its variable inputs, or {"error"}. */
   external fun lower(profile: ByteArray, inputs: ByteArray, terminology: FhirPodsTerminology?): ByteArray
 
+  /** {"inputs","validation","missing","extras"} — a resource read back into the profile's slots, or {"error"}. */
+  external fun lift(profile: ByteArray, resource: ByteArray, terminology: FhirPodsTerminology?): ByteArray
+
   /** {"slots":[...]} — the inputs a profile takes, or {"error"}. */
   external fun slots(profile: ByteArray): ByteArray
 

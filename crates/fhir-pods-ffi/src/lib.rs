@@ -44,7 +44,7 @@ fn validator() -> &'static Validator {
 
 /// Bump when the exported surface or the memory contract changes; the
 /// wrappers refuse a mismatched module.
-pub const ABI_VERSION: u32 = 8;
+pub const ABI_VERSION: u32 = 9;
 
 /// The compiled terminology table the host loaded (`fhir_pods_terminology_load`),
 /// consulted after the bundled sets and before any host callback.
@@ -275,6 +275,74 @@ pub unsafe extern "C" fn fhir_pods_document_tx(
     ctx: *mut c_void,
 ) -> *mut u8 {
     with_tx(cb, ctx, |tx| pack(document_json(input(kind, kind_len), input(inputs, inputs_len), tx).as_bytes()))
+}
+
+/// Lift: read `resource` back into the slots of `profile` (a canonical URL,
+/// or empty to take the most specific compiled profile the resource
+/// declares): `{"inputs": {…slot path: value…}, "validation": {…},
+/// "missing": [required slots absent], "extras": [element paths no slot
+/// covers]}`, or `{"error": "…"}` when it could not start.
+#[no_mangle]
+pub unsafe extern "C" fn fhir_pods_lift(
+    profile: *const u8,
+    profile_len: usize,
+    resource: *const u8,
+    resource_len: usize,
+) -> *mut u8 {
+    with_providers(None, |tx| {
+        pack(lift_json(input(profile, profile_len), input(resource, resource_len), tx).as_bytes())
+    })
+}
+
+/// [`fhir_pods_lift`] with a host terminology callback for the validation.
+#[no_mangle]
+pub unsafe extern "C" fn fhir_pods_lift_tx(
+    profile: *const u8,
+    profile_len: usize,
+    resource: *const u8,
+    resource_len: usize,
+    cb: Option<TxCallback>,
+    ctx: *mut c_void,
+) -> *mut u8 {
+    with_tx(cb, ctx, |tx| pack(lift_json(input(profile, profile_len), input(resource, resource_len), tx).as_bytes()))
+}
+
+fn lift_json(profile: &[u8], resource: &[u8], tx: &dyn TerminologyProvider) -> String {
+    let url = core::str::from_utf8(profile).unwrap_or("");
+    let l = match validator().lift_with(url, resource, tx) {
+        Ok(l) => l,
+        Err(e) => {
+            let mut s = String::from("{\"error\":\"");
+            wire::escape(&mut s, &e.to_string());
+            s.push_str("\"}");
+            return s;
+        }
+    };
+    let mut s = String::with_capacity(l.inputs.len() + 512);
+    s.push_str("{\"inputs\":");
+    s.push_str(&l.inputs);
+    s.push_str(",\"validation\":");
+    s.push_str(&wire::report(&l.validation));
+    s.push_str(",\"missing\":[");
+    for (i, m) in l.missing.iter().enumerate() {
+        if i > 0 {
+            s.push(',');
+        }
+        s.push('"');
+        wire::escape(&mut s, m);
+        s.push('"');
+    }
+    s.push_str("],\"extras\":[");
+    for (i, e) in l.extras.iter().enumerate() {
+        if i > 0 {
+            s.push(',');
+        }
+        s.push('"');
+        wire::escape(&mut s, e);
+        s.push('"');
+    }
+    s.push_str("]}");
+    s
 }
 
 /// Audit: an `AuditEvent` for a `kind` of event (`read`, `patient-read`,
@@ -599,6 +667,18 @@ mod wasm_host {
     }
 
     #[no_mangle]
+    pub unsafe extern "C" fn fhir_pods_lift_host_tx(
+        profile: *const u8,
+        profile_len: usize,
+        resource: *const u8,
+        resource_len: usize,
+    ) -> *mut u8 {
+        with_providers(Some(&ImportTx), |tx| {
+            pack(lift_json(input(profile, profile_len), input(resource, resource_len), tx).as_bytes())
+        })
+    }
+
+    #[no_mangle]
     pub unsafe extern "C" fn fhir_pods_document_host_tx(
         kind: *const u8,
         kind_len: usize,
@@ -775,6 +855,19 @@ mod android {
     ) -> jbyteArray {
         let (k, i) = (bytes_in(&mut env, &kind), bytes_in(&mut env, &inputs));
         let doc = with_java(&mut env, &provider, |tx| document_json(&k, &i, tx));
+        bytes_out(&mut env, &doc)
+    }
+
+    #[no_mangle]
+    pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_lift<'l>(
+        mut env: JNIEnv<'l>,
+        _this: JObject<'l>,
+        profile: JByteArray<'l>,
+        resource: JByteArray<'l>,
+        provider: JObject<'l>,
+    ) -> jbyteArray {
+        let (p, r) = (bytes_in(&mut env, &profile), bytes_in(&mut env, &resource));
+        let doc = with_java(&mut env, &provider, |tx| lift_json(&p, &r, tx));
         bytes_out(&mut env, &doc)
     }
 
@@ -1034,6 +1127,25 @@ mod tests {
             assert_eq!(calls, 1, "the loaded table answers now; the host is not asked");
             assert!(!second.contains("date-accuracy-indicator") && second.contains("\"valid\":true"), "{second}");
             fhir_pods_terminology_load(std::ptr::null(), 0);
+        }
+    }
+
+    #[test]
+    fn lift_round_trips() {
+        unsafe {
+            let url = "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate";
+            let inputs = r#"{"status":"final","subject":"Patient/1","effectiveDateTime":"2026-09-16T08:00:00+10:00","valueQuantity.value":72,"valueQuantity.unit":"beats/minute"}"#;
+            let lowered = unpack(fhir_pods_lower(url.as_ptr(), url.len(), inputs.as_ptr(), inputs.len()));
+            let resource = lowered.split(",\"validation\":").next().unwrap().trim_start_matches("{\"resource\":");
+            let out = unpack(fhir_pods_lift(url.as_ptr(), url.len(), resource.as_ptr(), resource.len()));
+            assert!(
+                out.starts_with("{\"inputs\":{")
+                    && out.contains("\"valueQuantity.value\":72")
+                    && out.contains("\"missing\":[],\"extras\":[]}"),
+                "{out}"
+            );
+            let err = unpack(fhir_pods_lift(url.as_ptr(), url.len(), b"[]".as_ptr(), 2));
+            assert_eq!(err, "{\"error\":\"input is not a FHIR resource\"}");
         }
     }
 

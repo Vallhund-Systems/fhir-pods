@@ -375,6 +375,8 @@ pub mod audit;
 pub mod json;
 pub mod lower;
 
+pub mod lift;
+
 pub mod document;
 
 pub mod compiled;

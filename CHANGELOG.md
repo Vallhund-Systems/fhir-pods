@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.7.0 — 2026-09-16
+
+**Lifting.** ABI 9: `fhir_pods_lift(profile, resource)` (+ `_tx`); wasm
+`lift(profileUrl, resource)`, Expo `lift(profileUrl, resource)`; core
+`Validator::lift` / `lift::{lift, Lifted, LiftError}`.
+
+- The reverse of lowering: a resource read back into the profile's slots
+  — the same vocabulary `lower` takes, so `lower(lift(r))` gives `r` back
+  — with `missing` (required slots the resource lacks) and `extras` (every
+  element path no slot, fixed leaf or pass-through member covers), so a
+  host's map from FHIR to its own model is a map from slot paths to fields
+  and nothing in a record is left behind unnamed. An empty URL takes the
+  most specific compiled profile the resource declares; a profile the
+  resource does not declare is still applied and its verdict returned.
+- The extractor the lowering proof used since 0.3.0 is this operation,
+  promoted: `examples/lower_corpus.rs` now lifts every corpus example
+  through the public API and lowers it again for the reference validator —
+  350 of 350 lowered resources validate, as before, now through `lift`.
+
+**Verifier**, found by the lifted copies in front of the oracle: **a local
+reference (`#id`) must name a contained resource** of the resource it sits
+in, or one enclosing it (`ref-1`) — an error, as the reference validator
+has it; two probes.
+
+Oracle: **1201/1201** (1199 + the two probes). Tests: 149. `.wasm`:
+1.15 MB (282 KB gzipped).
+
 ## 0.6.4 — 2026-09-16
 
 The review lane's F030 and F031 (planning repository). Oracle unchanged:

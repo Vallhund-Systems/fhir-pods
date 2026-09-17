@@ -73,6 +73,21 @@ mustSupportGaps(JSON.stringify(patient));
 // ["Patient.telecom.system", "Patient.birthDate", …]
 ```
 
+## Lifting
+
+```ts
+import { lift } from "fhir-pods-expo";
+const { inputs, validation, missing, extras } = lift("…/au-core-heartrate", observation);
+// inputs: { status, subject, effectiveDateTime, "valueQuantity.value", "valueQuantity.unit" }
+```
+
+The reverse of lowering: the profile's slots read out of a resource — what a
+host maps to its own model, and nothing the profile fixes. `missing` names
+the required slots the resource lacks; `extras` names element paths no slot
+covers, so nothing is left behind unnamed; `validation` is the verdict on the
+way in. `lift("", resource)` takes the most specific compiled profile the
+resource declares. `lower(url, inputs)` gives the resource back.
+
 ## Documents
 
 ```ts

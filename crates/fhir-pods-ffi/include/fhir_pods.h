@@ -9,8 +9,8 @@
 extern "C" {
 #endif
 
-/* ABI version; a host refuses a mismatched module. This header is ABI 8. */
-#define FHIR_PODS_ABI_VERSION 8u
+/* ABI version; a host refuses a mismatched module. This header is ABI 9. */
+#define FHIR_PODS_ABI_VERSION 9u
 uint32_t fhir_pods_abi_version(void);
 
 /* Allocate `len` bytes in the module for the host to fill. */
@@ -62,6 +62,16 @@ uint8_t *fhir_pods_validate_tx(const uint8_t *ptr, size_t len, fhir_pods_tx_call
 uint8_t *fhir_pods_operation_outcome_tx(const uint8_t *ptr, size_t len, fhir_pods_tx_callback cb, void *ctx);
 uint8_t *fhir_pods_lower_tx(const uint8_t *profile, size_t profile_len, const uint8_t *inputs, size_t inputs_len,
                             fhir_pods_tx_callback cb, void *ctx);
+
+/* Lifting: the reverse — read a resource back into the profile's slots
+ * (`profile` a canonical URL, or empty to take the most specific compiled
+ * profile the resource declares): {"inputs": {...slot path: value...},
+ * "validation": {...}, "missing": [required slots absent], "extras":
+ * [element paths no slot covers]} — or {"error": "..."}. A host's map from
+ * FHIR to its own model is a map from slot paths to fields. */
+uint8_t *fhir_pods_lift(const uint8_t *profile, size_t profile_len, const uint8_t *resource, size_t resource_len);
+uint8_t *fhir_pods_lift_tx(const uint8_t *profile, size_t profile_len, const uint8_t *resource, size_t resource_len,
+                           fhir_pods_tx_callback cb, void *ctx);
 
 /* De-identification: a copy of the resource under a policy (JSON:
  * {"salt": "...", "today": "YYYY-MM-DD", "base": "safe-harbor" | "none",

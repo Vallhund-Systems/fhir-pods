@@ -3,7 +3,7 @@
 // WebAssembly does (browser, edge runtimes, Node, Bun, Deno).
 
 /** The ABI this wrapper speaks; a module reporting anything else is refused. */
-export const ABI_VERSION = 8;
+export const ABI_VERSION = 9;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -77,6 +77,7 @@ export async function instantiate(source, options = {}) {
   const outcome = terminology ? ex.fhir_pods_operation_outcome_host_tx : ex.fhir_pods_operation_outcome;
   const lowerEntry = terminology ? ex.fhir_pods_lower_host_tx : ex.fhir_pods_lower;
   const auditEntry = terminology ? ex.fhir_pods_audit_host_tx : ex.fhir_pods_audit;
+  const liftEntry = terminology ? ex.fhir_pods_lift_host_tx : ex.fhir_pods_lift;
   const documentEntry = terminology ? ex.fhir_pods_document_host_tx : ex.fhir_pods_document;
 
   return {
@@ -86,6 +87,12 @@ export async function instantiate(source, options = {}) {
     mustSupportGaps: (json) => JSON.parse(call(ex.fhir_pods_must_support, json)).mustSupportGaps,
     lower: (profileUrl, inputs) => {
       const out = JSON.parse(call(lowerEntry, profileUrl, typeof inputs === "string" ? inputs : JSON.stringify(inputs)));
+      if (out.error) throw new Error(`fhir-pods: ${out.error}`);
+      return out;
+    },
+    // Lifting: a resource read back into the profile's slots ("" = the profile it declares).
+    lift: (profileUrl, resource) => {
+      const out = JSON.parse(call(liftEntry, profileUrl, typeof resource === "string" ? resource : JSON.stringify(resource)));
       if (out.error) throw new Error(`fhir-pods: ${out.error}`);
       return out;
     },

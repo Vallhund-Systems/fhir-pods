@@ -99,6 +99,7 @@ impl<'a> Parsed<'a> {
             segs: Vec::new(),
             profiled: Vec::new(),
             profiles: Vec::new(),
+            contained: Vec::new(),
         };
         structure_in(&self.value, rt, rt, &mut w);
         let nested = w
@@ -246,6 +247,9 @@ struct Walk<'v, 'a> {
     /// The compiled profiles the resource being walked (innermost) declares:
     /// an extension one of them reaches through a slice is theirs to check.
     profiles: Vec<Vec<&'static crate::compiled::CompiledProfile>>,
+    /// The ids of the contained resources of each resource being walked,
+    /// innermost last: what a local reference (`#id`) must name (ref-1).
+    contained: Vec<Vec<alloc::string::String>>,
 }
 
 /// Does a profile reach an extension of this url through a slice (an
@@ -318,6 +322,20 @@ fn structure_at<'v, 'a>(
         let declared = compiled_profiles_of(kvs);
         w.profiled.push(!declared.is_empty());
         w.profiles.push(declared);
+        let ids = match kvs.iter().find(|(k, _)| k.as_ref() == "contained") {
+            Some((_, Value::Array(xs))) => xs
+                .iter()
+                .filter_map(|x| match x {
+                    Value::Object(c) => c.iter().find(|(k, _)| k.as_ref() == "id").and_then(|(_, v)| match v {
+                        Value::Str(s) => Some(alloc::string::String::from(s.as_ref())),
+                        _ => None,
+                    }),
+                    _ => None,
+                })
+                .collect(),
+            _ => Vec::new(),
+        };
+        w.contained.push(ids);
         if w.profiled.last() == Some(&false) {
             for child in crate::typing::required_resource_children(ctx) {
                 if !has(child) {
@@ -338,6 +356,21 @@ fn structure_at<'v, 'a>(
     // ele-1: an element has a value or children — `{}` (or only an `id`) is neither
     if needs_content && !is_resource && !kvs.iter().any(|(k, _)| k.as_ref() != "id") {
         w.gaps.push((path.into(), Invariant, alloc::format!("ele-1: {path} must have a value or children")));
+    }
+    // ref-1: a local reference names a contained resource of the resource it
+    // sits in (or of one enclosing it)
+    if ctx == "Reference" {
+        if let Some((_, Value::Str(r))) = kvs.iter().find(|(k, _)| k.as_ref() == "reference") {
+            if let Some(local) = r.strip_prefix('#') {
+                if !local.is_empty() && !w.contained.iter().any(|ids| ids.iter().any(|id| id == local)) {
+                    w.gaps.push((
+                        alloc::format!("{path}.reference"),
+                        Invariant,
+                        alloc::format!("ref-1: reference '{r}' names no contained resource of {}", w.root),
+                    ));
+                }
+            }
+        }
     }
     // an extension whose url names a compiled extension profile is held to it
     if ctx == "Extension" {
@@ -520,6 +553,7 @@ fn structure_at<'v, 'a>(
     if is_resource {
         w.profiled.pop();
         w.profiles.pop();
+        w.contained.pop();
     }
 }
 

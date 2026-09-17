@@ -93,6 +93,17 @@ int main(void) {
     printf("must-support: %s\n", ms);
     free(ms);
 
+    /* Lifting: the lowered heart rate read back into its slots. */
+    const char *hr_url = "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate";
+    const char *hr_in = "{\"status\":\"final\",\"subject\":\"Patient/1\",\"effectiveDateTime\":\"2026-09-16T08:00:00+10:00\",\"valueQuantity.value\":72,\"valueQuantity.unit\":\"beats/minute\"}";
+    char *hr_low = unpack(fhir_pods_lower((const uint8_t *)hr_url, strlen(hr_url), (const uint8_t *)hr_in, strlen(hr_in)));
+    char *hr_res = strstr(hr_low, "{\"resource\":") + strlen("{\"resource\":");
+    char *hr_end = strstr(hr_res, ",\"validation\":");
+    char *lifted = unpack(fhir_pods_lift((const uint8_t *)hr_url, strlen(hr_url), (const uint8_t *)hr_res, (size_t)(hr_end - hr_res)));
+    ok = ok && strstr(lifted, "\"valueQuantity.value\":72") && strstr(lifted, "\"missing\":[],\"extras\":[]");
+    printf("lift: %.100s...\n", lifted);
+    free(hr_low); free(lifted);
+
     /* Audit: a BALP AuditEvent from host-shaped inputs, validated. */
     const char *ev = "{\"recorded\":\"2026-09-16T10:00:00Z\",\"client\":{\"who\":\"Device/app-7\",\"network\":\"10.0.0.7\"},"
                      "\"server\":{\"who\":{\"display\":\"fhir.example.org\"},\"network\":\"https://fhir.example.org/r4\"},"

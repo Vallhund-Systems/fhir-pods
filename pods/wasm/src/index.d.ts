@@ -59,6 +59,16 @@ export interface Lowered {
   validation: Validation;
 }
 
+export interface Lifted {
+  /** Slot path → value, as `lower` takes them. */
+  inputs: Record<string, unknown>;
+  validation: Validation;
+  /** Required slots the resource has no value for. */
+  missing: string[];
+  /** Element paths present that no slot, fixed leaf or pass-through member covers. */
+  extras: string[];
+}
+
 /** Which patient summary a document is. */
 export type DocumentKind = "ips" | "au-ps";
 
@@ -196,6 +206,15 @@ export interface Pod {
   lower(profileUrl: string, inputs: Record<string, unknown> | string): Lowered;
   /** The inputs a profile takes. */
   slots(profileUrl: string): Slot[];
+  /**
+   * The reverse of `lower`: a resource read back into the profile's slots
+   * (`profileUrl` "" takes the most specific compiled profile the resource
+   * declares). `inputs` is what `lower` takes; `missing` names required
+   * slots the resource lacks; `extras` names element paths no slot covers,
+   * so nothing is left behind unnamed. Validated on the way in. Throws only
+   * when it cannot start.
+   */
+  lift(profileUrl: string, resource: Record<string, unknown> | string): Lifted;
   /**
    * An IPS or AU Patient Summary document from a patient and their resources:
    * sections from the kind's Composition profile, each resource placed by what
