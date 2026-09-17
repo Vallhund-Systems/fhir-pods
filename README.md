@@ -66,7 +66,11 @@ validator_cli 6.10.4 over it, and compares verdicts:
   again, an audit record of every kind from the audit surface, five HL7 v2
   messages converted to message bundles (each side's verdict, valid or not,
   the same — which proves shape, not meaning: the converter's content is
-  held by its own tests), and the review lane's adversarial probes. A run in which either
+  held by its own tests), and the review lane's adversarial probes.
+- **4,796 of 5,292** of FHIR R4's own published examples, every
+  resource type, unprofiled (`conformance/base.py`, apart from the release
+  gate) — the rest are rules the pod does not check and names
+  ([`scope.md`](docs/scope.md)), never a wrong verdict on one it does. A run in which either
   side crashed, returned a foreign exit code or a report that disagrees
   with its own exit code counts as a failure, never as agreement. Every
   engine change is proven this way before it ships; the record is in the

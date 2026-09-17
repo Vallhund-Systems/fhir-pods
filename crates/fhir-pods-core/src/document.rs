@@ -166,10 +166,103 @@ fn primitive_value_ok(ty: &str, v: &Value<'_>) -> bool {
         ("integer", Value::Number(n)) => n.parse::<i32>().is_ok(),
         ("positiveInt", Value::Number(n)) => n.parse::<i32>().is_ok_and(|i| i >= 1),
         ("unsignedInt", Value::Number(n)) => n.parse::<i32>().is_ok_and(|i| i >= 0),
+        // base64: the alphabet, padding at the end only; line breaks are
+        // tolerated (as the reference validator has it), other whitespace not
+        ("base64Binary", Value::Str(s)) => {
+            let joined: alloc::string::String = s.chars().filter(|c| !matches!(c, '\r' | '\n')).collect();
+            let b = joined.as_bytes();
+            !b.is_empty()
+                && b.len().is_multiple_of(4)
+                && b.iter().all(|c| c.is_ascii_alphanumeric() || matches!(c, b'+' | b'/' | b'='))
+                && b.iter()
+                    .position(|c| *c == b'=')
+                    .is_none_or(|i| i >= b.len() - 2 && b[i..].iter().all(|c| *c == b'='))
+        }
+        // a urn:uuid is a lowercase UUID; a urn:oid is an OID
+        ("uri" | "url" | "canonical" | "oid" | "uuid", Value::Str(s))
+            if s.starts_with("urn:uuid:") || s.starts_with("urn:oid:") =>
+        {
+            urn_ok(s) && (ty != "canonical" || !s.is_empty())
+        }
+        // a canonical is absolute (a scheme) unless it is a fragment reference
+        ("canonical", Value::Str(s)) => {
+            !s.is_empty()
+                && (s.starts_with('#')
+                    || s.split('|').next().is_some_and(|u| {
+                        let scheme = u.find(':').map(|i| &u[..i]).unwrap_or("");
+                        !scheme.is_empty()
+                            && scheme.as_bytes()[0].is_ascii_alphabetic()
+                            && scheme.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'+' | b'.' | b'-'))
+                    }))
+        }
         // R4 JSON: a string primitive is never empty
         (_, Value::Str(s)) => !s.is_empty(),
         _ => true,
     }
+}
+
+/// `urn:uuid:` names a lowercase UUID, `urn:oid:` an OID (arcs of digits, no
+/// leading zeros, at least two, the first 0–2) — as the reference validator
+/// holds every uri to.
+fn urn_ok(s: &str) -> bool {
+    if let Some(u) = s.strip_prefix("urn:uuid:") {
+        let b = u.as_bytes();
+        return b.len() == 36
+            && b.iter().enumerate().all(|(i, c)| {
+                if matches!(i, 8 | 13 | 18 | 23) {
+                    *c == b'-'
+                } else {
+                    c.is_ascii_digit() || (b'a'..=b'f').contains(c)
+                }
+            });
+    }
+    if let Some(o) = s.strip_prefix("urn:oid:") {
+        let arcs: Vec<&str> = o.split('.').collect();
+        return arcs.len() >= 2
+            && arcs.iter().all(|a| {
+                !a.is_empty() && a.bytes().all(|b| b.is_ascii_digit()) && (a.len() == 1 || !a.starts_with('0'))
+            })
+            && matches!(arcs[0], "0" | "1" | "2");
+    }
+    true
+}
+
+/// txt-2: does the narrative's xhtml carry any text that is not whitespace
+/// (tags and comments aside; `&nbsp;` is whitespace; an image counts)?
+fn narrative_has_content(div: &str) -> bool {
+    let mut rest = div;
+    while !rest.is_empty() {
+        if let Some(after) = rest.strip_prefix("<!--") {
+            rest = after.find("-->").map(|i| &after[i + 3..]).unwrap_or("");
+            continue;
+        }
+        if let Some(after) = rest.strip_prefix('<') {
+            // an image is content of its own
+            if after.starts_with("img") && after.as_bytes().get(3).is_none_or(|b| b.is_ascii_whitespace() || *b == b'/')
+            {
+                return true;
+            }
+            rest = after.find('>').map(|i| &after[i + 1..]).unwrap_or("");
+            continue;
+        }
+        if let Some(after) = rest.strip_prefix('&') {
+            let (entity, tail) = match after.find(';') {
+                Some(i) if i <= 8 => (&after[..i], &after[i + 1..]),
+                _ => ("", after),
+            };
+            if !matches!(entity, "nbsp" | "#160" | "#xa0" | "#xA0" | "") {
+                return true;
+            }
+            rest = tail;
+            continue;
+        }
+        let c = rest.chars().next().unwrap();
+        if !c.is_whitespace() {
+            return true;
+        }
+        rest = &rest[c.len_utf8()..];
+    }
+    false
 }
 
 /// The items an element's value stands for: the array's items when it
@@ -473,6 +566,19 @@ fn structure_object<'v, 'a>(
             }
         }
     }
+    // txt-2: a narrative says something — its xhtml has text beyond
+    // whitespace, tags and comments
+    if ctx == "Narrative" {
+        if let Some((_, Value::Str(div))) = kvs.iter().find(|(k, _)| k.as_ref() == "div") {
+            if !narrative_has_content(div) {
+                w.gaps.push((
+                    alloc::format!("{path}.div"),
+                    Invariant,
+                    alloc::format!("txt-2: {path}.div must have some non-whitespace content"),
+                ));
+            }
+        }
+    }
     // an identifier whose system is `urn:ietf:rfc:3986` carries a URI: its
     // value must have a scheme (the reference validator's rule, an error)
     if ctx == "Identifier" {
@@ -661,7 +767,9 @@ fn structure_object<'v, 'a>(
                         ValueIssue,
                         alloc::format!("{child_path}: a {} is a JSON {expected}, found {}", ch.ty, json_kind(x)),
                     ));
-                } else if !primitive_value_ok(ch.ty, x) {
+                } else if !(primitive_value_ok(ch.ty, x) || (ctx == "Binary" && bare == "data")) {
+                    // `Binary.data` is the content itself, not held to the base64
+                    // lexical check the reference validator applies to Attachment.data
                     w.gaps.push((
                         child_path.clone(),
                         ValueIssue,

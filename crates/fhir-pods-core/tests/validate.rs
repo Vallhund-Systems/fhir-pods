@@ -451,6 +451,61 @@ fn an_extension_sits_where_its_definition_allows() {
 }
 
 #[test]
+fn a_canonical_is_absolute_and_a_narrative_says_something() {
+    // canonical: absolute, or a fragment; a relative one is an error, as the reference validator has it
+    let abs = r##"{"resourceType":"ActivityDefinition","status":"active","library":["http://example.org/fhir/Library/zika|1.0"]}"##;
+    assert!(probe_str(abs).contains("\"valid\":true"), "{}", probe_str(abs));
+    let frag = abs.replace("http://example.org/fhir/Library/zika|1.0", "#lib");
+    assert!(probe_str(&frag).contains("\"valid\":true"), "{}", probe_str(&frag));
+    let rel = abs.replace("http://example.org/fhir/Library/zika|1.0", "Library/zika");
+    let r = probe_str(&rel);
+    assert!(r.contains("\"valid\":false") && r.contains("library is not a valid canonical"), "{r}");
+    // a uri may be relative
+    let uri = r##"{"resourceType":"Basic","code":{"coding":[{"system":"codes/local","code":"x"}]}}"##;
+    assert!(probe_str(uri).contains("\"valid\":true"), "{}", probe_str(uri));
+    // txt-2: a narrative of whitespace, tags and comments only is an error; one with text is fine
+    let empty = r##"{"resourceType":"Basic","text":{"status":"generated","div":"<div xmlns=\"http://www.w3.org/1999/xhtml\"> <p> </p><!-- x --> &nbsp;</div>"},"code":{"text":"x"}}"##;
+    let r = probe_str(empty);
+    assert!(
+        r.contains("\"valid\":false") && r.contains("txt-2: Basic.text.div must have some non-whitespace content"),
+        "{r}"
+    );
+    let said = empty.replace("<p> </p>", "<p>Something</p>");
+    assert!(probe_str(&said).contains("\"valid\":true"), "{}", probe_str(&said));
+    let entity = empty.replace("<p> </p>", "<p>&amp;</p>");
+    assert!(probe_str(&entity).contains("\"valid\":true"), "{}", probe_str(&entity));
+    let image = empty.replace("<p> </p>", "<img src=\\\"#a\\\" alt=\\\"diagram\\\"/>");
+    assert!(probe_str(&image).contains("\"valid\":true"), "{}", probe_str(&image));
+}
+
+#[test]
+fn base64_oids_and_uuids_are_well_formed() {
+    let ok = r##"{"resourceType":"DocumentReference","status":"current","content":[{"attachment":{"contentType":"text/plain","data":"aGVsbG8="}}]}"##;
+    assert!(probe_str(ok).contains("\"valid\":true"), "{}", probe_str(ok));
+    // Binary.data is the content itself: not held to the lexical check, as the reference validator has it
+    let binary = r##"{"resourceType":"Binary","contentType":"text/plain","data":"aGVs bG8"}"##;
+    assert!(probe_str(binary).contains("\"valid\":true"), "{}", probe_str(binary));
+    let space = ok.replace("aGVsbG8=", "aGVs bG8=");
+    assert!(probe_str(&space).contains("data is not a valid base64Binary"), "{}", probe_str(&space));
+    let short = ok.replace("aGVsbG8=", "aGVsbG8");
+    assert!(probe_str(&short).contains("data is not a valid base64Binary"), "{}", probe_str(&short));
+    let wrapped = ok.replace("aGVsbG8=", "aGVs\\r\\nbG8=");
+    assert!(probe_str(&wrapped).contains("\"valid\":true"), "{}", probe_str(&wrapped));
+    let sys = |s: &str| format!(r##"{{"resourceType":"Basic","code":{{"coding":[{{"system":"{s}","code":"x"}}]}}}}"##);
+    assert!(probe_str(&sys("urn:oid:2.16.840.1.113883.4.1")).contains("\"valid\":true"));
+    for bad in [
+        "urn:oid:2.16.840.01",
+        "urn:oid:3.1",
+        "urn:oid:2",
+        "urn:uuid:5B8E1672-0000-4000-8000-000000000001",
+        "urn:uuid:not-a-uuid",
+    ] {
+        assert!(probe_str(&sys(bad)).contains("system is not a valid uri"), "{bad}: {}", probe_str(&sys(bad)));
+    }
+    assert!(probe_str(&sys("urn:uuid:5b8e1672-0000-4000-8000-000000000001")).contains("\"valid\":true"));
+}
+
+#[test]
 fn an_identifier_under_rfc_3986_carries_a_uri() {
     let ok =
         r##"{"resourceType":"Organization","identifier":[{"system":"urn:ietf:rfc:3986","value":"urn:oid:1.2.3"}]}"##;
@@ -512,4 +567,7 @@ fn a_bundle_entry_with_a_resource_carries_a_full_url() {
         .replace(r#""method":"POST","url":"Patient""#, r#""method":"PUT","url":"Patient/p1""#)
         .replace(r#"{"resourceType":"Patient"}"#, r#"{"resourceType":"Patient","id":"p1"}"#);
     assert!(probe_str(&put).contains("Bundle entry missing fullUrl"), "{}", probe_str(&put));
+    // a response's entries answer requests: no identity of their own needed
+    let response = r#"{"resourceType":"Bundle","type":"batch-response","entry":[{"resource":{"resourceType":"OperationOutcome","issue":[{"severity":"information","code":"informational"}]},"response":{"status":"200 OK"}}]}"#;
+    assert!(probe_str(response).contains("\"valid\":true"), "{}", probe_str(response));
 }

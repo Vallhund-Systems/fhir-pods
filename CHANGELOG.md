@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.9.0 — 2026-09-17
+
+**Broader validation: the base spec's own examples.** A new lane,
+`conformance/base.py`, puts every published example of FHIR R4 itself
+(`hl7.fhir.r4.examples` 4.0.1: 5,292 instances across every resource type,
+almost all unprofiled) before us and the reference validator and compares —
+the widest test of the base spec's shape rules, datatype rules, invariants
+and bindings. It runs apart from the release gate (parity, not cleanliness:
+the spec's own examples are not all valid) and its evidence goes to a
+gitignored `conformance/corpus-base/`. At this release: **4,796 of
+5,292 agree**; every remaining difference is a rule we do not check and say
+so (definition resolution and the conformance resources' own rules,
+narrative hyperlinks, codes against code-system content, contexts of
+extensions we do not compile — see `docs/scope.md`), none a wrong verdict
+on a rule we do. The validator itself gives no verdict on two ValueSets.
+
+**Verifier**, taken from the lane: a canonical must be absolute unless it is
+a fragment reference; a narrative must say something (txt-2: text beyond
+whitespace, tags, comments and `&nbsp;`); `base64Binary` is the alphabet
+with padding at the end only, line breaks tolerated; a `urn:uuid:` is a
+lowercase UUID and a `urn:oid:` an OID, wherever a uri stands; a
+transaction-response's or batch-response's entries need no `fullUrl`
+(0.8.3's rule was one step too wide).
+
+Tests: 177. Oracle (release gate): **1206/1206**.
+
 ## 0.8.6 — 2026-09-17
 
 **HL7 v2: what the IG says nothing about is named too** (F050). The

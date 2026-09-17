@@ -19,7 +19,7 @@ fn operation_outcome_success_carries_one_informational_issue() {
     // With narrative, so dom-6 (a warning) is quiet and the outcome is clean.
     let with_text = PATIENT_OK.replace(
         "\"gender\"",
-        "\"text\":{\"status\":\"generated\",\"div\":\"<div xmlns=\\\"http://www.w3.org/1999/xhtml\\\"/>\"},\"gender\"",
+        "\"text\":{\"status\":\"generated\",\"div\":\"<div xmlns=\\\"http://www.w3.org/1999/xhtml\\\">A patient.</div>\"},\"gender\"",
     );
     let v = validate_bytes(with_text.as_bytes());
     assert!(v.is_valid());

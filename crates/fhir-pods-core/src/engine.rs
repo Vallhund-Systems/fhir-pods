@@ -457,7 +457,9 @@ pub(crate) fn check_document<D: Document>(bundle: &D, r: &mut Report) {
             let has_resource = !entry.scalars("$this.resource.resourceType").is_empty();
             let creates = matches!(bundle_type, "transaction" | "batch")
                 && entry.scalars("$this.request.method").first().copied() == Some("POST");
-            if has_resource && !creates {
+            // a response's entries answer requests; their resources need no identity of their own
+            let responds = matches!(bundle_type, "transaction-response" | "batch-response");
+            if has_resource && !creates && !responds {
                 r.push(
                     Severity::Error,
                     IssueType::Required,
