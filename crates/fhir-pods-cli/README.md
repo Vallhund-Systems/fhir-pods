@@ -17,6 +17,8 @@ fhir-pods lower http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient 
 fhir-pods deidentify --policy policy.json patient.json
 fhir-pods document ips inputs.json
 fhir-pods document au-ps < inputs.json
+fhir-pods audit read audit-inputs.json
+fhir-pods audit patient-query < audit-inputs.json
 fhir-pods needs patient.json
 ```
 
@@ -32,10 +34,33 @@ option: the policy file has the same shape as the core's policy JSON:
 
 Results go to stdout as one JSON object. `validate --outcome` emits a FHIR
 OperationOutcome; default validation emits the pod report. `lower`,
-`deidentify`, and `document` use the same result shapes as the WASM pod,
+`audit`, `deidentify`, and `document` use the same result shapes as the WASM pod,
 including the output resource, validation and operation-specific findings.
 `needs` emits both `needs` and `validation`, so an invalid input cannot look
 successful merely because it has no terminology questions.
+
+`audit KIND` builds a BALP basic AuditEvent from host inputs. Kinds are `read`,
+`query`, `create`, `update`, `delete`, and the five `patient-` prefixed variants.
+For example, `fhir-pods audit read` accepts this JSON on stdin:
+
+```json
+{
+  "recorded": "2026-09-16T10:00:00Z",
+  "client": {"who": "Device/app", "network": "10.0.0.7"},
+  "server": {"who": "Device/server", "network": "https://fhir.example.org/r4"},
+  "source": {"observer": "Device/audit-collector"},
+  "data": "Observation/example"
+}
+```
+
+For queries, replace `data` with `query` (the original query text; the core
+base64-encodes it). Patient variants also require `patient`, such as
+`"patient": "Patient/example"`. Optional `user` and `transaction` inputs identify
+the actor and request. The result contains `resource` and `validation`.
+These BALP basic events describe successful actions; failed actions can be
+constructed with `lower http://hl7.org/fhir/StructureDefinition/AuditEvent`.
+A missing or unknown CLI kind is a usage error (exit 2); rejected host inputs
+or an invalid generated record return exit 1 with a JSON error/report.
 
 | Exit | Meaning |
 | --- | --- |

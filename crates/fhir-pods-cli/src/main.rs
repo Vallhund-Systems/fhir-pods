@@ -3,7 +3,7 @@ use std::io::{self, Read, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use fhir_pods_core::{deidentify::Policy, node::Node, wire, Validator};
+use fhir_pods_core::{audit::Kind, deidentify::Policy, node::Node, wire, Validator};
 
 mod output;
 
@@ -14,9 +14,11 @@ Usage:
   fhir-pods lower PROFILE_URL [FILE|-]
   fhir-pods deidentify --policy POLICY_FILE [FILE|-]
   fhir-pods document ips|au-ps [FILE|-]
+  fhir-pods audit KIND [FILE|-]
   fhir-pods needs [FILE|-]
   fhir-pods --help | --version
 
+Audit kinds: read, query, create, update, delete; or patient- prefixed variants.
 Input defaults to stdin. Use -- before positional arguments beginning with -.
 POLICY_FILE may be - only when the resource is read from a file.
 Results are JSON on stdout. Usage/I/O errors are JSON on stderr.
@@ -44,7 +46,7 @@ fn parse(args: Vec<OsString>) -> Result<Args, Failure> {
     let Some(command) = args.first().and_then(|a| a.to_str()) else {
         return Err(bad("a command is required; use --help"));
     };
-    if !matches!(command, "validate" | "lower" | "deidentify" | "document" | "needs") {
+    if !matches!(command, "validate" | "lower" | "deidentify" | "document" | "audit" | "needs") {
         return Err(bad("unknown command; use --help"));
     }
     let mut positional = Vec::new();
@@ -68,13 +70,20 @@ fn parse(args: Vec<OsString>) -> Result<Args, Failure> {
             _ => positional.push(arg.clone()),
         }
     }
-    let parameter = if matches!(command, "lower" | "document") {
+    let parameter = if matches!(command, "lower" | "document" | "audit") {
         if positional.is_empty() {
-            return Err(bad("lower needs a profile URL; document needs ips or au-ps"));
+            return Err(bad(match command {
+                "lower" => "lower needs a profile URL",
+                "document" => "document needs ips or au-ps",
+                _ => "audit needs an event kind; use --help",
+            }));
         }
         let value = positional.remove(0).into_string().map_err(|_| bad("profile URL/kind must be UTF-8"))?;
         if command == "document" && !matches!(value.as_str(), "ips" | "au-ps") {
             return Err(bad("document kind must be ips or au-ps"));
+        }
+        if command == "audit" && Kind::parse(&value).is_none() {
+            return Err(bad("unknown audit kind; use --help"));
         }
         Some(value)
     } else {
@@ -130,6 +139,10 @@ fn run(args: Args) -> Result<(String, bool), Failure> {
         "document" => {
             let result = validator.document(args.parameter.as_deref().unwrap(), &input).map_err(|e| rejected(&e))?;
             (output::assembled(&result), result.validation.is_valid())
+        }
+        "audit" => {
+            let result = validator.audit(args.parameter.as_deref().unwrap(), &input).map_err(|e| rejected(&e))?;
+            (output::lowered(&result), result.validation.is_valid())
         }
         "needs" => {
             let validation = validator.validate(&input);
