@@ -318,7 +318,9 @@ impl Walker<'_> {
     /// Must this element stay (masked) when its content goes? By the
     /// profiles applied, or — at a resource's root — by the base resource.
     fn is_required(&self, child_path: &str, path: &str, key: &str) -> bool {
-        self.required.iter().any(|r| r == child_path) || (!path.contains('.') && self.base_required.contains(&key))
+        self.required.iter().any(|r| r == child_path)
+            || (!path.contains('.') && self.base_required.contains(&key))
+            || (path.contains('.') && typing::required_backbone_children(path).contains(&key))
     }
 
     /// The direct children the profiles require under a masked element

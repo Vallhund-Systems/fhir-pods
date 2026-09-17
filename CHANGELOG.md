@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.8.3 — 2026-09-17
+
+**The reviewer's F032–F035 taken.**
+
+- **De-identification** (F032): a backbone's own required children count
+  (`Observation.component.code`, `QuestionnaireResponse.item.linkId`): a
+  Remove that would empty one becomes a Mask, as it always did at the
+  resource root — the copy stays conformant.
+- **Verifier** (F033): a Bundle entry that carries a resource names it with
+  a `fullUrl` — an error without one ("Bundle entry missing fullUrl", as
+  the reference validator has it), except a transaction's or batch's create
+  (`request.method` POST), whose resource has no identity yet.
+- **Lifting** (F034, F035): a slot behind an optional gate nothing opened
+  (`agent:user.who` when no user was given) is not missing; a labelled slot
+  whose slice the profile does not compile is met by the element itself
+  (`subtype:anyRead` by `subtype`); a fixed leaf behind an optional gate
+  that the record carries and no slot input opens (an audit record's
+  `action`) is lifted as itself, so `lower(lift(r))` gives `r` back for
+  every BALP kind, with nothing missing and nothing extra.
+
+Tests: 174. Oracle: **1206/1206** (every lowered copy still clean: 350 of 351, the one dom-3 case as before).
+
 ## 0.8.2 — 2026-09-17
 
 **Verifier: extension contexts** (T041, found by the v2 bundles in front of

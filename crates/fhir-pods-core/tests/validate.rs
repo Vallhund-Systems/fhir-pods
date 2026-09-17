@@ -486,3 +486,21 @@ fn f013_an_extension_whose_value_arrives_through_its_carrier_satisfies_ext_1() {
     let r = probe_str(r#"{"resourceType":"Patient","gender":"male","extension":[{"url":"http://example.org/x"}]}"#);
     assert!(r.contains("ext-1"), "{r}");
 }
+
+/// F033: an entry that carries a resource names it with a fullUrl, except a
+/// transaction's or batch's create.
+#[test]
+fn a_bundle_entry_with_a_resource_carries_a_full_url() {
+    let no_url =
+        r#"{"resourceType":"Bundle","type":"collection","entry":[{"resource":{"resourceType":"Patient","id":"p1"}}]}"#;
+    let r = probe_str(no_url);
+    assert!(r.contains("\"valid\":false") && r.contains("Bundle entry missing fullUrl"), "{r}");
+    let with_url = no_url.replace(r#"{"resource":"#, r#"{"fullUrl":"http://example.org/fhir/Patient/p1","resource":"#);
+    assert!(probe_str(&with_url).contains("\"valid\":true"), "{}", probe_str(&with_url));
+    let create = r#"{"resourceType":"Bundle","type":"transaction","entry":[{"resource":{"resourceType":"Patient"},"request":{"method":"POST","url":"Patient"}}]}"#;
+    assert!(probe_str(create).contains("\"valid\":true"), "{}", probe_str(create));
+    let put = create
+        .replace(r#""method":"POST","url":"Patient""#, r#""method":"PUT","url":"Patient/p1""#)
+        .replace(r#"{"resourceType":"Patient"}"#, r#"{"resourceType":"Patient","id":"p1"}"#);
+    assert!(probe_str(&put).contains("Bundle entry missing fullUrl"), "{}", probe_str(&put));
+}

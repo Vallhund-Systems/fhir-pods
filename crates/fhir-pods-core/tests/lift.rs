@@ -76,3 +76,25 @@ fn the_profile_may_come_from_the_resource_itself_and_errors_are_named() {
     assert!(lifted.validation.profiles.contains(&"AU Core Heart Rate"), "{:?}", lifted.validation.profiles);
     assert!(lifted.validation.is_valid(), "{}", wire::report(&lifted.validation));
 }
+
+/// F034 / F035: an audit record round-trips whole — its optional fixed
+/// `action` comes back, and slots behind a gate nothing opened (a user that
+/// was never given) are not missing.
+#[test]
+fn an_audit_record_lifts_and_lowers_to_itself_with_nothing_missing() {
+    let v = Validator::new();
+    let no_user = r#"{"recorded":"2026-09-16T10:00:00Z","client":{"who":"Device/app-7","network":"10.0.0.7"},"server":{"who":{"display":"fhir.example.org"},"network":"https://fhir.example.org/r4"},"source":{"observer":"Device/audit"},"data":"Observation/hr1"}"#;
+    for kind in ["create", "read", "update"] {
+        let a = v.audit(kind, no_user.as_bytes()).unwrap();
+        assert!(a.validation.is_valid(), "{kind}: {}", wire::report(&a.validation));
+        assert!(a.resource.contains(r#""action":""#), "{kind}: {}", a.resource);
+        let lifted = v.lift("", a.resource.as_bytes()).unwrap();
+        assert!(lifted.missing.is_empty(), "{kind}: missing {:?}\n{}", lifted.missing, lifted.inputs);
+        assert!(lifted.extras.is_empty(), "{kind}: extras {:?}", lifted.extras);
+        assert!(lifted.inputs.contains(r#""action":""#), "{kind}: the fixed action is lifted: {}", lifted.inputs);
+        let profile = a.resource.split(r#""profile":[""#).nth(1).unwrap().split('"').next().unwrap();
+        let again = v.lower(profile, lifted.inputs.as_bytes()).unwrap();
+        assert!(again.resource.contains(r#""action":""#), "{kind}: the action survives lowering: {}", again.resource);
+        assert!(again.validation.is_valid(), "{kind}: {}", wire::report(&again.validation));
+    }
+}

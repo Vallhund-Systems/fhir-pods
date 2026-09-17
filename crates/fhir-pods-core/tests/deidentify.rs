@@ -371,7 +371,9 @@ fn f019_an_extension_emptied_by_what_was_removed_goes_too() {
     assert!(!d.resource.contains("PHI_EXTENSION_NAME") && !d.resource.contains("extension"), "{}", d.resource);
     assert!(d.validation.is_valid(), "{}", wire::report(&d.validation));
     // inside a Bundle entry too
-    let b = format!(r#"{{"resourceType":"Bundle","type":"collection","entry":[{{"resource":{p}}}]}}"#);
+    let b = format!(
+        r#"{{"resourceType":"Bundle","type":"collection","entry":[{{"fullUrl":"urn:uuid:0b566309-8d79-4e7e-b484-f2fb9f96eb19","resource":{p}}}]}}"#
+    );
     let d = deid(&b, &Policy::safe_harbor(b"s"));
     assert!(!d.resource.contains("PHI_EXTENSION_NAME") && !d.resource.contains("extension"), "{}", d.resource);
     assert!(d.validation.is_valid(), "{}", wire::report(&d.validation));
@@ -400,5 +402,22 @@ fn f030_f031_structural_keys_stay_by_default_silently_and_go_when_a_rule_names_t
     assert!(d.applied.iter().any(|a| a.path == "QuestionnaireResponse.item.id" && a.action == Action::Remove));
     let d = deid(qr, &Policy::safe_harbor(b"s").rule("QuestionnaireResponse.item.linkId", Action::Mask));
     assert!(d.resource.contains(r#""_linkId":{"extension""#), "{}", d.resource);
+    assert!(d.validation.is_valid(), "{}", wire::report(&d.validation));
+}
+
+/// F032: a backbone's required child (a component's code) is masked, never
+/// dropped, when Safe Harbor removes its only text.
+#[test]
+fn a_backbones_required_child_is_masked_not_dropped() {
+    use fhir_pods_core::deidentify::Policy;
+    let v = Validator::new();
+    let obs = r#"{"resourceType":"Observation","status":"final","code":{"coding":[{"system":"https://example.org/codes","code":"synthetic"}]},"component":[{"code":{"text":"SYNTHETIC_COMPONENT_TEXT"},"valueInteger":72}]}"#;
+    let d = v.deidentify(obs.as_bytes(), &Policy::safe_harbor(b"salt").today(2026)).unwrap();
+    assert!(!d.resource.contains("SYNTHETIC_COMPONENT_TEXT"), "{}", d.resource);
+    assert!(
+        d.resource.contains(r#""component":[{"code":{"#) && d.resource.contains("data-absent-reason"),
+        "{}",
+        d.resource
+    );
     assert!(d.validation.is_valid(), "{}", wire::report(&d.validation));
 }

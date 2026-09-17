@@ -449,8 +449,24 @@ pub(crate) fn check_document<D: Document>(bundle: &D, r: &mut Report) {
     // a REST-shaped fullUrl names the resource it carries: its last two
     // segments are the resource's type and id (a `urn:` is an identity of
     // its own; a version is what distinguishes two of the same fullUrl)
+    let bundle_type = bundle.scalars("$this.type").first().copied().unwrap_or("");
     for (i, entry) in bundle.instances("$this.entry").iter().enumerate() {
-        let Some(full) = entry.scalars("$this.fullUrl").first().copied() else { continue };
+        let Some(full) = entry.scalars("$this.fullUrl").first().copied() else {
+            // an entry carrying a resource names it — except a transaction's or
+            // batch's create, whose resource has no identity yet
+            let has_resource = !entry.scalars("$this.resource.resourceType").is_empty();
+            let creates = matches!(bundle_type, "transaction" | "batch")
+                && entry.scalars("$this.request.method").first().copied() == Some("POST");
+            if has_resource && !creates {
+                r.push(
+                    Severity::Error,
+                    IssueType::Required,
+                    &format!("Bundle.entry[{i}]"),
+                    String::from("Bundle entry missing fullUrl"),
+                );
+            }
+            continue;
+        };
         if full.starts_with("urn:") {
             continue;
         }

@@ -204,6 +204,22 @@ pub fn lift_with(
     for key in NOT_DATA {
         covered.push(String::from(*key));
     }
+    // the optional gates (`agent:user`, `action`): a slice or element lowering
+    // opens only when an input reaches into it
+    let gate_of = |path: &str| -> Option<&'static str> {
+        let mut prefix = String::new();
+        let mut gate = None;
+        for seg in path.split('.') {
+            if !prefix.is_empty() {
+                prefix.push('.');
+            }
+            prefix.push_str(seg);
+            if let Some((p, 0)) = profile.lowering.slices.iter().find(|(p, _)| *p == prefix) {
+                gate = Some(*p);
+            }
+        }
+        gate
+    };
     for (path, _) in profile.lowering.fixed {
         let plain = unlabelled(path);
         // a fixed coding's display is the seam's (filled at lowering), not the record's
@@ -262,7 +278,50 @@ pub fn lift_with(
             }
         }
         if !found && slot.min >= 1 {
+            // a labelled slot whose slice the profile does not compile (the
+            // lowering table outstrips the slicing) is met by the element itself
+            let label_unresolved = slot.path.split('.').find_map(|seg| seg.split_once(':')).is_some_and(|(base, _)| {
+                let element = unlabelled(slot.path.split(':').next().unwrap_or(base));
+                let label = slot.path.split(':').nth(1).map(|r| r.split('.').next().unwrap_or(r)).unwrap_or("");
+                find_slice(profile, &element, label).is_none()
+            });
+            if label_unresolved && keys.iter().any(|k| extract(doc, profile, &unlabelled(k), &[]).is_some()) {
+                continue;
+            }
+            // a slot behind an optional gate (`agent:user.who` when no user was
+            // given) is required only once the gate is open
+            if let Some(gate) = gate_of(slot.path) {
+                let reached = inputs.iter().any(|(k, _)| k == gate || k.starts_with(&alloc::format!("{gate}.")));
+                if !reached {
+                    continue;
+                }
+            }
             missing.push(slot.path);
+        }
+    }
+
+    // a fixed leaf behind an optional gate that the record carries, when no
+    // slot input opens that gate (`action` of an audit record): lifted as
+    // itself, so lowering the inputs opens the gate again
+    for (path, value) in profile.lowering.fixed {
+        let Some(gate) = gate_of(path) else { continue };
+        // a gate with slots of its own (an NPI identifier's value) is opened by
+        // those; only a gate holding nothing but fixed leaves needs the leaf
+        let has_slots =
+            profile.lowering.slots.iter().any(|s| s.path == gate || s.path.starts_with(&alloc::format!("{gate}.")));
+        let reached = inputs.iter().any(|(k, _)| k == gate || k.starts_with(&alloc::format!("{gate}.")));
+        // a slice (`identifier:NPI`, `extension:race`) is opened by what the
+        // record's own instance carries; only a plain gated element applies
+        if gate.contains(':') || has_slots || reached {
+            continue;
+        }
+        if let Some(v) = extract(doc, profile, path, &[]) {
+            let agrees = matches!(&v, Node::Str(s) if s == value)
+                || matches!(&v, Node::Bool(b) if b.to_string() == *value)
+                || matches!(&v, Node::Number(n) if n == value);
+            if agrees {
+                inputs.push((path.to_string(), v));
+            }
         }
     }
 

@@ -69,6 +69,9 @@ the count above.
   every R4 resource type and datatype; a node under a `resourceType` the
   spec doesn't define has no type, and such an expression is skipped — and
   reported as an `information` issue naming the invariant.
+- **A Bundle entry with a resource carries a `fullUrl`** (0.8.3), as the
+  reference validator requires — except a transaction's or batch's create,
+  whose resource has no identity yet.
 - **The base spec's shape rules apply to every resource, profile or no
   profile:** an element the type does not define is an error; a primitive
   must be the JSON kind its FHIR type is represented as (a `boolean` a JSON
