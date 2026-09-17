@@ -1,0 +1,7 @@
+{
+  "status": "final",
+  "subject": "Patient/synthetic-patient",
+  "effectiveDateTime": "2026-09-16T08:00:00Z",
+  "valueQuantity.value": 72,
+  "valueQuantity.unit": "beats/minute"
+}

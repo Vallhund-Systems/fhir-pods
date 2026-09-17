@@ -1,0 +1,36 @@
+{
+  "resources": [
+    {
+      "resourceType": "Patient",
+      "id": "synthetic-patient",
+      "identifier": [
+        {
+          "system": "https://example.org/mrn",
+          "value": "synthetic-001"
+        }
+      ],
+      "name": [
+        {
+          "use": "official",
+          "family": "Example",
+          "given": [
+            "Synthetic"
+          ]
+        }
+      ],
+      "gender": "unknown",
+      "birthDate": "1980-01-01"
+    },
+    {
+      "resourceType": "Practitioner",
+      "id": "synthetic-author",
+      "name": [
+        {
+          "family": "Example"
+        }
+      ]
+    }
+  ],
+  "author": "Practitioner/synthetic-author",
+  "date": "2026-09-16T08:00:00Z"
+}
