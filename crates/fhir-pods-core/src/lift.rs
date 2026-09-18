@@ -22,7 +22,7 @@ use crate::document::{Document, Parsed, TreeDoc};
 use crate::json::Value;
 use crate::node::Node;
 use crate::terminology::TerminologyProvider;
-use crate::{generated, typing, Validation, Validator};
+use crate::{typing, Validation, Validator};
 
 /// The outcome: the inputs (a JSON object keyed by slot path, as lowering
 /// takes them), the resource's validation against the profile, the required
@@ -397,8 +397,7 @@ impl Validator {
             let doc = parsed.doc();
             *crate::select_profiles(rt, &doc, &self.defaults).first().ok_or(LiftError::NoProfileDeclared)?
         } else {
-            let url = url.split('|').next().unwrap_or(url);
-            generated::REGISTRY.iter().find(|p| p.url == url).copied().ok_or(LiftError::UnknownProfile)?
+            crate::resource_profile(url).ok_or(LiftError::UnknownProfile)?
         };
         lift_with(profile, resource, self, tx)
     }

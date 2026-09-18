@@ -14,7 +14,7 @@ No wasm-bindgen, no glue runtime: the wrapper is ~70 lines over `pod_alloc` /
 profiles of the seven pinned IGs (AU Core, US Core, IPA, IPS, AU Patient
 Summary, IHE BALP, AU Base) and every HL7 extension, the 125 bundled value
 sets, the base code systems' codes, the FHIRPath engine and the HL7 v2
-maps — ~2.3 MiB, ~560 KiB gzipped at v0.9.1.
+maps — ~2.3 MiB, ~570 KiB gzipped at v0.9.2.
 
 ## Build
 

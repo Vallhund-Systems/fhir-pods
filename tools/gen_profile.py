@@ -874,6 +874,22 @@ def emit_slicing(path, closed, slices, indent):
     return out
 
 
+def context_applies_to_r4(cx):
+    """A context the extensions package marks `version-specific-use`
+    (startFhirVersion / endFhirVersion) counts only if R4 is in its range."""
+    for e in cx.get("extension") or []:
+        if e.get("url") != "http://hl7.org/fhir/StructureDefinition/version-specific-use":
+            continue
+        for part in e.get("extension") or []:
+            v = part.get("valueCode") or ""
+            major_minor = tuple(int(x) for x in v.split(".")[:2] if x.isdigit()) or (0, 0)
+            if part.get("url") == "startFhirVersion" and major_minor > (4, 0):
+                return False
+            if part.get("url") == "endFhirVersion" and major_minor < (4, 0):
+                return False
+    return True
+
+
 def emit(sd, provenance, load=None):
     """The Rust source for the profile, and `(elements, slices, deferred)` counts."""
     c = build(sd, load)
@@ -911,7 +927,7 @@ def emit(sd, provenance, load=None):
     for path in must_support_of(sd):
         out.append(f"        {rs(path)},")
     out += ["    ],", "    contexts: &["]
-    contexts = [(cx["type"], cx["expression"]) for cx in sd.get("context") or [] if cx.get("type") and cx.get("expression")]
+    contexts = [(cx["type"], cx["expression"]) for cx in sd.get("context") or [] if cx.get("type") and cx.get("expression") and context_applies_to_r4(cx)]
     # `regex` is defined on ElementDefinition and used, by the spec itself, on
     # ElementDefinition.type; the reference validator accepts either place
     # (FHIR-13328), and so do we

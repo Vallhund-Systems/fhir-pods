@@ -58,7 +58,6 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "DeviceRequest"),
         ("element", "MedicationRequest"),
         ("element", "NutritionOrder"),
-        ("element", "RequestOrchestration"),
         ("element", "ServiceRequest"),
         ("element", "VisionPrescription"),
         ("element", "Task"),

@@ -51,7 +51,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     invariants: &[],
     lowering: &LOWERING,
     must_support: &[],
-    contexts: &[("element", "EvidenceVariable"), ("element", "Evidence.statistic.modelCharacteristic.variable")],
+    contexts: &[("element", "EvidenceVariable")],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

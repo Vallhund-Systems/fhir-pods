@@ -64,7 +64,6 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "ElementDefinition.type.targetProfile"),
         ("element", "OperationDefinition.parameter"),
         ("element", "OperationDefinition.parameter.type"),
-        ("element", "OperationDefinition.parameter.allowedType"),
         ("element", "OperationDefinition.parameter.targetProfile"),
         ("element", "ImplementationGuide.definition.page"),
     ],

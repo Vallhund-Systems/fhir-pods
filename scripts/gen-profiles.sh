@@ -25,7 +25,7 @@ PRIMARIES=(
 )
 DEPS=(
 )
-THO="$C/package-tho/package"      # hl7.terminology.r4 6.2.0 — the code systems' content (what the reference validator loads)
+THO="$C/package-tho/package"      # hl7.terminology.r4 7.3.0 — the code systems' content (tools/gen_codesystems.py)
 R4="$C/package-r4/package"        # hl7.fhir.r4.core 4.0.1 — the element-type table, the implied vital-sign profiles, the base AuditEvent / Provenance
 PROVENANCE="hl7.fhir.au.core 2.0.0 + hl7.fhir.us.core 6.1.0 + hl7.fhir.uv.ipa 1.1.0 + hl7.fhir.uv.ips 2.0.1 + hl7.fhir.au.ps 1.0.0 + ihe.iti.balp 1.1.4 + hl7.fhir.au.base 6.0.0 + hl7.fhir.uv.extensions.r4 5.3.0 + hl7.fhir.r4.core 4.0.1 (AuditEvent, Provenance)"
 
@@ -37,10 +37,10 @@ rm -f "$OUT"/*.rs
 python3 "$ROOT/tools/gen_all.py" --primaries "${#PRIMARIES[@]}" --base "$R4" "$OUT" "$PROVENANCE" "${PRIMARIES[@]}" "${DEPS[@]}"
 python3 "$ROOT/tools/gen_typemap.py" "$R4" "$OUT" "$ROOT/crates/fhir-pods-core/src/typemap.rs"
 python3 "$ROOT/tools/gen_valuesets.py" "$OUT" "$ROOT/crates/fhir-pods-core/src/value_sets_table.rs" "$R4" "${PRIMARIES[@]}" "${DEPS[@]}"
-# the base code systems' content, THO's copy winning over R4 core's
+# the base code systems' content: the union of R4 core's and THO's copies
 python3 "$ROOT/tools/gen_codesystems.py" "$R4" "$THO" "$ROOT/crates/fhir-pods-core/src/code_systems_table.rs"
 # the HL7 v2 maps (hl7.fhir.uv.v2mappings 1.0.0) compiled to the v2 pod's tables
-python3 "$ROOT/tools/gen_v2.py" "$C/package-v2mappings/package" "$ROOT/crates/fhir-pods-core/src/v2/generated.rs" "$C/package-ext/package"
+python3 "$ROOT/tools/gen_v2.py" "$C/package-v2mappings/package" "$ROOT/crates/fhir-pods-core/src/v2/generated.rs" "$C/package-ext/package" "$R4"
 
 # generated output is formatted like the rest of the crate
 (cd "$ROOT" && cargo fmt -q --all)

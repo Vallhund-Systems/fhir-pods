@@ -307,10 +307,18 @@ fn select_profiles(
     out
 }
 
+/// The compiled profile a host may lower into, lift from or ask the slots
+/// of: found by canonical (a `|version` ignored), and a *resource* profile —
+/// an extension's profile is compiled so its placement and content can be
+/// checked, not so a host can build an `Extension` as if it were a resource.
+pub fn resource_profile(url: &str) -> Option<&'static compiled::CompiledProfile> {
+    let url = url.split('|').next().unwrap_or(url);
+    generated::REGISTRY.iter().find(|p| p.url == url).filter(|p| p.resource_type != "Extension").copied()
+}
+
 /// [`Validator::lower`] without a validator (the invariants are re-parsed).
 pub fn lower_bytes(url: &str, inputs: &[u8]) -> Result<lower::Lowered, lower::LowerError> {
-    let url = url.split('|').next().unwrap_or(url);
-    let profile = generated::REGISTRY.iter().find(|p| p.url == url).ok_or(lower::LowerError::UnknownProfile)?;
+    let profile = resource_profile(url).ok_or(lower::LowerError::UnknownProfile)?;
     let parsed = json::parse(inputs).map_err(|_| lower::LowerError::InputsNotAnObject)?;
     lower::lower_with(profile, &parsed, None, &terminology::Bundled)
 }
@@ -474,8 +482,7 @@ impl Validator {
         inputs: &[u8],
         tx: &dyn terminology::TerminologyProvider,
     ) -> Result<lower::Lowered, lower::LowerError> {
-        let url = url.split('|').next().unwrap_or(url);
-        let profile = generated::REGISTRY.iter().find(|p| p.url == url).ok_or(lower::LowerError::UnknownProfile)?;
+        let profile = resource_profile(url).ok_or(lower::LowerError::UnknownProfile)?;
         let parsed = json::parse(inputs).map_err(|_| lower::LowerError::InputsNotAnObject)?;
         lower::lower_with(profile, &parsed, Some(self), tx)
     }

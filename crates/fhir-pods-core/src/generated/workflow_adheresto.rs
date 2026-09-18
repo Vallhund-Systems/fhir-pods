@@ -66,13 +66,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "QuestionnaireResponse"),
         ("element", "SupplyDelivery"),
         ("element", "Task"),
-        ("element", "BiologicallyDerivedProductDispense"),
-        ("element", "DeviceDispense"),
-        ("element", "DeviceUsage"),
         ("element", "DeviceUseStatement"),
         ("element", "DeviceUseStatement"),
-        ("element", "NutritionIntake"),
-        ("element", "Transport"),
     ],
 };
 

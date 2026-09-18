@@ -54,7 +54,7 @@ DEPS = [
     ("hl7.fhir.uv.extensions.r4", "5.3.0", "package-ext"),   # extensions IPS / AU PS slices inherit
     ("hl7.fhir.r4.core", "4.0.1", "package-r4"),   # the element-type table (tools/gen_typemap.py)
     ("hl7.fhir.uv.v2mappings", "1.0.0", "package-v2mappings"),   # the HL7 v2 maps (tools/gen_v2.py)
-    ("hl7.terminology.r4", "6.2.0", "package-tho"),   # the code systems' content (tools/gen_codesystems.py)
+    ("hl7.terminology.r4", "7.3.0", "package-tho"),   # the code systems' content (tools/gen_codesystems.py)
 ]
 
 

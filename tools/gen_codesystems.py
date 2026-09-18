@@ -3,10 +3,14 @@
 HL7 terminology package (THO, what the reference validator loads) and the
 R4 core package carry, as (url, case-sensitive, "\\ncode\\ncode\\n") — so a
 Coding whose system is one of them is held to its codes, as the reference
-validator holds it ("Unknown code … in the CodeSystem …"). The two packages
+validator holds it ("Unknown code … in the CodeSystem …"). A system whose
+`caseSensitive` is absent is not case sensitive (the spec's Postel rule and
+the reference validator's default); a case-insensitive system's codes are
+stored lowercased. The two packages
 carry different versions of many systems and a validator may have either
 loaded, so a system's codes are the union of its copies, and a system any
-copy leaves open (`fragment`, `not-present`) is not bundled: a code is
+copy leaves open (`fragment`, `example`, `not-present`, no concepts) is not
+bundled: a code is
 unknown only when no version we know has it. SNOMED, LOINC and every other
 system that is not `complete` here is never bundled: the seam's.
 
@@ -47,7 +51,9 @@ def main():
     r4, tho, out_path = sys.argv[1], sys.argv[2], sys.argv[3]
     systems = {}
     open_ended = set()
+    seen = {}
     for pkg in (r4, tho):
+        seen[pkg] = 0
         for f in sorted(glob.glob(os.path.join(pkg, "CodeSystem-*.json"))):
             try:
                 d = json.load(open(f))
@@ -55,13 +61,21 @@ def main():
                 continue
             if d.get("resourceType") != "CodeSystem" or not d.get("url") or d.get("content") == "supplement":
                 continue
+            seen[pkg] += 1
+            # a version on the url (`…/v2-0006|2.1`) is not part of the system's identity
+            url = d["url"].split("|", 1)[0]
             codes = []
             codes_of(d.get("concept", []), codes)
             if d.get("content") != "complete" or not codes:
-                open_ended.add(d["url"])  # one copy that does not list its codes: nothing is unknown
+                open_ended.add(url)  # one copy that does not list its codes: nothing is unknown
                 continue
-            cs, have = systems.get(d["url"], (True, set()))
-            systems[d["url"]] = (cs and d.get("caseSensitive", True), have | set(codes))
+            # absent, a code system is not case sensitive: codes are accepted
+            # in any case (CodeSystem.caseSensitive; the reference validator's default)
+            cs, have = systems.get(url, (True, set()))
+            systems[url] = (cs and d.get("caseSensitive", False), have | set(codes))
+    for pkg, n in seen.items():
+        if n < 100:
+            sys.exit(f"{pkg}: only {n} CodeSystems — an empty or partial package would silently loosen the table")
     for url in open_ended:
         systems.pop(url, None)
     lines = [
@@ -75,7 +89,9 @@ def main():
     for url in sorted(systems):
         cs, codes = systems[url]
         total += len(codes)
-        body = "\n" + "\n".join(sorted(set(codes))) + "\n"
+        # a case-insensitive system's codes are stored lowercased: the lookup
+        # lowercases the code alone
+        body = "\n" + "\n".join(sorted(set(codes if cs else {c.lower() for c in codes}))) + "\n"
         lines.append(f"    ({rs(url)}, {str(cs).lower()}, {rs(body)}),")
     lines.append("];")
     lines.append("")

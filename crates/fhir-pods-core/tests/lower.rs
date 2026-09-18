@@ -138,8 +138,26 @@ fn every_registry_profile_exposes_its_slots() {
             assert!(!s.path.is_empty() && !s.ty.is_empty(), "{} {:?}", p.url, s);
             assert!(!s.path.contains("[x]") || s.ty == "choice", "{} {}", p.url, s.path);
         }
-        // lowering nothing never panics and yields a resource of the right type
+        // lowering nothing never panics and yields a resource of the right type;
+        // an extension's profile is not a resource and is refused
+        if p.resource_type == "Extension" {
+            assert!(lower_bytes(p.url, b"{}").is_err(), "{}", p.url);
+            continue;
+        }
         let l = lower_bytes(p.url, b"{}").unwrap();
         assert!(l.resource.starts_with(&format!("{{\"resourceType\":\"{}\"", p.resource_type)), "{}", l.resource);
     }
+}
+
+#[test]
+fn an_extension_profile_is_not_a_resource_to_lower() {
+    // compiled so its placement and content are checked, never lowered into as a resource
+    let err = fhir_pods_core::lower_bytes(
+        "http://hl7.org/fhir/StructureDefinition/patient-birthPlace",
+        br#"{"valueAddress":{"city":"x"}}"#,
+    )
+    .expect_err("an extension profile is refused");
+    assert!(matches!(err, fhir_pods_core::lower::LowerError::UnknownProfile));
+    assert!(fhir_pods_core::resource_profile("http://hl7.org/fhir/StructureDefinition/patient-birthPlace").is_none());
+    assert!(fhir_pods_core::resource_profile(HR).is_some());
 }

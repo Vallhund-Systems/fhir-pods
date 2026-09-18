@@ -147,7 +147,6 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "Patient.communication"),
         ("element", "RelatedPerson.communication"),
         ("element", "Practitioner.communication"),
-        ("element", "Person.communication"),
     ],
 };
 

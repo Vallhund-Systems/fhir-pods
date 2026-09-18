@@ -439,7 +439,8 @@ fn an_extension_sits_where_its_definition_allows() {
     assert!(probe_str(ordinal).contains("\"valid\":true"), "{}", probe_str(ordinal));
     let misplaced = ordinal.replace(r#""answerOption":[{"valueCoding":{"code":"a"},"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/ordinalValue","valueDecimal":1}]}]"#, r#""answerOption":[{"valueCoding":{"code":"a"}}],"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/ordinalValue","valueDecimal":1}]"#);
     assert!(
-        probe_str(&misplaced).contains("this element is [Element, BackboneElement, Questionnaire.item]"),
+        probe_str(&misplaced)
+            .contains("this element is [Element, BackboneElement, Questionnaire.item.item, Questionnaire.item]"),
         "{}",
         probe_str(&misplaced)
     );
@@ -500,6 +501,20 @@ fn a_coding_in_a_base_code_system_is_a_known_code() {
     };
     assert!(probe_str(&med("TAB")).contains("\"valid\":true"), "{}", probe_str(&med("TAB")));
     assert!(probe_str(&med("Tab")).contains("Unknown code 'Tab'"), "{}", probe_str(&med("Tab")));
+    // a system whose caseSensitive is absent accepts any case (v2-0136 in R4 core says nothing)
+    let yn = |code: &str| {
+        format!(
+            r##"{{"resourceType":"Basic","code":{{"coding":[{{"system":"http://terminology.hl7.org/CodeSystem/v2-0136","code":"{code}"}}]}}}}"##
+        )
+    };
+    assert!(probe_str(&yn("y")).contains("\"valid\":true"), "{}", probe_str(&yn("y")));
+    assert!(probe_str(&yn("Y")).contains("\"valid\":true"), "{}", probe_str(&yn("Y")));
+    assert!(probe_str(&yn("maybe")).contains("Unknown code 'maybe'"), "{}", probe_str(&yn("maybe")));
+    // a code carrying a line break is lexically a code and matches no concept
+    assert!(probe_str(&yn("N\\nY")).contains("Unknown code"), "{}", probe_str(&yn("N\\nY")));
+    // a code the newer terminology package added (observation-category `symptom`, THO 7.x)
+    let sym = ok.replace("adverse-event-category", "observation-category").replace("wrong-patient", "symptom");
+    assert!(probe_str(&sym).contains("\"valid\":true"), "{}", probe_str(&sym));
     // the "code system" of URIs
     let uri = |code: &str| {
         format!(
@@ -517,6 +532,31 @@ fn a_coding_in_a_base_code_system_is_a_known_code() {
     // a version on the system is not part of its identity
     let versioned = ok.replace("adverse-event-category\"", "adverse-event-category|1.0.0\"");
     assert!(probe_str(&versioned).contains("\"valid\":true"), "{}", probe_str(&versioned));
+}
+
+#[test]
+fn an_extension_context_is_matched_the_three_ways_the_reference_validator_matches_it() {
+    // the path from the nearest enclosing datatype's definition (`Dosage.site`), not the owner's own type
+    let dosage = r##"{"resourceType":"MedicationRequest","status":"active","intent":"order","medicationCodeableConcept":{"text":"x"},"subject":{"reference":"Patient/1"},"dosageInstruction":[{"site":{"text":"arm","extension":[{"url":"http://hl7.org/fhir/StructureDefinition/bodySite","valueReference":{"reference":"BodyStructure/1"}}]}}]}"##;
+    assert!(probe_str(dosage).contains("\"valid\":true"), "{}", probe_str(dosage));
+    // the literal path, a content reference uncollapsed (`ValueSet.expansion.contains.designation`)
+    let vs = r##"{"resourceType":"ValueSet","status":"active","expansion":{"timestamp":"2020-01-01T00:00:00Z","contains":[{"system":"http://snomed.info/sct","code":"1","display":"d","designation":[{"value":"v","extension":[{"url":"http://hl7.org/fhir/StructureDefinition/coding-sctdescid","valueId":"123"}]}]}]}}"##;
+    assert!(probe_str(vs).contains("\"valid\":true"), "{}", probe_str(vs));
+    // the literal path through a datatype's own backbone (`StructureDefinition.differential.element.binding.valueSet`)
+    let sd = r##"{"resourceType":"StructureDefinition","url":"http://example.org/sd/x","name":"X","status":"draft","kind":"resource","abstract":false,"type":"Patient","baseDefinition":"http://hl7.org/fhir/StructureDefinition/Patient","derivation":"constraint","differential":{"element":[{"id":"Patient.gender","path":"Patient.gender","binding":{"strength":"required","valueSet":"http://hl7.org/fhir/ValueSet/administrative-gender","_valueSet":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/elementdefinition-conceptmap","valueCanonical":"http://example.org/ConceptMap/cm"}]}}}]}}"##;
+    assert!(probe_str(sd).contains("\"valid\":true"), "{}", probe_str(sd));
+    // a choice spelled the R5 way in the context (`Parameters.parameter.value`)
+    let params = r##"{"resourceType":"Parameters","parameter":[{"name":"a","valueString":"s","_valueString":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/cqf-isEmptyList","valueBoolean":true}]}}]}"##;
+    assert!(probe_str(params).contains("\"valid\":true"), "{}", probe_str(params));
+    // and a wrong place is still a wrong place
+    let wrong = dosage
+        .replace("bodySite", "patient-birthTime")
+        .replace(r#""valueReference":{"reference":"BodyStructure/1"}"#, r#""valueDateTime":"2020-01-01T00:00:00Z""#);
+    assert!(
+        probe_str(&wrong).contains("patient-birthTime is not allowed to be used at this point"),
+        "{}",
+        probe_str(&wrong)
+    );
 }
 
 #[test]
@@ -611,4 +651,22 @@ fn a_bundle_entry_with_a_resource_carries_a_full_url() {
     // a response's entries answer requests: no identity of their own needed
     let response = r#"{"resourceType":"Bundle","type":"batch-response","entry":[{"resource":{"resourceType":"OperationOutcome","issue":[{"severity":"information","code":"informational"}]},"response":{"status":"200 OK"}}]}"#;
     assert!(probe_str(response).contains("\"valid\":true"), "{}", probe_str(response));
+}
+
+#[test]
+fn ids_and_codes_are_lexically_well_formed() {
+    let with_id = |id: &str| format!(r##"{{"resourceType":"Patient","id":"{id}"}}"##);
+    assert!(probe_str(&with_id("ok.1-2")).contains("\"valid\":true"));
+    assert!(probe_str(&with_id("p_bad id!")).contains("is not a valid id"));
+    assert!(probe_str(&with_id(&"a".repeat(65))).contains("is not a valid id"));
+    assert!(probe_str(&with_id(&"a".repeat(64))).contains("\"valid\":true"));
+    let with_code = |code: &str| {
+        format!(
+            r##"{{"resourceType":"Basic","code":{{"coding":[{{"system":"http://example.org/x","code":"{code}"}}]}}}}"##
+        )
+    };
+    assert!(probe_str(&with_code("a b")).contains("\"valid\":true"));
+    for bad in [" a", "a ", "a  b", "a\\u00a0"] {
+        assert!(probe_str(&with_code(bad)).contains("is not a valid code"), "{bad:?}: {}", probe_str(&with_code(bad)));
+    }
 }

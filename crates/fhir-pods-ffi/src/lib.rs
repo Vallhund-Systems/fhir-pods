@@ -568,8 +568,7 @@ pub unsafe extern "C" fn fhir_pods_terminology_needs(ptr: *const u8, len: usize)
 #[no_mangle]
 pub unsafe extern "C" fn fhir_pods_slots(profile: *const u8, profile_len: usize) -> *mut u8 {
     let url = core::str::from_utf8(input(profile, profile_len)).unwrap_or("");
-    let url = url.split('|').next().unwrap_or(url);
-    let Some(p) = fhir_pods_core::generated::REGISTRY.iter().find(|p| p.url == url) else {
+    let Some(p) = fhir_pods_core::resource_profile(url) else {
         return pack(b"{\"error\":\"no compiled profile with that URL\"}");
     };
     let mut out = String::from("{\"slots\":[");

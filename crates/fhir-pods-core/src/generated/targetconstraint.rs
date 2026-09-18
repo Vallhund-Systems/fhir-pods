@@ -360,7 +360,6 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "PlanDefinition"),
         ("element", "PlanDefinition.goal"),
         ("element", "PlanDefinition.goal.target"),
-        ("element", "PlanDefinition.actor"),
         ("element", "PlanDefinition.action"),
         ("element", "Questionnaire"),
         ("element", "Questionnaire.item"),

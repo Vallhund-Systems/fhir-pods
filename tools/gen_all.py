@@ -34,7 +34,10 @@ BASE_RESOURCES = {"AuditEvent", "Provenance"}
 
 RUST_KEYWORDS = {"as", "break", "const", "continue", "crate", "else", "enum", "extern", "false", "fn", "for", "if", "impl",
                  "in", "let", "loop", "match", "mod", "move", "mut", "pub", "ref", "return", "self", "static", "struct",
-                 "super", "trait", "true", "type", "unsafe", "use", "where", "while", "async", "await", "dyn"}
+                 "super", "trait", "true", "type", "unsafe", "use", "where", "while", "async", "await", "dyn",
+                 # reserved for future use
+                 "abstract", "become", "box", "do", "final", "macro", "override", "priv", "typeof", "unsized",
+                 "virtual", "yield", "try", "gen"}
 
 
 def mod_name(sd_id):
@@ -120,13 +123,18 @@ def main():
             sd = json.load(open(path))
             if sd.get("id") in BASE_VITALS and (sd.get("snapshot") or {}).get("element"):
                 targets.append(sd)
-                implied.append(mod_name(sd["id"]))
+                implied.append(sd["url"])
             elif sd.get("id") in BASE_RESOURCES and (sd.get("snapshot") or {}).get("element"):
                 targets.append(sd)
 
     mods = []
-    used = set()
+    used = {"intern", "mod"}  # the directory's own modules
+    seen_urls = {}
+    implied_mods = []
     for sd in targets:
+        if sd["url"] in seen_urls:
+            sys.exit(f"{sd['url']} is defined twice ({seen_urls[sd['url']]} and {sd.get('id')}): one registry entry per canonical")
+        seen_urls[sd["url"]] = sd.get("id")
         mod = mod_name(sd["id"])
         # the same id in two packages (AU Base's and HL7's `medication-type`): distinct modules
         n = 2
@@ -134,6 +142,8 @@ def main():
             mod = f"{mod_name(sd['id'])}_{n}"
             n += 1
         used.add(mod)
+        if sd["url"] in implied:
+            implied_mods.append(mod)
         text, (ne, ns, nd) = emit(sd, provenance, load)
         with open(os.path.join(out_dir, f"{mod}.rs"), "w") as f:
             f.write(text)
@@ -158,7 +168,7 @@ def main():
         f.write("/// their fixed LOINC code (or the vital-signs category) whether or not it\n")
         f.write("/// declares them — the spec requires it, and the reference validator does it.\n")
         f.write("pub static IMPLIED: &[&CompiledProfile] = &[\n")
-        for mod in sorted(implied):
+        for mod in sorted(implied_mods):
             f.write(f"    &{mod}::PROFILE,\n")
         f.write("];\n")
 

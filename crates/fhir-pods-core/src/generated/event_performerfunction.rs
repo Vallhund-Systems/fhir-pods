@@ -55,7 +55,6 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "Observation.performer"),
         ("element", "DiagnosticReport.performer"),
         ("element", "DocumentReference.author"),
-        ("element", "Consent.grantee"),
     ],
 };
 

@@ -53,7 +53,6 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     must_support: &[],
     contexts: &[
         ("element", "CarePlan"),
-        ("element", "CarePlan.activity.plannedActivityReference"),
         ("element", "Communication"),
         ("element", "CommunicationRequest"),
         ("element", "DeviceRequest"),
@@ -63,7 +62,6 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "MedicationRequest"),
         ("element", "NutritionOrder"),
         ("element", "Procedure"),
-        ("element", "RequestOrchestration"),
         ("element", "RequestGroup"),
         ("element", "SupplyRequest"),
         ("element", "ServiceRequest"),

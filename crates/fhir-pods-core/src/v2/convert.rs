@@ -1225,6 +1225,84 @@ fn drop_empty(node: &mut Node) -> bool {
     }
 }
 
+/// Drop the extensions a skipped row leaves incomplete: no `url`, or a `url`
+/// with neither a value nor sub-extensions (after their own tidying). Empty
+/// `extension` arrays go with them.
+fn tidy_extensions(node: &mut Node, dropped: &mut usize) {
+    match node {
+        Node::Object(kvs) => {
+            for (_, v) in kvs.iter_mut() {
+                tidy_extensions(v, dropped);
+            }
+            for (k, v) in kvs.iter_mut() {
+                if k != "extension" && k != "modifierExtension" {
+                    continue;
+                }
+                if let Node::Array(items) = v {
+                    let before = items.len();
+                    items.retain(|it| match it {
+                        Node::Object(f) => {
+                            let url = f.iter().any(|(k, _)| k == "url");
+                            let content = f.iter().any(|(k, v)| {
+                                k.starts_with("value")
+                                    || (k == "extension" && matches!(v, Node::Array(xs) if !xs.is_empty()))
+                            });
+                            url && content
+                        }
+                        _ => false,
+                    });
+                    *dropped += before - items.len();
+                }
+            }
+            kvs.retain(|(k, v)| {
+                !((k == "extension" || k == "modifierExtension") && matches!(v, Node::Array(xs) if xs.is_empty()))
+            });
+        }
+        Node::Array(xs) => {
+            for x in xs.iter_mut() {
+                tidy_extensions(x, dropped);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// A repeating primitive's carrier (`_line`) is paired with its values by
+/// position: pad the shorter array with nulls to the longer one's length.
+fn pad_carriers(node: &mut Node) {
+    match node {
+        Node::Object(kvs) => {
+            let mut lens: Vec<(String, usize)> = Vec::new();
+            for (k, v) in kvs.iter() {
+                if let (Some(bare), Node::Array(xs)) = (k.strip_prefix('_'), v) {
+                    if let Some((_, Node::Array(ys))) = kvs.iter().find(|(k2, _)| k2 == bare) {
+                        let n = xs.len().max(ys.len());
+                        lens.push((bare.into(), n));
+                    }
+                }
+            }
+            for (bare, n) in lens {
+                for key in [bare.clone(), alloc::format!("_{bare}")] {
+                    if let Some((_, Node::Array(xs))) = kvs.iter_mut().find(|(k, _)| *k == key) {
+                        while xs.len() < n {
+                            xs.push(Node::Null);
+                        }
+                    }
+                }
+            }
+            for (_, v) in kvs.iter_mut() {
+                pad_carriers(v);
+            }
+        }
+        Node::Array(xs) => {
+            for x in xs.iter_mut() {
+                pad_carriers(x);
+            }
+        }
+        _ => {}
+    }
+}
+
 /// See the identifier rule in [`convert_with`]: `1.2.3` → `urn:oid:1.2.3`,
 /// a UUID → `urn:uuid:…`, anything else left as written.
 fn urn_identifiers(node: &mut Node) {
@@ -1709,6 +1787,24 @@ pub fn convert_with(
     // IG itself spells for the same value elsewhere (`"urn:oid:"+HD.2`)
     for inst in cv.instances.iter_mut() {
         urn_identifiers(&mut inst.body);
+    }
+    // what a skipped row leaves behind: an extension holding only the url the
+    // map fixed (its value row skipped) or none (its url row skipped) says
+    // nothing and is not FHIR (ext-1); a primitive's `_name` carrier array
+    // stands beside its values one for one
+    for inst in cv.instances.iter_mut() {
+        let mut dropped = 0usize;
+        tidy_extensions(&mut inst.body, &mut dropped);
+        if dropped > 0 {
+            cv.skipped.push(Skip {
+                at: inst.scope.clone(),
+                target: alloc::format!("{}.extension", inst.resource),
+                why: alloc::format!(
+                    "{dropped} extension(s) with a url and nothing else, its value row skipped: dropped"
+                ),
+            });
+        }
+        pad_carriers(&mut inst.body);
     }
 
     // the Bundle: a message, the MessageHeader first

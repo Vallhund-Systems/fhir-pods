@@ -45,7 +45,6 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     contexts: &[
         ("element", "Measure.group.population"),
         ("element", "Measure.group.stratifier"),
-        ("element", "MeasureReport.supplementalData"),
         ("element", "MeasureReport.evaluatedResource"),
         ("element", "Reference"),
     ],

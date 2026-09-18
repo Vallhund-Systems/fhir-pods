@@ -55,7 +55,6 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "Library"),
         ("element", "Group"),
         ("element", "MeasureReport"),
-        ("element", "RequestOrchestration"),
         ("element", "RequestGroup"),
         ("element", "GuidanceResponse"),
     ],

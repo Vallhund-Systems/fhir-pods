@@ -55,7 +55,6 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "Procedure"),
         ("element", "ServiceRequest"),
         ("element", "DeviceRequest"),
-        ("element", "DeviceUsage"),
         ("element", "DeviceUseStatement"),
         ("element", "Specimen.collection"),
     ],

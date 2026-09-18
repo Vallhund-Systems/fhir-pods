@@ -60,14 +60,14 @@ with terminology switched off on both sides so profiles are what is scored.
 `conformance/run.py` builds the corpus from the pinned packages, runs
 validator_cli 6.10.4 over it, and compares verdicts:
 
-- **1521/1521** at v0.9.1 — the seven IGs' published examples and 60-odd
+- **1521/1521** at v0.9.2 — the seven IGs' published examples and 60-odd
   probes, every corpus resource lifted into its slots and lowered again, every
   one de-identified, the twelve document examples taken apart and assembled
   again, an audit record of every kind from the audit surface, five HL7 v2
   messages converted to message bundles (each side's verdict, valid or not,
   the same — which proves shape, not meaning: the converter's content is
   held by its own tests), and the review lane's adversarial probes.
-- **4,809 of 5,292** of FHIR R4's own published examples, every
+- **4,811 of 5,292** of FHIR R4's own published examples, every
   resource type, unprofiled (`conformance/base.py`, apart from the release
   gate) — the rest are rules the pod does not check and names
   ([`scope.md`](docs/scope.md)), never a wrong verdict on one it does. A run in which either
@@ -96,15 +96,16 @@ the spec requires, and the base spec's own `AuditEvent` and `Provenance`
 definitions, so a host can lower and declare them directly. The element-
 type table covers every R4 resource and datatype, so a contained resource of
 any type is typed. Every licence-free value set the registry binds is bundled
-(125 sets), and the base code systems' content — every `complete`
-CodeSystem of R4 core and the HL7 terminology package, codes only, no
-displays (1,148 systems), so a code no version of its system has is
-reported; SNOMED CT, LOINC, VSAC and NCTS-hosted sets go through the
+(126 sets), and the base code systems' content — every `complete`
+CodeSystem of R4 core and the HL7 terminology package (THO 7.3.0), codes
+only, no displays (1,212 systems; a system either package leaves open is
+not bundled; absent `caseSensitive` means any case), so a code no version
+of its system has is reported; SNOMED CT, LOINC, VSAC and NCTS-hosted sets go through the
 terminology seam.
 
 ## Delivery
 
-- **wasm** — a ~2.3 MiB `.wasm` (~560 KiB gzipped) with a dependency-free JS
+- **wasm** — a ~2.3 MiB `.wasm` (~570 KiB gzipped) with a dependency-free JS
   wrapper; browser, edge runtimes, Node, Bun, Deno. [`pods/wasm`](pods/wasm/README.md).
 - **Expo** — the core as a native module: iOS XCFramework + Android jniLibs,
   a native terminology provider seam. [`pods/expo`](pods/expo/README.md).
@@ -155,7 +156,10 @@ unverified.
   records → FHIR inputs) live in the host, never here.
 - **Ships no licensed terminology.** SNOMED CT carries affiliate licensing in
   many jurisdictions; fixed SNOMED codings carry `system` + `code` only, and
-  displays come through the seam.
+  displays come through the seam. LOINC is never bundled. What is bundled
+  is codes only, from the CC0 FHIR and HL7 terminology packages (a few of
+  those systems carry their originators' notices — UB04, ASTM, ISO — which
+  the packages redistribute; no display or definition text travels).
 - **Unverifiable is visible, not silent.** A declared profile the registry
   lacks, an invariant outside the FHIRPath core, a set the bundle cannot
   decide — each is an issue in the report.

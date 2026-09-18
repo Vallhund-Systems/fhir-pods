@@ -45,14 +45,20 @@ informational), by family:
 
 ## The base spec itself: every R4 example (`conformance/base.py`)
 
-Beyond the six IGs' examples, the widest test of the base spec's rules is
-FHIR R4's own example set — `hl7.fhir.r4.examples` 4.0.1, 5,292
-instances across every resource type, almost all declaring no profile —
-validated as declared by us and by validator_cli, and compared. It runs
+Beyond the seven IGs' examples, the widest test of the base spec's
+rules *that we check on an unprofiled resource* — shape, cardinality,
+datatype lexical rules, dom-* and bdl-* invariants, extension placement
+and content, codes against the bundled code systems — is FHIR R4's own
+example set: `hl7.fhir.r4.examples` 4.0.1, 5,292 instances across every
+resource type, almost all declaring no profile, validated as declared by
+us and by validator_cli, and compared. It is not a test of the rules an
+unprofiled resource does not get from us (see "What we skip, never guess"
+below: no resource-level invariants beyond dom-*/bdl-*, no bindings) —
+on those the examples are clean, and agreement says only that. It runs
 apart from the release gate (parity, not cleanliness: the spec's own
 examples are not all valid, and several are conformance resources the
-reference validator holds to rules of its own kind). At v0.9.1:
-**4,809** agree. What the rest is, by family — every one a rule we do
+reference validator holds to rules of its own kind). At v0.9.2:
+**4,811** agree. What the rest is, by family — every one a rule we do
 not check, none a wrong verdict of ours on a rule we do:
 
 - **Definition resolution** (the largest, on conformance resources —
@@ -68,14 +74,38 @@ not check, none a wrong verdict of ours on a rule we do:
   (the unprofiled lane records the same exclusion).
 - **Codes against a version of a code system we do not carry.** Since
   v0.9.1 the base code systems' content is bundled (R4 core's and the HL7
-  terminology package's `complete` systems, codes only) and a Coding or
-  coded unit is held to it — but the two packages carry different versions
-  of many systems and a validator may have either loaded, so a code is
-  unknown only when no version we carry has it. The reference validator,
-  holding an example to the one version it loaded, rejects a handful more
-  (`partial` in `immunization-subpotent-reason`, gone from the newer copy).
+  terminology package's `complete` systems — THO 7.3.0 at v0.9.2 — codes
+  only) and a Coding or coded unit is held to it. The two packages carry
+  different versions of many systems and a validator may have either
+  loaded, so a code is unknown only when no version we carry has it, and
+  a system any copy leaves open (`fragment`, `example`, `not-present`) is
+  not bundled at all. The reference validator, holding an example to the
+  one version it loaded, rejects a handful more (`partial` in
+  `immunization-subpotent-reason`, gone from the newer copy;
+  `service-type`, `example` in R4 core). A code system newer than the
+  bundled THO can add codes the pod will call unknown until the table is
+  regenerated: the trade an offline check makes.
+- **Eleven files, seven small rules.** `sdf-4` (an invariant of
+  StructureDefinition — no `sdf-*` runs here, only dom-* and bdl-*);
+  closed sub-extension sets on a complex extension (`hla-genotyping-…`:
+  the definition's slicing is `open`, the reference validator treats the
+  set as closed — we follow the definition); `Attachment.hash` against
+  `data`; a `#fragment` canonical whose contained target does not exist;
+  in-bundle resolution of relative references (`Can't find
+  'Practitioner/example' in the bundle`); an `<img src="#…">` fragment;
+  MeasureReport-to-Measure group checks. Resource `id` and `code` lexical
+  rules were in this list until v0.9.2, which added them.
 
-What the lane taught us, taken in v0.9.1: every HL7 extension compiled
+What the lane taught us, taken in v0.9.2 (from a fresh review of
+v0.9.1): an extension's placement is matched the three ways the reference
+validator matches it — the literal path from the resource with content
+references uncollapsed, the collapsed backbone path, and the path from
+the enclosing datatype's definition (`Dosage.site`,
+`StructureDefinition.snapshot.element.binding.valueSet`); a choice spelt
+the R5 way in a context (`Parameters.parameter.value`) matches R4's
+`value[x]`; contexts the extensions package marks for later FHIR versions
+are left out; a code system whose `caseSensitive` is absent accepts any
+case; resource `id` and `code` lexical rules. Taken in v0.9.1: every HL7 extension compiled
 (contexts checked for all; `CanonicalResource` met by R4's canonical
 resources, `regex` allowed on `ElementDefinition.type` as the reference
 validator allows it); the base code systems' codes; a code under

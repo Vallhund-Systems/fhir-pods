@@ -195,6 +195,18 @@ fn primitive_value_ok(ty: &str, v: &Value<'_>) -> bool {
                             && scheme.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'+' | b'.' | b'-'))
                     }))
         }
+        // `[A-Za-z0-9\-\.]{1,64}` — a resource's or element's id
+        ("id", Value::Str(s)) => {
+            !s.is_empty() && s.len() <= 64 && s.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.'))
+        }
+        // `[^\s]+(\s[^\s]+)*` — a code has no leading, trailing or doubled whitespace
+        ("code", Value::Str(s)) => {
+            let ws = |c: char| c.is_whitespace() || c == '\u{a0}';
+            !s.is_empty()
+                && !s.starts_with(ws)
+                && !s.ends_with(ws)
+                && !s.chars().zip(s.chars().skip(1)).any(|(a, b)| ws(a) && ws(b))
+        }
         // R4 JSON: a string primitive is never empty
         (_, Value::Str(s)) => !s.is_empty(),
         _ => true,
@@ -461,14 +473,26 @@ fn owner_names(w: &Walk<'_, '_>) -> Vec<alloc::string::String> {
     };
     let is_datatype =
         |c: &str| !c.contains('.') && !is_resource(c) && c != "Element" && crate::typing::known_type(c).is_some();
-    // from the nearest resource or backbone context — a backbone's context is
-    // its definition path with content-reference cycles already collapsed
-    // (`Questionnaire.item` for an item three deep), which is what a context
-    // expression names
-    if let Some(r) = (0..=owner).rev().find(|&i| is_resource(w.ctxs[i].0) || w.ctxs[i].0.contains('.')) {
+    // a backbone of a resource (`Questionnaire.item`), as against a backbone
+    // of a datatype (`ElementDefinition.binding`, `Timing.repeat`)
+    let is_resource_backbone = |c: &str| c.split('.').next().is_some_and(is_resource) && c.contains('.');
+    // the reference validator matches an element context three ways, and so
+    // do we: (1) the literal path from the nearest resource, content
+    // references uncollapsed (`Questionnaire.item.item`,
+    // `StructureDefinition.snapshot.element.binding.valueSet`); (2) the
+    // path from the nearest resource backbone, whose context is its
+    // definition path with content-reference cycles collapsed
+    // (`Questionnaire.item` for an item three deep); (3) the path from the
+    // nearest enclosing datatype's definition (`Dosage.site`,
+    // `ElementDefinition.code`) — the datatype the owner sits in, not the
+    // owner itself when the owner is one
+    if let Some(r) = (0..=owner).rev().find(|&i| is_resource(w.ctxs[i].0)) {
         names.push(path_from(r));
     }
-    if let Some(d) = (0..=owner).rev().find(|&i| is_datatype(w.ctxs[i].0)) {
+    if let Some(r) = (0..=owner).rev().find(|&i| is_resource_backbone(w.ctxs[i].0)) {
+        names.push(path_from(r));
+    }
+    if let Some(d) = (0..owner).rev().find(|&i| is_datatype(w.ctxs[i].0)) {
         names.push(path_from(d));
     }
     let mut unique: Vec<String> = Vec::new();
@@ -526,7 +550,8 @@ const CANONICAL_RESOURCES: &[&str] = &[
 /// sitting inside an extension.
 fn context_allows(p: &crate::compiled::CompiledProfile, names: &[alloc::string::String], owner_ctx: &str) -> bool {
     p.contexts.iter().any(|(kind, expr)| match *kind {
-        "element" => names.iter().any(|n| n == expr),
+        // the extensions package also spells a choice the R5 way (`Parameters.parameter.value`)
+        "element" => names.iter().any(|n| n == expr || n.strip_suffix("[x]") == Some(expr)),
         "extension" => owner_ctx == "Extension",
         _ => true,
     })
@@ -631,12 +656,13 @@ fn structure_object<'v, 'a>(
             }
             if let Ok(i) = crate::code_systems_table::CODE_SYSTEMS.binary_search_by(|(u, _, _)| (*u).cmp(bare)) {
                 let (_, case_sensitive, codes) = crate::code_systems_table::CODE_SYSTEMS[i];
+                // the table is line-delimited: a code carrying a line break
+                // (lexically a code, never a concept) would match across two
+                // entries, so it is unknown outright; a case-insensitive
+                // system's table is lowercased already
                 let needle = alloc::format!("\n{code}\n");
-                let known = if case_sensitive {
-                    codes.contains(&needle)
-                } else {
-                    codes.to_ascii_lowercase().contains(&needle.to_ascii_lowercase())
-                };
+                let known = !code.contains(['\n', '\r'])
+                    && if case_sensitive { codes.contains(&needle) } else { codes.contains(&needle.to_lowercase()) };
                 if !known {
                     w.gaps.push((
                         alloc::format!("{path}.code"),

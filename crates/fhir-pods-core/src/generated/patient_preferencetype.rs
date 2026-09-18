@@ -51,12 +51,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     invariants: &[],
     lowering: &LOWERING,
     must_support: &[],
-    contexts: &[
-        ("element", "Patient.communication.preferred"),
-        ("element", "RelatedPerson.communication.preferred"),
-        ("element", "Practitioner.communication.preferred"),
-        ("element", "Person.communication.preferred"),
-    ],
+    contexts: &[("element", "Patient.communication.preferred"), ("element", "RelatedPerson.communication.preferred")],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

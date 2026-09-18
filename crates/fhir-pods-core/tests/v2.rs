@@ -474,3 +474,63 @@ fn a_trigger_event_finds_its_structure() {
         ConvertError::UnknownStructure("ADT_A99".into())
     );
 }
+
+#[test]
+fn a_target_the_fhir_type_does_not_have_is_skipped_not_written() {
+    // XAD.7 (address type) is mapped by the IG to `extension[2].uri` — a typo for `url`:
+    // the rows are skipped with their reason, no `uri` key is written, and the
+    // census tract's carrier stands beside both lines
+    let v = Validator::new();
+    let msg =
+        ORU.replace("12 High St^^Springfield^VIC^3000^AU", "12 High St^Unit 2^Springfield^VIC^3000^AU^H^^^123456");
+    let c = v.v2(msg.as_bytes(), &Options::default()).unwrap();
+    let patient = entries(&c.bundle).into_iter().find(|e| e.resource_type == "Patient").unwrap().json;
+    assert!(!patient.contains(r#""uri""#) && !patient.contains(r#""value":"H""#), "{patient}");
+    assert!(patient.contains(r#""line":["12 High St","Unit 2"],"_line":[null,{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/iso21090-ADXP-censusTract","valueString":"123456"}]}]"#)
+        || patient.contains(r#""_line":[{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/iso21090-ADXP-censusTract","valueString":"123456"}]},null]"#), "{patient}");
+    let skips: Vec<String> = c.skipped.iter().map(|s| format!("{} {} {}", s.at, s.target, s.why)).collect();
+    assert!(
+        skips.iter().any(|s| s.contains("PID[1]-11.7") && s.contains("no such element: Extension.uri")),
+        "{skips:?}"
+    );
+    // no extension is left holding only the url the map fixed
+    for e in entries(&c.bundle) {
+        assert!(
+            !e.json.contains(r#""extension":[{"url":"#)
+                || e.json.matches(r#"{"url":"http"#).count()
+                    <= e.json.matches(r#""value"#).count() + e.json.matches(r#""extension":[{"url""#).count(),
+            "{}",
+            e.json
+        );
+    }
+    assert!(c.validation.is_valid(), "{}", wire::report(&c.validation));
+}
+
+#[test]
+fn an_extension_the_definition_forbids_where_the_map_puts_it_is_skipped() {
+    // NTE-4 maps to `alternate-codes` (defined for code/string/Coding) at the
+    // Appointment root and NTE-9 to `annotationType` (defined for Annotation)
+    // on an Appointment extension: both skipped with the reason, nothing placed
+    let v = Validator::new();
+    let msg = "MSH|^~\\&|SCHED|HOSP|EHR|CLINIC|20260916100000+1000||SIU^S12^SIU_S12|MSG0003|P|2.5.1\r\
+SCH|1234^SCHED||||||ROUTINE^Routine^HL70276|CHECKUP^Check-up|30|min|^^30^20260920090000+1000||||||||||||||Booked^Booked^HL70278\r\
+NTE|1||Bring your card|RE^Remark^HL70364|||||INSTRUCT^Instruction^HL70364\r\
+PID|1||MRN12345^^^ACME^MR||Doe^Jane||19700615|F\r";
+    let c = v.v2(msg.as_bytes(), &Options::default()).unwrap();
+    let appt = entries(&c.bundle).into_iter().find(|e| e.resource_type == "Appointment").unwrap().json;
+    assert!(!appt.contains("alternate-codes") && !appt.contains("annotationType"), "{appt}");
+    assert!(
+        c.skipped.iter().any(|s| s.why.contains("alternate-codes is defined for code, string, Coding")),
+        "{:?}",
+        c.skipped
+    );
+    assert!(c.skipped.iter().any(|s| s.why.contains("annotationType is defined for Annotation")), "{:?}", c.skipped);
+    // and no extension was left with only its url
+    assert!(
+        !appt.contains(r#"{"url":"http://hl7.org/fhir/StructureDefinition/extension-Appointment.note"}"#),
+        "{appt}"
+    );
+    for e in c.validation.report.issues.iter() {
+        assert!(!e.message.contains("ext-1") && !e.message.contains("Extension.url is required"), "{}", e.message);
+    }
+}

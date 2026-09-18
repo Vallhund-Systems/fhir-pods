@@ -54,7 +54,6 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     contexts: &[
         ("element", "Composition"),
         ("element", "Consent"),
-        ("element", "DeviceUsage"),
         ("element", "DeviceUseStatement"),
         ("element", "DiagnosticReport"),
         ("element", "Encounter"),

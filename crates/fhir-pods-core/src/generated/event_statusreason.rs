@@ -56,7 +56,6 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "DiagnosticReport"),
         ("element", "DocumentReference"),
         ("element", "SupplyDelivery"),
-        ("element", "DeviceUsage"),
         ("element", "DeviceUseStatement"),
     ],
 };

@@ -48,7 +48,6 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     must_support: &[
     ],
     contexts: &[
-        ("element", "DeviceDefinition.hasPart.count"),
     ],
 };
 

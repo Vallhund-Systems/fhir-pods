@@ -1,5 +1,61 @@
 # Changelog
 
+## 0.9.2 — 2026-09-17
+
+**What a fresh review of 0.9.1 found, fixed** (planning F062–F073). Six
+places where the pod rejected what the reference validator accepts, none
+reached by the corpora:
+
+- **Code systems.** An absent `CodeSystem.caseSensitive` means *any case*
+  (the spec's Postel rule and the reference validator's default), not
+  case-sensitive as 0.9.1 had it — 424 R4-core systems, `y`/`n` in
+  `v2-0136` among them. The bundled terminology package is now **THO
+  7.3.0** (0.9.1 pinned 6.2.0 and called it what the validator loads; the
+  gate's IGs depend on 7.x and the validator resolves the latest, so 41
+  codes it accepts were unknown here — `observation-category` `symptom`).
+  A system's `url|version` is keyed bare (six R4 copies were dead rows); a
+  case-insensitive system's table is lowercased at generation; a code
+  carrying a line break is unknown outright (it matched across two
+  entries); `example` content leaves a system open, and the docs say so.
+  1,212 systems, 24,724 codes.
+- **Extension placement** is matched the three ways the reference
+  validator matches it: the literal path from the resource with content
+  references uncollapsed (`ValueSet.expansion.contains.designation`,
+  `StructureDefinition.snapshot.element.binding.valueSet` — 0.9.1 cut the
+  path at any dotted context, so three extensions were unusable anywhere
+  in R4), the collapsed backbone path, and the path from the enclosing
+  datatype's definition (`Dosage.site`, `ElementDefinition.code` — an
+  off-by-one had the owner counting as its own enclosure). A context spelt
+  the R5 way (`Parameters.parameter.value`) matches `value[x]`; contexts
+  the package marks for FHIR ≥ 4.3 are left out. `lower`, `lift` and
+  `slots` refuse an extension's profile (`resource_profile`): it is
+  compiled to check placement and content, not to build an `Extension` as
+  if it were a resource.
+- **Resource `id`** (`[A-Za-z0-9\-\.]{1,64}`) and **`code`** (no leading,
+  trailing or doubled whitespace) lexical rules — two of the eleven
+  base-lane files the docs had not accounted for; the other seven small
+  rules are now named in `docs/scope.md`, and the base-lane claim is
+  restated as what it is: parity on the rules an unprofiled resource gets
+  from us, not "invariants and bindings" at large.
+
+**HL7 v2.** `gen_v2.py` now reads the R4 types and **skips a row whose
+target names no element of the type it lands on** — 68 rows: the IG's
+typos (`extension[2].uri`, `coding.value`, `valueSampedData`), R5
+elements, a bare choice stem — where 0.9.1 wrote the keys and produced
+non-FHIR (`Patient.address.extension[{"uri":"H"}]` for every address type;
+the README's "compiled as skipped" was not true of them). An extension
+block's placement is judged on the element it sits on, resolved through
+the same tables (`alternate-codes` at an Appointment root and
+`annotationType` on an Appointment extension are refused, 17 rows now).
+A value key the map misspells against the extension's definition
+(`valueCode` for the string `iso21090-ADXP-censusTract`) is respelt to
+the definition's type. After conversion, an extension left with only its
+url (its value row skipped) is dropped and counted in `skipped`, and a
+repeating primitive's `_name` carrier is padded to its values' length.
+
+Base lane: **4,811 of 5,292**, none stricter. Gate **1521/1521**. Tests
+200. wasm ~2.3 MiB (~570 KiB gzipped).
+
 ## 0.9.1 — 2026-09-17
 
 **Broader validation, three ways.** (1) **AU Base 6.0.0** is a primary IG:

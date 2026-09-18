@@ -102,11 +102,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     invariants: &[],
     lowering: &LOWERING,
     must_support: &[],
-    contexts: &[
-        ("element", "PlanDefinition.action"),
-        ("element", "RequestOrchestration.action"),
-        ("element", "RequestGroup.action"),
-    ],
+    contexts: &[("element", "PlanDefinition.action"), ("element", "RequestGroup.action")],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

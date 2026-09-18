@@ -63,8 +63,6 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "Questionnaire.item"),
         ("element", "PlanDefinition"),
         ("element", "PlanDefinition.action"),
-        ("element", "RequestOrchestration"),
-        ("element", "RequestOrchestration.action"),
         ("element", "RequestGroup"),
         ("element", "RequestGroup.action"),
         ("element", "ActivityDefinition"),

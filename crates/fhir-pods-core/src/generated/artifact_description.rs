@@ -52,10 +52,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     lowering: &LOWERING,
     must_support: &[],
     contexts: &[
-        ("element", "ArtifactAssessment"),
-        ("element", "ClinicalUseDefinition"),
         ("element", "Composition"),
-        ("element", "ConditionDefinition"),
         ("element", "DeviceDefinition"),
         ("element", "ExampleScenario"),
         ("element", "Group"),
@@ -63,8 +60,6 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "MedicationKnowledge"),
         ("element", "ObservationDefinition"),
         ("element", "SpecimenDefinition"),
-        ("element", "SubstanceDefinition"),
-        ("element", "SubscriptionTopic"),
     ],
 };
 

@@ -385,7 +385,97 @@ def load_extension_contexts(ext_pkg):
         if d.get("type") != "Extension" or not d.get("url"):
             continue
         contexts[d["url"]] = [c.get("expression", "") for c in d.get("context", []) if c.get("type") == "element"]
+        for e in (d.get("snapshot") or d.get("differential") or {}).get("element", []):
+            if e.get("path") == "Extension.value[x]" and e.get("type"):
+                ext_value_types[d["url"]] = [t.get("code", "") for t in e["type"]]
     return contexts
+
+
+# The FHIR types' elements, from the R4 package: element path → {child name:
+# [type codes]} (a choice's name is its stem, `value`), backbone paths keyed
+# by their own path, content references resolved.
+fhir_children = {}
+fhir_choices = set()
+fhir_content_refs = {}
+FHIR_TYPES = set()
+
+
+def load_fhir_types(r4_pkg):
+    for name in os.listdir(r4_pkg):
+        if not name.startswith("StructureDefinition-") or not name.endswith(".json"):
+            continue
+        try:
+            d = json.load(open(os.path.join(r4_pkg, name)))
+        except ValueError:
+            continue
+        if d.get("derivation") == "constraint" or d.get("kind") not in ("resource", "complex-type", "primitive-type"):
+            continue
+        FHIR_TYPES.add(d["type"])
+        for e in (d.get("snapshot") or {}).get("element", []):
+            path = e["path"]
+            if "." not in path:
+                continue
+            parent, child = path.rsplit(".", 1)
+            if child.endswith("[x]"):
+                child = child[:-3]
+                fhir_choices.add(f"{parent}.{child}")
+            types = [t.get("code", "") for t in e.get("type", [])]
+            types = [t.rsplit("/", 1)[-1] if t.startswith("http://hl7.org/fhirpath/System.") else t for t in types]
+            fhir_children.setdefault(parent, {})[child] = types
+            if e.get("contentReference"):
+                fhir_content_refs[path] = e["contentReference"].lstrip("#")
+
+
+def resolve_element(owner, path):
+    """Walk a target path through the FHIR types. Returns (missing, type,
+    definition path): `missing` names the first step that is no element of
+    the type it lands on (`Extension.uri`, `Coding.value`,
+    `Observation.valueSampedData`) or is None; `type` is what the path ends
+    on (a datatype, a primitive, or a backbone's own path) and the
+    definition path is where it sits (`Patient.identifier`, `Address.line`).
+    `owner` is the type the path starts in; `[k]` positions and `_name`
+    carriers are read through; a type the tables do not describe is not
+    judged."""
+    cur, dpath = owner, owner
+    for seg in path.split("."):
+        name = re.sub(r"\[[^\]]*\]$", "", seg).lstrip("_")
+        if name in ("$this", "$value"):
+            return None, cur, dpath
+        kids = fhir_children.get(cur)
+        if kids is None:
+            return None, None, None
+        if name in kids:
+            if f"{cur}.{name}" in fhir_choices:
+                return f"{cur}.{name}[x] spelt without its type", None, None
+            types = kids[name]
+            here = f"{cur}.{name}"
+        else:
+            # a choice spelt with its type: `valueString` → `value` + `string`
+            hit = None
+            for stem in kids:
+                if f"{cur}.{stem}" in fhir_choices and name.startswith(stem) and len(name) > len(stem):
+                    tail = name[len(stem):]
+                    t = tail[0].lower() + tail[1:] if tail[0].lower() + tail[1:] in FHIR_TYPES else tail
+                    if t in FHIR_TYPES and (t in kids[stem] or tail in kids[stem]):
+                        hit = t
+                        break
+            if hit is None:
+                return f"{cur}.{name}", None, None
+            types, here = [hit], f"{cur}.{name}"
+        dpath = f"{dpath}.{name}"
+        if here in fhir_content_refs:
+            cur = fhir_content_refs[here]
+        elif here in fhir_children:
+            cur = here  # a backbone: its children are keyed by its path
+        elif types:
+            cur = types[0]
+        else:
+            return None, None, None
+    return None, cur, dpath
+
+
+def missing_element(owner, path):
+    return resolve_element(owner, path)[0]
 
 
 def parse_target(code):
@@ -444,6 +534,7 @@ DATATYPE_NAMES = {
 }
 
 ext_contexts = {}
+ext_value_types = {}  # url → the types its value[x] may take
 
 # The standard's abstract message syntax for the groups the maps name: how
 # often each group may occur (HL7 v2.8 chapters 3, 4, 7, 9, 10). The maps
@@ -487,7 +578,11 @@ def main():
     global ext_contexts
     pkg, out_path = sys.argv[1], sys.argv[2]
     ext_pkg = sys.argv[3] if len(sys.argv) > 3 else os.path.join(os.path.dirname(pkg), "..", "package-ext", "package")
+    r4_pkg = sys.argv[4] if len(sys.argv) > 4 else os.path.join(os.path.dirname(pkg), "..", "package-r4", "package")
     ext_contexts = load_extension_contexts(ext_pkg)
+    load_fhir_types(r4_pkg)
+    if len(fhir_children) < 500:
+        sys.exit(f"{r4_pkg}: the R4 package's StructureDefinitions are needed to check the maps' target paths")
     cms = {}
     for f in glob.glob(os.path.join(pkg, "ConceptMap-*.json")):
         c = json.load(open(f))
@@ -497,7 +592,7 @@ def main():
         if m0:
             SEGMENT_NAMES.add(m0.group(1).upper())
     ids = set(cms)
-    stats = {"rows": 0, "compiled": 0, "skipped": {}, "context moves": 0, "concatenations": 0, "component bindings": 0}
+    stats = {"rows": 0, "compiled": 0, "skipped": {}, "context moves": 0, "value keys respelt": 0, "concatenations": 0, "component bindings": 0}
 
     def skip(why):
         stats["skipped"][why.split(":")[0]] = stats["skipped"].get(why.split(":")[0], 0) + 1
@@ -526,28 +621,72 @@ def main():
 
     def context_refusals(rows, owner):
         """The extension blocks whose definition cannot sit where the map puts
-        them: every context the definition names is another resource
-        (`namingsystem-checkDigit` on an Identifier). Placing one makes FHIR no
-        validator accepts, so the block's rows are skipped, with the reason."""
+        them (`namingsystem-checkDigit`, defined for NamingSystem, on an
+        Identifier; `alternate-codes`, defined for code/string/Coding, on an
+        Appointment). The block's element is resolved through the FHIR types:
+        its type and its definition path (`Patient.identifier`) are what a
+        context names. A datatype map's rows are used from many places, so a
+        dotted resource context (`Patient.identifier`) is given the benefit
+        of the doubt there. Placing a refused block makes FHIR no validator
+        accepts, so its rows are skipped, with the reason."""
         generic = {"Element", "*", "BackboneElement", "Resource", "DomainResource"}
         refused = {}
         for _src, _sd, _si, t, tinfo in rows:
             display = (t.get("code") or "").strip()
-            m = re.match(r"^(.*extension\[\d+\])\.url$", display)
+            m = re.match(r"^(.*?)\.?(extension\[\d+\])\.url$", display)
             a = (tinfo.get("assignment") or "").strip()
             if not m or not (a.startswith('"') and a.endswith('"')):
                 continue
             ctxs = ext_contexts.get(a[1:-1]) or []
             if not ctxs:
                 continue
-            if owner in DATATYPE_NAMES:
-                bad = all("." not in c and c not in generic and c not in DATATYPE_NAMES for c in ctxs)
+            parent = m.group(1)
+            if parent:
+                missing, ty, dpath = resolve_element(owner, parent)
+                if missing or ty is None:
+                    continue  # the target check reports the path
+                ty = "BackboneElement" if "." in ty else ty
             else:
-                roots = {c.split(".", 1)[0] for c in ctxs}
-                bad = not any(r == owner or r in generic or r in DATATYPE_NAMES for r in roots)
-            if bad:
-                refused[m.group(1)] = f"extension context: {a[1:-1].rsplit('/', 1)[-1]} is defined for {', '.join(ctxs)}"
+                ty, dpath = owner, owner
+            in_datatype = owner in DATATYPE_NAMES
+            ok = False
+            for c in ctxs:
+                if c in generic or c == ty or c == dpath:
+                    ok = True
+                elif "." in c and (in_datatype or c == f"{owner}.{dpath}" or dpath.endswith("." + c.split(".", 1)[1]) and c.split(".", 1)[0] == owner):
+                    ok = True
+                elif (ty in generic or ty == "BackboneElement") and c.split(".", 1)[0] == owner:
+                    ok = True
+            if not ok:
+                block = (parent + "." if parent else "") + m.group(2)
+                refused[block] = f"extension context: {a[1:-1].rsplit('/', 1)[-1]} is defined for {', '.join(ctxs)}, not {dpath} ({ty})"
         return refused
+
+    def value_respellings(rows):
+        """`extension[k].valueCode` where the extension's definition says its
+        value is a string (`iso21090-ADXP-censusTract`): the definition
+        decides the key — the value is the same, only the map's spelling of
+        its type is wrong. Only a primitive for a primitive."""
+        urls = {}
+        for _src, _sd, _si, t, tinfo in rows:
+            display = (t.get("code") or "").strip()
+            m = re.match(r"^(.*extension\[\d+\])\.url$", display)
+            a = (tinfo.get("assignment") or "").strip()
+            if m and a.startswith('"') and a.endswith('"'):
+                urls[m.group(1)] = a[1:-1]
+        respell = {}
+        for block, url in urls.items():
+            types = ext_value_types.get(url) or []
+            if len(types) == 1 and types[0] in PRIMITIVES:
+                want = types[0]
+                for _src, _sd, _si, t, _ti in rows:
+                    display = spell_choices((t.get("code") or "").strip())
+                    m = re.match(r"^" + re.escape(block) + r"\.value([A-Z][A-Za-z]+)$", display)
+                    if m:
+                        got = m.group(1)[0].lower() + m.group(1)[1:]
+                        if got != want and got in PRIMITIVES:
+                            respell[display] = f"{block}.value{want[0].upper()}{want[1:]}"
+        return respell
 
     def emit_rows(rows, kind, fhir=None, owner=None, v2=None):
         """rows: list of (source code, source display, source typeinfo,
@@ -556,6 +695,8 @@ def main():
         `owner` the FHIR type the rows fill, for extension contexts."""
         out = []
         moves = context_moves(rows, owner) if owner else {}
+        respell = value_respellings(rows)
+        stats["value keys respelt"] += len(respell)
         refusals = context_refusals(rows, owner) if owner else {}
         stats["context moves"] += len(moves)
         for src, sdisplay, sinfo, t, tinfo in rows:
@@ -563,6 +704,7 @@ def main():
             display = (t.get("code") or "").strip()
             if fhir and display.lower().startswith(fhir.lower() + "."):
                 display = display[len(fhir) + 1:]
+            display = respell.get(spell_choices(display), display)
             for block, moved in moves.items():
                 if display == block or display.startswith(block + "."):
                     display = moved + display[len(block):]
@@ -580,6 +722,12 @@ def main():
             tgt = parse_target(display)
             if tgt is None and reason is None:
                 reason = f"target form: {display}"
+            # a path the FHIR type does not have (an IG typo — `extension.uri`,
+            # `valueSampedData` — or an R5 element) is never written
+            if reason is None and owner and tgt[0] not in ("$this", "$value"):
+                gone = missing_element(owner, tgt[0])
+                if gone is not None:
+                    reason = f"no such element: {gone} (target {display})"
             assign = tinfo.get("assignment")
             fixed = None
             concat = None
@@ -798,7 +946,7 @@ def main():
         f.write("\n".join(lines) + "\n")
     print(f"wrote {out_path}: {len(dts)} datatype maps, {len(segs)} segment maps, {len(msgs)} message maps, {len(tbls)} tables; "
           f"rows {stats['rows']}, compiled {stats['compiled']} ({stats['concatenations']} concatenations, "
-          f"{stats['context moves']} extension blocks moved to their context, {stats['component bindings']} OBX rows bound to the component map), "
+          f"{stats['context moves']} extension blocks moved to their context, {stats['value keys respelt']} value keys respelt to the definition's type, {stats['component bindings']} OBX rows bound to the component map), "
           f"skipped {stats['rows'] - stats['compiled']}")
     for why, n in sorted(stats["skipped"].items(), key=lambda kv: -kv[1]):
         print(f"  skipped {n:>4}  {why}")
