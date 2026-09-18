@@ -155,7 +155,8 @@ fn validate_bytes_impl(
     // is, its JSON kind, whether it repeats, what a datatype requires.
     let (gaps, nested, extensions) = parsed.structure_full();
     for (path, kind, message) in gaps {
-        report.push(Severity::Error, kind, &path, message);
+        let severity = if kind == IssueType::NotSupported { Severity::Warning } else { Severity::Error };
+        report.push(severity, kind, &path, message);
     }
     let bundle = (rt == "Bundle").then_some(&doc);
     if let Some(b) = bundle {
@@ -461,7 +462,10 @@ impl Validator {
         }
         keys.sort_unstable_by_key(|k| k.0);
         keys.dedup_by_key(|k| k.0);
-        Self { invariants: keys.into_iter().map(|(k, e)| (k, path::parse(e).ok())).collect(), defaults: Vec::new() }
+        Self {
+            invariants: keys.into_iter().map(|(k, e)| (k, path::parse_constraint(e).ok())).collect(),
+            defaults: Vec::new(),
+        }
     }
 
     /// Apply `url`'s profile to every `resource_type` resource that declares

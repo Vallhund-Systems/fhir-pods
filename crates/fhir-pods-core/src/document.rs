@@ -97,6 +97,7 @@ impl<'a> Parsed<'a> {
             nested: Vec::new(),
             extensions: Vec::new(),
             ctxs: Vec::new(),
+            nodes: Vec::new(),
             segs: Vec::new(),
             profiled: Vec::new(),
             profiles: Vec::new(),
@@ -361,6 +362,9 @@ struct Walk<'v, 'a> {
     /// primitive's carrier) and the JSON key it was reached by — what an
     /// extension's context is judged against.
     ctxs: Vec<(&'static str, &'v str)>,
+    /// Actual nodes corresponding to ctxs, so a FHIRPath context must
+    /// select this owner rather than an equal-looking sibling elsewhere.
+    nodes: Vec<&'v Value<'a>>,
 }
 
 /// Does a profile reach an extension of this url through a slice (an
@@ -412,7 +416,9 @@ fn structure_at<'v, 'a>(
     w: &mut Walk<'v, 'a>,
 ) {
     w.ctxs.push((ctx, key));
+    w.nodes.push(v);
     structure_object(v, ctx, path, contained, needs_content, w);
+    w.nodes.pop();
     w.ctxs.pop();
 }
 
@@ -545,16 +551,72 @@ const CANONICAL_RESOURCES: &[&str] = &[
     "ValueSet",
 ];
 
-/// Does an extension's definition allow it where it sits? A `fhirpath`
-/// context is not evaluated (allowed); an `extension` context is met by
-/// sitting inside an extension.
-fn context_allows(p: &crate::compiled::CompiledProfile, names: &[alloc::string::String], owner_ctx: &str) -> bool {
-    p.contexts.iter().any(|(kind, expr)| match *kind {
-        // the extensions package also spells a choice the R5 way (`Parameters.parameter.value`)
-        "element" => names.iter().any(|n| n == expr || n.strip_suffix("[x]") == Some(expr)),
-        "extension" => owner_ctx == "Extension",
-        _ => true,
-    })
+/// A context either selects the owner, rules it out, or cannot be checked.
+/// Multiple contexts are alternatives; one successful selection is enough.
+fn context_allows(
+    p: &crate::compiled::CompiledProfile,
+    names: &[alloc::string::String],
+    w: &Walk<'_, '_>,
+) -> Result<bool, crate::path::Unsupported> {
+    let Some(owner) = w.nodes.len().checked_sub(2) else { return Ok(false) };
+    let resource = (0..=owner).rev().find(|&i| resource_ctx(w.nodes[i]).is_some());
+    let bundle = (0..=owner).rev().find(|&i| w.ctxs[i].0 == "Bundle").map(|i| TreeDoc::at(w.nodes[i], Some("Bundle")));
+    let url_at = |i: usize| match w.nodes[i] {
+        Value::Object(members) => members.iter().find_map(|(key, value)| match value {
+            Value::Str(url) if key.as_ref() == "url" => Some(url.as_ref()),
+            _ => None,
+        }),
+        _ => None,
+    };
+    // An extension context also permits extensions on the parent's value,
+    // as in cqf-libraryAlias on cqf-library.valueCanonical.
+    let parent_extension = if w.ctxs[owner].0 == "Extension" {
+        Some(owner)
+    } else if owner > 0
+        && w.ctxs[owner - 1].0 == "Extension"
+        && w.ctxs[owner].1.trim_start_matches('_').starts_with("value")
+    {
+        Some(owner - 1)
+    } else {
+        None
+    };
+    let mut unsupported = false;
+    for (kind, expression) in p.contexts {
+        let allowed = match *kind {
+            // The package also spells a choice the R5 way (`...value`).
+            "element" => Ok(names.iter().any(|n| n == expression || n.strip_suffix("[x]") == Some(expression))),
+            "extension" => {
+                if let Some((canonical, code)) = expression.split_once('#') {
+                    Ok(parent_extension.is_some_and(|i| {
+                        i > 0
+                            && w.ctxs[i - 1].0 == "Extension"
+                            && url_at(i) == Some(code)
+                            && url_at(i - 1) == Some(canonical)
+                    }))
+                } else {
+                    Ok(parent_extension.is_some_and(|i| url_at(i) == Some(*expression)))
+                }
+            }
+            "fhirpath" => match resource {
+                Some(i) => crate::path::parse(expression).and_then(|expr| {
+                    crate::path::context_nodes(&expr, &TreeDoc::at(w.nodes[i], Some(w.ctxs[i].0)), bundle.as_ref())
+                        .map(|nodes| nodes.iter().any(|node| node.is_at(w.nodes[owner])))
+                }),
+                None => Err(crate::path::Unsupported),
+            },
+            _ => Err(crate::path::Unsupported),
+        };
+        match allowed {
+            Ok(true) => return Ok(true),
+            Ok(false) => {}
+            Err(_) => unsupported = true,
+        }
+    }
+    if unsupported {
+        Err(crate::path::Unsupported)
+    } else {
+        Ok(false)
+    }
 }
 
 fn structure_object<'v, 'a>(
@@ -710,9 +772,9 @@ fn structure_object<'v, 'a>(
         if let Some((_, Value::Str(url))) = kvs.iter().find(|(k, _)| k.as_ref() == "url") {
             let base = url.split('|').next().unwrap_or(url);
             if let Some(p) = crate::REGISTRY.iter().find(|p| p.resource_type == "Extension" && p.url == base) {
-                let owner_ctx = w.ctxs.len().checked_sub(2).map(|i| w.ctxs[i].0).unwrap_or("");
                 let names = owner_names(w);
-                if !p.contexts.is_empty() && !context_allows(p, &names, owner_ctx) {
+                let allowed = if p.contexts.is_empty() { Ok(true) } else { context_allows(p, &names, w) };
+                if allowed == Ok(false) {
                     let here: Vec<&str> = names.iter().map(|s| s.as_str()).filter(|n| *n != "*").collect();
                     let allowed: Vec<&str> = p.contexts.iter().map(|(_, e)| *e).collect();
                     w.gaps.push((
@@ -722,6 +784,14 @@ fn structure_object<'v, 'a>(
                             "The extension {base} is not allowed to be used at this point (this element is [{}]; allowed = [{}])",
                             here.join(", "),
                             allowed.join(", ")
+                        ),
+                    ));
+                } else if allowed.is_err() {
+                    w.gaps.push((
+                        path.into(),
+                        crate::validate::IssueType::NotSupported,
+                        alloc::format!(
+                            "Extension context for {base} not evaluated: outside the supported FHIRPath core"
                         ),
                     ));
                 }
@@ -955,6 +1025,10 @@ impl<'v, 'a> TreeDoc<'v, 'a> {
         TreeDoc { root, ctx, carrier: None }
     }
 
+    fn is_at(&self, node: &Value<'_>) -> bool {
+        core::ptr::eq(self.root, node) || self.carrier.is_some_and(|carrier| core::ptr::eq(carrier, node))
+    }
+
     /// The node whose members are this element's children: the node itself,
     /// or a primitive's carrier.
     fn container(&self) -> Option<&'v Value<'a>> {
@@ -1100,26 +1174,110 @@ impl<'v, 'a> Document for TreeDoc<'v, 'a> {
 
     fn choice_keys(&self, stem: &str) -> Vec<&str> {
         let Some(Value::Object(kvs)) = self.container() else { return Vec::new() };
-        kvs.iter()
-            .map(|(k, _)| k.as_ref())
-            .filter(|k| k.strip_prefix(stem).is_some_and(|rest| rest.starts_with(|c: char| c.is_ascii_uppercase())))
-            .collect()
+        let mut keys = Vec::new();
+        for (key, _) in kvs {
+            let key = key.strip_prefix('_').unwrap_or(key);
+            if key.strip_prefix(stem).is_some_and(|rest| rest.starts_with(|c: char| c.is_ascii_uppercase()))
+                && !keys.contains(&key)
+            {
+                keys.push(key);
+            }
+        }
+        keys
     }
 
     fn choice_children(&self, stem: &str) -> Vec<Self> {
-        let Value::Object(kvs) = self.root else { return Vec::new() };
-        let mut out = Vec::new();
-        for (k, v) in kvs {
-            let Some(rest) = k.strip_prefix(stem) else { continue };
-            if !rest.starts_with(|c: char| c.is_ascii_uppercase()) {
-                continue;
-            }
-            let ctx = Self::child_ctx(self.ctx, k, v);
-            match v {
-                Value::Array(xs) => out.extend(xs.iter().map(|x| TreeDoc::at(x, ctx))),
-                v => out.push(TreeDoc::at(v, ctx)),
-            }
+        self.choice_keys(stem).into_iter().flat_map(|key| self.child_instances(key)).collect()
+    }
+}
+
+#[cfg(test)]
+mod context_tests {
+    use super::*;
+
+    fn profile(contexts: &'static [(&'static str, &'static str)]) -> crate::compiled::CompiledProfile {
+        crate::compiled::CompiledProfile {
+            url: "https://example.org/test",
+            base: None,
+            name: "Test",
+            resource_type: "Extension",
+            elements: &[],
+            slicings: &[],
+            invariants: &[],
+            must_support: &[],
+            contexts,
+            lowering: &crate::generated::cqf_libraryalias::LOWERING,
         }
-        out
+    }
+
+    #[test]
+    fn extension_context_requires_nodes_and_reports_unsupported_queries() {
+        let parsed = Parsed::parse(
+            br#"{"resourceType":"Patient","extension":[{"url":"https://example.org/test","valueString":"test"}]}"#,
+        )
+        .unwrap();
+        let extension = parsed.doc().child_instances("extension")[0];
+        let w = Walk {
+            root: "Patient",
+            gaps: Vec::new(),
+            nested: Vec::new(),
+            extensions: Vec::new(),
+            segs: Vec::new(),
+            profiled: Vec::new(),
+            profiles: Vec::new(),
+            contained: Vec::new(),
+            ctxs: alloc::vec![("Patient", ""), ("Extension", "extension")],
+            nodes: alloc::vec![parsed.value(), extension.value()],
+        };
+        let names = owner_names(&w);
+        assert_eq!(context_allows(&profile(&[("fhirpath", "true")]), &names, &w), Ok(false));
+        assert_eq!(
+            context_allows(&profile(&[("fhirpath", "unknownFunction()")]), &names, &w),
+            Err(crate::path::Unsupported)
+        );
+        assert_eq!(
+            context_allows(&profile(&[("fhirpath", "unknownFunction()"), ("element", "Patient")]), &names, &w),
+            Ok(true)
+        );
+    }
+
+    #[test]
+    fn extension_context_fragment_requires_the_named_complex_parent_and_child() {
+        let parsed = Parsed::parse(br#"{"resourceType":"Patient","extension":[{"url":"https://example.org/parent","extension":[{"url":"part","extension":[{"url":"https://example.org/test","valueString":"test"}]}]}]}"#).unwrap();
+        let parent = parsed.doc().child_instances("extension")[0];
+        let part = parent.child_instances("extension")[0];
+        let child = part.child_instances("extension")[0];
+        let w = Walk {
+            root: "Patient",
+            gaps: Vec::new(),
+            nested: Vec::new(),
+            extensions: Vec::new(),
+            segs: Vec::new(),
+            profiled: Vec::new(),
+            profiles: Vec::new(),
+            contained: Vec::new(),
+            ctxs: alloc::vec![
+                ("Patient", ""),
+                ("Extension", "extension"),
+                ("Extension", "extension"),
+                ("Extension", "extension")
+            ],
+            nodes: alloc::vec![parsed.value(), parent.value(), part.value(), child.value()],
+        };
+        let names = owner_names(&w);
+        for (expression, expected) in [
+            ("https://example.org/parent#part", true),
+            ("https://example.org/parent#other", false),
+            ("https://example.org/other#part", false),
+        ] {
+            let mut p = profile(&[]);
+            // These are separate static context lists, matching compiled definitions.
+            p.contexts = match expression {
+                "https://example.org/parent#part" => &[("extension", "https://example.org/parent#part")],
+                "https://example.org/parent#other" => &[("extension", "https://example.org/parent#other")],
+                _ => &[("extension", "https://example.org/other#part")],
+            };
+            assert_eq!(context_allows(&p, &names, &w), Ok(expected));
+        }
     }
 }

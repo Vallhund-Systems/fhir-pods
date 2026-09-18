@@ -45,6 +45,12 @@ informational), by family:
 
 ## The base spec itself: every R4 example (`conformance/base.py`)
 
+This lane now fails on new or changed disagreements, unusable evidence and
+changes to its hashed input inventory. Reviewed differences and two explicit
+oracle exclusions are listed in `conformance/base-triage.json`; exclusions
+never count as agreement. Oracle reuse requires matching input, outcome and
+configuration hashes. See `conformance/README.md` for commands and evidence.
+
 Beyond the seven IGs' examples, the widest test of the base spec's
 rules *that we check on an unprofiled resource* — shape, cardinality,
 datatype lexical rules, dom-* and bdl-* invariants, extension placement
@@ -281,8 +287,25 @@ the count above.
   (`Patient.birthDate`, `Observation.value[x]`), by its path from the
   datatype (`ContactPoint.value`), or by the base types (`Element`,
   `Resource`, `DomainResource`, `BackboneElement`, `*`) — is an error, as
-  the reference validator has it. A `fhirpath` context is not evaluated
-  (allowed); an `extension` context is met by sitting inside an extension.
+  the reference validator has it. A `fhirpath` context selects nodes from
+  the containing resource and must select the actual extension owner, not
+  an equal-looking node elsewhere. An `extension` context checks the named
+  parent URL, including placement on that parent's primitive value and
+  `canonical#code` sub-extension contexts. An unsupported context expression
+  produces a `not-supported` warning if no other context matches; it does
+  not silently establish allowed placement. A root `ofType` naming a type
+  absent from R4 cannot select an R4 resource. The published
+  `patient-contactPriority` alternative `ofType(ExtendedContactDetail)`
+  crashes Java 6.10.4 on a wrong R4 owner; that witness is recorded as an
+  oracle execution failure, not claimed as verdict agreement.
+- **Primitive-only extensions and invariants:** a primitive without a
+  value still receives its profile constraints. Its `toString()` result is
+  empty; an empty profile-constraint result fails, matching validator_cli.
+  The public FHIRPath `check*` expression helpers retain their documented
+  empty/unknown behavior. The R4 `bdl-8` constraint uses the pinned Java
+  validator's explicit `fullUrl.exists()` guard for optional fullUrl. The
+  older vital-sign date-precision expression is guarded to apply to dateTime
+  only, preserving the reference validator's acceptance of effectivePeriod.
 - **HL7 v2** (0.8.0): the published `hl7.fhir.uv.v2mappings` maps are
   executed as published; a row the pod cannot execute (a narrative-only
   condition, a prose formula, a target form the engine does not take, an

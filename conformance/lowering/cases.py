@@ -66,7 +66,9 @@ def cases():
         add(label,AU+'au-core-heartrate',{**HR,**patch},'invalid')
     carrier={'extension':[{'url':'http://hl7.org/fhir/StructureDefinition/data-absent-reason','valueCode':'unknown'}]}
     absent={k:v for k,v in HR.items() if k!='effectiveDateTime'}
-    add('primitive-carrier',AU+'au-core-heartrate',{**absent,'_effectiveDateTime':carrier},preserve=[['_effectiveDateTime',carrier]],slot_type='Element')
+    # The computable vs-1 expression, as evaluated by both reference engines,
+    # rejects an extension-only date despite the human wording's value guard.
+    add('primitive-carrier',AU+'au-core-heartrate',{**absent,'_effectiveDateTime':carrier},'invalid',preserve=[['_effectiveDateTime',carrier]],slot_type='Element',issue={'path':'Observation.effective[x]','code':'invariant','message_contains':'vs-1:'})
     # Optional labelled identifier: whole input and a matching/conflicting child.
     identifier={'value':'8003608166690503'}
     add('whole-slice',AU+'au-core-patient',{**PT,'identifier:ihi':identifier},preserve=[['identifier',1,'value',identifier['value']]])

@@ -562,6 +562,18 @@ pub fn parse(src: &str) -> Result<Expr, Unsupported> {
     Ok(e)
 }
 
+/// R4 constraint compatibility, verified against validator_cli 6.10.4:
+/// bdl-8 guards optional fullUrl (FHIRPathExpressionFixer), and the old
+/// vital-sign date-precision expression applies only to dateTime, not
+/// effectivePeriod. Ordinary expression parsing remains literal.
+pub(crate) fn parse_constraint(src: &str) -> Result<Expr, Unsupported> {
+    parse(match src {
+        "fullUrl.contains('/_history/').not()" => "fullUrl.exists() implies fullUrl.contains('/_history/').not()",
+        "($this as dateTime).toString().length() >= 8" => "$this is dateTime implies $this.toString().length() >= 8",
+        _ => src,
+    })
+}
+
 /// One item of a FHIRPath collection.
 #[derive(Clone)]
 pub(crate) enum Item<D> {
@@ -1313,7 +1325,17 @@ fn eval<D: Document>(e: &Expr, ctx: &Item<D>, env: &Env<'_, D>) -> Result<Vec<It
                     None => vec![],
                 },
                 ("toString", 0) => match single(&coll)? {
-                    Some(it) => vec![Item::Str(scalar_of(it).ok_or(Unsupported)?)],
+                    Some(it) => match scalar_of(it) {
+                        Some(value) => vec![Item::Str(value)],
+                        // A present primitive may have extensions and no value.
+                        // Conversion then has no value, rather than using the
+                        // carrier object as text or declaring it unsupported.
+                        None if matches!(it, Item::Node(d) if d.fhir_type().is_some_and(|t| t.starts_with(|c: char| c.is_ascii_lowercase()))) =>
+                        {
+                            vec![]
+                        }
+                        None => return Err(Unsupported),
+                    },
                     None => vec![],
                 },
                 ("length", 0) => match single(&coll)? {
@@ -1437,6 +1459,32 @@ pub enum Verdict {
     Unsupported,
 }
 
+/// Select extension-context nodes from the containing resource. This is a
+/// node query, not a boolean invariant: a true predicate does not select an
+/// element. Version-spanning definitions can name a root type absent in R4;
+/// that root-only type filter cannot match this R4 resource.
+pub(crate) fn context_nodes<D: Document>(expr: &Expr, resource: &D, bundle: Option<&D>) -> Result<Vec<D>, Unsupported> {
+    if let Expr::Call(base, name, args) = expr {
+        if matches!(**base, Expr::This) && name == "ofType" && args.len() == 1 {
+            if let Some((ns, ty)) = type_arg(&args[0]) {
+                if !known_type_name(ns, ty) {
+                    return Ok(Vec::new());
+                }
+            }
+        }
+    }
+    let root_item = Item::Node(resource.clone());
+    let bundle_item = bundle.map(|d| Item::Node(d.clone()));
+    let env = Env { this_type: resource.fhir_type(), root: Some(&root_item), bundle: bundle_item.as_ref() };
+    Ok(eval(expr, &root_item, &env)?
+        .into_iter()
+        .filter_map(|item| match item {
+            Item::Node(node) => Some(node),
+            _ => None,
+        })
+        .collect())
+}
+
 /// Evaluate an invariant with `ctx` as `$this`. Empty is unknown and passes;
 /// only a definite `false` fails.
 pub fn check<D: Document>(expr: &Expr, ctx: &D) -> Verdict {
@@ -1457,12 +1505,37 @@ pub fn check_in<D: Document>(
     root: Option<&D>,
     bundle: Option<&D>,
 ) -> Verdict {
+    check_result(expr, ctx, this_type, root, bundle, true)
+}
+
+/// Profile constraints require a non-empty true result, as validator_cli
+/// does. The public expression helper keeps its documented empty/unknown
+/// behavior; absence of an invariant's element is handled by the caller.
+pub(crate) fn check_constraint_in<D: Document>(
+    expr: &Expr,
+    ctx: &D,
+    this_type: Option<&str>,
+    root: Option<&D>,
+    bundle: Option<&D>,
+) -> Verdict {
+    check_result(expr, ctx, this_type, root, bundle, false)
+}
+
+fn check_result<D: Document>(
+    expr: &Expr,
+    ctx: &D,
+    this_type: Option<&str>,
+    root: Option<&D>,
+    bundle: Option<&D>,
+    empty_passes: bool,
+) -> Verdict {
     let root_item = root.map(|r| Item::Node(r.clone()));
     let bundle_item = bundle.map(|b| Item::Node(b.clone()));
     let env = Env { this_type, root: root_item.as_ref(), bundle: bundle_item.as_ref() };
     match eval(expr, &Item::Node(ctx.clone()), &env).and_then(|coll| truth(&coll)) {
         Err(Unsupported) => Verdict::Unsupported,
         Ok(Some(false)) => Verdict::Fail,
+        Ok(None) if !empty_passes => Verdict::Fail,
         Ok(_) => Verdict::Pass,
     }
 }

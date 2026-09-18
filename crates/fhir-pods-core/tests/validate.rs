@@ -720,3 +720,127 @@ fn ids_and_codes_are_lexically_well_formed() {
         assert!(probe_str(&with_code(bad)).contains("is not a valid code"), "{bad:?}: {}", probe_str(&with_code(bad)));
     }
 }
+
+#[test]
+fn f060_extension_only_date_is_checked_by_the_computable_invariant() {
+    let carrier = r#""_effectiveDateTime":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/data-absent-reason","valueCode":"unknown"}]}"#;
+    let empty = HEARTRATE_OK.replace(r#""effectiveDateTime":"2026-09-15T10:00:00Z""#, carrier);
+    let report = validate(&empty);
+    assert!(!report.is_valid(), "{}", probe_str(&empty));
+    let issues = &report.report.issues;
+    assert!(issues.iter().any(|i| i.code == fhir_pods_core::validate::IssueType::Invariant
+        && i.severity == fhir_pods_core::validate::Severity::Error
+        && i.message.starts_with("vs-1:")));
+    assert!(!issues.iter().any(|i| i.message.contains("vs-1 not evaluated")));
+    let present = HEARTRATE_OK.replace(
+        r#""effectiveDateTime":"2026-09-15T10:00:00Z""#,
+        &format!(r#""effectiveDateTime":"2026-09-15T10:00:00Z",{carrier}"#),
+    );
+    assert!(validate(&present).is_valid(), "{}", probe_str(&present));
+    assert!(validate(HEARTRATE_OK).is_valid());
+    let period = HEARTRATE_OK
+        .replace(
+            "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate",
+            "http://hl7.org/fhir/StructureDefinition/heartrate",
+        )
+        .replace(
+            r#""effectiveDateTime":"2026-09-15T10:00:00Z""#,
+            r#""effectivePeriod":{"start":"2026-09-15T10:00:00Z"}"#,
+        );
+    assert!(validate(&period).is_valid(), "{}", probe_str(&period));
+    let cached = fhir_pods_core::Validator::new();
+    assert!(cached.validate(period.as_bytes()).is_valid());
+    assert!(!cached.validate(empty.as_bytes()).is_valid());
+    let plain = r#"{"resourceType":"Patient","_birthDate":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/data-absent-reason","valueCode":"unknown"}]}}"#;
+    assert!(validate(plain).is_valid(), "{}", probe_str(plain));
+}
+
+#[test]
+fn f066_extension_parent_context_checks_the_canonical_and_primitive_value() {
+    let alias = r#"{"url":"http://hl7.org/fhir/StructureDefinition/cqf-libraryAlias","valueString":"test"}"#;
+    let parent = "http://hl7.org/fhir/StructureDefinition/cqf-library";
+    let make = |url: &str, placement: &str| {
+        format!(
+            r#"{{"resourceType":"Patient","extension":[{{"url":"{url}","valueCanonical":"https://example.org/Library/test",{placement}}}]}}"#
+        )
+    };
+    let right = make(parent, &format!(r#""_valueCanonical":{{"extension":[{alias}]}}"#));
+    assert!(validate(&right).is_valid(), "{}", probe_str(&right));
+    for url in ["https://example.org/other-parent", "http://hl7.org/fhir/StructureDefinition/cqf-library-other"] {
+        for placement in
+            [format!(r#""_valueCanonical":{{"extension":[{alias}]}}"#), format!(r#""extension":[{alias}]"#)]
+        {
+            let wrong = make(url, &placement);
+            assert!(
+                probe_str(&wrong)
+                    .contains("The extension http://hl7.org/fhir/StructureDefinition/cqf-libraryAlias is not allowed"),
+                "{}",
+                probe_str(&wrong)
+            );
+        }
+    }
+    let root = format!(r#"{{"resourceType":"Patient","extension":[{alias}]}}"#);
+    assert!(probe_str(&root).contains("is not allowed"), "{}", probe_str(&root));
+}
+
+#[test]
+fn f066_fhirpath_context_selects_the_owner_from_the_nearest_resource() {
+    let extension = r#"{"url":"http://hl7.org.au/fhir/StructureDefinition/medication-type","valueCoding":{"system":"http://terminology.hl7.org.au/CodeSystem/medication-type","code":"UPD"}}"#;
+    let coding = format!(r#"{{"system":"https://example.org/codes","code":"test","extension":[{extension}]}}"#);
+    let check = |src: &str, allowed: bool| {
+        let report = probe_str(src);
+        assert_eq!(
+            !report.contains("The extension http://hl7.org.au/fhir/StructureDefinition/medication-type is not allowed"),
+            allowed,
+            "{report}"
+        );
+        assert!(!report.contains("Extension context for"), "{report}");
+    };
+    let right = format!(r#"{{"resourceType":"Medication","code":{{"coding":[{coding}]}}}}"#);
+    check(&right, true);
+    check(&format!(r#"{{"resourceType":"Medication","extension":[{extension}]}}"#), false);
+    // Equal-looking codings in two positions: selecting code.coding must
+    // not also permit an extension on Medication.form.coding.
+    check(
+        &format!(r#"{{"resourceType":"Medication","code":{{"coding":[{coding}]}},"form":{{"coding":[{coding}]}}}}"#),
+        false,
+    );
+    let choice = format!(
+        r#"{{"resourceType":"MedicationRequest","status":"active","intent":"order","subject":{{"reference":"Patient/p"}},"medicationCodeableConcept":{{"coding":[{coding}]}}}}"#
+    );
+    check(&choice, true);
+    check(
+        &format!(
+            r#"{{"resourceType":"Bundle","type":"collection","entry":[{{"fullUrl":"urn:uuid:11111111-1111-1111-1111-111111111111","resource":{right}}}]}}"#
+        ),
+        true,
+    );
+}
+
+#[test]
+fn f066_r5_context_alternatives_do_not_permit_an_unrelated_r4_owner() {
+    let extension = r#"{"url":"http://hl7.org/fhir/StructureDefinition/patient-contactPriority","valuePositiveInt":1}"#;
+    let right =
+        format!(r#"{{"resourceType":"Patient","contact":[{{"name":{{"text":"test"}},"extension":[{extension}]}}]}}"#);
+    assert!(validate(&right).is_valid(), "{}", probe_str(&right));
+    let wrong = format!(
+        r#"{{"resourceType":"Observation","status":"final","code":{{"text":"test"}},"extension":[{extension}]}}"#
+    );
+    let report = probe_str(&wrong);
+    assert!(report.contains("is not allowed"), "{report}");
+    assert!(!report.contains("Extension context for"), "{report}");
+}
+
+#[test]
+fn f066_fhirpath_context_preserves_the_primitive_carrier_identity() {
+    let derived = r#"{"url":"http://hl7.org/fhir/StructureDefinition/structuredefinition-conformance-derivedFrom","valueCanonical":"https://example.org/StructureDefinition/source"}"#;
+    for value in ["", r#""valueInteger":1,"#] {
+        let right = format!(
+            r#"{{"resourceType":"Patient","extension":[{{"url":"http://hl7.org/fhir/StructureDefinition/structuredefinition-fmm",{value}"_valueInteger":{{"extension":[{derived}]}}}}]}}"#
+        );
+        assert!(validate(&right).is_valid(), "{}", probe_str(&right));
+        let wrong = right.replace("structuredefinition-fmm\"", "other-parent\"");
+        let report = probe_str(&wrong);
+        assert!(report.contains("structuredefinition-conformance-derivedFrom is not allowed"), "{report}");
+    }
+}

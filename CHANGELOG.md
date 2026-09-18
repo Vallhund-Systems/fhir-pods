@@ -1,5 +1,35 @@
 # Changelog
 
+## Unreleased
+
+- CLI `slots` uses the shared resource-profile lookup and rejects extension
+  profiles. The CLI package version now matches 0.10.0.
+- Published R4 examples are a regression gate: pinned input inventory,
+  explicit reviewed differences, strict outcome/process checks, and oracle
+  caches bound to input/configuration/outcome hashes. New or changed
+  differences fail, including stale exceptions after improvements. The two
+  known unavailable oracle inputs remain explicitly unscored. Fresh Java
+  definition-validation changes were reviewed individually; totals remain
+  4,811 agreements, 479 lenient differences and two exclusions.
+- Extension-only primitives receive their computable profile constraints:
+  conversion without a value yields an empty result, and an empty profile
+  constraint fails. The AU Core heart-rate date-carrier case now reports
+  `vs-1`. Date-bearing and effectivePeriod controls pass. Compatibility guards
+  preserve the pinned oracle's optional-fullUrl and non-dateTime behavior.
+- Extension contexts evaluate FHIRPath node selection from the containing
+  resource and check the actual owner. Nested contexts check the named parent
+  URL, including its primitive value; unknown expressions report unsupported
+  coverage. Choice navigation preserves primitive carriers. The R5-only
+  `ExtendedContactDetail` alternative cannot select an R4 resource; Java 6.10.4
+  crashes on that negative witness, so no oracle verdict is claimed for it.
+
+Validation: 211 workspace tests, 18 Python harness guards, formatting,
+all-target clippy and no_std pass; release gate 1,521/1,521. Seventeen focused
+cases agree with fresh Java; one Java execution failure remains unscored.
+All 70 lowering checks pass, with 68 unchanged emitted resources agreeing
+with their stored Java outcomes. Both T043 lanes retain their reviewed
+baselines. These changes have not been tagged or packaged as a new release.
+
 ## 0.10.0 — 2026-09-18
 
 **The reference validator's test cases are a reproducible lane.**

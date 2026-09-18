@@ -129,7 +129,7 @@ fn check_invariant<D: Document>(inv: &ProfileInvariant, label: &str, doc: &D, sc
             Some(e) => e,
             None => return not_evaluated(inv, label, r),
         },
-        None => match path::parse(inv.expression) {
+        None => match path::parse_constraint(inv.expression) {
             Ok(e) => {
                 owned = e;
                 &owned
@@ -139,7 +139,7 @@ fn check_invariant<D: Document>(inv: &ProfileInvariant, label: &str, doc: &D, sc
     };
     let mut skipped = false;
     for (ctx, this_type) in invariant_contexts(inv, doc) {
-        match path::check_in(expr, &ctx, this_type, Some(scope.root), scope.bundle) {
+        match path::check_constraint_in(expr, &ctx, this_type, Some(scope.root), scope.bundle) {
             Verdict::Fail => {
                 let severity = match inv.severity {
                     InvariantSeverity::Error => Severity::Error,
