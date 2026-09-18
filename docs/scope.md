@@ -116,6 +116,60 @@ with padding at the end only; a `urn:uuid:` is a lowercase UUID and a
 `urn:oid:` an OID; a transaction-response's or batch-response's entries
 need no `fullUrl`.
 
+## The reference validator test suite (`conformance/testcases.py`)
+
+At v0.10.0 the JSON-only lane pins `FHIR/fhir-test-cases` at
+`591528170b6b31609b7682dc67c37f45edfe33ff`. It inventories all 492 R4 JSON
+cases; 184 R4 XML instances remain outside the lane. The base comparison
+scores **84 cases: 57 agree with stored Java expectations**, and **14 of
+20 agree with stored Firely expectations**. These are versioned upstream
+expectations, not new runs of both engines. Manifest modules/options exclude
+407 cases; one more manifest entry names an absent upstream input. Neither
+exclusions nor unavailable inputs count as agreement.
+
+The **25 lenient cases** remain scored differences. Every case is named and
+hashed in [`testcases-triage.json`](../conformance/testcases-triage.json).
+Their reasons extend the limitations above: Attachment size/hash; example-URL
+policy; uncompiled Questionnaire/RiskAssessment/Period invariants; external
+profile, extension and Coding.system definition resolution; terminology
+displays; absolute Bundle fullUrls, singleton link relations, search-result
+types/identities, and contained-ID uniqueness; the one-megabyte Element.id
+string limit; and StructureDefinition snapshot/differential validation.
+None is removed merely because its verdict differs.
+
+Two cases are stricter than the **stored** Java result, with no Firely result:
+`base64-ws-spaces` and `obs-vital-signs-mdc`. Fresh validator_cli 6.10.4 runs
+reject both. The latter is agreement for different reasons: Java resolves
+an external PHD profile while the pod applies its compiled vital-sign binding.
+This does not establish diagnostic parity. There are **zero cases stricter
+than both stored engines**, and **zero unresolved stricter cases** after the
+pinned Java checks; missing Firely outcomes are never counted as agreement.
+
+The separate profile lane covers all **53** R4 JSON `profile` entries.
+It compares **10: 9 agree with Java, 7/7 with Firely where present**, with no
+stricter case. The remaining disagreement, `sdoh-type-slice`, is a Java
+terminology-display check that Firely and the pod do not fail. Thirty-one
+cases name compiler gaps (including deep/unresolved slicing, exact complex
+fixed values, Quantity/additional bindings, value bounds and datatype-profile
+constraints); two are rejected by Java snapshot preparation; ten require
+manifest-declared capabilities outside the lane. Two compared MIME-type
+cases still report unresolved terminology. Their valid verdict is not proof
+that the terminology binding was checked.
+
+The `testcase-profiles` Cargo feature adds only the current test context to
+the registry. Canonical collisions across cases are isolated, snapshots and
+Rust tables stay in ignored directories, and normal/release builds include
+none of them. [Lane commands and evidence rules](../conformance/README.md)
+explain preparation and replay. New/changed disagreements, malformed evidence
+and native execution failures fail the lane. Reviewed gaps remain visible.
+
+This lane led to four core corrections: document references with
+`/_history/version` now select the corresponding `meta.versionId`; opaque
+Bundle URI identities do not undergo HTTP REST path checks; a null primitive
+array entry must have content at the same index in its companion array; and
+Resource.id cannot carry extensions. The compiler also accepts a
+StructureDefinition whose optional resource id is absent.
+
 ## What we check that the reference validator also checks
 
 Per-parent cardinality, fixed/pattern values (scalars; object patterns via

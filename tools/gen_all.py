@@ -135,11 +135,13 @@ def main():
         if sd["url"] in seen_urls:
             sys.exit(f"{sd['url']} is defined twice ({seen_urls[sd['url']]} and {sd.get('id')}): one registry entry per canonical")
         seen_urls[sd["url"]] = sd.get("id")
-        mod = mod_name(sd["id"])
+        # Resource.id is optional; a canonical still identifies an ad-hoc SD.
+        sd_id = sd.get("id") or sd["url"].rstrip("/").rsplit("/", 1)[-1] or "profile"
+        mod = mod_name(sd_id)
         # the same id in two packages (AU Base's and HL7's `medication-type`): distinct modules
         n = 2
         while mod in used:
-            mod = f"{mod_name(sd['id'])}_{n}"
+            mod = f"{mod_name(sd_id)}_{n}"
             n += 1
         used.add(mod)
         if sd["url"] in implied:
@@ -147,7 +149,7 @@ def main():
         text, (ne, ns, nd) = emit(sd, provenance, load)
         with open(os.path.join(out_dir, f"{mod}.rs"), "w") as f:
             f.write(text)
-        mods.append((mod, sd.get("title") or sd["id"], ne, ns, nd))
+        mods.append((mod, sd.get("title") or sd_id, ne, ns, nd))
     mods.sort()
     with open(os.path.join(out_dir, "intern.rs"), "w") as f:
         f.write(emit_intern())

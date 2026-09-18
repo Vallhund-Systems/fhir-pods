@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.10.0 — 2026-09-18
+
+**The reference validator's test cases are a reproducible lane.**
+`conformance/testcases.py` pins the upstream suite and compares original R4
+JSON inputs with stored Java and Firely outcomes. Inline Java outcomes are
+supported, missing/invalid evidence fails, and scope exclusions come from
+manifest modules/options. Reviewed differences are tied to fixture/outcome
+hashes and verdicts; a new or changed difference fails the run.
+
+Base cases: **57/84** agree with stored Java; **14/20** with stored Firely.
+All 25 lenient cases have named reasons. Two cases differ from stored Java
+in the stricter direction, but validator_cli 6.10.4 rejects both; the PHD case
+is agreement for different diagnostic reasons. There are zero unresolved
+stricter cases and zero cases stricter than both stored engines. Of the 492
+R4 JSON entries, 407 have manifest-declared scope exclusions and one names a
+missing upstream input. The 184 R4 XML instances are not run.
+
+**Ad-hoc profiles exercise the compiler without changing the shipped registry.**
+An opt-in `testcase-profiles` Cargo feature adds one isolated test context.
+Pinned Java snapshot preparation and generated Rust stay in ignored caches;
+different definitions with the same canonical URL are isolated. Of 53 profile
+cases, **10** compare: **9/10** agree with Java, **7/7** with Firely where
+present. The difference is a Java terminology-display check. Thirty-one cases
+name compiler gaps, two fail Java snapshot preparation, and ten are outside
+manifest-declared scope. Two compared MIME-type cases retain unresolved
+terminology warnings. These exclusions/warnings are not conformance proof.
+Normal builds and release artifacts contain no test profiles.
+
+**Four verifier corrections:** versioned document references select the
+matching `meta.versionId`; non-HTTP Bundle identities are not treated as REST
+resource paths; primitive-array null placeholders require paired content at
+the same index; Resource.id cannot carry extensions. The profile generator
+also accepts StructureDefinitions without their optional resource id, using
+the canonical to name their Rust module.
+
+Validation: **204 Rust workspace tests**, **10 harness guards**, formatting,
+all-target clippy and the bare-metal no_std build pass. Release gate
+**1521/1521**; published base examples **4811/5292**, with zero stricter
+verdicts, 479 documented leniencies and two oracle failures excluded from
+agreement. See `conformance/README.md` and `docs/scope.md` for commands,
+reviewed differences and limitations. ABI remains 10; CLI version is unchanged.
+
 ## 0.9.2 — 2026-09-17
 
 **What a fresh review of 0.9.1 found, fixed** (planning F062–F073). Six

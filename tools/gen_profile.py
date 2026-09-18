@@ -893,7 +893,7 @@ def context_applies_to_r4(cx):
 def emit(sd, provenance, load=None):
     """The Rust source for the profile, and `(elements, slices, deferred)` counts."""
     c = build(sd, load)
-    name = sd.get("title") or sd.get("name") or sd.get("id")
+    name = sd.get("title") or sd.get("name") or sd.get("id") or sd.get("url")
     invariants = invariants_of(sd)
     n_slices = sum(len(s[2]) for s in c.slicings)
     out = [

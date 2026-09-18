@@ -1,6 +1,56 @@
 mod common;
 use common::*;
 
+#[test]
+fn t043_versioned_document_references_select_the_requested_entry_version() {
+    let document = r#"{"resourceType":"Bundle","type":"document",
+      "identifier":{"system":"https://example.org/docs","value":"test"},"timestamp":"2026-09-18T00:00:00Z",
+      "entry":[
+        {"fullUrl":"https://example.org/Composition/c","resource":{"resourceType":"Composition","id":"c","status":"final","type":{"text":"Test"},"date":"2026-09-18T00:00:00Z","author":[{"reference":"Practitioner/a"}],"title":"Test","section":[{"entry":[{"reference":"Observation/o/_history/1"},{"reference":"https://example.org/Observation/o/_history/2"}]}]}},
+        {"fullUrl":"https://example.org/Observation/o","resource":{"resourceType":"Observation","id":"o","meta":{"versionId":"1"},"status":"final","code":{"text":"Test"}}},
+        {"fullUrl":"https://example.org/Observation/o","resource":{"resourceType":"Observation","id":"o","meta":{"versionId":"2"},"status":"final","code":{"text":"Test"}}},
+        {"fullUrl":"https://example.org/Practitioner/a","resource":{"resourceType":"Practitioner","id":"a"}}
+      ]}"#;
+    let valid = probe_str(document);
+    assert!(valid.contains("\"valid\":true"), "{valid}");
+    let missing = probe_str(&document.replace("/_history/2", "/_history/3"));
+    assert!(missing.contains("/_history/3' is not in the bundle"), "{missing}");
+    let malformed = probe_str(&document.replace("/_history/2", "/_history/2/extra"));
+    assert!(malformed.contains("/_history/2/extra' is not in the bundle"), "{malformed}");
+    let no_version = probe_str(&document.replace(r#""versionId":"2""#, r#""versionId":"3""#));
+    assert!(no_version.contains("/_history/2' is not in the bundle"), "{no_version}");
+}
+
+#[test]
+fn t043_non_http_bundle_identities_are_not_rest_resource_urls() {
+    let bundle = r#"{"resourceType":"Bundle","type":"collection","entry":[{"fullUrl":"uin:uuid:example","resource":{"resourceType":"Patient","id":"p"}}]}"#;
+    let valid = probe_str(bundle);
+    assert!(valid.contains("\"valid\":true"), "{valid}");
+    let wrong = probe_str(&bundle.replace("uin:uuid:example", "https://example.org/Patient/other"));
+    assert!(wrong.contains("does not end in the resource's type and id (Patient/p)"), "{wrong}");
+}
+
+#[test]
+fn t043_primitive_array_placeholders_need_content_at_the_same_index() {
+    let ok = r#"{"resourceType":"Patient","name":[{"given":["a",null],"_given":[null,{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/data-absent-reason","valueCode":"unknown"}]}]}]}"#;
+    assert!(validate(ok).is_valid(), "{}", probe_str(ok));
+    for names in [
+        r#"{"given":["a"],"_given":[{"id":"test"},null]}"#,
+        r#"{"given":["a",null],"_given":[{"id":"test"}]}"#,
+        r#"{"given":[null],"_given":[null]}"#,
+    ] {
+        let patient = format!(r#"{{"resourceType":"Patient","name":[{names}]}}"#);
+        assert!(!validate(&patient).is_valid(), "{patient}");
+    }
+}
+
+#[test]
+fn t043_resource_id_cannot_carry_extensions() {
+    let patient = r#"{"resourceType":"Patient","id":"p","_id":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/data-absent-reason","valueCode":"unknown"}]}}"#;
+    let report = probe_str(patient);
+    assert!(report.contains("Resource.id cannot carry extensions"), "{report}");
+}
+
 // --- no declared profile: the base resource applies, which we do not compile ---
 
 #[test]

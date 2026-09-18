@@ -621,17 +621,26 @@ impl<'e, D> Env<'e, D> {
 /// The target of `reference` inside the bundle / resource the expression
 /// runs in: `#id` in `%resource.contained`; a Bundle entry by `fullUrl`, or
 /// by `Type/id` against a `fullUrl` ending so or the entry's resource type
-/// and id. `None` when it is not there — never fetched.
+/// and id. A `/_history/version` suffix selects the matching `meta.versionId`.
+/// `None` when it is not there — never fetched.
 pub fn resolve_reference<D: Document>(reference: &str, resource: Option<&D>, bundle: Option<&D>) -> Option<D> {
     if let Some(local) = reference.strip_prefix('#') {
         return resource?.child_instances("contained").into_iter().find(|c| c.scalars("$this.id") == [local]);
     }
     let bundle = bundle?;
-    let relative = reference.split_once('/').filter(|(ty, id)| !ty.is_empty() && !id.contains('/'));
+    let (identity, version) = match reference.rsplit_once("/_history/") {
+        Some((identity, version)) if !version.is_empty() && !version.contains('/') => (identity, Some(version)),
+        Some(_) => return None,
+        None => (reference, None),
+    };
+    let relative = identity.split_once('/').filter(|(ty, id)| !ty.is_empty() && !id.contains('/'));
     for entry in bundle.child_instances("entry") {
         let full = entry.scalars("$this.fullUrl");
         let resource = entry.child_instances("resource").into_iter().next();
-        if full.contains(&reference) {
+        if version.is_some_and(|v| resource.as_ref().is_none_or(|r| r.scalars("$this.meta.versionId") != [v])) {
+            continue;
+        }
+        if full.contains(&identity) {
             return resource;
         }
         if let (Some((ty, id)), Some(res)) = (relative, resource.as_ref()) {

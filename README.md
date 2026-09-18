@@ -60,7 +60,7 @@ with terminology switched off on both sides so profiles are what is scored.
 `conformance/run.py` builds the corpus from the pinned packages, runs
 validator_cli 6.10.4 over it, and compares verdicts:
 
-- **1521/1521** at v0.9.2 — the seven IGs' published examples and 60-odd
+- **1521/1521** at v0.10.0 — the seven IGs' published examples and 60-odd
   probes, every corpus resource lifted into its slots and lowered again, every
   one de-identified, the twelve document examples taken apart and assembled
   again, an audit record of every kind from the audit surface, five HL7 v2
@@ -75,6 +75,15 @@ validator_cli 6.10.4 over it, and compares verdicts:
   with its own exit code counts as a failure, never as agreement. Every
   engine change is proven this way before it ships; the record is in the
   changelog.
+- **Published validator tests**, pinned separately: **57/84** base verdicts
+  agree with stored Java outcomes; **14/20** with stored Firely outcomes.
+  Every difference is named and hashed. Of 53 ad-hoc profile cases, **10**
+  compile without identified unsupported constructs: **9/10** agree with
+  Java and **7/7** with Firely where present. The rest are explicit compiler,
+  snapshot or manifest exclusions. Zero unresolved stricter cases after
+  pinned Java checks; missing Firely results are not agreement. Test profiles
+  are compiled only behind an optional feature and never ship in the pods.
+  [Run the lanes](conformance/README.md); [limits and counts](docs/scope.md#the-reference-validator-test-suite-conformancetestcasespy).
 - **Skip, never guess.** Anything outside the supported FHIRPath core, an
   unresolvable slice, a set the bundle cannot decide, a profile the registry
   has not compiled — reported as such, never invented. What is checked and

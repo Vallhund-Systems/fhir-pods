@@ -310,7 +310,7 @@ fn compiled_profiles_of(
         .filter_map(|p| match p {
             Value::Str(u) => {
                 let base = u.split('|').next().unwrap_or(u);
-                crate::generated::REGISTRY.iter().find(|c| c.url == base && Some(c.resource_type) == rt).copied()
+                crate::REGISTRY.iter().find(|c| c.url == base && Some(c.resource_type) == rt).copied()
             }
             _ => None,
         })
@@ -329,7 +329,7 @@ fn declares_compiled_profile(kvs: &[(alloc::borrow::Cow<'_, str>, Value<'_>)]) -
     profiles.iter().any(|p| match p {
         Value::Str(u) => {
             let base = u.split('|').next().unwrap_or(u);
-            crate::generated::REGISTRY.iter().any(|c| c.url == base && Some(c.resource_type) == rt)
+            crate::REGISTRY.iter().any(|c| c.url == base && Some(c.resource_type) == rt)
         }
         _ => false,
     })
@@ -709,8 +709,7 @@ fn structure_object<'v, 'a>(
     if ctx == "Extension" {
         if let Some((_, Value::Str(url))) = kvs.iter().find(|(k, _)| k.as_ref() == "url") {
             let base = url.split('|').next().unwrap_or(url);
-            if let Some(p) = crate::generated::REGISTRY.iter().find(|p| p.resource_type == "Extension" && p.url == base)
-            {
+            if let Some(p) = crate::REGISTRY.iter().find(|p| p.resource_type == "Extension" && p.url == base) {
                 let owner_ctx = w.ctxs.len().checked_sub(2).map(|i| w.ctxs[i].0).unwrap_or("");
                 let names = owner_names(w);
                 if !p.contexts.is_empty() && !context_allows(p, &names, owner_ctx) {
@@ -807,18 +806,30 @@ fn structure_object<'v, 'a>(
                     continue;
                 }
             };
-            for x in items {
+            let primitive = kvs.iter().find(|(k, _)| k.as_ref() == bare).map(|(_, v)| v);
+            for (i, x) in items.into_iter().enumerate() {
+                let paired = match primitive {
+                    Some(Value::Array(values)) => values.get(i).is_some_and(|v| !matches!(v, Value::Null)),
+                    Some(v) => !matches!(v, Value::Null),
+                    None => false,
+                };
                 match x {
                     Value::Object(m) if m.is_empty() => w.gaps.push((
                         child_path.clone(),
                         Invariant,
                         alloc::format!("ele-1: {child_path}'s extension carrier must have some content"),
                     )),
-                    Value::Object(_) => {
-                        let paired = kvs.iter().any(|(k, _)| k.as_ref() == bare);
+                    Value::Object(m) => {
+                        if is_resource && bare == "id" && m.iter().any(|(k, _)| k.as_ref() == "extension") {
+                            w.gaps.push((
+                                child_path.clone(),
+                                Structure,
+                                alloc::format!("{child_path}: Resource.id cannot carry extensions"),
+                            ));
+                        }
                         structure_at(x, "Element", &child_path, key, contained, !paired, w)
                     }
-                    Value::Null if repeats => {}
+                    Value::Null if repeats && paired => {}
                     other => w.gaps.push((
                         child_path.clone(),
                         Structure,
@@ -859,9 +870,14 @@ fn structure_object<'v, 'a>(
                     )),
                 }
             } else if is_primitive(ch.ty) {
-                if matches!(x, Value::Null) && repeats && has(&alloc::format!("_{bare}")) {
-                    w.segs.pop();
-                    continue; // a placeholder beside its carrier
+                if matches!(x, Value::Null) && repeats {
+                    let carrier_key = alloc::format!("_{bare}");
+                    let carrier = kvs.iter().find(|(k, _)| k.as_ref() == carrier_key);
+                    let paired = matches!(carrier, Some((_, Value::Array(values))) if matches!(values.get(i), Some(Value::Object(m)) if !m.is_empty()));
+                    if paired {
+                        w.segs.pop();
+                        continue; // a placeholder beside its carrier at this index
+                    }
                 }
                 let expected = expected_kind(ch.ty);
                 if json_kind(x) != expected {

@@ -351,7 +351,7 @@ fn matches<D: Document>(slice: &Slice, inst: &D, scope: &Scope<'_, D>) -> bool {
             inst.instances(path).iter().any(|res| res.scalars("$this.resourceType") == [*ty])
         }
         Discriminator::Profile { path, url } => {
-            let Some(profile) = crate::generated::REGISTRY.iter().find(|p| p.url == *url) else { return false };
+            let Some(profile) = crate::REGISTRY.iter().find(|p| p.url == *url) else { return false };
             scope.depth < MAX_INHERIT
                 && inst.instances(path).iter().any(|res| {
                     res.scalars("$this.resourceType") == [profile.resource_type]
@@ -364,7 +364,7 @@ fn matches<D: Document>(slice: &Slice, inst: &D, scope: &Scope<'_, D>) -> bool {
         Discriminator::ResolvedProfile { urls } => {
             scope.depth < MAX_INHERIT
                 && scope.resolved(inst).is_some_and(|target| {
-                    urls.iter().filter_map(|u| crate::generated::REGISTRY.iter().find(|p| p.url == *u)).any(|p| {
+                    urls.iter().filter_map(|u| crate::REGISTRY.iter().find(|p| p.url == *u)).any(|p| {
                         target.scalars("$this.resourceType") == [p.resource_type]
                             && scope.conformance(p, &target).is_valid()
                     })
@@ -447,8 +447,8 @@ fn references_in<D: Document>(node: &D, path: &str, out: &mut Vec<(String, Strin
 /// references forward or backward.
 pub(crate) fn check_document<D: Document>(bundle: &D, r: &mut Report) {
     // a REST-shaped fullUrl names the resource it carries: its last two
-    // segments are the resource's type and id (a `urn:` is an identity of
-    // its own; a version is what distinguishes two of the same fullUrl)
+    // segments are the resource's type and id. Other URI schemes carry an
+    // opaque identity, rather than a FHIR REST resource URL.
     let bundle_type = bundle.scalars("$this.type").first().copied().unwrap_or("");
     for (i, entry) in bundle.instances("$this.entry").iter().enumerate() {
         let Some(full) = entry.scalars("$this.fullUrl").first().copied() else {
@@ -469,7 +469,10 @@ pub(crate) fn check_document<D: Document>(bundle: &D, r: &mut Report) {
             }
             continue;
         };
-        if full.starts_with("urn:") {
+        if !full
+            .split_once("://")
+            .is_some_and(|(scheme, _)| scheme.eq_ignore_ascii_case("http") || scheme.eq_ignore_ascii_case("https"))
+        {
             continue;
         }
         let rt = entry.scalars("$this.resource.resourceType").first().copied();
@@ -649,7 +652,7 @@ fn check_slicing<D: Document>(slicing: &Slicing, doc: &D, scope: &Scope<'_, D>, 
                 }
                 label.truncate(base_len);
                 if let Some(url) = slice.profile.filter(|_| depth < MAX_INHERIT) {
-                    if let Some(profile) = crate::generated::REGISTRY.iter().find(|p| p.url == url) {
+                    if let Some(profile) = crate::REGISTRY.iter().find(|p| p.url == url) {
                         let rep = validate_at(profile, inst, root, tx, depth + 1, cache, scope.bundle);
                         forward(rep, profile, &label, r);
                     }
@@ -662,10 +665,8 @@ fn check_slicing<D: Document>(slicing: &Slicing, doc: &D, scope: &Scope<'_, D>, 
                 // a sub-element that must conform to one of some profiles (a
                 // Bundle entry's resource): checked only when every one is compiled
                 for (rel, urls) in slice.profiles {
-                    let known: Vec<&CompiledProfile> = urls
-                        .iter()
-                        .filter_map(|u| crate::generated::REGISTRY.iter().find(|p| p.url == *u).copied())
-                        .collect();
+                    let known: Vec<&CompiledProfile> =
+                        urls.iter().filter_map(|u| crate::REGISTRY.iter().find(|p| p.url == *u).copied()).collect();
                     if known.len() != urls.len() || depth >= MAX_INHERIT {
                         continue;
                     }

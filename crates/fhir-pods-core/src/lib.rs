@@ -36,6 +36,34 @@ use validate::{IssueType, Report, Severity};
 /// `REGISTRY` keyed by canonical URL.
 pub mod generated;
 
+#[cfg(feature = "testcase-profiles")]
+#[doc(hidden)]
+pub mod generated_testcases {
+    include!("generated_testcases/mod.rs");
+}
+
+/// The shipped registry, plus the isolated test context in an opt-in build.
+#[cfg(not(feature = "testcase-profiles"))]
+pub use generated::REGISTRY;
+
+#[cfg(feature = "testcase-profiles")]
+pub static REGISTRY: &[&CompiledProfile] = &{
+    let shipped = generated::REGISTRY;
+    let tests = generated_testcases::REGISTRY;
+    let mut profiles = [generated::REGISTRY[0]; generated::REGISTRY.len() + generated_testcases::REGISTRY.len()];
+    let mut i = 0;
+    while i < shipped.len() {
+        profiles[i] = shipped[i];
+        i += 1;
+    }
+    let mut j = 0;
+    while j < tests.len() {
+        profiles[i + j] = tests[j];
+        j += 1;
+    }
+    profiles
+};
+
 /// The element-type table generated from the base FHIR package
 /// (`tools/gen_typemap.py`): `Type.element` → its FHIR type(s).
 mod typemap;
@@ -188,7 +216,7 @@ fn validate_resource<D: Document>(
     let at = |path: &str| if label.is_empty() { String::from(path) } else { format!("{label}.{path}") };
     for url in doc.scalars("$this.meta.profile") {
         let base = url.split('|').next().unwrap_or(url);
-        match generated::REGISTRY.iter().find(|p| p.url == base) {
+        match crate::REGISTRY.iter().find(|p| p.url == base) {
             None => report.push(
                 Severity::Warning,
                 IssueType::NotSupported,
@@ -248,7 +276,7 @@ fn select_profiles(
         .iter()
         .filter_map(|url| {
             let url = url.split('|').next().unwrap_or(url);
-            generated::REGISTRY.iter().find(|p| p.resource_type == resource_type && p.url == url).copied()
+            crate::REGISTRY.iter().find(|p| p.resource_type == resource_type && p.url == url).copied()
         })
         .collect();
     out.dedup_by_key(|p| p.url);
@@ -264,7 +292,7 @@ fn select_profiles(
             for _ in 0..16 {
                 match from.base {
                     Some(b) if b == url => return true,
-                    Some(b) => match generated::REGISTRY.iter().find(|q| q.url == b) {
+                    Some(b) => match crate::REGISTRY.iter().find(|q| q.url == b) {
                         Some(q) => from = q,
                         None => return false,
                     },
@@ -313,7 +341,7 @@ fn select_profiles(
 /// checked, not so a host can build an `Extension` as if it were a resource.
 pub fn resource_profile(url: &str) -> Option<&'static compiled::CompiledProfile> {
     let url = url.split('|').next().unwrap_or(url);
-    generated::REGISTRY.iter().find(|p| p.url == url).filter(|p| p.resource_type != "Extension").copied()
+    crate::REGISTRY.iter().find(|p| p.url == url).filter(|p| p.resource_type != "Extension").copied()
 }
 
 /// [`Validator::lower`] without a validator (the invariants are re-parsed).
@@ -425,7 +453,7 @@ impl Validator {
         for (_, _, _, _, expr) in typemap::BUNDLE_INVARIANTS {
             keys.push((expr.as_ptr() as usize, expr));
         }
-        for p in generated::REGISTRY {
+        for p in crate::REGISTRY {
             let slice_invariants = p.slicings.iter().flat_map(|s| s.slices.iter()).flat_map(|sl| sl.invariants.iter());
             for inv in p.invariants.iter().chain(slice_invariants) {
                 keys.push((inv.expression.as_ptr() as usize, inv.expression));
@@ -440,7 +468,7 @@ impl Validator {
     /// no profile of its own (e.g. AU Core Patient for a bare `Patient`).
     /// Unknown URLs are ignored: nothing is ever guessed.
     pub fn with_default_profile(mut self, url: &str) -> Self {
-        if let Some(p) = generated::REGISTRY.iter().find(|p| p.url == url) {
+        if let Some(p) = crate::REGISTRY.iter().find(|p| p.url == url) {
             self.defaults.push((p.resource_type, p));
         }
         self

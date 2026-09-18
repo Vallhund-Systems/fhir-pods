@@ -677,8 +677,7 @@ impl Walker<'_> {
         // more: it goes whole
         if child.ty == "Extension" && !kvs.is_empty() {
             let url = kvs.iter().find(|(k, _)| k == "url").and_then(|(_, v)| v.as_str()).unwrap_or("");
-            if let Some(p) = crate::generated::REGISTRY.iter().find(|p| p.resource_type == "Extension" && p.url == url)
-            {
+            if let Some(p) = crate::REGISTRY.iter().find(|p| p.resource_type == "Extension" && p.url == url) {
                 let has_sub = |sub_url: &str| match kvs.iter().find(|(k, _)| k == "extension") {
                     Some((_, Node::Array(xs))) => {
                         xs.iter().any(|x| x.member("url").and_then(Node::as_str) == Some(sub_url))
