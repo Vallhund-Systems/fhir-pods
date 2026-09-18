@@ -5,6 +5,49 @@ validator test cases (`testcases.py`) are separate comparisons. Their inputs,
 terminology settings and denominators differ; agreement is not a blanket
 conformance claim. Run JVM steps one at a time and set `CARGO_BUILD_JOBS=2`.
 
+## Published base examples
+
+`base.py` is a regression gate over the JSON examples in
+`hl7.fhir.r4.examples#4.0.1`. The 5,292 selected inputs have a pinned inventory
+hash. `base-triage.json` names each reviewed verdict difference, its reasons,
+input hash and oracle diagnostic signature. A new difference, changed verdict
+or changed diagnostic signature fails, including an improvement that makes a
+reviewed exception stale. Changes require review, not automatic rebaselining.
+
+```sh
+JAVA_HOME=/opt/homebrew/opt/openjdk@17 CARGO_BUILD_JOBS=2 python3 conformance/base.py
+CARGO_BUILD_JOBS=2 python3 conformance/base.py --reuse-oracle
+python3 conformance/base.py --reuse-oracle --filter Patient-
+python3 -m unittest discover -s conformance -p test_base.py
+```
+
+The first command runs pinned Java batches sequentially and records complete
+outcomes in ignored `corpus-base/`. Reuse needs a cache made by this runner:
+package/IG pins, JAR bytes, input bytes and outcome hashes must match. Old
+filename-only evidence cannot seed the cache. Missing, duplicate, malformed
+or foreign results and process failures fail the gate; native exit status must
+agree with its OperationOutcome. A separate Cargo target builds the default
+release probe without the optional test-profile registry.
+
+Two hash-pinned inputs (`ValueSet-media-modality.json` and
+`ValueSet-use-context.json`) historically produced no usable Java outcome.
+They are explicitly excluded from the oracle run before comparison; the
+native result is still checked. They are never agreements or oracle-invalid
+verdicts. Remove an exclusion only after a separately recorded successful
+oracle recheck. All other selected inputs require usable oracle evidence.
+
+Fresh Java runs can also change definition-validation diagnostics when published
+StructureDefinitions reuse an invariant key across resources. The initial
+gate adoption caught four such changes around `inv-1` (including a swap of
+which definition was rejected). Those were reviewed explicitly; future oracle
+drift still fails and must be investigated before changing the baseline.
+
+Full results are `corpus-base/evidence.json`; filtered/limited runs write
+`evidence-subset.json` and cannot replace the full oracle cache. The summary
+separates selected, compared, agreed, lenient, stricter, excluded and failed
+cases. A passing gate means the reviewed baseline is unchanged, not that
+unimplemented rules were checked or every example agrees.
+
 ## Published validator test cases
 
 `testcases.py` fetches only `validator/` from the Apache-2.0

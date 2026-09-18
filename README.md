@@ -69,7 +69,8 @@ validator_cli 6.10.4 over it, and compares verdicts:
   held by its own tests), and the review lane's adversarial probes.
 - **4,811 of 5,292** of FHIR R4's own published examples, every
   resource type, unprofiled (`conformance/base.py`, apart from the release
-  gate) — the rest are rules the pod does not check and names
+  gate, with reviewed differences now enforced as a regression baseline) —
+  the rest are rules the pod does not check and names
   ([`scope.md`](docs/scope.md)), never a wrong verdict on one it does. A run in which either
   side crashed, returned a foreign exit code or a report that disagrees
   with its own exit code counts as a failure, never as agreement. Every
