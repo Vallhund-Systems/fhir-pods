@@ -26,6 +26,14 @@ fn slots_expose_types_cardinality_choices_and_must_support_without_input() {
     assert!(array(audit.member("slots").unwrap()).iter().any(|s| !array(s.member("choices").unwrap()).is_empty()));
     assert_eq!(result(&call(&["slots", &format!("{HR}|2.0.0")], b""), 0), report);
     assert!(result(&call(&["slots", "https://example.org/not-compiled"], b""), 1).member("error").is_some());
+    for url in [
+        "http://hl7.org/fhir/StructureDefinition/patient-birthPlace",
+        "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race|6.1.0",
+    ] {
+        let rejected = result(&call(&["slots", url], b""), 1);
+        assert!(rejected.member("error").is_some());
+        assert!(rejected.member("slots").is_none());
+    }
     for args in [vec!["slots"], vec!["slots", HR, "-"], vec!["slots", HR, "--terminology", "table.txt"]] {
         result(&call(&args, b""), 2);
     }

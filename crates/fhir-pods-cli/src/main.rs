@@ -182,9 +182,7 @@ fn read(path: &std::path::Path) -> Result<Vec<u8>, Failure> {
 fn run(args: Args) -> Result<(String, bool), Failure> {
     if args.command == "slots" {
         let url = args.parameter.as_deref().unwrap().split('|').next().unwrap();
-        let profile = fhir_pods_core::generated::REGISTRY
-            .iter()
-            .find(|p| p.url == url)
+        let profile = fhir_pods_core::resource_profile(url)
             .ok_or_else(|| Failure::Rejected("no compiled profile with that URL".into()))?;
         return Ok((output::slots(profile), true));
     }
