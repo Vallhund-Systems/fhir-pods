@@ -1,7 +1,7 @@
 {
-  "source_revision": "40f56be",
+  "source_revision": "3f24de04d16dca57a3a2f75d8c00f33136b8c33c",
   "source": "crates/fhir-pods-core/examples/v2_corpus.rs",
-  "source_sha256": "69364a885d24615f437c1a30e62195a4282a7356b9c0103d9d054791a4947605",
+  "source_sha256": "fa3e03ab1e705cc83d04e47fb9613318ec602ca3c1216eac0213ea96e950a140",
   "line_endings": "LF; source CR separators normalized, no field changes",
   "cases": [
     {
@@ -10,7 +10,7 @@
     },
     {
       "file": "adt-a01.hl7",
-      "sha256": "6f16498a7b86fb83b75fb35264a5d20416f85be05f8646d8d589e7e1130e841b"
+      "sha256": "0f603f4e52efd96f4a5ce8ee8d6f9cb18451f424a5ff123982110f0b2aae25d3"
     },
     {
       "file": "vxu-v04.hl7",

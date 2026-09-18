@@ -134,6 +134,40 @@ fn unplaced_segments_fail_even_with_a_valid_bundle_and_invalid_bundles_stay_insp
     assert_eq!(adt.member("validation").unwrap().member("valid"), Some(&Node::Bool(false)));
     assert!(!resources(&adt, "Patient").is_empty());
     assert!(adt.member("error").is_none());
+    // This fixture deliberately lacks required FHIR data. An invalid verdict
+    // alone must not hide unrelated bad codes or a shifted v2 field.
+    let errors: Vec<_> = array(adt.member("validation").unwrap().member("issues").unwrap())
+        .iter()
+        .filter(|issue| issue.member("severity").and_then(Node::as_str) == Some("error"))
+        .map(|issue| {
+            (
+                issue.member("code").and_then(Node::as_str).unwrap(),
+                issue.member("message").and_then(Node::as_str).unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        errors,
+        vec![
+            ("required", "Provenance.agent is required (min 1, found 0)"),
+            ("required", "Provenance.target is required (min 1, found 0)"),
+            ("required", "Coverage.status is required (min 1, found 0)"),
+        ]
+    );
+    let patient = resources(&adt, "Patient")[0];
+    let contact = &array(patient.member("contact").unwrap())[0];
+    assert!(array(contact.member("relationship").unwrap())
+        .contains(&parse(br#"{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/v2-0131","code":"N"}]}"#)));
+    let coverage = resources(&adt, "Coverage")[0];
+    assert_eq!(
+        coverage.member("relationship"),
+        Some(&parse(
+            br#"{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/v3-RoleCode","code":"ONESELF"}]}"#
+        ))
+    );
+    assert!(coverage.member("type").is_none());
+    // IN1-18 now carries the birth date; its absent mapping remains visible.
+    assert!(array(adt.member("unmapped").unwrap()).contains(&Node::Str("IN1[1]-18".into())));
 }
 
 #[test]
