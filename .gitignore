@@ -22,3 +22,7 @@ dist/
 pods/expo/android/src/main/jniLibs/
 pods/expo/android/build/
 dist/
+
+# test-suite lanes, fetched at run time
+conformance/fhir-test-cases/
+conformance/corpus-testcases/
