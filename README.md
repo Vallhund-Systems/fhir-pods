@@ -1,213 +1,218 @@
 # fhir-pods
 
-A small Rust library that lets an application **speak FHIR at its edges** —
-verify a resource against compiled profiles, build one from the variable data
-only, hand out a de-identified copy under a policy, assemble a patient summary
-document, turn an HL7 v2 message into a FHIR message bundle — behind one lean
-C ABI, so every one of those runs wherever the
-data already is: in the app, in the browser, at the edge, on device. Each
-operation says which profiles and policies it applied, what it found, and
-what it could not check; the host owns its data, its transport and the
-decision to proceed.
+**An embeddable compliance runtime for health applications.** Let your app
+**speak compliance at the edges**: lift incoming FHIR into profile-defined
+inputs, lower application data into FHIR, apply de-identification policies,
+assemble patient summaries, construct audit records, and convert HL7 v2
+messages. Validation runs through these operations and reports what passes,
+what fails, and which checks remain unresolved.
 
-## What it does
+The same Rust core runs in a browser, an edge function, a server, or a mobile
+app through WebAssembly, native bindings, a C ABI, or a local CLI. The host
+keeps its domain model and chooses the profiles and policies for each
+boundary. The runtime implements their supported data rules; the host owns
+consent, access control, storage, transport, and the decision to proceed.
 
-| Operation | In | Out |
+## The shape
+
+FHIR is an intermediate representation for health data with constraints:
+resources carry the data; profiles, terminology bindings, and FHIRPath
+invariants constrain it. Those definitions can drive construction,
+extraction, transformation, and verification in one runtime.
+
+```mermaid
+flowchart LR
+    App[Application domain model] -->|Host mapping| Slots[Profile slots]
+    Slots -->|Host mapping| App
+    Slots -->|Lower and validate| FHIR[FHIR resources]
+    FHIR -->|Validate and lift| Slots
+    FHIR -->|De-identify| Copy[Policy-transformed copy]
+    FHIR -->|Assemble| Summary[IPS / AU patient summary]
+    Event[Host event context] -->|Construct and validate| Audit[AuditEvent / Provenance]
+    V2[HL7 v2 message] -->|Convert and validate| FHIR
+```
+
+The host's mapping connects its own fields to the profile's variable slots.
+Compiled definitions supply fixed codings, categories, units, and slices.
+The runtime returns findings alongside its outputs so the app can decide
+whether a particular import, export, or transformation is acceptable.
+
+## Current capabilities
+
+| Operation | What it does | What comes back |
 | --- | --- | --- |
-| **Verify** | a resource (JSON) | the findings against the base spec's shape and resource rules and against the profiles it declares — and the profiles every nested resource declares — as a report or a FHIR `OperationOutcome`; must-support gaps as information; what could not be checked, named |
-| **Lower** | a profile URL and the variable inputs (`status`, `subject`, `valueQuantity.value`…) | the conformant resource — the profile supplies the codings, categories, units and slices — validated on the way out |
-| **Lift** | a profile URL (or none: the one the resource declares) and a resource | the reverse of lowering — the profile's slots read out of the resource (`status`, `subject`, `valueQuantity.value`…), validated on the way in; the required slots it lacks and the element paths no slot covers, named, so a host's map from FHIR to its own model is a map from slot paths to fields and nothing is left behind unnamed |
-| **De-identify** | a resource and a policy (Safe Harbor by default) | a copy with names, contacts, addresses below state, exact dates, narrative, notes, attachments and free text gone (a code's display, a unit, a state and a country stay), identifiers pseudonymised under the host's salt, masked where the base or a profile requires an element; an audit trail; what a Safe Harbor check still finds; what free text a host's own rule kept, site by site |
-| **Document** | a patient and their resources | an IPS or AU Patient Summary `Bundle`: sections from the profile, narrative generated, references rewritten, validated |
-| **Audit** | what a host knows when a record is read, queried, created, updated or deleted: who asked, from where, which server, on whose behalf, which resource or patient, the request id | an `AuditEvent` conformant to the IHE Basic Audit Log Patterns profile for that kind of event, validated; `Provenance` and a failed action's `AuditEvent` lowered from the base definitions |
-| **HL7 v2** | an ER7 message (`ORU^R01`, `ADT^A01`, `VXU^V04`, `OML^O21`, …) | a FHIR message `Bundle` through the published v2-to-FHIR maps compiled into the pod, validated on the way out; every map row the pod could not execute for data the message carried, named with its reason; every segment the structure has no place for, named; what FHIR requires and the message does not carry, in the validation — never invented |
-| **Terminology** | the bindings the bundled sets cannot decide | answered by a compiled expansion table the host loads, by an ask-then-answer loop against a terminology server, or by a synchronous provider — never by shipped licensed content |
+| **Lift** | Extract a resource's variable data through a compiled profile; use an explicit profile or one declared by the resource | Slot inputs, validation, missing required slots, and paths not covered by the extraction (`extras`) |
+| **Lower / slots** | Inspect a profile's inputs and build a resource from them, supplying the profile's fixed content | Resource and validation, including unknown inputs, type conflicts, and unmet constraints |
+| **Validate** | Check base R4 structure and supported rules, declared profiles (including nested resources), extension placement, and available terminology | A typed report or FHIR `OperationOutcome`; unsupported checks and unresolved terminology are visible; must-support gaps are available separately |
+| **De-identify** | Apply the built-in `safe-harbor` policy or host rules: remove or mask identifying fields, reduce date precision, and pseudonymise identifiers and references with a host-supplied salt | Transformed resource, validation, an applied-action trail, remaining checker findings, and free-text sites retained by host rules (`residual`) |
+| **Assemble documents** | Build IPS or AU Patient Summary Bundles with profile-defined sections, generated narrative, and rewritten references | Document, placed and omitted inputs, and validation |
+| **Audit / provenance** | Build IHE BALP audit events for reads, queries, creates, updates, and deletes, with or without patient context; lower `Provenance` and failed-action `AuditEvent` records from base definitions | Resource and validation; the host supplies actors, time, subject, source, and correlation context |
+| **HL7 v2** | Convert ER7 messages using compiled `hl7.fhir.uv.v2mappings` maps | FHIR message Bundle, validation, skipped map rows with reasons, unplaced segments, and unmapped valued fields |
+| **Terminology** | Resolve bindings through bundled sets, a host-loaded expansion table, or a synchronous provider; list unresolved requests for a host-managed lookup loop | Membership answers and outstanding terminology needs; lowering can obtain displays from the provider |
 
-The pod family and what comes next: [`docs/roadmap.md`](docs/roadmap.md).
-
-## Why a library
-
-FHIR is, structurally, an intermediate representation for health data with a
-constraint system clamping it — resources are the IR; profiles, terminology
-bindings and FHIRPath invariants are the constraints; validation is the
-verifier pass, and everything else an application does at its boundary
-(construct, transform, assemble, record) is defined by the same constraints.
-
-The incumbents ship that verifier as a **server** (JVM, .NET, a cloud
-endpoint), because the tooling grew up on enterprise runtimes. That runtime
-is the constraint: a multi-hundred-MB floor, cold starts, no way to run inside
-a TypeScript app, a browser or a phone. But the work is stateless, CPU-bound,
-pure compute — the textbook shape of a library. `fhir-pods` returns it to that
-form factor, and keeps the rest of the boundary work in the same place.
-
-## Why Rust
-
-Because **conformance is a compile-time problem**. FHIR's definitions are
-machine-readable, so the profiles are compiled *from the packages* into
-`'static` constraint tables (cardinality, fixed values, patterns, bindings,
-slicing, invariants, lowering slots) that a small generic engine walks — a
-compiled-data design, not a runtime tree-walk over StructureDefinition JSON,
-and not generated straight-line code either (what is measured, what is
-implemented and what is a target are three different sentences in
-[`docs/architecture.md`](docs/architecture.md)). The core is `no_std` with
-zero dependencies and no `unsafe`, which is what lets one C ABI carry it to
-wasm, iOS and Android unchanged.
-
-## How "correct" is established
-
-Correct means **agreeing with HL7's reference validator**, fixture by fixture,
-with terminology switched off on both sides so profiles are what is scored.
-`conformance/run.py` builds the corpus from the pinned packages, runs
-validator_cli 6.10.4 over it, and compares verdicts:
-
-- **1521/1521** at v0.10.0 — the seven IGs' published examples and 60-odd
-  probes, every corpus resource lifted into its slots and lowered again, every
-  one de-identified, the twelve document examples taken apart and assembled
-  again, an audit record of every kind from the audit surface, five HL7 v2
-  messages converted to message bundles (each side's verdict, valid or not,
-  the same — which proves shape, not meaning: the converter's content is
-  held by its own tests), and the review lane's adversarial probes.
-- **4,811 of 5,292** of FHIR R4's own published examples, every
-  resource type, unprofiled (`conformance/base.py`, apart from the release
-  gate, with reviewed differences now enforced as a regression baseline) —
-  the rest are rules the pod does not check and names
-  ([`scope.md`](docs/scope.md)), never a wrong verdict on one it does. A run in which either
-  side crashed, returned a foreign exit code or a report that disagrees
-  with its own exit code counts as a failure, never as agreement. Every
-  engine change is proven this way before it ships; the record is in the
-  changelog.
-- **Published validator tests**, pinned separately: **57/84** base verdicts
-  agree with stored Java outcomes; **14/20** with stored Firely outcomes.
-  Every difference is named and hashed. Of 53 ad-hoc profile cases, **10**
-  compile without identified unsupported constructs: **9/10** agree with
-  Java and **7/7** with Firely where present. The rest are explicit compiler,
-  snapshot or manifest exclusions. Zero unresolved stricter cases after
-  pinned Java checks; missing Firely results are not agreement. Test profiles
-  are compiled only behind an optional feature and never ship in the pods.
-  [Run the lanes](conformance/README.md); [limits and counts](docs/scope.md#the-reference-validator-test-suite-conformancetestcasespy).
-- **Skip, never guess.** Anything outside the supported FHIRPath core, an
-  unresolvable slice, a set the bundle cannot decide, a profile the registry
-  has not compiled — reported as such, never invented. What is checked and
-  what is not: [`docs/scope.md`](docs/scope.md).
-- **Fuzzed** two ways: a seeded harness under plain `cargo test`, and
-  libFuzzer targets for the validator, the parsers, lowering and
-  de-identification.
-
-## What is compiled in
-
-979 profiles from the pinned packages (`scripts/gen-profiles.sh`
-regenerates): **AU Core 2.0.0**, **US Core 6.1.0**, **IPA 1.1.0**, **IPS
-2.0.1**, **AU Patient Summary 1.0.0**, **IHE Basic Audit Log Patterns
-1.1.4**, **AU Base 6.0.0**, every HL7 extension (`hl7.fhir.uv.extensions.r4`
-5.3.0, 701 of them — so where an extension may sit is checked for all of
-them), the base spec's
-vital-sign profiles, which an Observation is held to by its LOINC code as
-the spec requires, and the base spec's own `AuditEvent` and `Provenance`
-definitions, so a host can lower and declare them directly. The element-
-type table covers every R4 resource and datatype, so a contained resource of
-any type is typed. Every licence-free value set the registry binds is bundled
-(126 sets), and the base code systems' content — every `complete`
-CodeSystem of R4 core and the HL7 terminology package (THO 7.3.0), codes
-only, no displays (1,212 systems; a system either package leaves open is
-not bundled; absent `caseSensitive` means any case), so a code no version
-of its system has is reported; SNOMED CT, LOINC, VSAC and NCTS-hosted sets go through the
-terminology seam.
-
-## Delivery
-
-- **wasm** — a ~2.3 MiB `.wasm` (~570 KiB gzipped) with a dependency-free JS
-  wrapper; browser, edge runtimes, Node, Bun, Deno. [`pods/wasm`](pods/wasm/README.md).
-- **Expo** — the core as a native module: iOS XCFramework + Android jniLibs,
-  a native terminology provider seam. [`pods/expo`](pods/expo/README.md).
-- **Rust / C** — `fhir_pods_core` directly, or the C ABI in
-  `crates/fhir-pods-ffi/include/fhir_pods.h`.
-- Tens of microseconds per profiled resource (81 / 78 / 152 µs for an AU
-  Core heart rate / AU Core patient / US Core patient, native, measured at
-  v0.6.1 on one 2026 laptop; `examples/bench.rs` reproduces); the same
-  inputs always give the same outputs.
+Lift and lower share the same slot vocabulary. Inspect `missing` and `extras`
+before a round trip: values outside the covered slots are reported, not
+automatically preserved. A constructed or transformed resource can still
+have validation errors; inspect its report before using it.
 
 ## Use
 
-```rust
-use fhir_pods_core::{deidentify::Policy, v2, Validator};
-
-let v = Validator::new();                       // parses the registry's invariants once
-let report = v.validate(json);                   // Validation: profiles applied, issues
-let lowered = v.lower(HEART_RATE, inputs)?;      // Lowered: resource + validation
-let lifted = v.lift(HEART_RATE, json)?;          // Lifted: inputs + validation + missing + extras
-let copy = v.deidentify(json, &Policy::safe_harbor(b"salt").today(2026))?;
-let summary = v.document("au-ps", inputs)?;      // Assembled: document + placed + validation
-let record = v.audit("patient-read", event)?;    // Lowered: a BALP AuditEvent + validation
-let msg = v.v2(er7, &v2::Options::default())?;   // Converted: bundle + validation + skipped + unplaced + unmapped
-let needs = v.terminology_needs(json);           // what the bundled sets could not decide
-```
+The WASM pod exposes the operations on one instance. The host loads the
+module bytes; see the [WASM guide](pods/wasm/README.md) for build and loading
+instructions.
 
 ```js
+import { instantiate } from "fhir-pods-wasm";
+
 const pod = await instantiate(wasmBytes);
-pod.validate(json);                              // { resourceType, profile, valid, issues }
-pod.lower(profileUrl, inputs);                   // { resource, validation }
-pod.lift(profileUrl, resource);                  // { inputs, validation, missing, extras }
-pod.deidentify(json, { salt, today });           // { resource, applied, validation, remaining }
-pod.document("ips", { resources, author, date }); // { document, placed, omitted, validation }
-pod.audit("patient-read", { recorded, client, server, user, source, patient, data, transaction });
-pod.v2(er7, { timezone: "+10:00" });             // { bundle, validation, skipped, unplaced, unmapped }
-pod.loadTerminology(table); pod.terminologyNeeds(json);
+const profile = "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate";
+
+const slots = pod.slots(profile); // discover the variable inputs
+const outgoing = pod.lower(profile, {
+  status: "final",
+  subject: "Patient/1",
+  effectiveDateTime: "2026-09-20T08:00:00+10:00",
+  "valueQuantity.value": 72,
+  "valueQuantity.unit": "beats/minute",
+});
+// outgoing: { resource, validation }
+
+const incoming = pod.lift(profile, outgoing.resource);
+// incoming: { inputs, validation, missing, extras }
 ```
 
-The Expo module exports the same operations as functions. Every result is
-data: a report is never thrown, and a copy or a document is never trusted
-unverified.
+The same instance provides `validate`, `operationOutcome`, `mustSupportGaps`,
+`deidentify`, `document`, `audit`, `v2`, `loadTerminology`, and
+`terminologyNeeds`. The [Expo module](pods/expo/README.md) exports the same
+operations as functions.
 
-## Boundaries
+In Rust, the shared operation context is currently named `Validator`:
 
-- **Library, not a server.** No I/O, no daemon, no datastore, no fetching —
-  the registry is compiled in.
-- **The pods know FHIR; a host knows its data.** Domain maps (a host's
-  records → FHIR inputs) live in the host, never here.
-- **Ships no licensed terminology.** SNOMED CT carries affiliate licensing in
-  many jurisdictions; fixed SNOMED codings carry `system` + `code` only, and
-  displays come through the seam. LOINC is never bundled. What is bundled
-  is codes only, from the CC0 FHIR and HL7 terminology packages (a few of
-  those systems carry their originators' notices — UB04, ASTM, ISO — which
-  the packages redistribute; no display or definition text travels).
-- **Unverifiable is visible, not silent.** A declared profile the registry
-  lacks, an invariant outside the FHIRPath core, a set the bundle cannot
-  decide — each is an issue in the report.
+```rust
+use fhir_pods_core::Validator;
 
-## Layout
+let runtime = Validator::new(); // reuse the parsed invariant expressions
+let profile = "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate";
+let outgoing = runtime.lower(profile, br#"{
+    "status": "final", "subject": "Patient/1",
+    "effectiveDateTime": "2026-09-20T08:00:00+10:00",
+    "valueQuantity.value": 72, "valueQuantity.unit": "beats/minute"
+}"#)?;
+let incoming = runtime.lift(profile, outgoing.resource.as_bytes())?;
+// Inspect outgoing.validation and incoming.{validation, missing, extras}.
+```
 
-- `crates/fhir-pods-core` — the core (zero deps, no `unsafe`, `no_std`):
-  `engine`, `path` (FHIRPath), `lower`, `lift`, `deidentify`, `assemble`, `audit`,
-  `v2` (the ER7 parser, the compiled v2-to-FHIR maps and the converter),
-  `terminology`, `generated/` (the compiled registry), `typemap` (the
-  element-type table).
-- `crates/fhir-pods-ffi` — the one lean C ABI, compiled per target.
-- `pods/wasm`, `pods/expo` — the delivery pods.
-- `tools/` — the generators, from the packages to `'static` tables:
-  profiles, the type table, the value sets, and `compile_valueset.py` for a
-  host's expansions.
-- `conformance/` — the corpus builder, the differential harness against the
-  reference validator, and `probes/` for hand-written fixtures with their
-  reasons.
-- `docs/` — [`architecture.md`](docs/architecture.md), [`scope.md`](docs/scope.md),
-  [`roadmap.md`](docs/roadmap.md), [`incumbent-apis.md`](docs/incumbent-apis.md),
-  [`history.md`](docs/history.md).
+Validation findings are data. An operation that cannot start returns a Rust
+`Result::Err`, a C ABI JSON error, or a thrown error in the JS wrappers.
 
-## Testing
+For scripts and local workflows, the [CLI](crates/fhir-pods-cli/README.md)
+offers the same operation family:
 
-```bash
-cargo test --workspace                       # unit + integration tests and the seeded fuzz harness
-FUZZ_ITERS=1000000 FUZZ_SEED=42 cargo test -p fhir-pods-core --test fuzz   # longer / different seed
-./scripts/check-no-std.sh                    # bare-metal build: nothing in the core touches std
-JAVA_HOME=<jdk17> python3 conformance/run.py # differential test vs the HL7 reference validator
-./scripts/gen-profiles.sh                    # regenerate the registry from the pinned packages
-cargo run -p fhir-pods-core --example probe -- [--outcome|--must-support] resource.json
-./scripts/smoke-c.sh                         # the C ABI, driven from C against the host staticlib
-./scripts/build-wasm.sh && (cd pods/wasm && npm test)   # the wasm pod through the JS wrapper
-cd fuzz && cargo +nightly fuzz run validate_bytes       # also json_parse, fhirpath_parse, lower, deidentify
-./scripts/release.sh                         # every artifact into dist/<version>/ with SHA256SUMS
+```sh
+cargo install --path crates/fhir-pods-cli
+fhir-pods slots http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate
+fhir-pods lower http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate inputs.json
+fhir-pods lift "" observation.json
+fhir-pods document ips summary-inputs.json
+fhir-pods audit patient-read event.json
+fhir-pods v2 message.hl7 --timezone +10:00
+```
+
+## Compiled coverage
+
+The current registry contains **979 profile definitions**, including **749
+extension definitions**, generated from pinned packages: **AU Core 2.0.0**,
+**US Core 6.1.0**, **IPA 1.1.0**, **IPS 2.0.1**, **AU Patient Summary 1.0.0**,
+**IHE BALP 1.1.4**, **AU Base 6.0.0**, and **HL7 extensions for R4 5.3.0**,
+plus base R4 vital-sign profiles and the `AuditEvent` and `Provenance` definitions.
+The type table covers every R4 resource and datatype.
+
+Terminology includes **126 value sets** and code membership tables for
+**1,212 complete code systems** from R4 core and HL7 terminology (THO 7.3.0).
+SNOMED CT and LOINC terminology content, and externally hosted sets, come
+through the host's terminology provider or expansion tables. Fixed profile
+codings can carry system and code references without bundled licensed
+displays. See [scope](docs/scope.md) for the supported checks and limits.
+
+The registry is compiled into the artifact. Supporting another implementation
+guide means adding its packages to the generator and proving the resulting
+behavior. The host selects the applicable profiles and policies; the runtime
+does not infer a jurisdiction or supply a complete regional compliance regime.
+
+## Delivery and implementation
+
+| Surface | Delivery |
+| --- | --- |
+| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.10.0 artifact is 2,387,366 bytes (586,075 bytes gzip-9). [Guide](pods/wasm/README.md) |
+| **Expo** | Native iOS XCFramework and Android jniLibs behind the Expo Modules API. [Guide](pods/expo/README.md) |
+| **Rust / C** | `fhir_pods_core` directly or the shared [ABI 10 header](crates/fhir-pods-ffi/include/fhir_pods.h) |
+| **CLI** | Local JSON/ER7 input, structured output, and exit codes for scripting. [Guide](crates/fhir-pods-cli/README.md) |
+
+The Rust core is `no_std` with `alloc`, zero dependencies, and no `unsafe`.
+Generators compile package definitions into static constraint tables,
+construction skeletons, slots, type information, and conversion maps. The
+runtime applies those tables to each input; it performs no network or
+storage I/O. The host provides time, salts, external terminology, and event
+context as needed.
+
+[Architecture](docs/architecture.md) explains the shared engine and bindings.
+[Native benchmarks](bench/README.md) measure validation, lowering,
+de-identification, and document assembly; [WASM benchmarks](pods/wasm/bench/README.md)
+measure calls through the JS wrapper. Measurements are tied to their recorded
+versions and fixtures.
+
+## Evidence and limits
+
+The release gate checks the validation verdicts of published examples,
+targeted probes, and outputs from lift/lower, de-identification, document
+assembly, audit construction, and HL7 v2 conversion against **HL7 Java
+validator 6.10.4**, with remote terminology disabled. Operation-specific
+tests also check extracted values, transformations, content, and reporting.
+Verdict agreement alone does not establish semantic correctness or complete
+compliance.
+
+| Lane | Latest recorded result |
+| --- | --- |
+| Release corpus | **1,521/1,521** verdicts agree at v0.10.0 and the subsequent core fixes |
+| Published R4 examples | **4,811/5,290** compared verdicts agree; **479** reviewed lenient differences; **2** explicit oracle exclusions out of 5,292 selected inputs; no stricter verdicts |
+| Published validator base tests | **57/84** agree with stored Java outcomes; **14/20** with stored Firely outcomes; differences are reviewed individually |
+| Ad-hoc profile tests | **10 of 53** cases compare: **9/10** agree with Java and **7/7** with Firely where available; other cases have compiler, snapshot, or manifest exclusions |
+
+The broader lanes enforce reviewed baselines: new or changed differences and
+unusable evidence fail. Exclusions are never counted as agreement. The latest
+core follow-up records **211 Rust workspace tests** and **18 Python harness
+checks**; the [changelog](CHANGELOG.md) separates released artifacts from
+unreleased corrections. [Conformance commands](conformance/README.md) and
+[detailed scope](docs/scope.md) describe reproduction and the remaining gaps.
+
+`valid` means no error or fatal finding among the checks that ran. Unknown
+profiles, unsupported expressions, and unresolved terminology can still
+produce warnings. The app must inspect those findings along with each
+operation's coverage fields when deciding whether its requirements are met.
+
+## Development
+
+- `crates/fhir-pods-core` — lift/lower, verification, de-identification,
+  document assembly, audit, v2 conversion, terminology, and compiled data.
+- `crates/fhir-pods-ffi`, `pods/wasm`, `pods/expo` — shared ABI and bindings.
+- `crates/fhir-pods-cli` — the local command-line surface.
+- `tools/`, `scripts/` — definition generators, build and release tooling.
+- `conformance/` — differential lanes, reviewed differences, and probes.
+- `docs/` — [architecture](docs/architecture.md), [domain model](docs/domain-model.md),
+  [scope](docs/scope.md), [roadmap](docs/roadmap.md), and [history](docs/history.md).
+
+```sh
+cargo test --workspace                       # unit, integration, and bounded seeded fuzz checks
+./scripts/check-no-std.sh                    # bare-metal core build
+JAVA_HOME=<jdk17> python3 conformance/run.py # release conformance gate
+python3 conformance/base.py                 # published R4 regression gate
+./scripts/gen-profiles.sh                   # regenerate the registry from pinned packages
+./scripts/smoke-c.sh                        # exercise the C ABI from C
+./scripts/build-wasm.sh                     # build the WASM artifact
+(cd pods/wasm && npm test)                   # exercise the JS wrapper
+./scripts/release.sh                        # package artifacts with SHA256SUMS
 ```
 
 ## License
 
-MIT © 2026 Justin Grosvenor. See [`LICENSE`](LICENSE).
+MIT © 2026 Justin Grosvenor. See [LICENSE](LICENSE).

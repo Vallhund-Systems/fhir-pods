@@ -1,20 +1,24 @@
 # fhir-pods-wasm
 
-The **wasm pod**: the `fhir-pods` verifier as a WebAssembly module plus a
-zero-dependency JS wrapper. Browser, edge runtimes, Node, Bun, Deno — anywhere
-`WebAssembly` is.
+The **fhir-pods compliance runtime** as a WebAssembly module with a
+dependency-free JS wrapper. Lift/lower FHIR, validate, de-identify, assemble
+patient summaries, construct audit records, and convert HL7 v2 in a browser,
+edge runtime, Node, Bun, or Deno.
 
 ```
-JS  ──validate(json)──►  hand-written wrapper  ──C ABI──►  Rust core (wasm32)
-        ◄──report──                             ◄────────
+JS  ──operation inputs──►  JS wrapper  ──C ABI──►  Rust compliance runtime
+    ◄──output + findings──            ◄─────────         (wasm32)
 ```
 
-No wasm-bindgen, no glue runtime: the wrapper is ~70 lines over `pod_alloc` /
-`pod_free` and the entrypoints. The `.wasm` carries the 979 compiled
-profiles of the seven pinned IGs (AU Core, US Core, IPA, IPS, AU Patient
-Summary, IHE BALP, AU Base) and every HL7 extension, the 125 bundled value
-sets, the base code systems' codes, the FHIRPath engine and the HL7 v2
-maps — ~2.3 MiB, ~570 KiB gzipped at v0.9.2.
+The wrapper uses `pod_alloc` / `pod_free` and the shared ABI 10 entrypoints.
+The module carries 979 compiled profiles from the pinned IGs and R4
+extension/base definitions, 126 bundled value sets, base code-system
+membership tables, FHIRPath, transformation and assembly engines, and HL7 v2
+maps. The v0.10.0 artifact is 2,387,366 bytes (586,075 bytes gzip-9).
+
+The host selects profiles and policies, maps its domain fields to slots,
+and handles storage, transport, and decisions about the returned findings.
+See the [runtime overview](../../README.md) for coverage and responsibilities.
 
 ## Build
 
@@ -41,10 +45,11 @@ const outcome = pod.operationOutcome(JSON.stringify(observation));
 ```
 
 `validate` never throws for bad input: unparseable JSON is a `fatal` issue in
-the report. Both calls are synchronous — under a hundred microseconds end to end in JS (69–89 µs on an M4 Max at v0.8.3, JSON copy and parse included; see `bench/`) for a profiled
-resource.
+the report. Both calls are synchronous. Historical v0.8.3 measurements were
+69–89 µs on an M4 Max for the recorded profiled-resource fixtures, including JSON copy
+and parse; see the [benchmark guide](bench/README.md) for scope and provenance.
 
-### Lowering — a conformant resource from the variable data only
+### Lowering — construct from profile inputs
 
 ```js
 pod.slots("http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate");
@@ -84,12 +89,15 @@ host maps to its own model, and nothing the profile fixes. `missing` names
 the required slots the resource lacks; `extras` names element paths no slot
 covers, so nothing is left behind unnamed; `validation` is the verdict on the
 way in. `pod.lift("", resource)` takes the most specific compiled profile the
-resource declares. `pod.lower(url, inputs)` gives the resource back.
+resource declares. `pod.lower(url, inputs)` rebuilds the slot-covered content.
+Inspect `extras` before a round trip: uncovered values are listed but are not
+automatically preserved. Construction returns validation findings and can
+produce an invalid resource when inputs do not meet the profile's requirements.
 
 ### HL7 v2
 
 ```js
-const { bundle, validation, skipped, unplaced } = pod.v2(er7, { timezone: "+10:00" });
+const { bundle, validation, skipped, unplaced, unmapped } = pod.v2(er7, { timezone: "+10:00" });
 // bundle: a message Bundle — MessageHeader, Patient, Encounter, DiagnosticReport, Observations…
 ```
 
@@ -168,7 +176,7 @@ as `Provenance` is.
 ### De-identification
 
 ```js
-const { resource, applied, validation, remaining } = pod.deidentify(JSON.stringify(patient), {
+const { resource, applied, validation, remaining, residual } = pod.deidentify(JSON.stringify(patient), {
   salt: process.env.DEID_SALT,   // keys the pseudonyms — secret, stable
   today: "2026-09-16",           // what "over 89" is measured against
   rules: [{ target: "Observation.effectiveDateTime", action: "keep" }], // on top of Safe Harbor

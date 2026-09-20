@@ -1,23 +1,27 @@
-//! # fhir-pods
+//! # fhir-pods — compliance runtime
 //!
-//! FHIR is an intermediate representation for health data with a constraint
-//! system clamping it: resources are the IR; profiles, terminology bindings,
-//! and FHIRPath invariants are the constraints; validation is the verifier pass.
+//! An embeddable runtime for health applications to speak compliance at their
+//! edges: lift and lower FHIR, validate resources, apply de-identification
+//! policies, assemble patient summaries, construct audit records, and convert
+//! HL7 v2 messages. The host supplies its domain mappings and boundary context.
 //!
-//! Every incumbent ships that verifier as a *server*. A verifier is stateless,
-//! CPU-bound, pure compute — a **library**. `fhir-pods-core` is that library:
-//! no I/O, no telemetry, no licensed terminology, source-agnostic, `no_std`.
+//! FHIR resources are the intermediate representation; profiles, terminology
+//! bindings, and FHIRPath invariants constrain it. Compiled definitions drive
+//! extraction and construction as well as the verifier pass.
 //!
-//! Two layers, per the API decision (see `docs/incumbent-apis.md`):
-//! * **ergonomic** — [`validate_bytes`] returns a typed [`Validation`] with a
-//!   complete issue list; it never throws to signal validation state.
-//! * **wire** — [`Validation::to_operation_outcome`] emits the spec's
-//!   `OperationOutcome` at the boundary, so anything downstream sees a
-//!   standard FHIR validator.
+//! [`Validator`] is the shared operation context: it caches invariant syntax
+//! trees and provides the lift/lower, validation, transformation, document,
+//! audit, and v2 methods. Outputs carry validation and operation-specific
+//! coverage information. Failure to start an operation is a separate error.
 //!
-//! Profiles are generated from the packages' shipped `snapshot.element` into
-//! the compiled IR (`compiled`), then run by the generic `engine` against a
-//! `document::Document` port. See `docs/domain-model.md`.
+//! [`Validation::to_operation_outcome`] emits FHIR's `OperationOutcome` wire
+//! representation. Delivery bindings expose the operation family through a
+//! shared C ABI, WebAssembly, Expo, and a CLI.
+//!
+//! The core uses `no_std` with allocation, has no external dependencies, and
+//! forbids unsafe code. It performs no I/O; the host owns policy selection,
+//! external terminology, consent, access, storage, transport, and decisions
+//! about incomplete coverage. See `docs/architecture.md` and `docs/scope.md`.
 #![no_std]
 #![forbid(unsafe_code)]
 
@@ -424,10 +428,11 @@ pub mod document;
 
 pub mod compiled;
 
-/// A validator that has parsed the registry's invariant expressions once.
-/// Build one per process (about half a millisecond) and reuse it: the free
-/// functions [`validate_bytes`] / [`validate_bytes_with`] re-parse every
-/// invariant on every call and cost roughly twice as much.
+/// Shared context for the compliance runtime's operations, retaining the
+/// `Validator` API name. Parses the registry's invariant expressions once for
+/// reuse by validation, lift/lower, de-identification, documents, audit, and v2.
+/// The free [`validate_bytes`] / [`validate_bytes_with`] functions parse
+/// invariant expressions on each call.
 pub struct Validator {
     /// Parsed ASTs keyed by the expression's `'static` address — the registry
     /// shares expression strings, so this is small and the lookup is a binary
@@ -500,7 +505,7 @@ impl Validator {
 
     /// Build a conformant resource for the profile at `url` from its variable
     /// inputs (a JSON object keyed by slot path), and validate it. See
-    /// [`lower`](crate::lower).
+    /// [`lower`].
     pub fn lower(&self, url: &str, inputs: &[u8]) -> Result<lower::Lowered, lower::LowerError> {
         self.lower_with(url, inputs, &terminology::Bundled)
     }
@@ -524,7 +529,7 @@ impl Validator {
     /// `create`, `patient-create`, `update`, `patient-update`, `delete`,
     /// `patient-delete`), conformant to the IHE BALP profile for it, built
     /// from host-shaped inputs and validated on the way out — see
-    /// [`audit`](crate::audit).
+    /// [`audit`].
     pub fn audit(&self, kind: &str, inputs: &[u8]) -> Result<lower::Lowered, audit::AuditError> {
         self.audit_with(kind, inputs, &terminology::Bundled)
     }

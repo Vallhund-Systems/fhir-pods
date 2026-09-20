@@ -1,13 +1,23 @@
-# Scope — what "agrees with the reference validator" means
+# Runtime scope and verification evidence
 
-`conformance/run.py` reports **1191/1191 agree** at v0.6.1 across the six
-pinned IGs (AU Core 2.0.0, US Core 6.1.0, IPA 1.1.0, IPS 2.0.1, AU PS 1.0.0,
-IHE BALP 1.1.4): every IG's published examples, the probes, every example
-re-lowered from its slot values, every one de-identified, the documents
-assembled again, and an audit record of every kind. This note says precisely
-what that claim covers and what it deliberately does not, so nobody reads
-more into it than it says. The count moves with every release and is in the
-changelog.
+`fhir-pods` is a compliance runtime: it lifts and lowers resources, applies
+policies, assembles documents, constructs audit records, and converts HL7 v2.
+These operations share a verifier. This document details that verifier's
+coverage and the limits of reference-engine comparisons; the
+[operation overview](../README.md#current-capabilities) and
+[architecture](architecture.md#operation-results-and-coverage) describe the
+rest of the runtime's result contracts.
+
+`conformance/run.py` records **1,521/1,521** verdict agreements at v0.10.0
+and after the subsequent core fixes, across seven pinned IGs. It includes
+published examples and probes, lifted/re-lowered and de-identified examples,
+assembled documents, audit records, and converted v2 messages. Wider lanes
+below deliberately retain reviewed differences and exclusions.
+
+Verdict agreement tests conformance of the resources presented to the
+engines. Transformation fidelity, content preservation, policy coverage,
+and host requirements also need operation-specific checks. See the
+[changelog](../CHANGELOG.md) for each release and unreleased follow-up.
 
 ## The claim
 
@@ -19,22 +29,22 @@ variants), our verdict equals the HL7 reference validator's
 - **Where** — the set of element paths carrying `error`-level issues, after
   normalising the two locator styles (ours: `Observation.component:diastolic`;
   theirs: FHIRPath with indices). A difference here is printed as
-  `issue paths differ (info)` — two remain: the display-name case below, and
-  the orphan-contained probe, where the oracle also flags the dangling
-  `Medication/elsewhere` reference we do not resolve.
+  `issue paths differ (info)`. Path agreement is diagnostic information,
+  separate from the scored valid/invalid verdict.
 
 Warnings and informational issues are **not** scored. Both sides emit them;
 they differ in volume and kind, and the differences are all in the areas below.
 
 ## What the reference validator checks that we do not (yet)
 
-From the 868 non-error issues it raised over the corpus (506 warnings, 307
-informational), by family:
+These families describe known coverage differences. Counts in this table
+are historical observations from the v0.6.1 corpus, not a current inventory;
+the current regression lanes track individual cases and evidence hashes.
 
-| Family | Their count | What it is | Our stance |
+| Family | Historical count | What it is | Our stance |
 |---|---|---|---|
-| **Terminology without a server** | ~700 | "Unable to validate code … running without terminology services", "ValueSet … not found", "Could not confirm … extensible value set", "CodeSystem … doesn't provide any codes" | We bundle a small set of base-FHIR value sets (gender, status codes, vitals UCUM, …) and check `required` bindings against those; everything else is a `warning: no bundled terminology for <vs>`. The `TerminologyProvider` seam is where a host plugs NCTS / VSAC / a local cache in. SNOMED is never bundled (licence). |
-| **Display-name checking** | 1 error-level in a probe | "Wrong Display Name 'Laboratory' for …#vital-signs" | Not done — needs code-system content we don't ship (and for SNOMED, cannot). The one surviving `issue paths differ` is this. |
+| **Terminology without a server** | ~700 | "Unable to validate code … running without terminology services", "ValueSet … not found", "Could not confirm … extensible value set", "CodeSystem … doesn't provide any codes" | We bundle 126 value sets (gender, status codes, vitals UCUM, FHIR / HL7 v2 / v3 sets, …) and check `required` bindings against those; everything else is a `warning: no bundled terminology for <vs>`. The `TerminologyProvider` seam is where a host plugs NCTS / VSAC / a local cache in. SNOMED is never bundled (licence). |
+| **Display-name checking** | 1 error-level in a probe | "Wrong Display Name 'Laboratory' for …#vital-signs" | Not done — needs code-system content we don't ship (and for SNOMED, cannot). This can produce a path difference even when another issue makes both verdicts invalid. |
 | **Best-practice recommendations** | 82 + 12 | "all observations should have a performer" (`obs-…` best practice), `dom-6` narrative | `dom-6` we evaluate as a warning (it is an ordinary invariant). The performer recommendation is validator policy, not a profile constraint; not emitted. |
 | **Multiple matching profiles** | 32 | The validator had to pick among candidate profiles (its own warning) | A resource that declares several profiles is validated against **every** one we have compiled (findings shared by two profiles are reported once; the report carries `profiles`). The oracle's warning here is about its own choice among *implicit* candidates, not declared ones. |
 | **Deprecation / advisories** | 5 + 2 | Deprecated extensions and concepts, "UCUM annotations like {T-Score} can be misleading" | Advisory, not conformance; not emitted. |
@@ -63,9 +73,11 @@ below: no resource-level invariants beyond dom-*/bdl-*, no bindings) —
 on those the examples are clean, and agreement says only that. It runs
 apart from the release gate (parity, not cleanliness: the spec's own
 examples are not all valid, and several are conformance resources the
-reference validator holds to rules of its own kind). At v0.9.2:
-**4,811** agree. What the rest is, by family — every one a rule we do
-not check, none a wrong verdict of ours on a rule we do:
+reference validator holds to rules of its own kind). The latest baseline
+compares **5,290** of the **5,292** selected inputs: **4,811** verdicts agree,
+**479** are reviewed lenient differences, and none are stricter. The other
+**two** inputs are explicit oracle exclusions and are never scored as
+agreement. The reviewed differences fall into these families:
 
 - **Definition resolution** (the largest, on conformance resources —
   CodeSystem, ValueSet, ConceptMap, StructureDefinition, Measure): "No

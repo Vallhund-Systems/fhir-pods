@@ -3,7 +3,7 @@ name = "fhir-pods-core"
 version = "0.10.0"
 edition = "2021"
 license = "MIT"
-description = "Embeddable FHIR verifier + lowering core. No I/O, no server, no licensed terminology."
+description = "Embeddable compliance runtime for health applications: FHIR lift/lower, validation, de-identification, documents, audit, and HL7 v2."
 publish = false
 
 [features]

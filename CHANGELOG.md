@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reframe the README, architecture, domain model, roadmap, pod guides, and
+  package descriptions around the compliance runtime and its full operation
+  family. Refresh coverage and delivery evidence, document host
+  responsibilities and round-trip limits, and retain the existing API names.
 - CLI `slots` uses the shared resource-profile lookup and rejects extension
   profiles. The CLI package version now matches 0.10.0.
 - Published R4 examples are a regression gate: pinned input inventory,

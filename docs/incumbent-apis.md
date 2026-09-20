@@ -1,4 +1,11 @@
-# Incumbent APIs — the design decision
+# Incumbent APIs — original verifier design research
+
+This is the historical API research for the initial verification component.
+It includes proposals and ecosystem observations from that stage, rather than
+a current feature or compatibility reference. The product has since expanded
+into a **compliance runtime** spanning lift/lower, transformation, documents,
+audit, and HL7 v2. See the [README](../README.md) and
+[current architecture](architecture.md) for implemented behavior.
 
 **Principle: conform on the wire, improve on the ergonomics.** The wire shapes
 are FHIR *spec*, not any vendor's API, so conforming is mandatory and stable

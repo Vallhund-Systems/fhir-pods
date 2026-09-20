@@ -1,235 +1,175 @@
 # fhir-pods — architecture
 
-## Thesis
+## Compliance at the application's edges
 
-FHIR is an intermediate representation for health data with a constraint system
-clamping it:
+`fhir-pods` is an embeddable compliance runtime. Its operations connect an
+application's data to the formats, profiles, and policies required at a
+boundary: lift, lower, validate, de-identify, assemble documents, construct
+audit records, and convert HL7 v2 messages.
 
-- **resources** are the IR (`Patient`, `Observation`, `Condition`, …),
-- **profiles** (StructureDefinitions), **terminology bindings** (ValueSets), and
-  **FHIRPath invariants** are the constraints,
-- **validation** is the verifier pass.
+FHIR resources serve as an intermediate representation. Profiles, terminology
+bindings, and FHIRPath invariants constrain that representation. The same
+compiled definitions drive extraction and construction as well as the
+verifier pass. A host maps its domain model to profile slots and chooses
+which operations to run; the runtime returns outputs and findings.
 
-The verifier is stateless, CPU-bound, pure compute — a library, not a server.
-`fhir-pods` ships it as a Rust core with a lean WASM boundary so it runs wherever
-the data is.
+The current Rust operation context is named `Validator`. It caches parsed
+invariant expressions and supplies the shared validation path used by
+`lift`, `lower`, `deidentify`, `document`, `audit`, and `v2`. The product name
+covers that full surface; API names remain as implemented.
 
-## Why Rust, not pure TypeScript — conformance is codegen
+## Compile definitions, execute operations
 
-FHIR publishes its definitions as machine-readable artifacts: base resources,
-StructureDefinitions (including jurisdictional profiles like AU Core), and
-ValueSets are themselves FHIR resources. So the types *and* the validators for a
-given profile are **derivable from the spec**.
+FHIR publishes machine-readable definitions. Generators consume pinned
+package snapshots and emit immutable tables committed with the core:
 
-- **The compiled path (this repo).** `tools/gen_all.py` reads the packages'
-  shipped `snapshot.element` and emits Rust — one `CompiledProfile` per
-  profile (cardinality, fixed values, bindings, slicing, invariants,
-  must-support) as `'static` data, plus an element-type table from the base
-  spec — committed under `src/generated/` and `src/typemap.rs`. The engine
-  walks that data; nothing is interpreted from StructureDefinitions at run
-  time and nothing is fetched. Result: a small `.wasm`, no warm-up.
-- **The interpreted path (pure TS, and most JS FHIR libs).** Ship the
-  StructureDefinitions as data and tree-walk them at runtime on every
-  validation. Larger, slower, and — the real problem — undifferentiated from
-  what already exists.
+- `tools/gen_all.py` and `tools/gen_profile.py` compile profiles into
+  `CompiledProfile`: element constraints, slicing, invariants, extension
+  contexts, must-support paths, construction skeletons, and input slots.
+- The type-table generator describes every R4 resource and datatype so
+  traversal, validation, and transformations can interpret each node.
+- Terminology generators compile the bundled value sets and code membership
+  tables. `tools/compile_valueset.py` prepares host-supplied expansions.
+- `tools/gen_v2.py` compiles the published v2-to-FHIR maps and identifies
+  rows the converter cannot execute.
 
-Division of labor: **a generator for spec ingestion** (a Python script over
-the packages, run by `scripts/gen-profiles.sh`, with committed output — no
-`build.rs`, no proc-macros: reading large external packages at build time
-hurts incremental compilation and hides the IR), **hand-written Rust for the
-engine**.
+This is a compiled-data design. Generic Rust engines apply the tables to
+runtime inputs. Profile compilation prepares the rules; evaluating a
+particular resource remains runtime work. The core parses JSON into an
+allocated tree with borrowed strings and evaluates cached FHIRPath syntax
+trees. It does not fetch or interpret StructureDefinition JSON on each call.
+
+`scripts/gen-profiles.sh` drives registry regeneration explicitly. New IG
+support is a generation and conformance task, not a runtime package download.
 
 ## Modules (`fhir-pods-core`)
 
-| module | role |
-|---|---|
-| `json` | zero-copy top-level scan + borrowed value tree, depth-bounded |
-| `document` | the `Document` port and the tree adapter (`Parsed` / `TreeDoc`), typed traversal |
-| `typing` + `typemap` | the element-type table and its lookup (a node learns its FHIR type as it is reached) |
-| `compiled` | the profile IR the generator emits (`CompiledProfile`, slicing, invariants, must-support) |
-| `generated` | the compiled profiles + `REGISTRY` (committed output of `tools/gen_all.py`) |
-| `engine` | the verifier: `CompiledProfile` × `Document` → `Report` |
-| `path` | the FHIRPath engine — evaluates invariants |
-| `regex` | a linear-time regex engine for FHIRPath `matches()` |
-| `terminology` + `value_sets` | the `TerminologyProvider` seam and the bundled base-FHIR sets (ships no licensed content) |
-| `v2` | HL7 v2: the ER7 parser (`Message`), the compiled `hl7.fhir.uv.v2mappings` tables (`generated`, from `tools/gen_v2.py`) and the converter to a message Bundle (`convert`) |
-| `validate` | `Severity`, `IssueType`, `Issue`, `Report` |
-| `wire` | the anti-corruption layer: `OperationOutcome` and the `Validation` JSON |
+| Module | Role |
+| --- | --- |
+| `compiled`, `generated` | Profile representation and the compiled registry |
+| `json`, `node` | Input parsing and owned output construction |
+| `document`, `typing`, `typemap` | Typed document traversal, including nested resources and primitive carriers |
+| `engine`, `path`, `regex` | Constraint verification, FHIRPath evaluation, and `matches()` support |
+| `lower`, `lift` | Construct resources from profile slots and extract slots from resources |
+| `deidentify` | Typed policy transformations, pseudonyms, applied actions, and residual findings |
+| `assemble` | IPS / AU Patient Summary assembly, section placement, narrative, and references |
+| `audit` | Map host event context to IHE BALP profiles and lower audit resources |
+| `v2` | ER7 parsing, compiled conversion maps, message Bundle construction, and coverage reporting |
+| `terminology`, `value_sets`, `code_systems_table` | Bundled membership data, expansion tables, providers, and outstanding terminology needs |
+| `validate`, `wire` | Findings, validation reports, and FHIR `OperationOutcome` serialization |
 
-## Conformance target
+The core is `no_std` with `alloc`, zero external dependencies, and
+`#![forbid(unsafe_code)]`. It owns no filesystem, network connection, clock,
+or application datastore. The host supplies the context needed by each call.
 
-Be **correct on one profile before widening**: **AU Core** (the CSIRO/Sparked
-Australian FHIR profiles) is the first target, validated against the published
-suites (**Inferno**, **Touchstone**). Do not chase HAPI's full surface — the win
-is form factor + correctness on a narrow, real profile, not breadth.
+## Operation results and coverage
 
-## Delivery — pods (one core, bindings per target)
+Construction and transformation return data together with validation. An
+output can be useful for inspection even when it fails a constraint; the
+host decides whether to accept it. Failure to start an operation is separate
+from findings on an output.
 
-The core is target-general; each *pod* is a thin binding over the same lean
-C ABI. "Runs wherever the data is" is delivered by the right binding per target,
-not one artifact everywhere:
+Coverage is operation-specific:
 
-| Target | Pod | Mechanism |
-|---|---|---|
-| Browser / edge / server | **wasm pod** | C ABI → `wasm32` → tiny JS wrapper |
-| iOS / Android (Expo app) | **expo pod** | C ABI → native staticlib (iOS XCFramework `.a` / Android `.so`) → Expo Modules API module |
+- Lift returns missing required slots and uncovered element paths (`extras`).
+  Lowering lifted inputs preserves what the slot model covers; arbitrary
+  input data is not guaranteed to survive a round trip.
+- De-identification returns applied actions, remaining checker findings,
+  and free-text sites explicitly retained by host rules (`residual`). The
+  built-in policy's checks describe the transformation's coverage.
+- Document assembly reports placed and omitted resources.
+- HL7 v2 conversion reports skipped map rows with reasons, unplaced
+  segments, and valued fields absent from the maps.
+- Verification reports unknown profiles, unsupported expressions, and
+  unresolved terminology. `valid` means no error or fatal finding; warnings
+  can still identify requirements that have not been checked.
 
-The phone target is **native, not WASM.** Hermes has no WASM runtime, so running
-the verifier as WASM inside React Native means a WebView or a bundled interpreter
-— slow and heavy, the opposite of the point. On device you compile the *same
-core* to a native staticlib and bridge it:
+The [scope document](scope.md) details verification coverage. The
+[roadmap](roadmap.md) records shipped operations and remaining work.
 
-- **iOS:** build an **XCFramework** (arm64 device + sim) from the staticlib and
-  vendor it in a **CocoaPods pod** — hence the name. A Swift wrapper calls the C
-  header; the **Expo Modules API** handles autolinking + the config plugin.
-- **Android:** build `.so` per ABI into `jniLibs` (plain cargo pointed at the
-  NDK clang; `cargo-ndk` optional); a Kotlin wrapper reaches the same two
-  entrypoints through a small Android-only JNI shim in the FFI crate (the JVM
-  can't call a C ABI directly).
-- **JS surface:** a synchronous **JSI** call — validate a JSON string, get a
-  report, no bridge serialization. Start on the Expo Modules API; **Nitro
-  Modules / hand-written JSI** is the zero-copy upgrade if marshaling ever shows
-  up in a profile.
+## Delivery — one core, several surfaces
 
-The C ABI in `fhir-pods-ffi` is the shared FFI surface — the native pod
-compiles it to a staticlib instead of `wasm32`. Three entrypoints —
-`fhir_pods_validate` (the `Validation` JSON), `fhir_pods_operation_outcome`
-(the spec wire form), `fhir_pods_must_support` (information) — plus the
-`_tx` twins that take a host terminology callback. Every pod makes exactly
-these calls; the ABI never changes per target.
+| Target | Surface | Mechanism |
+| --- | --- | --- |
+| Browser / edge / server JS | WASM pod | C ABI compiled to `wasm32`, wrapped by dependency-free JavaScript |
+| iOS / Android | Expo pod | Native XCFramework / shared libraries, Swift or Kotlin wrapper, Expo Modules API |
+| Native applications | Rust / C | Direct core calls or `fhir-pods-ffi` |
+| Local scripts and pipelines | CLI | Rust core plus filesystem/stdin/stdout handling in the CLI |
 
-**Boundary (the wall):** the expo pod is a **standalone Expo module any app can
-install** — published or vendored as a release artifact, never source-linked into
-a host app's tree. A consumer depends on it the way it would any third-party
-native module; the pod never imports the host, and the host never imports pod
-source. Same separation as a vendored SDK release.
+Expo uses the native core on both platforms. Swift calls the C header;
+Kotlin reaches the same operation family through the FFI crate's Android
+JNI shim. The package vendors the native artifacts. Hosts consume the pod
+as a standalone dependency; application mappings stay in the host.
 
-## The C ABI (`fhir-pods-ffi`)
+The current shared C ABI is **10**. It includes validation, OperationOutcome,
+slots, lift/lower, de-identification, documents, audit, HL7 v2, must-support
+inspection, and terminology loading/needs. See the
+[header](../crates/fhir-pods-ffi/include/fhir_pods.h) for exact signatures.
 
-A **lean C ABI**, not wasm-bindgen: host passes a UTF-8 JSON resource as
-`(ptr, len)`; the pod returns a JSON report as `(ptr, len)`; memory is managed
-explicitly via `pod_alloc` / `pod_free`. wasm-bindgen (or hand-written JS) can
-wrap this for ergonomic TypeScript later — but the core never pays the glue cost.
-`unsafe` is confined to this shim; the core forbids it.
+Inputs are UTF-8 byte buffers: JSON for resources and options, ER7 for v2,
+and text for profile URLs or terminology tables. Results are JSON in
+`[u32 little-endian length][UTF-8 bytes]` buffers. The host frees buffers
+with `pod_free`, using the full allocated length. `pod_alloc` supplies
+input storage where needed. `unsafe` stays in the FFI boundary.
 
-## The terminology seam
+The JS wrappers copy inputs and outputs across that boundary and expose
+synchronous operations after initialization. They return validation
+findings as data and throw when an operation cannot start.
 
-Bindings are checked through one trait — `terminology::TerminologyProvider`
-(`validate_code(value_set, system, code) -> Member | NotMember | Unknown`).
-`Bundled` answers from the value sets compiled into the core; `Chain` puts a
-host provider behind it, asked only what the bundle can't decide. `Unknown`
-is a warning, never an error, so an offline host degrades gracefully. Over the
-C ABI the provider is a callback (`fhir_pods_validate_tx`); in wasm it is an
-import the JS wrapper supplies; in the expo pod it is a native closure /
-`fun interface` the app installs once — the verifier never calls back into
-JS. Bindings are compiled by kind: a `code` is the code itself, a `Coding` is
-system + code, a `CodeableConcept` is a member if any of its codings is.
+## Terminology
 
-## Audit surface
+`TerminologyProvider` answers value-set membership with `Member`,
+`NotMember`, or `Unknown`, and can supply displays for construction.
+Bundled sets are consulted first, followed by a loaded expansion table
+and an optional host provider. Unknown membership is reported as a warning.
 
-FHIR already models the audit trail as **data**, not as a byproduct of
-observability:
+WASM accepts a synchronous JS callback. Expo accepts a native Swift/Kotlin
+provider. A host needing asynchronous network lookup uses the
+`terminologyNeeds` ask-then-answer loop, loads answers, and reruns the
+operation. The core never performs that network request itself.
 
-- **`AuditEvent`** — the actor–action–subject–outcome–time record of a single
-  access or mutation of PHI.
-- **`Provenance`** — the lineage of a resource (which activity, which agents,
-  which sources it derived from).
+Validation, lower, lift, document, audit, and v2 have provider-aware paths.
+De-identification's validation currently uses bundled terminology; a host
+can separately revalidate its output with additional terminology.
 
-So "the audit surface" for a FHIR component is: emit correctly-formed
-`AuditEvent` / `Provenance` at every point PHI is read or changed, and retain
-them **completely, immutably, and queryably by subject**. `fhir-pods` constructs
-and validates those resources; storage and transport are the host's.
+## Audit and provenance
 
-### Can OpenTelemetry traces be the audit of record? No — but OTel can be the plumbing.
+The host supplies the facts of an event: actor, action, time, source, subject,
+and correlation context. `audit` constructs IHE BALP basic `AuditEvent`
+resources. General `Provenance` and failed-action `AuditEvent` records use
+`lower` with the base definitions.
 
-Traces and audit both look like "records of what happened," but their
-requirements diverge in load-bearing ways:
+Construction does not observe application activity or persist records. The
+host decides where to emit events and supplies delivery, retention, access,
+and integrity controls. A request identifier can correlate a BALP event with
+application telemetry while the host maintains its audit records separately.
 
-| | Traces (OTel) | Audit |
-|---|---|---|
-| Completeness | **sampled** (1–10%) by design | **every** PHI event, no sampling |
-| Delivery | best-effort, batched, droppable under backpressure | at-least-once, durable, guaranteed |
-| Retention | days–weeks | years (e.g. HIPAA 6y), immutable |
-| Integrity | mutable telemetry | append-only, ideally hash-chained / WORM |
-| PII / PHI | scrubbed **out** | subject reference required **in** |
-| Query axis | by trace / service | by **subject** (patient) |
-| Schema | freeform attribute bag | fixed tuple (`AuditEvent`) |
+## Evidence and performance
 
-The two conflicts that kill "traces alone":
+The runtime is checked both through operation-specific tests and through
+external validation of its inputs and outputs. The release corpus covers
+published IG examples, lift/lower, de-identification, documents, audit, and
+v2 conversion. Wider base and profile-test lanes track reviewed differences
+and exclusions. Exact counts and reproduction commands live in the
+[README](../README.md#evidence-and-limits), [conformance guide](../conformance/README.md),
+and [changelog](../CHANGELOG.md).
 
-1. **Sampling vs completeness.** Cranking sampling to 100% to cover audit turns
-   the trace backend into an expensive, wrong-shaped audit store — and it's still
-   neither durable nor immutable.
-2. **PHI direction.** Traces must *not* carry PHI; audit must name the subject.
-   Push subject identifiers into spans and your observability vendor (Honeycomb,
-   Datadog, …) becomes a PHI processor, typically outside a BAA — the same rule
-   as "no PHI in the non-BAA cache."
+Performance evidence covers multiple operations: the
+[native harness](../bench/README.md) measures validation, lowering,
+de-identification, and document assembly; the
+[WASM harness](../pods/wasm/bench/README.md) includes wrapper costs.
+Records identify fixtures, versions, and hardware. The v0.10.0 WASM release
+is 2,387,366 bytes, or 586,075 bytes with gzip-9.
 
-### The shape that works
+Potential optimizations include validation during parsing, reusable output
+buffers, and specialized generated code. These are future designs; today's
+implementation uses an allocated tree and generic table-driven operations.
 
-- **Audit is a first-class domain event**, emitted intentionally at the PHI
-  boundary — not inferred from a span. Model it as a FHIR `AuditEvent`.
-- **Give it its own pipeline.** OTel is fine as *transport* — but use the **Logs**
-  signal (or a dedicated span→audit exporter routed by the Collector), on an
-  **unsampled, PHI-aware** path, into a durable append-only sink with long
-  retention. Never the sampled trace pipeline.
-- **Correlate, don't conflate.** Stamp the `trace_id` onto the `AuditEvent` so an
-  investigation can pivot from the authoritative audit record to the rich,
-  ephemeral trace. Audit is the record of truth; the trace is context, linked by
-  id. (A host that emits `AuditEvent`s should carry the trace id on them.)
+## Host responsibilities
 
-**Net:** traces alone — no. A dedicated, unsampled, durable audit stream (FHIR
-`AuditEvent`), *correlated* with OTel traces by id, with OTel as the collection
-plumbing — yes, and that is the elegant answer.
-
-## Performance — almost free, shaped right
-
-Structural validation should be effectively free, and that is a design
-constraint, not a hope. A FHIR resource is a few KB. Three things are true
-at once here, and they are kept apart:
-
-**Measured (v0.6.1, release build, one 2026 Apple M-series laptop,
-`examples/bench.rs`):** 78 µs for an AU Core Patient, 81 µs for an AU Core
-heart rate, 152 µs for a US Core Patient; the `.wasm` is ~1.5 MiB (365 KiB
-gzipped) at v0.8.3, the HL7 v2 maps ~300 KB of it. Earlier releases measured 37 / 66 µs on a quieter machine — the
-absolute number is the machine's; what the releases hold to is no
-regression back to back (planning T020 makes it reproducible). The conformance corpus the numbers come from is
-reproducible from `conformance/run.py`.
-
-**Current implementation:** profiles are compiled into `'static` constraint
-tables (cardinality, fixed values, patterns, bindings, slicings, invariants,
-lowering slots) that a *generic* engine walks; the JSON is parsed into an
-allocated value tree with borrowed strings, typed as it is reached from the
-element-type table; FHIRPath invariants are parsed once per process and
-evaluated per resource. Nothing is interpreted from StructureDefinitions at
-run time and nothing is fetched. It is a compiled-data design, not
-generated straight-line code.
-
-**Targets, not yet built:** validate-on-parse in one pass without a
-materialised tree; no allocation in the hot path (borrow the input, emit
-issues into a reusable buffer); constraints lowered to straight-line code
-per profile. Each is a measured win to chase when the numbers above stop
-being in the noise for a host — none is claimed now.
-
-Two places "free" quietly ends, designed against from the start:
-
-1. **The FFI boundary.** Copy the JSON in and the report out twice and the copy
-   dominates for large payloads. Keep it JSI zero-copy; **batch on the native
-   side** rather than crossing the bridge per resource.
-2. **Terminology.** Membership of a code in a large ValueSet is the one
-   non-trivial lookup. **Compile ValueSets into perfect-hash / FST tables at
-   build time** so the check stays O(1); never ship an interpreted set scan.
-
-Net: structural validation cheap, boundary zero-copy where the platform
-allows it (the wasm and Expo pods copy the JSON once each way today),
-terminology compiled. Measured, not asserted — and the measurement, the
-implementation and the target are three different sentences.
-
-## Non-goals
-
-- Not an enterprise FHIR server. The datacenter is the incumbents' fortified
-  ground; JVM heaviness is a non-issue there and their conformance maturity is
-  the moat. Attack the form factor their runtime can't reach.
-- Not a terminology distributor. Providers are pluggable; licensed content
-  (SNOMED CT) is never bundled.
-- Not a place for any single application's domain mappings.
+The host selects profiles and policies, maps its domain data, obtains
+external terminology, and decides how to handle findings and incomplete
+coverage. It also owns consent, authorization, persistence, transport,
+credential management, and audit delivery. Regional requirements need
+explicit implementation and evidence; choosing a profile does not configure
+an application's entire compliance posture.

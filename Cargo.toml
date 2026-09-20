@@ -1,5 +1,5 @@
-# fhir-pods — an embeddable FHIR verifier.
-# Library, not a server: the verifier runs wherever the data is.
+# fhir-pods — an embeddable compliance runtime for health applications.
+# Lift, lower, transform, assemble, and validate wherever the data is.
 
 [workspace]
 resolver = "2"

@@ -1,9 +1,9 @@
 //! # fhir-pods-ffi
 //!
-//! The one C ABI for `fhir-pods`, compiled per target: `wasm32` for the wasm
-//! pod, a native staticlib for the expo pod. Deliberately a **lean C ABI** (no
-//! wasm-bindgen, no UniFFI runtime) — the boundary is: pass a UTF-8 JSON
-//! resource as `(ptr, len)`, get a length-prefixed JSON document back.
+//! The shared C ABI for the `fhir-pods` compliance runtime, compiled per
+//! target: `wasm32` for the WASM pod and native libraries for the Expo pod.
+//! Inputs are UTF-8 buffers: JSON resources/options, ER7 messages, profile
+//! URLs, or terminology tables. Operations return length-prefixed JSON.
 //!
 //! The entrypoints — those below in detail, and `fhir_pods_lift`,
 //! `fhir_pods_deidentify`, `fhir_pods_document`, `fhir_pods_audit`,
@@ -14,9 +14,11 @@
 //! - [`fhir_pods_lower`] — build a conformant resource from its variable inputs (and validate it).
 //! - [`fhir_pods_slots`] — the inputs a profile takes.
 //!
-//! Each has a `_tx` twin taking a host **terminology callback** — the seam
-//! through which NCTS / VSAC / an on-device cache answer the bindings the
-//! bundled value sets can't. The bundled sets are always consulted first.
+//! Validation, OperationOutcome, lower, lift, document, audit, and v2 have
+//! `_tx` variants taking a host terminology callback. Bundled sets are
+//! consulted first, then loaded expansions and the host provider.
+//! De-identification uses bundled terminology; its output can be revalidated
+//! separately with a provider.
 //!
 //! ## Memory contract
 //! - Buffers returned to the host are `[u32 little-endian length][UTF-8 bytes…]`.

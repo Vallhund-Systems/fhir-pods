@@ -1,6 +1,6 @@
 import FhirPodsExpoModule from "./FhirPodsExpoModule";
 
-/** ABI version of the embedded verifier pod. */
+/** ABI version of the embedded compliance runtime. */
 export function abiVersion(): number {
   return FhirPodsExpoModule.abiVersion();
 }

@@ -1,14 +1,19 @@
 # fhir-pods-expo
 
-The **expo pod**: the `fhir-pods` Rust verifier as an Expo native module, over
-the lean C ABI. iOS and Android.
+The **fhir-pods compliance runtime** as an Expo native module for iOS and
+Android. Lift/lower FHIR, validate, de-identify, assemble patient summaries,
+construct audit records, and convert HL7 v2 through the shared native ABI.
+
+The host selects profiles and policies, maps its domain fields to slots,
+and handles storage, transport, and decisions about the returned findings.
+See the [runtime overview](../../README.md) for coverage and responsibilities.
 
 ## Shape
 
 ```
-JS  ──validate(json)──►  Swift (Expo Modules API)   ──C───►  Rust core (fhir-pods-ffi)
-JS  ──validate(json)──►  Kotlin (Expo Modules API)  ──JNI──►  Rust core (fhir-pods-ffi)
-        ◄──report──                                  ◄──────
+JS  ──operation inputs──►  Swift (Expo Modules API)   ──C───►  Rust runtime
+JS  ──operation inputs──►  Kotlin (Expo Modules API)  ──JNI──►  Rust runtime
+    ◄──output + findings──                              ◄──────
 ```
 
 A synchronous native call either way — no bridge round-trip. On iOS Swift
@@ -28,7 +33,7 @@ Android; nothing here is source-linked into the host app.
 
 The Android build needs only an NDK (`ANDROID_HOME`, newest NDK picked up
 automatically; no `cargo-ndk`), links with 16 KB page alignment for
-Android 15+, and produces a ~1 MB stripped `.so` per ABI.
+Android 15+. Artifact sizes are recorded with each release build.
 
 ## Use it in an Expo app
 
@@ -50,7 +55,7 @@ const outcome = operationOutcome(JSON.stringify(observation));
 `validate` never throws for bad input: unparseable JSON is a `fatal` issue in
 the report.
 
-## Lowering — a conformant resource from the variable data only
+## Lowering — construct from profile inputs
 
 ```ts
 import { lower, slots } from "fhir-pods-expo";
@@ -86,13 +91,16 @@ host maps to its own model, and nothing the profile fixes. `missing` names
 the required slots the resource lacks; `extras` names element paths no slot
 covers, so nothing is left behind unnamed; `validation` is the verdict on the
 way in. `lift("", resource)` takes the most specific compiled profile the
-resource declares. `lower(url, inputs)` gives the resource back.
+resource declares. `lower(url, inputs)` rebuilds the slot-covered content.
+Inspect `extras` before a round trip: uncovered values are listed but are not
+automatically preserved. Construction returns validation findings and can
+produce an invalid resource when inputs do not meet the profile's requirements.
 
 ## HL7 v2
 
 ```ts
 import { v2 } from "fhir-pods-expo";
-const { bundle, validation, skipped, unplaced } = v2(er7, { timezone: "+10:00" });
+const { bundle, validation, skipped, unplaced, unmapped } = v2(er7, { timezone: "+10:00" });
 // bundle: a message Bundle — MessageHeader, Patient, Encounter, DiagnosticReport, Observations…
 ```
 
@@ -167,7 +175,7 @@ as `Provenance` is.
 
 ```ts
 import { deidentify } from "fhir-pods-expo";
-const { resource, applied, validation, remaining } = deidentify(json, {
+const { resource, applied, validation, remaining, residual } = deidentify(json, {
   salt: await SecureStore.getItemAsync("deid-salt"), // keys the pseudonyms — secret, stable
   today: "2026-09-16",
   rules: [{ target: "Observation.effectiveDateTime", action: "keep" }], // on top of Safe Harbor
@@ -217,7 +225,7 @@ resolve what it lists with `$validate-code` (or `$expand` the sets and load
 them) and validate again.
 
 **A native provider.** For a host that already holds the answers, install a
-synchronous provider from native code — the verifier never calls back into
+synchronous provider from native code — the runtime never calls back into
 JS, so the provider is native by design (an on-device cache, NCTS…):
 
 ```swift
@@ -239,21 +247,21 @@ asked what they can't answer. `system` is "" for a bare `code` element.
 
 ## Status
 
-**Measured at v0.1.0 (ABI 3, 2026-09-15) — historical.** The pod at v0.6.1
-is ABI 10 with seven IGs, 979 profiles and the lower / de-identify / document /
-audit operations; those have not been re-proven on the simulators since
-(planning task T019). What was proven then:
+The current package is **0.10.0, ABI 10**. The release build produces iOS
+XCFramework slices, Android libraries, and a packed Expo artifact. This
+package exposes the full operation family documented above.
 
-Wired end to end and proven on the simulator: the pod, packed with `npm pack`
-and installed into a fresh Expo SDK 57 app as a vendored tarball, autolinks
-(`FhirPodsExpo` in `Podfile.lock`, deployment target raised to 16.4 by Expo),
-builds, and answers from JS on both platforms — ABI 3, correct findings at the
-right paths, garbage in → `fatal` out, and **~22,000 validations/s on an
-iPhone 17 simulator (45 µs each) / ~19,600 on a Pixel 8 emulator (51 µs each),
-including `JSON.parse` of the report**. The real verifier is
-behind it (AU Core 2.0.0, US Core 6.1.0, IPA 1.1.0 — 168 compiled profiles,
-FHIRPath invariants; 289/289 agreement with the HL7 reference validator). The bridge is the same calls the
-wasm pod makes — the ABI never changes per target.
+The latest recorded simulator exercise used the **v0.5.1 / ABI 7** artifact
+on 2026-09-17 in a fresh Expo 57 / React Native 0.86 app. Nine checks passed
+on both an iPhone 17 simulator and a Pixel 8 Android 15 emulator: validate,
+lower, deidentify, document, terminologyNeeds, slots, operationOutcome,
+mustSupportGaps, and loadTerminology. The test also checked ABI identity;
+both platforms returned identical synthetic results.
+
+That exercise establishes delivery for the tested artifact and operations.
+Audit, lift, and v2 arrived later, and current ABI 10 simulator coverage
+remains to be refreshed. Package build success and core conformance results
+are recorded separately from simulator execution.
 
 ## Boundary
 

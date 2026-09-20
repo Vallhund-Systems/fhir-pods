@@ -1,135 +1,117 @@
 # Domain model
 
-The nested engine is where the design has to be right, so this is the DDD pass
-before the grind: the ubiquitous language, the bounded contexts, the value
-objects, and the one seam that matters (document access). We use the FHIR spec's
-own words throughout — inventing vocabulary in a domain that already has a
-precise one is how validators drift from the spec.
+The compliance runtime performs several operations over the same health-data
+definitions. Its shared language includes resources, profiles, slots,
+policies, terminology, and findings. Validation is one domain service and
+also a dependency of extraction, construction, and transformation.
 
-## Ubiquitous language
-
-Straight from FHIR — these are the type names in the code:
+## Shared language
 
 | Term | Meaning |
-|---|---|
-| **Resource** | a FHIR instance being validated |
-| **Profile** | a StructureDefinition — a constraint set over a base resource |
-| **Element** | a constrained node, addressed by a dotted **path** (`Observation.value[x].unit`) |
-| **Cardinality** | `min`..`max` (`max` is a bound or `*`) |
-| **Binding** | a coded element's tie to a **ValueSet**, with a **strength** (`required`/`extensible`/`preferred`/`example`) |
-| **Slice** / **Discriminator** | a partition of a repeating element, selected by a discriminator (`value`/`pattern`/`type`/`profile`/`exists` at a sub-path) |
-| **Fixed** / **Pattern** | a value the element must equal exactly / match as a subset |
-| **Invariant** | a FHIRPath constraint (`obs-6`…) with a severity |
-| **Coding** | `system` + `code` (+ `display`) |
-| **Issue** | one finding: `severity` + `code` (IssueType) + `expression` (FHIRPath) |
-| **Report** / **OperationOutcome** | our finding collection / its spec wire form |
-| **TerminologyProvider** | the seam that answers "is this code in that ValueSet" |
+| --- | --- |
+| **Resource** | A FHIR instance read, constructed, transformed, or checked by an operation |
+| **Profile** | A StructureDefinition constraining a base resource or datatype |
+| **Element / path** | A typed node and its location, including choices and labelled slices |
+| **Cardinality** | Per-parent minimum and maximum counts |
+| **Binding** | A coded element's relationship to a ValueSet |
+| **Slice / discriminator** | A named subset of a repeating element and the rules that select it |
+| **Fixed / pattern** | Required exact content or required matching content |
+| **Invariant** | A FHIRPath constraint with an identifier and severity |
+| **Slot** | A profile's variable input, with path, type, cardinality, and choice information |
+| **Skeleton** | Resource content derived from the profile's fixed values, patterns, and required slices |
+| **Policy / rule** | De-identification actions selected by type, type member, or element path |
+| **Issue / report** | A finding and its collection; `OperationOutcome` is the FHIR wire representation |
+| **TerminologyProvider** | Membership and display answers supplied independently of the operations |
 
-## Bounded contexts
+## Operation contexts
 
-Four, with clean boundaries:
+| Context | Inputs and outputs | Implementation |
+| --- | --- | --- |
+| Compilation | Package definitions → immutable profiles, type data, terminology tables, and conversion maps | `tools/` and generated tables |
+| Lift / lower | Resource ↔ profile slot inputs, with validation and extraction coverage | `lift`, `lower` |
+| Verification | Typed document plus applicable definitions → findings | `engine`, `path`, `validate` |
+| De-identification | Resource plus host policy/context → transformed resource, applied actions, findings | `deidentify` |
+| Document assembly | Patient resources plus author/time/context → IPS or AU PS Bundle and placement report | `assemble` |
+| Audit construction | Host event context → IHE BALP AuditEvent; general lineage uses base-profile lowering | `audit`, `lower` |
+| HL7 v2 conversion | ER7 message plus conversion options → FHIR message Bundle and coverage report | `v2` |
+| Terminology | Value set, system, and code → membership; coding → display when available | `terminology`, bundled tables |
+| Delivery | Operation inputs/results ↔ Rust, C, JavaScript, native mobile, or CLI representation | `wire`, FFI, pods, CLI |
 
-1. **Compilation** (build-time) — a StructureDefinition `snapshot` → a
-   `CompiledProfile`. Owned by `tools/gen_profile.py`. Language: snapshot,
-   element, canonical, differential.
-2. **Validation** (runtime) — `CompiledProfile` × `Document` → `Report`. Owned by
-   `engine`. Language: rule, walk, cardinality, issue.
-3. **Terminology** — (`system`, `code`, `ValueSet`) → membership. The seam. Owned
-   by `terminology` + the bundled `value_sets`. Language: binding, expansion,
-   provider.
-4. **Interop / wire** — `Report` ↔ `OperationOutcome`; the `$validate` contract.
-   The anti-corruption layer: spec shapes live here and nowhere else.
+`CompiledProfile` is shared immutable reference data. Its constraint tables
+serve verification; its skeleton and slots serve construction and extraction.
+Typed traversal also lets policies act on what a field is, rather than only
+on its spelling. See [compiled.rs](../crates/fhir-pods-core/src/compiled.rs)
+for the exact representation.
 
-The **shared kernel** between Compilation and Validation is the **`CompiledProfile`
-IR** — an immutable value object, generated once, embedded in the binary. It is
-the published language the two contexts agree on.
+## Host data and runtime values
 
-## This domain is functional, not aggregate-centric
+The host owns the lifecycle of its application records. Within the runtime,
+resources are operation inputs and outputs, profiles are reference data,
+and issues are result values. No repository or application aggregate lives
+inside the core.
 
-Honest DDD: a validator has **no entities** — nothing with identity and a
-lifecycle. A `Resource` is transient input; a `CompiledProfile` is immutable
-reference data; an `Issue` is a value. Forcing aggregate roots here would be
-cargo-cult. Good DDD for *this* domain is: **precise ubiquitous language + rich
-value objects + clean bounded contexts + dependency inversion** — not ceremony.
-The "aggregate" is just the pure function `validate(profile, document) -> report`.
+The host's map connects its fields to profile slot paths. A lifted result
+contains `inputs`, `validation`, `missing`, and `extras`; uncovered fields
+require an explicit host decision before lowering those inputs again.
+The runtime does not infer a host's domain model or invent missing clinical
+values.
 
-## Value objects (the Validation context)
+The shared Rust context is currently named `Validator`. It parses invariant
+expressions once and exposes the operation family. Reusing that context
+avoids reparsing invariants for every call; it does not create a stored
+resource lifecycle.
 
-```
-ElementConstraint { path, min: u32, max: Max, fixed: Option<&str>, required_binding: Option<Binding> }
-Binding           { value_set, kind: Code | Coding | CodeableConcept }
-Discriminator     Value { path, value } | Type { key }
-Slice             { name, discriminators, min, max, elements, profile: Option<url> }
-Slicing           { path, closed, slices }
-ProfileInvariant  { path, key, severity, human, expression, types }
-CompiledProfile   { url, name, resource_type, elements, slicings, invariants, must_support }
-Issue, Report     (severity, IssueType, path, message)
-```
+## Typed document access
 
-All immutable, all `Send + Sync`, all `'static` in generated profiles.
+The verifier and FHIRPath evaluator use the `Document` port. Its traversal
+operations expose child counts, scalars, instances, choices, descendants,
+types, and node identity. The `Parsed` / `TreeDoc` adapter reads the JSON
+value tree while preserving enclosing-resource context and primitive
+extension carriers.
 
-## The seam that matters: document access is *infrastructure*
+This separation keeps rule evaluation independent of JSON representation.
+The current adapter materializes a tree; a future parser could use a
+different representation while preserving the port's behavior. Output
+construction uses owned nodes where operations need to add, remove, or
+rewrite content.
 
-The engine does not know how the JSON is represented. It validates against a
-**`Document` port**:
+## Results are part of the model
 
-```
-trait Document: Clone {
-    fn child_counts(&self, path) -> Vec<usize>;   // per parent instance — cardinality
-    fn scalars(&self, path) -> Vec<&str>;          // fixed values, bindings, discriminators
-    fn instances(&self, path) -> Vec<Self>;        // re-rooted sub-documents ($this)
-    fn choice_children(&self, stem) -> Vec<Self>;  // value → valueQuantity / valueString …
-    fn all_children(&self) -> Vec<Self>;           // descendants()
-    fn as_scalar / as_bool / same / fhir_type      // FHIRPath's view of one node
-}
-```
+Each operation reports both its output and the information needed to assess
+it. `Validation` describes applied profiles and findings. Lift has coverage
+fields; documents report placement and omissions; v2 reports skipped,
+unplaced, and unmapped input; de-identification records applied actions,
+remaining checks, and retained free-text sites.
 
-Today's **adapter** parses the resource into a value tree and walks it. A future
-adapter **fuses parse + validation into a single pass** — the "almost free"
-performance thesis — and the domain never changes, because it only ever saw the
-port. This is the dependency inversion that keeps validate-on-parse a swappable
-infrastructure decision rather than a domain constraint. Correctness first
-(tree-walk), the single-pass fusion later, behind the same port.
+A successful function call means the operation produced a result. A valid
+report means no error or fatal finding was emitted. Neither discards
+warnings or operation-specific coverage information. The host uses those
+values to decide whether its boundary requirements have been met.
 
-## The domain service: the walk
+An operation that cannot start has a separate error value. Rust exposes
+`Result`; the C ABI serializes an error; JS wrappers throw it. Validation
+failures on a produced resource remain ordinary result data.
 
-```
-engine::validate(profile: &CompiledProfile, doc: &impl Document) -> Report
-```
+## Terminology and external context
 
-Per `ElementConstraint`: resolve its path (handling `[x]` choice + arrays),
-check **cardinality**, then **fixed** / **binding**, then recurse into **slices**
-(each slice re-checks its constrained sub-set). Pure, deterministic, no I/O.
-Terminology binding calls out to the `TerminologyProvider` / bundled sets;
-unknown sets degrade to a warning (spec behavior), SNOMED expansions are never
-bundled (see the licence decision).
+The core depends on terminology answers through a provider interface, not
+on a particular service. Bundled content, loaded expansions, and host
+providers can be composed. Unknown answers remain visible.
 
-## Licence rule, encoded in the model
+The host supplies policy choices, salts, time, actors, sources, and any
+external terminology. Network lookup and persistence happen outside the
+core. This keeps the same operation usable on a device, in a browser, and
+in a server process.
 
-A `Fixed` on a SNOMED `Coding` carries **`system` + `code` only — never
-`display`** (the code is a licence-free reference; the display is licensed
-content). The generator enforces this when it emits `Fixed` values.
+## Bounded execution
 
-## The grind, in the order it happened
+The parsers have depth limits, profile inheritance is bounded, and the
+core's tests include seeded malformed-input and operation checks. Separate
+libFuzzer targets exercise parsers, validation, lowering, and
+de-identification. These mechanisms and their tests support the runtime's
+use on caller-supplied input; they are not a proof that arbitrary execution
+is infallible.
 
-Document adapter → nested engine → slicing → generator → conformance oracle →
-FHIRPath (three tiers) → hardening → pods → second and third IGs → the
-terminology seam → typed traversal. The pass-by-pass record is
-[`history.md`](history.md).
-
-## Hardening
-
-The core runs on device under `panic = "abort"`, fed untrusted bytes, so
-"never panics, never hangs" is a *held* property, not a hope:
-
-- **Depth-bounded parsers.** Both recursive-descent parsers (JSON, FHIRPath)
-  carry a depth budget: hostile nesting is a `ParseError` / `Unsupported`,
-  never a stack overflow — which is an abort, uncatchable, fatal on device.
-- **Bounded inheritance.** A slice may name a profile; the recursion is capped
-  (`MAX_INHERIT`) so a registry cycle can never loop.
-- **Seeded fuzzing under `cargo test`** (`tests/fuzz.rs`, zero deps): byte
-  soup, mutated documents, FHIR-shaped resources with real declared profiles
-  (so slicing, inheritance and invariants all run), and random FHIRPath —
-  asserting no panic, determinism, and well-formed wire output. Deterministic
-  under `FUZZ_SEED`, so a failure is a seed to paste back and replay.
-  libFuzzer targets in `fuzz/` for coverage-guided sessions (nightly).
+See [architecture](architecture.md) for delivery and compilation,
+[scope](scope.md) for supported constraints, and [history](history.md) for
+the implementation sequence.

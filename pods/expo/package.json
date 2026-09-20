@@ -1,12 +1,12 @@
 {
   "name": "fhir-pods-expo",
   "version": "0.10.0",
-  "description": "Embeddable FHIR verifier — Expo native module (iOS + Android). Wraps the fhir-pods Rust core over a lean C ABI.",
+  "description": "Embeddable compliance runtime for health applications. FHIR lift/lower, validation, de-identification, documents, audit, and HL7 v2 for Expo on iOS and Android.",
   "license": "MIT",
   "author": "Justin Grosvenor",
   "main": "src/index.ts",
   "types": "src/index.ts",
-  "keywords": ["expo", "fhir", "healthcare", "react-native"],
+  "keywords": ["expo", "fhir", "compliance", "healthcare", "hl7", "react-native"],
   "peerDependencies": {
     "expo": "*",
     "react-native": "*"

@@ -1,7 +1,9 @@
 # fhir-pods CLI
 
-A local command-line pod over the Rust core, with no dependencies beyond the
-core and the standard library. It performs no network calls.
+The local CLI for the **fhir-pods compliance runtime**: lift/lower, validate,
+de-identify, assemble documents, construct audit records, convert HL7 v2, and
+inspect profiles and terminology needs. It depends only on the Rust core and
+standard library and performs no network calls.
 
 Build or install from the repository root:
 
@@ -69,8 +71,9 @@ when a supplied table is needed.
 
 `slots PROFILE_URL` emits the compiled profile's input slots as
 `{slots: [{path, type, choices, min, max, mustSupport}]}`. `max: null` means
-unbounded. A missing URL is a usage error; an unknown profile is a rejected
-operation. This is registry inspection, with no resource or terminology input.
+unbounded. A missing URL is a usage error; an unknown or extension profile
+is a rejected operation. Slots describe resource construction inputs. This is
+registry inspection, with no resource or terminology input.
 
 `must-support` emits `{mustSupportGaps, validation}`. Gaps are information and
 do not change the validation exit code. The validation report also preserves

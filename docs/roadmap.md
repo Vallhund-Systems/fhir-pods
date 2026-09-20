@@ -1,275 +1,80 @@
-# Roadmap — the pod family
+# Roadmap — the compliance runtime
 
-The verifier was the first pod, not the product. "FHIR at the edges" needs a
-small family of pure functions behind the one C ABI, none of them a server:
+The product is an embeddable runtime that lets an app speak compliance at
+its edges. Its operations share compiled health-data definitions, typed
+traversal, terminology, and validation. WASM, Expo, Rust/C, and the CLI are
+delivery surfaces for that operation family.
 
-```
-              lower                validate               assemble
-host record ───────► FHIR resource ─────────► verdict ───────────► document (IPS / AU PS)
-                       │                                              │
-                       └──── de-identify ────► training-safe copy     └──► share / export
-```
+## Shipped capabilities
 
-Every pod keeps the rules the verifier established: `no_std` core, zero
-dependencies, no `unsafe`, deterministic, fuzzed, bug-for-bug against a
-reference where one exists, skip-never-guess, no licensed terminology
-shipped. Domain-specific maps (a host's own records → FHIR) live in the host,
-never here; the pods know FHIR, the host knows its data.
+| Capability | Available since | Current behavior |
+| --- | --- | --- |
+| Verification | Initial releases | Base R4 structure and supported rules, compiled profiles, extension contexts, terminology, OperationOutcome, and separate must-support inspection |
+| Lowering and slot inspection | 0.3 | Build a resource from variable inputs plus the profile's fixed content; return validation |
+| Terminology integration | 0.3.1 | Bundled sets, host-loaded expansions, synchronous providers, and an unresolved-needs loop |
+| De-identification | 0.4 | Typed policy transformations, pseudonyms, required-element masking, applied actions, remaining findings, and retained free-text reporting |
+| Patient summary documents | 0.5 | IPS / AU PS sections, narrative, references, placement/omission reporting, and output validation |
+| Audit and provenance | 0.6 | IHE BALP event construction; base AuditEvent and Provenance lowering |
+| Lifting | 0.7 | Extract profile slots with validation, missing inputs, and uncovered paths |
+| HL7 v2 | 0.8 | Compiled ER7-to-FHIR message conversion with skipped, unplaced, and unmapped input reporting |
+| Wider base coverage | 0.9 | Published R4 examples, compiled extension definitions and contexts, and base code-system membership |
+| Published validator test lanes | 0.10 | Pinned upstream cases, stored Java/Firely comparisons, and isolated ad-hoc profile compilation |
 
-## 0.3 — Lowering (the transformer) — shipped
+These rows describe the current behavior of capabilities introduced in each
+release; follow-up corrections are recorded in the [changelog](../CHANGELOG.md).
+The [README](../README.md#current-capabilities) is the operation overview.
 
-**What.** Build a conformant resource from the *variable* data only. A
-compiled profile already fixes most of a resource — the LOINC + SNOMED
-codings, the category, the UCUM system, the slices — so the host should not
-have to know any of it:
+## The latest source work
 
-```json
-fhir_pods_lower("…/au-core-heartrate", {
-  "subject": "Patient/1", "effectiveDateTime": "2026-09-16T08:00:00+10:00",
-  "valueQuantity.value": 72, "valueQuantity.unit": "beats/minute", "status": "final"
-})
-→ { "resource": { …the full Observation, fixed parts filled… },
-    "validation": { "valid": true, "issues": [] } }
-```
+The changes after v0.10.0 make the published-base lane a regression gate with
+hashed evidence and individually reviewed differences. They also correct
+primitive-carrier invariant evaluation, extension-owner context checks, and
+CLI slot lookup. The CLI package version is aligned at 0.10.0. These changes
+are currently unreleased; they retain ABI 10.
 
-**How.** The generator emits, per profile, a *skeleton* (the JSON implied by
-every fixed / pattern value and every required slice) and its *input slots*
-(the required and must-support leaves that carry no fixed value, each with
-its FHIR type and, for a choice, its allowed keys). The engine merges the
-inputs into the skeleton, coerces scalars by type (a number into a
-`Quantity.value`, a string into a `dateTime`, a reference string into
-`Reference.reference`), and validates the result with the same `Validator`.
-Unknown input keys and type mismatches are issues in the returned
-validation, never silently dropped. Inputs that need terminology (a code
-with a display) go through the seam.
+The earlier official FHIRPath review is complete for its recorded batch;
+its fixes and remaining intentional deviation are in the
+[FHIRPath lane](../conformance/fhirpath/README.md). It is no longer the next
+unstarted feature.
 
-**ABI.** `fhir_pods_lower(profile_url, inputs_json)` → `{resource,
-validation}`; `fhir_pods_slots(profile_url)` → the slot list, so a host can
-generate its own typed bindings. Pods: `lower(profileUrl, inputs)` in JS /
-Swift / Kotlin.
+## Remaining work
 
-**Proof.** Every publisher-valid corpus example is re-lowered from the
-values at its slots (`examples/lower_corpus.rs`, run by the harness) and the
-result is put in front of the reference validator alongside the corpus.
+Expansion should follow concrete boundary requirements and evidence. The
+current areas are:
 
-## 0.3.1 — Terminology, wired for real — shipped
+- **Constraint and compiler coverage.** Resolve reviewed leniencies in the
+  published base and validator-test lanes, extend unsupported expressions
+  and profile constructs, and keep every new or changed difference visible.
+- **Transformation fidelity.** Broaden focused lift/lower, de-identification,
+  and v2 content checks. Output validation alone cannot prove the intended
+  clinical mapping. Known v2 gaps include multi-resource datatype maps and
+  narrative conditions that require interpretation beyond compiled rules.
+- **Delivery evidence.** Refresh C ABI coverage, browser measurements, and
+  Expo simulator checks for the current operation surface and artifacts.
+  Existing measurements remain tied to the versions actually exercised.
+- **More inputs and guides.** Add fixtures and implementation guides when
+  they exercise needed behavior, with explicit compiler support, terminology
+  requirements, and differential evidence before claiming coverage.
 
-- **Bundled base sets, generated.** Every value set the registry binds with
-  `required` strength that expands offline from the packages' own compose
-  (the FHIR and HL7 v2/v3 sets: 59 sets, 311 codes) — `tools/gen_valuesets.py`.
-  Licensed or hosted-elsewhere sets (SNOMED, LOINC, VSAC, NCTS) are skipped,
-  never approximated, and named in the generated file.
-- **Compiled expansions**: `tools/compile_valueset.py` turns `$expand`
-  responses into a line table; `terminology::Expansions` reads it; the ABI
-  loads one (`fhir_pods_terminology_load`) for every call after.
-- **Ask, then answer**: `terminology_needs` / `fhir_pods_terminology_needs`
-  lists what the bundled sets and the table could not decide — the loop a
-  host runs against NCTS / Ontoserver (`$validate-code` or `$expand`), with
-  the reference calls in the wasm and Expo READMEs.
-- Lowering asks the seam for displays (the bundled code systems' displays
-  for the codings the registry fixes; a table's displays for the rest); the
-  verifier asks it for membership.
+The extended fuzz campaign remains deferred. Existing bounded seeded checks
+run under `cargo test`; separate libFuzzer targets are available. Neither is
+presented as completion of that larger campaign.
 
-## 0.5 — Documents (IPS / AU PS) — shipped
+## Boundaries owned by the host
 
-**What.** `fhir_pods_document(kind, inputs)` → a document `Bundle`: a
-`Composition` whose sections come from the kind's compiled Composition
-profile (the section slices' LOINC codes), each resource placed by what it
-is, a plain xhtml table per section generated from what the resource
-carries, references rewritten to the entries they name (`Type/id`, a
-host's own `fullUrl`s, `urn:uuid:id`), resources nothing reaches left out
-and reported, a required section with nothing in it marked `emptyReason:
-unavailable` (no clinical fact is ever invented), and the document
-validated against the kind's Bundle profile on the way out. Kinds: `ips`
-(IPS 2.0.1) and `au-ps` (AU Patient Summary 1.0.0).
+The runtime supplies building blocks for an application's compliance
+requirements. The host still supplies:
 
-**What it took in the verifier.** IG #4 (IPS 2.0.1 + AU PS 1.0.0, with the
-extensions package for what their slices inherit; registry 218 profiles);
-Bundle entries discriminated by resource type and by conformance to a
-profile (a validation pass inside the same bundle); slicings declared
-inside a slice (`section:sectionProblems.entry`) compiled and evaluated
-one level down, their entries discriminated by what a reference resolves
-to; `resolve()` and `&` in FHIRPath; the reference validator's "matches
-more than one slice" error; `pattern[x]` / `fixed[x]` objects on plain
-elements and slice sub-elements enforced (they were only discriminators
-before — a laboratory Observation passed IPS's tobacco-use profile); the
-base spec's minimums inside datatypes (`Narrative.status`,
-`Extension.url`) checked profile or no profile; and the document rules the
-reference applies — the Composition's references resolve in the bundle,
-every entry is reachable from the Composition.
+- Domain-field mappings to and from profile slots, and decisions about
+  lifted `missing` / `extras` or transformed content.
+- Profile and policy selection, including regional and destination-specific
+  requirements. The current compiled registry is listed in the README;
+  jurisdiction discovery and automatic rule selection are not implemented.
+- Consent, authorization, credentials, persistence, and transport. A SMART
+  on FHIR client can fetch records and pass them to lift/validate.
+- External terminology access and any source-specific v2 dialect handling.
+- Audit event context, emission, delivery, and retention.
 
-**Proof.** The IGs' twelve document examples against the oracle (four of
-them the reference itself rejects without a terminology server, and so do
-we: IPS's two pregnancy profiles differ only by value-set membership), and
-every one of them taken apart and assembled again by the pod, the result
-in front of the oracle with our verdict — `examples/document_corpus.rs`,
-run by the harness. Out of scope, stated: `Bundle.signature`
-verification; slicings nested three levels deep (none in these IGs carry
-a verdict).
-
-## 0.4 — De-identification — shipped
-
-**What.** `fhir_pods_deidentify(resource, policy)` → a copy safe to leave
-the patient's device for analysis, training or support: Safe Harbor by
-default (names, contact details, addresses below state, exact dates → year,
-ages over 89, narrative, notes, attachments, signatures, device serials
-removed; identifiers and references pseudonymised with a host-supplied salt
-through HMAC-SHA256, consistently across resources). Policy is data — a
-base plus rules by type, type member or element path, most specific wins —
-and the walk is typed, so what a node *is* decides. Where the resource's
-profile requires an element that is removed, a `data-absent-reason: masked`
-stub stands in, so the copy stays conformant wherever the profile permits;
-an element emptied by what was removed inside it goes too; an element the
-base spec does not define cannot be typed and is removed, recorded.
-
-**Proof.** A checker (`deidentify::check`) finds nothing in the copy —
-identifying types other than masked stubs, address members below state,
-dates finer than a year, instants, reference displays, ages over 89 — and
-every publisher-valid corpus example is de-identified and put in front of
-the reference validator with our verdict on the copy's conformance
-(`examples/deid_corpus.rs`, run by the harness). Fuzzed: a seeded arm and a
-libFuzzer target assert the check holds for every copy produced.
-
-**Not covered by the default policy**, by design: free text in `string`
-elements other than narrative and notes (`Observation.valueString`, a
-`CodeableConcept.text`) — a host names those in its policy; dates the
-profile needs to the day (vital signs' `effective[x]`, invariant vs-1) are
-a conformance finding the host decides on (keep the one date, or accept
-the finding).
-
-## 0.7 — Lifting — shipped
-
-**What.** `fhir_pods_lift(profile_url, resource)` → the profile's slots read
-out of a resource, the exact reverse of lowering:
-
-```json
-fhir_pods_lift("…/au-core-heartrate", { …an AU Core heart rate… })
-→ { "inputs": { "status": "final", "subject": {"reference": "Patient/1"},
-                "effectiveDateTime": "2026-09-16T08:00:00+10:00",
-                "valueQuantity.value": 72, "valueQuantity.unit": "beats/minute" },
-    "validation": { "valid": true, "issues": [] },
-    "missing": [], "extras": [] }
-```
-
-`inputs` is what `lower` takes, so `lower(lift(r))` gives `r` back; a host's
-map from FHIR to its own model is a map from slot paths to fields — the
-codings, categories and units the profile fixes never reach it. `missing`
-names the required slots the resource lacks; `extras` names every element
-path no slot, fixed leaf or pass-through member covers, so nothing in a
-record is left behind unnamed. The resource is validated on the way in, and
-against the named profile when it does not declare it. An empty URL takes
-the most specific compiled profile the resource declares.
-
-**How.** The extractor the lowering proof always used, promoted into the
-core: a labelled slot path selects the slice instance by the profile's own
-discriminators; an unlabelled repeating slot takes the items no sibling
-slice claims. The conformance harness lifts every corpus example and lowers
-it again for the reference validator (the same 350 re-lowered resources,
-now through the public operation).
-
-## 0.8 — HL7 v2 — shipped
-
-**What.** `fhir_pods_v2(message, options)` → a FHIR message `Bundle` from an
-ER7 message, through the published `hl7.fhir.uv.v2mappings` maps compiled
-into the pod:
-
-```json
-fhir_pods_v2("MSH|^~\\&|LAB|ACME|EHR|CLINIC|20260916100000+1000||ORU^R01|…", {})
-→ { "bundle": { "resourceType": "Bundle", "type": "message",
-                "entry": [ MessageHeader, Patient, Encounter, DiagnosticReport, Observation… ] },
-    "validation": { "valid": true, "issues": [] },
-    "skipped": [ { "at": "PID[1]-3.4", "target": "assigner(Organization)",
-                   "why": "narrative condition: If not in …identifier-registry…" }, … ],
-    "unplaced": [ "ZPI[1]" ] }
-```
-
-Thirteen message structures (ADT_A01 / A02 / A05 / A06 / A09 / A11 / A17,
-MDM_T02, OML_O21, ORM_O01, ORU_R01, SIU_S12, VXU_V04), 75 segment maps, 105
-datatype maps, 70 vocabulary tables. The maps are executed as published;
-what a row states and the pod cannot do (a narrative condition, a prose
-assignment, a target form the engine does not take) is applied never and
-reported whenever the message carries data for it. The bundle is validated
-on the way out, and what FHIR requires that the message does not carry is
-named there, never invented. Options: the zone of a time stated without
-one; coding-system names beyond the standard ones.
-
-**How.** `tools/gen_v2.py` compiles the 263 ConceptMaps to `'static`
-tables (rows, conditions in the maps' own grammar, concatenation formulas,
-vocabulary pairs); an ER7 parser; a converter that walks the message
-structure, opens resource instances per the message map (numbered
-instances shared along the structure), applies segment and datatype maps,
-and closes with a handful of stated structural rules (subject, encounter,
-report results, the message bundle's shape, URN identifiers). Proof: four
-synthetic messages in front of the reference validator, agreeing on valid
-and on invalid alike.
-
-**Not yet.** Datatype maps that yield several resources (`PL` → the bed,
-its room, its floor, the facility, chained by `partOf`) — the first is
-built, the rest reported; message rows that reference a resource from
-another (`Provenance[1].entity.what(Device)`); the Provenance the IG leaves
-to the implementer (no target, an agent only when EVN-5 is valued) — kept
-as the maps state it, so an ADT's validation names the gap.
-
-## 0.6 — Audit and provenance — shipped
-
-**What.** `fhir_pods_audit(kind, inputs)` → an `AuditEvent` conformant to
-the IHE Basic Audit Log Patterns profile for that kind of event — `read`,
-`query`, `create`, `update`, `delete`, each with or without a known
-patient — from what a host knows at the moment it happens:
-
-```json
-fhir_pods_audit("patient-read", {
-  "recorded": "2026-09-16T10:00:00Z",
-  "client": {"who": "Device/app-7", "network": "10.0.0.7"},
-  "server": {"who": {"display": "fhir.example.org"}, "network": "https://fhir.example.org/r4"},
-  "user": {"who": "Practitioner/gp1", "name": "Dr Who"},
-  "source": {"observer": "Device/audit-collector", "site": "clinic-1"},
-  "patient": "Patient/p1", "data": "Observation/hr1",
-  "transaction": "3f2a1c9e-…"
-})
-→ { "resource": { …the AuditEvent, the profile's types and codes filled… },
-    "validation": { "valid": true, "issues": [] } }
-```
-
-The correlation with the trace is the request id, as BALP's own
-`X-Request-Id` entity — the design in `architecture.md` (audit is data,
-traces are plumbing, correlated by id). `Provenance`, and a failed action's
-`AuditEvent`, are lowered from the base spec's own definitions, now
-compiled as profiles with every element an input.
-
-**How.** IG #6 (BALP 1.1.4) compiled like the others; the audit surface is
-a host-shaped front on the lowering engine — it names the profile, maps
-the host's inputs to its slots, classifies network addresses, encodes the
-query — and the engine supplies everything the profile fixes and validates
-the result. Proof: every BALP example re-lowered and de-identified, and
-one record per kind with and without a user put before the reference
-validator (1187/1187).
-
-**What it took.** Four lowering-engine gaps (gated fixed leaves, typed fixed
-values, spare cardinality on a sliced container, sibling-slice
-suppression) and one verifier gap (boolean patterns were never enforced),
-all found by the new IG's corpus — the pattern every IG has followed.
-
-## Alongside, host-side (not pods)
-
-- **SMART on FHIR client** — standalone launch + PKCE, patient-access
-  scopes, `.well-known/smart-configuration`; the on-ramp for "bring your
-  records in". Fetch → validate (pod) → lift into the host's model.
-- ~~**Lifting**~~ — shipped in 0.7.0 as the profile-driven half (below);
-  the map from slot paths to a host's own fields stays in the host.
-- ~~**HL7 v2**~~ — shipped in 0.8.0 (above), the published maps compiled
-  in; a source system's own dialect (Z segments, local tables) stays in the
-  host's hands: reported, never guessed.
-
-## Sequence
-
-lowering → terminology → de-identification → documents (+ IG #4) → audit
-(+ IG #6) → lifting → HL7 v2 — all shipped, 0.3.0 → 0.8.0; then the
-verifier broadened against the base spec's own examples (0.9.0) and every
-HL7 extension's context and the base code systems' content (0.9.1). Next
-in the core: the eleven official FHIRPath disagreements (planning T023);
-then the host-side pieces below as they are asked for.
-Lowering first because it is what makes the verifier pay for itself; de-id
-before documents because it is small and it is a policy commitment a host
-can point at. Each pod ships as a minor version with its own release notes,
-tests, fuzz targets and, where a reference exists, an oracle.
+Future boundary operations should reuse the shared definitions and reporting
+model. Each addition needs a concrete input/output contract, coverage fields,
+and evidence appropriate to the operation.
