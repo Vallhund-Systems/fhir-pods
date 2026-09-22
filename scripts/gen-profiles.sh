@@ -26,7 +26,7 @@ PRIMARIES=(
 DEPS=(
 )
 THO="$C/package-tho/package"      # hl7.terminology.r4 7.3.0 — the code systems' content (tools/gen_codesystems.py)
-R4="$C/package-r4/package"        # hl7.fhir.r4.core 4.0.1 — the element-type table, the implied vital-sign profiles, the base AuditEvent / Provenance
+R4="$C/package-r4/package"        # hl7.fhir.r4.core 4.0.1 — the element-type table, the implied vital-sign profiles, the base AuditEvent / Provenance and patient-record resources (tools/gen_all.py BASE_RESOURCES)
 PROVENANCE="hl7.fhir.au.core 2.0.0 + hl7.fhir.us.core 6.1.0 + hl7.fhir.uv.ipa 1.1.0 + hl7.fhir.uv.ips 2.0.1 + hl7.fhir.au.ps 1.0.0 + ihe.iti.balp 1.1.4 + hl7.fhir.au.base 6.0.0 + hl7.fhir.uv.extensions.r4 5.3.0 + hl7.fhir.r4.core 4.0.1 (AuditEvent, Provenance)"
 
 for d in "${PRIMARIES[@]}" "${DEPS[@]}" "$R4" "$THO"; do

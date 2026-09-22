@@ -28,7 +28,15 @@ BASE_VITALS = {
 }
 # The base spec's own resource definitions compiled as profiles, so a host can
 # lower (and declare) them directly: the audit surface.
-BASE_RESOURCES = {"AuditEvent", "Provenance"}
+# Base resource definitions compiled as lowerable profiles: AuditEvent /
+# Provenance for audit (0.6.0), and since 0.11.0 the resources a patient
+# record is made of — the region-neutral vocabulary a host lowers into
+# before `export` re-profiles for a jurisdiction.
+BASE_RESOURCES = {
+    "AuditEvent", "Provenance",
+    "Patient", "Observation", "Condition", "AllergyIntolerance", "MedicationStatement", "MedicationRequest",
+    "Medication", "Immunization", "Procedure", "Device", "DeviceUseStatement", "Practitioner", "Organization",
+}
 
 
 

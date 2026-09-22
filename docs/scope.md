@@ -198,6 +198,51 @@ resolution, slice → profile inheritance for `Identifier` and complex
 error-level finding either side raised on the corpus is in this set — that is
 the count above.
 
+## Export: which profile, and what is never invented
+
+`export` (0.11.0) picks, per resource, the region's profile it goes out
+through. The rules are structural and closed, so a host can predict them:
+
+- A declared `meta.profile` of the region's own settles it; where the region
+  has no profile for the type, a declared one its document asks for does. A
+  declared base profile (the `bp` a host lowered into) is the resource's
+  identity, never a jurisdiction's profile.
+- A type with one profile lineage in the region (a Patient, an
+  AllergyIntolerance — AU Core's and AU PS's derived from it) takes the most
+  specific: there is nothing to tell apart.
+- Among sibling profiles of a type, the ones whose *identifying* content the
+  resource carries survive: a fixed `code.coding` (any one of the profile's,
+  so AU's SNOMED beside LOINC is not required of the record) or fixed
+  `category.coding`, or a `required` binding on `code`/`category` the
+  terminology provider decides as a member — a set it cannot decide
+  identifies nothing. Identified profiles beat unidentified ones; a profile
+  another survivor derives from is dropped.
+- A profile with no identifying content that its guide scopes in words to a
+  kind of resource (AU Core Diagnostic Result — "specialist or other
+  diagnostic results"; US Core Observation Clinical Result — "clinical test
+  results"; the IPS Device as performer) is never matched by type alone: it
+  is listed as `specialised` on the region and reached only by declaration.
+  US Core's Simple Observation ("any simple observations not otherwise
+  covered") is the guide's own catch-all and matches.
+- Nothing of the region's identifies → what its document asks of such an
+  entry (the base `vitalsigns` family for the IPS, which has no vital-sign
+  profiles of its own) → else the resource goes out as given, base-validated,
+  with the reason in `note`. Several fit and none declared → likewise, naming
+  them.
+- Where the region's document asks its entries for a profile the target does
+  not derive from (the IPS's Condition beside US Core's), that profile is
+  declared alongside and verified: `also`, `alsoMissing`.
+
+The re-profiling is `lift` through the target then `lower`: the profile's
+fixed content is the profile's, the record's slots are the record's, and
+`id` is carried so references survive. A required slot the record lacks is
+`missing`; content no slot takes is `extras` and is not carried; neither is
+invented. The oracle lane (`examples/export_corpus.rs`, 39 files: one base
+record for every region, each resource, the document, the audit event)
+agrees with the reference validator on every verdict; the two IPS documents
+are invalid on both sides offline, for the pregnancy-profile ambiguity the
+IPS's LOINC sets resolve when loaded.
+
 ## What we skip, never guess
 
 - FHIRPath outside the supported core: `htmlChecks()` (xhtml validity),

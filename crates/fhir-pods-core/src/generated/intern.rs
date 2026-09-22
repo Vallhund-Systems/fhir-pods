@@ -353,4 +353,8 @@ pub static S96: &[&str] =
     &["valueString", "valueCode", "valueInteger", "valueBoolean", "valueDecimal", "valueUrl", "valueCanonical"];
 pub static S97: &[&str] = &["canonical", "Reference", "uri"];
 pub static S98: &[&str] = &["valueCanonical", "valueReference", "valueUri"];
-pub static S99: &[&str] = &["occurredPeriod", "occurredDateTime"];
+pub static S99: &[&str] = &["Timing", "Period", "dateTime"];
+pub static S100: &[&str] = &["timingTiming", "timingPeriod", "timingDateTime"];
+pub static S101: &[&str] = &["deceasedBoolean", "deceasedDateTime"];
+pub static S102: &[&str] = &["multipleBirthBoolean", "multipleBirthInteger"];
+pub static S103: &[&str] = &["occurredPeriod", "occurredDateTime"];

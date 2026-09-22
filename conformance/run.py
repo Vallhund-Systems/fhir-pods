@@ -175,12 +175,21 @@ def main():
         ["cargo", "run", "-q", "-p", "fhir-pods-core", "--example", "v2_corpus", "--", CORPUS],
         cwd=ROOT, stdout=subprocess.DEVNULL,
     )
+    # The export proof: one base record spoken for every region — each
+    # re-profiled resource, each region's document, the audit event — with
+    # our own verdict, for the oracle to judge (parity: the IPS documents
+    # carry the offline pregnancy-profile ambiguity on both sides).
+    subprocess.check_call(
+        ["cargo", "run", "-q", "-p", "fhir-pods-core", "--example", "export_corpus", "--", CORPUS],
+        cwd=ROOT, stdout=subprocess.DEVNULL,
+    )
     manifest = json.load(open(os.path.join(CORPUS, "manifest.json")))
     manifest += json.load(open(os.path.join(CORPUS, "lowered-manifest.json")))
     manifest += json.load(open(os.path.join(CORPUS, "deid-manifest.json")))
     manifest += json.load(open(os.path.join(CORPUS, "doc-manifest.json")))
     manifest += json.load(open(os.path.join(CORPUS, "audit-manifest.json")))
     manifest += json.load(open(os.path.join(CORPUS, "v2-manifest.json")))
+    manifest += json.load(open(os.path.join(CORPUS, "export-manifest.json")))
     paths = [os.path.join(CORPUS, c["file"]) for c in manifest]
     oracle = oracle_batch(paths) if have_java else {}
 

@@ -71,6 +71,11 @@ public class FhirPodsExpoModule: Module {
       call2(fhir_pods_audit_tx, kind, inputsJson)
     }
 
+    // Export: {"region","resources","document","audit"} or {"error"}.
+    Function("export") { (region: String, inputsJson: String) -> String in
+      call2(fhir_pods_export_tx, region, inputsJson)
+    }
+
     // De-identification: {"resource","applied","validation","remaining"} or {"error"}.
     Function("deidentify") { (json: String, policyJson: String) -> String in
       call2({ a, al, b, bl, _, _ in fhir_pods_deidentify(a, al, b, bl) }, json, policyJson)

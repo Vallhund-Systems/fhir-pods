@@ -1,6 +1,49 @@
 # Changelog
 
-## Unreleased
+## 0.11.0 — 2026-09-21
+
+**Export** (ABI 11): `fhir_pods_export(region, inputs)` (+ `_tx`, `_host_tx`,
+the JNI shim); wasm `export`, Expo `exportRecord`, CLI `export`. A host
+writes its transformer once, against the base R4 definitions, and the
+runtime speaks the jurisdiction: for every resource the region's profile is
+chosen (a declared `meta.profile` of the region's; else the sibling profile
+whose fixed `code`/`category` — or a `required` binding the terminology
+provider decides — the resource carries, most specific; a type with one
+profile lineage takes it; a profile its guide scopes in words beyond its
+structure is `specialised` and reached only by declaration), the resource is
+re-profiled `lift` → `lower` through it (the jurisdiction's codings and
+slices from the profile, the data from the record, `id` kept so references
+survive), the region's patient summary is assembled, and the read is
+recorded as a BALP `patient-read` when `audit` is given. What the region
+requires and the record lacks is `missing`; content no slot takes is
+`extras`; a resource nothing profiles goes out as given with a `note` —
+nothing invented. Where the region's document asks its entries for a second
+profile (the IPS's Condition beside US Core's) it is declared alongside and
+verified (`also`, `alsoMissing`). Regions: `au` (AU Core + AU Patient
+Summary — its own profiles, derived from AU Core, where the document names
+them), `us` (US Core + IPS document), `ips` (the international floor). The
+selection rules are written out in `docs/scope.md`.
+
+**Base patient-record resources compiled as lowerable profiles** — `Patient`,
+`Observation`, `Condition`, `AllergyIntolerance`, `MedicationStatement`,
+`MedicationRequest`, `Medication`, `Immunization`, `Procedure`, `Device`,
+`DeviceUseStatement`, `Practitioner`, `Organization` join `AuditEvent` and
+`Provenance` (`tools/gen_all.py` `BASE_RESOURCES`): the region-neutral
+vocabulary a host lowers into before `export`. Registry 979 → 992.
+
+**Proof.** `examples/export_corpus.rs` in the release gate: one base record
+(a Patient, five vital signs, a Condition, an AllergyIntolerance, a
+MedicationStatement, an Immunization, a step count) exported for every
+region — 39 resources, documents and audit events, each with our own
+verdict — and the oracle agrees on every one: **1,560/1,560** (was 1,521).
+The two IPS documents are invalid on both sides offline (the pregnancy
+profiles are told apart only by LOINC sets the pod does not ship; a loaded
+table resolves them — `export_with(tx)` / `loadTerminology`). 6 core
+tests, 2 CLI tests; 219 workspace tests.
+
+Carries the unreleased corrections below.
+
+## Unreleased (now in 0.11.0)
 
 - Reframe the README, architecture, domain model, roadmap, pod guides, and
   package descriptions around the compliance runtime and its full operation
@@ -32,7 +75,7 @@ all-target clippy and no_std pass; release gate 1,521/1,521. Seventeen focused
 cases agree with fresh Java; one Java execution failure remains unscored.
 All 70 lowering checks pass, with 68 unchanged emitted resources agreeing
 with their stored Java outcomes. Both T043 lanes retain their reviewed
-baselines. These changes have not been tagged or packaged as a new release.
+baselines. Released in 0.11.0.
 
 ## 0.10.0 — 2026-09-18
 

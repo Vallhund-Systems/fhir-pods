@@ -10,8 +10,8 @@ JS  ──operation inputs──►  JS wrapper  ──C ABI──►  Rust comp
     ◄──output + findings──            ◄─────────         (wasm32)
 ```
 
-The wrapper uses `pod_alloc` / `pod_free` and the shared ABI 10 entrypoints.
-The module carries 979 compiled profiles from the pinned IGs and R4
+The wrapper uses `pod_alloc` / `pod_free` and the shared ABI 11 entrypoints.
+The module carries 992 compiled profiles from the pinned IGs and R4
 extension/base definitions, 126 bundled value sets, base code-system
 membership tables, FHIRPath, transformation and assembly engines, and HL7 v2
 maps. The v0.10.0 artifact is 2,387,366 bytes (586,075 bytes gzip-9).
@@ -172,6 +172,39 @@ of place, throws before anything is built; `validation` is the verdict. A
 failed action is not a BALP basic event — lower it from the base
 `AuditEvent` definition (`pod.lower("http://hl7.org/fhir/StructureDefinition/AuditEvent", …)`),
 as `Provenance` is.
+
+### Export — a record spoken for a region
+
+```js
+const out = pod.export("au", {
+  resources: [patient, bloodPressure, condition, allergy, medication, immunization],  // as lowered against the base definitions, or any
+  author: "Patient/u1", date: "2026-09-21T10:00:00+10:00", title: "My health record",
+  audit: { recorded, client, server, user, source, transaction },  // optional: the BALP patient-read of this export
+});
+// out.region        → { name: "au", title: "Australia", guide: "AU Core 2.0.0 resources, AU Patient Summary 1.0.0 document" }
+// out.resources[i]  → { index, resourceType, id, profile: {url, name} | null, also, resource, validation, missing, alsoMissing, extras, note }
+// out.document      → { kind: "au-ps", document, placed, omitted, validation } | null   (`document: false` to skip)
+// out.audit         → { resource, validation } | null
+```
+
+Write the transformer once against the base R4 definitions (`lower` into
+`…/StructureDefinition/bp`, `…/Patient`, `…/Condition`, …); `export` picks
+each resource's profile in the region's guide — a declared `meta.profile` of
+the region's wins, a fixed code or category identifies among sibling
+profiles, a type with one profile lineage takes it — and re-profiles it
+through that profile's slots: the jurisdiction's codings, categories and
+slices come from the profile, the data from the record, the `id` stays.
+What the region requires and the record lacks is `missing`, never
+invented; content the profile has no slot for is `extras` and is not
+carried; a resource nothing in the region profiles goes out as given with
+the reason in `note`. Where the region's document asks its entries for a
+second profile (the IPS's Condition beside US Core's) it is declared
+alongside and verified (`also`, `alsoMissing`). Regions: `au` (AU Core + AU
+Patient Summary), `us` (US Core + IPS document), `ips` (the international
+floor — what a jurisdiction without a compiled guide gets). Offline, an IPS
+document with any Observation needs the IG's two pregnancy LOINC sets
+loaded (`loadTerminology`) to tell its pregnancy entries apart — the same
+limit the reference validator has without a terminology server.
 
 ### De-identification
 

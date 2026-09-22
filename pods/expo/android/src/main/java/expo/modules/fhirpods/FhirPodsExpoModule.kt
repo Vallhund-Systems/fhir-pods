@@ -61,6 +61,11 @@ class FhirPodsExpoModule : Module() {
       String(FhirPodsNative.audit(kind.toByteArray(Charsets.UTF_8), inputsJson.toByteArray(Charsets.UTF_8), terminology), Charsets.UTF_8)
     }
 
+    // Export: {"region","resources","document","audit"} or {"error"}.
+    Function("export") { region: String, inputsJson: String ->
+      String(FhirPodsNative.export(region.toByteArray(Charsets.UTF_8), inputsJson.toByteArray(Charsets.UTF_8), terminology), Charsets.UTF_8)
+    }
+
     // De-identification: {"resource","applied","validation","remaining"} or {"error"}.
     Function("deidentify") { json: String, policyJson: String ->
       String(FhirPodsNative.deidentify(json.toByteArray(Charsets.UTF_8), policyJson.toByteArray(Charsets.UTF_8)), Charsets.UTF_8)

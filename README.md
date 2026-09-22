@@ -48,6 +48,7 @@ whether a particular import, export, or transformation is acceptable.
 | **Assemble documents** | Build IPS or AU Patient Summary Bundles with profile-defined sections, generated narrative, and rewritten references | Document, placed and omitted inputs, and validation |
 | **Audit / provenance** | Build IHE BALP audit events for reads, queries, creates, updates, and deletes, with or without patient context; lower `Provenance` and failed-action `AuditEvent` records from base definitions | Resource and validation; the host supplies actors, time, subject, source, and correlation context |
 | **HL7 v2** | Convert ER7 messages using compiled `hl7.fhir.uv.v2mappings` maps | FHIR message Bundle, validation, skipped map rows with reasons, unplaced segments, and unmapped valued fields |
+| **Export** | Speak a jurisdiction: re-profile a record written against the base R4 definitions through the region's profiles (AU Core + AU Patient Summary, US Core + IPS, or the IPS floor), assemble its patient summary, and record the read as a BALP event | Each resource through its region profile with `missing`, `extras`, and a note where none applied; the document; the audit event — every one validated |
 | **Terminology** | Resolve bindings through bundled sets, a host-loaded expansion table, or a synchronous provider; list unresolved requests for a host-managed lookup loop | Membership answers and outstanding terminology needs; lowering can obtain displays from the provider |
 
 Lift and lower share the same slot vocabulary. Inspect `missing` and `extras`
@@ -82,9 +83,57 @@ const incoming = pod.lift(profile, outgoing.resource);
 ```
 
 The same instance provides `validate`, `operationOutcome`, `mustSupportGaps`,
-`deidentify`, `document`, `audit`, `v2`, `loadTerminology`, and
+`deidentify`, `document`, `audit`, `export`, `v2`, `loadTerminology`, and
 `terminologyNeeds`. The [Expo module](pods/expo/README.md) exports the same
-operations as functions.
+operations as functions (`exportRecord` for `export`, a reserved word).
+
+### Export — one transformer, every region
+
+A global app's mapping is written **once**, against the base R4
+definitions: the vital-sign profiles (`bp`, `heartrate`, `bodyweight`, …)
+and the base resources compiled as lowerable profiles (`Patient`,
+`Condition`, `AllergyIntolerance`, `MedicationStatement`, `Immunization`,
+`Observation`, …). `export` speaks the jurisdiction:
+
+```js
+const patient = pod.lower("http://hl7.org/fhir/StructureDefinition/Patient", {
+  id: "u1", identifier: [{ system: "urn:ietf:rfc:3986", value: "urn:uuid:…" }],
+  name: [{ family: "Citizen", given: ["Alex"] }], gender: "female", birthDate: "1988-04-12",
+}).resource;
+const bp = pod.lower("http://hl7.org/fhir/StructureDefinition/bp", {
+  id: "bp1", status: "final", subject: "Patient/u1", effectiveDateTime: "2026-09-20T08:00:00+10:00",
+  "component:SystolicBP.valueQuantity.value": 121, "component:SystolicBP.valueQuantity.unit": "mmHg",
+  "component:DiastolicBP.valueQuantity.value": 79, "component:DiastolicBP.valueQuantity.unit": "mmHg",
+}).resource;
+
+const au = pod.export("au", {
+  resources: [patient, bp, /* …conditions, allergies, medications, immunizations */],
+  author: "Patient/u1", date: "2026-09-21T10:00:00+10:00", title: "My health record",
+  audit: { recorded: "…", client: { who: "Device/app", network: "10.0.0.7" }, server: { … }, source: { … } },
+});
+// au.resources[1].profile.name  → "AU Core Blood Pressure" (LOINC + SNOMED codings added by the profile)
+// au.resources[0].missing       → [] — or ["identifier"] when the region wants what the record lacks
+// au.document.kind              → "au-ps"; au.document.validation.valid
+// au.audit.resource             → the BALP patient-read of this export
+const us = pod.export("us", { …same inputs… });  // US Core profiles, IPS document
+```
+
+For each resource the region's profile is chosen by what the resource
+carries (a declared `meta.profile` of the region's wins; a fixed code or
+category identifies among sibling profiles; a type with one profile lineage
+takes it), the resource is re-profiled through that profile's slots — the
+jurisdiction's fixed content comes from the profile, the record's data from
+the record, the `id` stays so references between resources survive — and
+what the region requires that the record lacks is `missing`, never
+invented. Where the region's document asks its entries for a second
+profile (the IPS's Condition beside US Core's), it is declared alongside
+and verified too (`also`, `alsoMissing`). A resource nothing in the region
+profiles goes out as given, base-validated, with the reason in `note`.
+Regions: `au`, `us`, `ips`; a jurisdiction the registry has no guide for is
+exported as `ips`, the international floor, and says so. Offline, an IPS
+document with any Observation needs the IG's two pregnancy LOINC sets
+loaded (`loadTerminology`, code-only) to tell its pregnancy entries apart —
+the same limit the reference validator has without a terminology server.
 
 In Rust, the shared operation context is currently named `Validator`:
 
@@ -120,11 +169,16 @@ fhir-pods v2 message.hl7 --timezone +10:00
 
 ## Compiled coverage
 
-The current registry contains **979 profile definitions**, including **749
+The current registry contains **992 profile definitions**, including **749
 extension definitions**, generated from pinned packages: **AU Core 2.0.0**,
 **US Core 6.1.0**, **IPA 1.1.0**, **IPS 2.0.1**, **AU Patient Summary 1.0.0**,
 **IHE BALP 1.1.4**, **AU Base 6.0.0**, and **HL7 extensions for R4 5.3.0**,
-plus base R4 vital-sign profiles and the `AuditEvent` and `Provenance` definitions.
+plus the base R4 vital-sign profiles and the base `AuditEvent`, `Provenance`,
+`Patient`, `Observation`, `Condition`, `AllergyIntolerance`,
+`MedicationStatement`, `MedicationRequest`, `Medication`, `Immunization`,
+`Procedure`, `Device`, `DeviceUseStatement`, `Practitioner` and `Organization`
+definitions as lowerable profiles (the region-neutral vocabulary `export`
+re-profiles from).
 The type table covers every R4 resource and datatype.
 
 Terminology includes **126 value sets** and code membership tables for
@@ -143,9 +197,9 @@ does not infer a jurisdiction or supply a complete regional compliance regime.
 
 | Surface | Delivery |
 | --- | --- |
-| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.10.0 artifact is 2,387,366 bytes (586,075 bytes gzip-9). [Guide](pods/wasm/README.md) |
+| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.11.0 artifact is 2,429,615 bytes (596,818 bytes gzip-9). [Guide](pods/wasm/README.md) |
 | **Expo** | Native iOS XCFramework and Android jniLibs behind the Expo Modules API. [Guide](pods/expo/README.md) |
-| **Rust / C** | `fhir_pods_core` directly or the shared [ABI 10 header](crates/fhir-pods-ffi/include/fhir_pods.h) |
+| **Rust / C** | `fhir_pods_core` directly or the shared [ABI 11 header](crates/fhir-pods-ffi/include/fhir_pods.h) |
 | **CLI** | Local JSON/ER7 input, structured output, and exit codes for scripting. [Guide](crates/fhir-pods-cli/README.md) |
 
 The Rust core is `no_std` with `alloc`, zero dependencies, and no `unsafe`.
@@ -165,22 +219,23 @@ versions and fixtures.
 
 The release gate checks the validation verdicts of published examples,
 targeted probes, and outputs from lift/lower, de-identification, document
-assembly, audit construction, and HL7 v2 conversion against **HL7 Java
-validator 6.10.4**, with remote terminology disabled. Operation-specific
+assembly, audit construction, HL7 v2 conversion and export (one base record
+spoken for every region: 39 resources, documents and audit events) against
+**HL7 Java validator 6.10.4**, with remote terminology disabled. Operation-specific
 tests also check extracted values, transformations, content, and reporting.
 Verdict agreement alone does not establish semantic correctness or complete
 compliance.
 
 | Lane | Latest recorded result |
 | --- | --- |
-| Release corpus | **1,521/1,521** verdicts agree at v0.10.0 and the subsequent core fixes |
+| Release corpus | **1,560/1,560** verdicts agree at v0.11.0 (1,521 + the 39 export outputs) |
 | Published R4 examples | **4,811/5,290** compared verdicts agree; **479** reviewed lenient differences; **2** explicit oracle exclusions out of 5,292 selected inputs; no stricter verdicts |
 | Published validator base tests | **57/84** agree with stored Java outcomes; **14/20** with stored Firely outcomes; differences are reviewed individually |
 | Ad-hoc profile tests | **10 of 53** cases compare: **9/10** agree with Java and **7/7** with Firely where available; other cases have compiler, snapshot, or manifest exclusions |
 
 The broader lanes enforce reviewed baselines: new or changed differences and
 unusable evidence fail. Exclusions are never counted as agreement. The latest
-core follow-up records **211 Rust workspace tests** and **18 Python harness
+release records **219 Rust workspace tests** and **18 Python harness
 checks**; the [changelog](CHANGELOG.md) separates released artifacts from
 unreleased corrections. [Conformance commands](conformance/README.md) and
 [detailed scope](docs/scope.md) describe reproduction and the remaining gaps.

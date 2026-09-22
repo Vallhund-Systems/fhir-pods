@@ -221,7 +221,7 @@ fn version_and_help_describe_the_delivered_surface() {
     assert_eq!(version.stdout, format!("fhir-pods {}\n", env!("CARGO_PKG_VERSION")).as_bytes());
     let help = call(&["--help"], b"");
     let text = std::str::from_utf8(&help.stdout).unwrap();
-    for part in ["slots PROFILE_URL", "must-support", "--terminology TABLE", "v2 --structure"] {
+    for part in ["slots PROFILE_URL", "must-support", "--terminology TABLE", "v2 --structure", "export REGION"] {
         assert!(text.contains(part));
     }
 }

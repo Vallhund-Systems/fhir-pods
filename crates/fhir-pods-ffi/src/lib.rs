@@ -6,7 +6,7 @@
 //! URLs, or terminology tables. Operations return length-prefixed JSON.
 //!
 //! The entrypoints — those below in detail, and `fhir_pods_lift`,
-//! `fhir_pods_deidentify`, `fhir_pods_document`, `fhir_pods_audit`,
+//! `fhir_pods_deidentify`, `fhir_pods_document`, `fhir_pods_audit`, `fhir_pods_export`,
 //! `fhir_pods_v2`, `fhir_pods_terminology_load` / `_needs` alongside:
 //! - [`fhir_pods_validate`] — the `Validation` JSON (`valid`, `profile(s)`, `issues[]`).
 //! - [`fhir_pods_operation_outcome`] — the spec resource, for the wire.
@@ -48,7 +48,7 @@ fn validator() -> &'static Validator {
 
 /// Bump when the exported surface or the memory contract changes; the
 /// wrappers refuse a mismatched module.
-pub const ABI_VERSION: u32 = 10;
+pub const ABI_VERSION: u32 = 11;
 
 /// The compiled terminology table the host loaded (`fhir_pods_terminology_load`),
 /// consulted after the bundled sets and before any host callback.
@@ -474,6 +474,53 @@ fn audit_json(kind: &[u8], inputs: &[u8], tx: &dyn TerminologyProvider) -> Strin
     }
 }
 
+/// Export: a record re-profiled for a `region` (`au`, `us`, `ips`) — every
+/// resource through the region's profile for it (`lift` → `lower`, the
+/// profile's fixed content added, ids kept), the region's patient summary
+/// assembled, the read recorded as a BALP event when `audit` is given.
+/// Inputs (JSON): `{"resources": [{…}, …], "document"?: bool, "author",
+/// "date", "title"?, "custodian"?, "identifier"?, "timestamp"?, "audit"?: {…}}`.
+/// Out: `{"region": {…}, "resources": [{"index", "resourceType", "id",
+/// "profile", "also", "resource", "validation", "missing", "alsoMissing",
+/// "extras", "note"}], "document": {"kind", "document", "placed", "omitted",
+/// "validation"} | null, "audit": {"resource", "validation"} | null}`, or
+/// `{"error": "…"}` when it could not start.
+#[no_mangle]
+pub unsafe extern "C" fn fhir_pods_export(
+    region: *const u8,
+    region_len: usize,
+    inputs: *const u8,
+    inputs_len: usize,
+) -> *mut u8 {
+    with_providers(None, |tx| pack(export_json(input(region, region_len), input(inputs, inputs_len), tx).as_bytes()))
+}
+
+/// [`fhir_pods_export`] with a host terminology callback.
+#[no_mangle]
+pub unsafe extern "C" fn fhir_pods_export_tx(
+    region: *const u8,
+    region_len: usize,
+    inputs: *const u8,
+    inputs_len: usize,
+    cb: Option<TxCallback>,
+    ctx: *mut c_void,
+) -> *mut u8 {
+    with_tx(cb, ctx, |tx| pack(export_json(input(region, region_len), input(inputs, inputs_len), tx).as_bytes()))
+}
+
+fn export_json(region: &[u8], inputs: &[u8], tx: &dyn TerminologyProvider) -> String {
+    let region = core::str::from_utf8(region).unwrap_or("");
+    match validator().export_with(region, inputs, tx) {
+        Ok(e) => e.to_json(),
+        Err(e) => {
+            let mut s = String::from("{\"error\":\"");
+            wire::escape(&mut s, &e.to_string());
+            s.push_str("\"}");
+            s
+        }
+    }
+}
+
 fn document_json(kind: &[u8], inputs: &[u8], tx: &dyn TerminologyProvider) -> String {
     let kind = core::str::from_utf8(kind).unwrap_or("");
     let a = match validator().document_with(kind, inputs, tx) {
@@ -797,6 +844,18 @@ mod wasm_host {
             pack(audit_json(input(kind, kind_len), input(inputs, inputs_len), tx).as_bytes())
         })
     }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn fhir_pods_export_host_tx(
+        region: *const u8,
+        region_len: usize,
+        inputs: *const u8,
+        inputs_len: usize,
+    ) -> *mut u8 {
+        with_providers(Some(&ImportTx), |tx| {
+            pack(export_json(input(region, region_len), input(inputs, inputs_len), tx).as_bytes())
+        })
+    }
 }
 
 /// Android: the JVM cannot call a C ABI directly, so the expo pod's Kotlin
@@ -990,6 +1049,19 @@ mod android {
     ) -> jbyteArray {
         let (k, i) = (bytes_in(&mut env, &kind), bytes_in(&mut env, &inputs));
         let doc = with_java(&mut env, &provider, |tx| audit_json(&k, &i, tx));
+        bytes_out(&mut env, &doc)
+    }
+
+    #[no_mangle]
+    pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_export<'l>(
+        mut env: JNIEnv<'l>,
+        _this: JObject<'l>,
+        region: JByteArray<'l>,
+        inputs: JByteArray<'l>,
+        provider: JObject<'l>,
+    ) -> jbyteArray {
+        let (r, i) = (bytes_in(&mut env, &region), bytes_in(&mut env, &inputs));
+        let doc = with_java(&mut env, &provider, |tx| export_json(&r, &i, tx));
         bytes_out(&mut env, &doc)
     }
 

@@ -54,7 +54,7 @@ impl Kind {
         }
     }
 
-    fn composition(self) -> Option<&'static CompiledProfile> {
+    pub(crate) fn composition(self) -> Option<&'static CompiledProfile> {
         generated::REGISTRY.iter().find(|p| p.url == self.composition_url()).copied()
     }
 }

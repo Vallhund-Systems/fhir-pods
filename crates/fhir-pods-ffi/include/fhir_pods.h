@@ -9,8 +9,8 @@
 extern "C" {
 #endif
 
-/* ABI version; a host refuses a mismatched module. This header is ABI 10. */
-#define FHIR_PODS_ABI_VERSION 10u
+/* ABI version; a host refuses a mismatched module. This header is ABI 11. */
+#define FHIR_PODS_ABI_VERSION 11u
 uint32_t fhir_pods_abi_version(void);
 
 /* Allocate `len` bytes in the module for the host to fill. */
@@ -124,6 +124,23 @@ uint8_t *fhir_pods_document_tx(const uint8_t *kind, size_t kind_len, const uint8
 uint8_t *fhir_pods_audit(const uint8_t *kind, size_t kind_len, const uint8_t *inputs, size_t inputs_len);
 uint8_t *fhir_pods_audit_tx(const uint8_t *kind, size_t kind_len, const uint8_t *inputs, size_t inputs_len,
                             fhir_pods_tx_callback cb, void *ctx);
+
+/* Export: a record re-profiled for a region ("au", "us", "ips"). Inputs
+ * (JSON): {"resources": [{...}, ...], "document"?: bool, "author", "date",
+ * "title"?, "custodian"?, "identifier"?, "timestamp"?, "audit"?: {...}} — the
+ * resources as the host lowered them (the base R4 definitions, or any);
+ * every one goes out through the region's profile for it (its fixed content
+ * added, its id kept), the region's patient summary is assembled, and the
+ * read is recorded as a BALP patient-read when "audit" is given. Out:
+ * {"region": {"name","title","guide"}, "resources": [{"index",
+ * "resourceType", "id", "profile", "also", "resource", "validation",
+ * "missing", "alsoMissing", "extras", "note"}], "document": {"kind",
+ * "document", "placed", "omitted", "validation"} | null, "audit":
+ * {"resource", "validation"} | null} — or {"error": "..."} when it could
+ * not start. The `_tx` twin takes the terminology callback. */
+uint8_t *fhir_pods_export(const uint8_t *region, size_t region_len, const uint8_t *inputs, size_t inputs_len);
+uint8_t *fhir_pods_export_tx(const uint8_t *region, size_t region_len, const uint8_t *inputs, size_t inputs_len,
+                             fhir_pods_tx_callback cb, void *ctx);
 
 /* Compiled terminology. Load a table (the line format tools/compile_valueset.py
  * writes from $expand responses): it answers after the bundled sets and before

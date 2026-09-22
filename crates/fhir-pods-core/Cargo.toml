@@ -1,6 +1,6 @@
 [package]
 name = "fhir-pods-core"
-version = "0.10.0"
+version = "0.11.0"
 edition = "2021"
 license = "MIT"
 description = "Embeddable compliance runtime for health applications: FHIR lift/lower, validation, de-identification, documents, audit, and HL7 v2."

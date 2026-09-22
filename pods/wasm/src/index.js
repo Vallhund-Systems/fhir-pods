@@ -3,7 +3,7 @@
 // WebAssembly does (browser, edge runtimes, Node, Bun, Deno).
 
 /** The ABI this wrapper speaks; a module reporting anything else is refused. */
-export const ABI_VERSION = 10;
+export const ABI_VERSION = 11;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -77,6 +77,7 @@ export async function instantiate(source, options = {}) {
   const outcome = terminology ? ex.fhir_pods_operation_outcome_host_tx : ex.fhir_pods_operation_outcome;
   const lowerEntry = terminology ? ex.fhir_pods_lower_host_tx : ex.fhir_pods_lower;
   const auditEntry = terminology ? ex.fhir_pods_audit_host_tx : ex.fhir_pods_audit;
+  const exportEntry = terminology ? ex.fhir_pods_export_host_tx : ex.fhir_pods_export;
   const liftEntry = terminology ? ex.fhir_pods_lift_host_tx : ex.fhir_pods_lift;
   const documentEntry = terminology ? ex.fhir_pods_document_host_tx : ex.fhir_pods_document;
   const v2Entry = terminology ? ex.fhir_pods_v2_host_tx : ex.fhir_pods_v2;
@@ -118,6 +119,14 @@ export async function instantiate(source, options = {}) {
     // delete (with or without a patient) from host-shaped inputs.
     audit: (kind, inputs) => {
       const out = JSON.parse(call(auditEntry, kind, typeof inputs === "string" ? inputs : JSON.stringify(inputs)));
+      if (out.error) throw new Error(`fhir-pods: ${out.error}`);
+      return out;
+    },
+    // Export: a record re-profiled for a region ("au", "us", "ips") — every
+    // resource through the region's profile for it, the region's patient
+    // summary assembled, the read audited when `audit` is given.
+    export: (region, inputs) => {
+      const out = JSON.parse(call(exportEntry, region, typeof inputs === "string" ? inputs : JSON.stringify(inputs)));
       if (out.error) throw new Error(`fhir-pods: ${out.error}`);
       return out;
     },

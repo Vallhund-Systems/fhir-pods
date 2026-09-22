@@ -271,6 +271,72 @@ export function audit(kind: AuditKind, inputs: AuditInputs): Lowered {
   return out;
 }
 
+/** A jurisdiction the exporter speaks: `au` (AU Core + AU Patient Summary), `us` (US Core + IPS document), `ips` (the international floor). */
+export type ExportRegion = "au" | "us" | "ips";
+
+/** What an export takes: the record's resources as the host lowered them (the base R4 definitions, or any), the document's inputs, and optionally the audit context. */
+export interface ExportInputs {
+  resources: Record<string, unknown>[];
+  /** `false` for the re-profiled resources only, no document. */
+  document?: boolean;
+  /** As `document` takes them; `author` and `date` are required when a document is assembled. */
+  author?: string | string[];
+  date?: string;
+  title?: string;
+  custodian?: string;
+  identifier?: string;
+  timestamp?: string;
+  /** The BALP `patient-read` of this export: everything but `patient` and `data`, which the export fills in. */
+  audit?: Omit<AuditInputs, "patient" | "data"> & { patient?: AuditWho; data?: AuditInputs["data"] };
+}
+
+export interface ExportedProfile {
+  url: string;
+  name: string;
+}
+
+export interface ExportedResource {
+  /** Its position in `inputs.resources`. */
+  index: number;
+  resourceType: string;
+  id: string | null;
+  /** The region's profile it went out through; `null` when it went out as given (see `note`). */
+  profile: ExportedProfile | null;
+  /** The profile the region's document asks of such an entry when it is not the target: declared beside it, verified. */
+  also: ExportedProfile | null;
+  resource: Record<string, unknown>;
+  validation: Validation;
+  /** Required slots of the profile the record had no value for — reported, never invented. */
+  missing: string[];
+  /** Required slots of `also` the record had no value for. */
+  alsoMissing: string[];
+  /** Element paths of the given resource the profile has no slot for: not carried. */
+  extras: string[];
+  /** Why no profile applied (none in the region for the type; several and none declared). */
+  note: string | null;
+}
+
+export interface Exported {
+  region: { name: ExportRegion; title: string; guide: string };
+  resources: ExportedResource[];
+  document: (AssembledDocument & { kind: DocumentKind }) | null;
+  audit: Lowered | null;
+}
+
+/**
+ * A record spoken for a region: every resource re-profiled through the
+ * region's profile for it (the profile's fixed content added, its id kept,
+ * `missing`/`extras` reported), the region's patient summary assembled, and
+ * the read recorded as a BALP event when `audit` is given. Write the
+ * transformer once against the base definitions; export picks the
+ * jurisdiction. Throws only when it cannot start.
+ */
+export function exportRecord(region: ExportRegion, inputs: ExportInputs): Exported {
+  const out = JSON.parse(FhirPodsExpoModule.export(region, JSON.stringify(inputs))) as Exported & { error?: string };
+  if (out.error) throw new Error(`fhir-pods: ${out.error}`);
+  return out;
+}
+
 /** What de-identification does to an element. */
 export type DeidAction = "keep" | "remove" | "mask" | "year" | "pseudonym" | "clamp";
 

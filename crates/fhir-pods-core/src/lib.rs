@@ -417,6 +417,9 @@ pub mod assemble;
 
 pub mod audit;
 
+/// Export: a record re-profiled for a jurisdiction, its summary document and audit event.
+pub mod export;
+
 pub mod json;
 pub mod lower;
 

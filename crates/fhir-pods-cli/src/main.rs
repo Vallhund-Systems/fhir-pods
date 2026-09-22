@@ -6,6 +6,7 @@ use std::process::ExitCode;
 use fhir_pods_core::{
     audit::Kind,
     deidentify::Policy,
+    export::Region,
     node::Node,
     terminology::{Bundled, Chain, Expansions, Recorder},
     v2::Options,
@@ -24,6 +25,7 @@ Usage:
   fhir-pods deidentify --policy POLICY_FILE [FILE|-]
   fhir-pods document ips|au-ps [FILE|-]
   fhir-pods audit KIND [FILE|-]
+  fhir-pods export REGION [FILE|-]
   fhir-pods v2 [FILE|-] [--timezone Z|+10:00] [--code-system NAME=URI ...]
   fhir-pods v2 --structure NAME
   fhir-pods needs [FILE|-]
@@ -32,13 +34,15 @@ Usage:
   fhir-pods --help | --version
 
 Audit kinds: read, query, create, update, delete; or patient- prefixed variants.
+Export regions: au, us, ips. Input: a JSON object with resources, author, date, and optionally audit.
 Input defaults to stdin. Use -- before positional arguments beginning with -.
 POLICY_FILE may be - only when the resource is read from a file.
---terminology TABLE is accepted by validate, lower, lift, document, audit, v2,
-needs and must-support. TABLE may be - only with a resource file.
+--terminology TABLE is accepted by validate, lower, lift, document, audit, export,
+v2, needs and must-support. TABLE may be - only with a resource file.
 slots and v2 --structure read no stdin. v2 input is ER7 text; other inputs are JSON.
 Results are JSON on stdout. Usage/I/O errors are JSON on stderr.
-Exit 0: valid result (deidentify: no remaining findings; lift: no missing; v2: no unplaced).
+Exit 0: valid result (deidentify: no remaining findings; lift: no missing; v2: no unplaced;
+export: every resource, the document and the audit event valid).
 Exit 1: invalid result, remaining findings, missing lift slots, unplaced v2 segments, or rejected input.
 Exit 2: command usage, policy/terminology configuration, or I/O failure.
 Warnings, including unresolved terminology, do not change a valid verdict.
@@ -67,7 +71,17 @@ fn parse(args: Vec<OsString>) -> Result<Args, Failure> {
     };
     if !matches!(
         command,
-        "validate" | "lower" | "lift" | "deidentify" | "document" | "audit" | "v2" | "needs" | "slots" | "must-support"
+        "validate"
+            | "lower"
+            | "lift"
+            | "deidentify"
+            | "document"
+            | "audit"
+            | "export"
+            | "v2"
+            | "needs"
+            | "slots"
+            | "must-support"
     ) {
         return Err(bad("unknown command; use --help"));
     }
@@ -118,13 +132,14 @@ fn parse(args: Vec<OsString>) -> Result<Args, Failure> {
             _ => positional.push(arg.clone()),
         }
     }
-    let parameter = if matches!(command, "lower" | "lift" | "document" | "audit" | "slots") {
+    let parameter = if matches!(command, "lower" | "lift" | "document" | "audit" | "export" | "slots") {
         if positional.is_empty() {
             return Err(bad(match command {
                 "lower" => "lower needs a profile URL",
                 "slots" => "slots needs a profile URL",
                 "lift" => "lift needs a profile URL or an empty string for a declared profile",
                 "document" => "document needs ips or au-ps",
+                "export" => "export needs a region: au, us or ips",
                 _ => "audit needs an event kind; use --help",
             }));
         }
@@ -134,6 +149,9 @@ fn parse(args: Vec<OsString>) -> Result<Args, Failure> {
         }
         if command == "audit" && Kind::parse(&value).is_none() {
             return Err(bad("unknown audit kind; use --help"));
+        }
+        if command == "export" && Region::parse(&value).is_none() {
+            return Err(bad("unknown export region; use --help"));
         }
         Some(value)
     } else {
@@ -246,6 +264,11 @@ fn run(args: Args) -> Result<(String, bool), Failure> {
             let result =
                 validator.audit_with(args.parameter.as_deref().unwrap(), &input, &tx).map_err(|e| rejected(&e))?;
             (output::lowered(&result), result.validation.is_valid())
+        }
+        "export" => {
+            let result =
+                validator.export_with(args.parameter.as_deref().unwrap(), &input, &tx).map_err(|e| rejected(&e))?;
+            (result.to_json(), result.is_valid())
         }
         "v2" => {
             let result = validator.v2_with(&input, &args.v2_options, &tx).map_err(|e| rejected(&e))?;
