@@ -219,9 +219,11 @@ declared profile not applied). A record is one patient's: a second Patient
 or a resource about someone else is an error. Where the region's document asks its entries for a
 second profile (the IPS's Condition beside US Core's) it is declared
 alongside and verified (`also`, `alsoMissing`). Regions: `au` (AU Core + AU
-Patient Summary), `us` (US Core + IPS document), `ips` (the international
-floor — what to use for a jurisdiction without a compiled guide; the pod
-refuses a region it does not know, and `profiles()` lists the ones it does). The function is
+Patient Summary), `us` (US Core + IPS document), `uk` (UK Core STU2 + IPS
+document), `ca` (CA Baseline + IPS document), `nz` (NZ Base + IPS
+document), `ips` (the international floor — what to use for a jurisdiction
+without a compiled guide; the pod refuses a region it does not know, and
+`profiles()` lists the ones it does). The function is
 `exportRecord` because `export` is a reserved word. Offline, an IPS
 document with any Observation needs the IG's two pregnancy LOINC sets
 loaded (`loadTerminology`) to tell its pregnancy entries apart — the same
@@ -303,7 +305,7 @@ asked what they can't answer. `system` is "" for a bare `code` element.
 
 ## Status
 
-The current package is **0.12.1, ABI 12**. The release build produces iOS
+The current package is **0.13.0, ABI 12**. The release build produces iOS
 XCFramework slices, Android libraries, and a packed Expo artifact. This
 package exposes the full operation family documented above.
 

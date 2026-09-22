@@ -48,7 +48,7 @@ whether a particular import, export, or transformation is acceptable.
 | **Assemble documents** | Build IPS or AU Patient Summary Bundles with profile-defined sections, generated narrative, and rewritten references | Document, placed and omitted inputs, and validation |
 | **Audit / provenance** | Build IHE BALP audit events for reads, queries, creates, updates, and deletes, with or without patient context; lower `Provenance` and failed-action `AuditEvent` records from base definitions | Resource and validation; the host supplies actors, time, subject, source, and correlation context |
 | **HL7 v2** | Convert ER7 messages using compiled `hl7.fhir.uv.v2mappings` maps | FHIR message Bundle, validation, skipped map rows with reasons, unplaced segments, and unmapped valued fields |
-| **Export** | Speak a jurisdiction: re-profile a record written against the base R4 definitions through the region's profiles (AU Core + AU Patient Summary, US Core + IPS, or the IPS floor), assemble its patient summary, and record the read as a BALP event | Each resource through its region profile with `missing`, `extras`, and a note where none applied; the document; the audit event — every one validated |
+| **Export** | Speak a jurisdiction: re-profile a record written against the base R4 definitions through the region's profiles (AU, US, UK, CA, NZ, or the IPS floor), assemble its patient summary, and record the read as a BALP event | Each resource through its region profile with `missing`, `extras`, and a note where none applied; the document; the audit event — every one validated |
 | **Terminology** | Resolve bindings through bundled sets, a host-loaded expansion table, or a synchronous provider; list unresolved requests for a host-managed lookup loop | Membership answers and outstanding terminology needs; lowering can obtain displays from the provider |
 
 Lift and lower share the same slot vocabulary. Inspect `missing` and `extras`
@@ -141,9 +141,11 @@ Relative references may include `/_history/<version>`. Absolute references
 with a matching id, opaque or logical references, and records without a
 Patient id receive an unresolved-identity `notes` entry for the host to
 resolve; this check does not establish identity across servers or nested
-resources. Regions: `au`,
-`us`, `ips` (the international floor — what to use for a jurisdiction
-without a compiled guide; `profiles()` lists them). Offline, an IPS
+resources. Regions: `au` (AU Core + AU Patient Summary), `us` (US Core + IPS
+document), `uk` (UK Core STU2 + IPS document), `ca` (CA Baseline + IPS
+document), `nz` (NZ Base + IPS document), `ips` (the international floor —
+what to use for a jurisdiction without a compiled guide; `profiles()` lists
+them). Offline, an IPS
 document with any Observation needs the IG's two pregnancy LOINC sets
 loaded (`loadTerminology`, code-only) to tell its pregnancy entries apart —
 the same limit the reference validator has without a terminology server.
@@ -189,10 +191,11 @@ fhir-pods v2 message.hl7 --timezone +10:00
 
 ## Compiled coverage
 
-The current registry contains **992 profile definitions**, including **749
+The current registry contains **1,147 profile definitions**, including **833
 extension definitions**, generated from pinned packages: **AU Core 2.0.0**,
 **US Core 6.1.0**, **IPA 1.1.0**, **IPS 2.0.1**, **AU Patient Summary 1.0.0**,
-**IHE BALP 1.1.4**, **AU Base 6.0.0**, and **HL7 extensions for R4 5.3.0**,
+**IHE BALP 1.1.4**, **AU Base 6.0.0**, **HL7 extensions for R4 5.3.0**,
+**UK Core STU2 2.1.0**, **CA Baseline 1.2.0**, **NZ Base 3.1.0**,
 plus the base R4 vital-sign profiles and the base `AuditEvent`, `Provenance`,
 `Patient`, `Observation`, `Condition`, `AllergyIntolerance`,
 `MedicationStatement`, `MedicationRequest`, `Medication`, `Immunization`,
@@ -217,7 +220,7 @@ does not infer a jurisdiction or supply a complete regional compliance regime.
 
 | Surface | Delivery |
 | --- | --- |
-| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.12.1 artifact is 2,446,304 bytes (602,164 bytes gzip-9). [Guide](pods/wasm/README.md) |
+| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.13.0 artifact is 2,692,859 bytes (649,723 bytes gzip-9). [Guide](pods/wasm/README.md) |
 | **Expo** | Native iOS XCFramework and Android jniLibs behind the Expo Modules API. [Guide](pods/expo/README.md) |
 | **Rust / C** | `fhir_pods_core` directly or the shared [ABI 12 header](crates/fhir-pods-ffi/include/fhir_pods.h) |
 | **CLI** | Local JSON/ER7 input, structured output, and exit codes for scripting. [Guide](crates/fhir-pods-cli/README.md) |
@@ -248,14 +251,14 @@ compliance.
 
 | Lane | Latest recorded result |
 | --- | --- |
-| Release corpus | **1,560/1,560** verdicts agree at v0.12.0 (1,521 + the 39 export outputs) |
+| Release corpus | **1,750/1,750** verdicts agree at v0.13.0 (UK Core and NZ Base examples, six regions' export outputs) |
 | Published R4 examples | **4,811/5,290** compared verdicts agree; **479** reviewed lenient differences; **2** explicit oracle exclusions out of 5,292 selected inputs; no stricter verdicts |
 | Published validator base tests | **57/84** agree with stored Java outcomes; **14/20** with stored Firely outcomes; differences are reviewed individually |
 | Ad-hoc profile tests | **10 of 53** cases compare: **9/10** agree with Java and **7/7** with Firely where available; other cases have compiler, snapshot, or manifest exclusions |
 
 The broader lanes enforce reviewed baselines: new or changed differences and
 unusable evidence fail. Exclusions are never counted as agreement. The latest
-release records **228 Rust workspace tests** and **18 Python harness
+release records **236 Rust workspace tests** and **18 Python harness
 checks**; the [changelog](CHANGELOG.md) separates released artifacts from
 unreleased corrections. [Conformance commands](conformance/README.md) and
 [detailed scope](docs/scope.md) describe reproduction and the remaining gaps.

@@ -37,6 +37,9 @@ IPS = "http://hl7.org/fhir/uv/ips/StructureDefinition/"
 AUPS = "http://hl7.org.au/fhir/ps/StructureDefinition/"
 BALP = "https://profiles.ihe.net/ITI/BALP/StructureDefinition/"
 AUBASE = "http://hl7.org.au/fhir/StructureDefinition/"
+UK = "https://fhir.hl7.org.uk/StructureDefinition/"
+CA = "http://hl7.org/fhir/ca/baseline/StructureDefinition/"
+NZ = "http://hl7.org.nz/fhir/StructureDefinition/"
 IGS = [
     ("hl7.fhir.au.core", "2.0.0", AU, "package", "example-"),
     ("hl7.fhir.us.core", "6.1.0", US, "package-us", "us-"),
@@ -45,7 +48,17 @@ IGS = [
     ("hl7.fhir.au.ps", "1.0.0", AUPS, "package-au-ps", "aups-"),
     ("ihe.iti.balp", "1.1.4", BALP, "package-balp", "balp-"),
     ("hl7.fhir.au.base", "6.0.0", AUBASE, "package-au-base", "aubase-"),
+    # 0.13.0: three more regions for `export`. UK Core's examples declare no
+    # profile (the IG's convention) and are taken as base resources; CA
+    # Baseline ships no examples at all — its proof is the export lane.
+    ("fhir.r4.ukcore.stu2", "2.1.0", UK, "package-uk", "uk-"),
+    ("hl7.fhir.ca.baseline", "1.2.0", CA, "package-ca", "ca-"),
+    ("fhir.org.nz.ig.base", "3.1.0", NZ, "package-nz", "nz-"),
 ]
+
+# IGs whose examples carry no `meta.profile`: every example is taken, held to
+# the base spec (and to whatever extensions it carries, by url).
+BASE_EXAMPLES = {"fhir.r4.ukcore.stu2"}
 
 # Dependency packages whose datatype profiles slices inherit (no examples
 # taken from them): fetched into the same gitignored caches so the generator
@@ -61,9 +74,15 @@ DEPS = [
 def ensure_package(pkg_id, pkg_ver, cache_dir):
     """The unpacked package's example dir, fetching the package once."""
     cache = os.path.join(HERE, cache_dir)
-    examples = os.path.join(cache, "package", "example")
+    # `example/` (HL7's publisher) or `examples/` (UK Core's)
+    def examples_dir():
+        for name in ("example", "examples"):
+            d = os.path.join(cache, "package", name)
+            if os.path.isdir(d):
+                return d
+        return os.path.join(cache, "package", "example")
     if os.path.isdir(os.path.join(cache, "package")):
-        return examples
+        return examples_dir()
     os.makedirs(cache, exist_ok=True)
     print(f"==> fetching {pkg_id}#{pkg_ver}")
     data = urllib.request.urlopen(f"https://packages.fhir.org/{pkg_id}/{pkg_ver}").read()
@@ -72,7 +91,7 @@ def ensure_package(pkg_id, pkg_ver, cache_dir):
             t.extractall(cache, filter="data")
         except TypeError:  # Python < 3.12
             t.extractall(cache)
-    return examples
+    return examples_dir()
 
 
 def profile_of(d, prefix):
@@ -516,6 +535,22 @@ def main():
         # the reference validator verifies Bundle.signature against its certificate;
         # cryptographic verification is not a validation concern the pods take on
         "aups-Bundle-aups-referral-endoconsult-autogen": "Bundle.signature verification is out of scope",
+        # UK Core STU2 2.1.0 examples that use extensions the package does not
+        # ship (they arrived in STU3): the oracle cannot resolve the definition
+        # and errors; the pods do not fetch definitions (docs/scope.md, the
+        # definition-resolution family) — never stricter, so not judged
+        "uk-UKCore-Encounter-Extension-OutcomeofAttendance-Example": "extension not in the STU2 package (definition resolution)",
+        "uk-UKCore-Extension-MedicationChangeSummary-Example": "extension not in the STU2 package (definition resolution)",
+        "uk-UKCore-Patient-Extension-MedicalApplianceSupplier-Example": "extension not in the STU2 package (definition resolution)",
+        "uk-UKCore-Patient-Extension-OverseasVisitorChargingCategory-Example": "extension not in the STU2 package (definition resolution)",
+        "uk-UKCore-Patient-Extension-PreferredDispenserOrganization-Example": "extension not in the STU2 package (definition resolution)",
+        "uk-UKCore-RelatedPerson-Extension-EffectivePeriod-Example": "extension not in the STU2 package (definition resolution)",
+        "uk-UKCore-Practitioner-Sn-Qualification-Example": "code system http://terminology.hl7.org/CodeSystem/v2-0360/2.7 unresolvable (definition resolution)",
+        # the oracle checks a coding's display against the code system's; the
+        # pods bundle codes only (docs/scope.md, display checking)
+        "uk-UKCore-Appointment-Extension-DeliveryChannel-Example": "display-name checking needs code-system display content",
+        "uk-UKCore-Appointment-OrthopaedicSurgery-Example": "display-name checking needs code-system display content",
+        "uk-UKCore-HealthcareService-OrthopaedicService-Example": "display-name checking needs code-system display content",
     }
     # Published examples the reference validator itself rejects when run without
     # a terminology server, as the oracle is: IPS's pregnancy-status and
@@ -535,7 +570,9 @@ def main():
         for path in sorted(glob.glob(os.path.join(examples_dir, "*.json"))):
             d = json.load(open(path))
             profile = profile_of(d, prefix)
-            if not profile:
+            if not profile and pkg_id in BASE_EXAMPLES and d.get("resourceType"):
+                profile = ""
+            elif not profile:
                 continue
             {AU: au_examples, US: us_examples, BALP: balp_examples}.get(prefix, us_examples)[os.path.basename(path)] = d
             name = name_prefix + os.path.basename(path)[:-5]

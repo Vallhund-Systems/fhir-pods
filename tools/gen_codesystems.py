@@ -17,10 +17,29 @@ system that is not `complete` here is never bundled: the seam's.
     gen_codesystems.py <r4 package dir> <tho package dir> <out.rs>
 """
 import glob
+import re
 import json
 import os
 import sys
 
+
+
+def package_files(pkg, resource_type):
+    """Every JSON file in a package dir whose `resourceType` is the one asked
+    for, sorted. By content, not by file name: the HL7 packages name files
+    `StructureDefinition-*.json`, UK Core `UKCore-*.json` /
+    `Extension-*.json`, CA Baseline `structuredefinition-profile-*.json`."""
+    out = []
+    for path in sorted(glob.glob(os.path.join(pkg, "*.json"))):
+        try:
+            with open(path, "rb") as fh:
+                head = fh.read(4096)
+        except OSError:
+            continue
+        m = re.search(rb'"resourceType"\s*:\s*"([A-Za-z]+)"', head)
+        if m and m.group(1).decode() == resource_type:
+            out.append(path)
+    return out
 
 def rs(s):
     """A Rust string literal: JSON's escapes are not Rust's for non-ASCII."""
@@ -54,7 +73,7 @@ def main():
     seen = {}
     for pkg in (r4, tho):
         seen[pkg] = 0
-        for f in sorted(glob.glob(os.path.join(pkg, "CodeSystem-*.json"))):
+        for f in package_files(pkg, "CodeSystem"):
             try:
                 d = json.load(open(f))
             except ValueError:

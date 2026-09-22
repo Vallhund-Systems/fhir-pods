@@ -25,7 +25,10 @@ fn the_catalogue_lists_every_region_and_profile_with_its_kind() {
     let json = catalogue_json();
     let v = json::parse(json.as_bytes()).expect("valid JSON");
     let Some(Value::Array(regions)) = member(&v, "regions") else { panic!() };
-    assert_eq!(regions.iter().map(|r| text(member(r, "name").unwrap())).collect::<Vec<_>>(), ["au", "us", "ips"]);
+    assert_eq!(
+        regions.iter().map(|r| text(member(r, "name").unwrap())).collect::<Vec<_>>(),
+        ["au", "us", "uk", "ca", "nz", "ips"]
+    );
     assert_eq!(text(member(&regions[0], "document").unwrap()), "au-ps");
     let Some(Value::Array(profiles)) = member(&v, "profiles") else { panic!() };
     assert_eq!(profiles.len(), fhir_pods_core::REGISTRY.len());

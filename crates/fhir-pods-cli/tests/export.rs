@@ -58,7 +58,7 @@ fn a_base_record_is_exported_for_a_region_with_its_document_and_the_verdicts_dec
 
 #[test]
 fn an_unknown_region_and_an_export_that_cannot_start_are_usage_and_rejection() {
-    let usage = call(&["export", "nz"], RECORD.as_bytes());
+    let usage = call(&["export", "in"], RECORD.as_bytes());
     assert_eq!(usage.status.code(), Some(2));
     assert!(String::from_utf8_lossy(&usage.stderr).contains("unknown export region"));
     let none = call(&["export"], RECORD.as_bytes());

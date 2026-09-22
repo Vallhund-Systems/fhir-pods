@@ -44,7 +44,7 @@ use crate::{lift, wire, Validation, Validator};
 /// summary document it produces.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Region {
-    /// The name a host asks for (`au`, `us`, `ips`).
+    /// The name a host asks for (`au`, `us`, `uk`, `ca`, `nz`, `ips`).
     pub name: &'static str,
     pub title: &'static str,
     /// The implementation guide(s), for the report.
@@ -61,6 +61,12 @@ pub struct Region {
     /// host that means one declares it. Everything else with no identifying
     /// content is the guide's general profile for the type, and matches.
     pub specialised: &'static [&'static str],
+    /// Profiles the reference validator cannot evaluate (a slicing whose
+    /// discriminator it cannot resolve — it errors on every instance): not
+    /// applied, so an export never carries a declaration the reference
+    /// rejects; the document's profile for the type applies instead. Each
+    /// with the reason.
+    pub unevaluable: &'static [(&'static str, &'static str)],
 }
 
 /// The regions compiled in. A host can explicitly select `ips` as the
@@ -77,6 +83,7 @@ pub static REGIONS: &[Region] = &[
         document: Some(assemble::Kind::AuPs),
         // "specialist or other diagnostic (non-imaging or non-pathology) results"
         specialised: &["http://hl7.org.au/fhir/core/StructureDefinition/au-core-diagnosticresult"],
+        unevaluable: &[],
     },
     Region {
         name: "us",
@@ -93,6 +100,63 @@ pub static REGIONS: &[Region] = &[
             "http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-clinical-result",
             "http://hl7.org/fhir/us/core/StructureDefinition/us-core-smokingstatus",
         ],
+        unevaluable: &[],
+    },
+    Region {
+        name: "uk",
+        title: "United Kingdom",
+        guide: "UK Core STU2 2.1.0 resources, International Patient Summary 2.0.1 document",
+        prefixes: &["https://fhir.hl7.org.uk/StructureDefinition/"],
+        document: Some(assemble::Kind::Ips),
+        // the "Lab" variants are scoped to laboratory reporting in words;
+        // their structure identifies nothing (no fixed category), so the
+        // general profile takes every observation, report and request
+        specialised: &[
+            "https://fhir.hl7.org.uk/StructureDefinition/UKCore-Observation-Lab",
+            "https://fhir.hl7.org.uk/StructureDefinition/UKCore-Observation-Group-Lab",
+            "https://fhir.hl7.org.uk/StructureDefinition/UKCore-DiagnosticReport-Lab",
+            "https://fhir.hl7.org.uk/StructureDefinition/UKCore-ServiceRequest-Lab",
+        ],
+        unevaluable: &[],
+    },
+    Region {
+        name: "ca",
+        title: "Canada",
+        guide: "CA Baseline 1.2.0 resources, International Patient Summary 2.0.1 document",
+        prefixes: &["http://hl7.org/fhir/ca/baseline/StructureDefinition/"],
+        document: Some(assemble::Kind::Ips),
+        // "implantable" devices (the medical-or-non-medical profile is the
+        // general one); the "Provider Registry" practitioner profiles
+        // derive from the general ones and would otherwise win by lineage
+        specialised: &[
+            "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-device",
+            "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitioner-registry",
+            "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitionerrole-registry",
+        ],
+        // validator_cli 6.10.4: "Slicing cannot be evaluated: Unable to
+        // resolve discriminator in definitions: 'binding.valueSet'" on
+        // Condition.code.coding, and "Could not match any of the 2
+        // discriminators" on Immunization.vaccineCode.coding — every
+        // instance errors; the compiler defers the same slices
+        unevaluable: &[
+            (
+                "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-condition",
+                "Condition.code.coding slicing discriminates on binding.valueSet, which the reference validator cannot resolve",
+            ),
+            (
+                "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-immunization",
+                "Immunization.vaccineCode.coding slicing discriminators the reference validator cannot match",
+            ),
+        ],
+    },
+    Region {
+        name: "nz",
+        title: "New Zealand",
+        guide: "NZ Base 3.1.0 resources, International Patient Summary 2.0.1 document",
+        prefixes: &["http://hl7.org.nz/fhir/StructureDefinition/"],
+        document: Some(assemble::Kind::Ips),
+        specialised: &[],
+        unevaluable: &[],
     },
     Region {
         name: "ips",
@@ -102,6 +166,7 @@ pub static REGIONS: &[Region] = &[
         document: Some(assemble::Kind::Ips),
         // a device "as performer or observer" of a result, not the patient's device
         specialised: &["http://hl7.org/fhir/uv/ips/StructureDefinition/Device-observer-uv-ips"],
+        unevaluable: &[],
     },
 ];
 
@@ -111,8 +176,18 @@ impl Region {
     }
 
     /// The region's own profiles for a resource type.
+    /// The region's own profiles for a resource type (the ones the reference
+    /// validator can evaluate — see `unevaluable`).
     pub fn candidates(&self, resource_type: &str) -> Vec<&'static CompiledProfile> {
-        crate::REGISTRY.iter().filter(|p| p.resource_type == resource_type && self.owns(p.url)).copied().collect()
+        crate::REGISTRY
+            .iter()
+            .filter(|p| p.resource_type == resource_type && self.owns(p.url) && !self.unevaluable(p.url))
+            .copied()
+            .collect()
+    }
+
+    fn unevaluable(&self, url: &str) -> bool {
+        self.unevaluable.iter().any(|(u, _)| *u == url)
     }
 
     fn owns(&self, url: &str) -> bool {
@@ -147,7 +222,7 @@ impl Region {
         }
         crate::REGISTRY
             .iter()
-            .filter(|p| p.resource_type == resource_type)
+            .filter(|p| p.resource_type == resource_type && !self.unevaluable(p.url))
             .filter(|p| {
                 named.contains(&p.url)
                     || ((self.owns(p.url) || p.url.starts_with(BASE)) && named.iter().any(|n| derives_from(p, n)))
@@ -431,7 +506,19 @@ fn single_lineage(candidates: &[&'static CompiledProfile]) -> Option<&'static Co
         .copied()
         .collect();
     match leaves.as_slice() {
-        [leaf] if candidates.iter().all(|c| c.url == leaf.url || derives_from(leaf, c.url)) => Some(leaf),
+        [leaf] if candidates.iter().all(|c| c.url == leaf.url || derives_from(leaf, c.url)) => {
+            // a leaf that adds identifying content its root does not have
+            // (CA Baseline's laboratory Observation, derived from its
+            // general one, fixes a category) is a sibling in all but
+            // lineage: identity decides between it and its ancestors. A
+            // leaf that only inherits its root's `code` binding (AU PS
+            // AllergyIntolerance from AU Core's) is the refinement it looks
+            let root =
+                candidates.iter().find(|c| !candidates.iter().any(|q| q.url != c.url && derives_from(c, q.url)))?;
+            let root_anchors: Vec<&str> = identifying(root).iter().map(|i| i.anchor).collect();
+            let adds_identity = identifying(leaf).iter().any(|i| !root_anchors.contains(&i.anchor));
+            (!adds_identity).then_some(*leaf)
+        }
         _ => None,
     }
 }
@@ -454,7 +541,11 @@ pub fn select(region: &Region, resource: &Node, tx: &dyn TerminologyProvider) ->
         for u in urls.iter().filter_map(Node::as_str) {
             let bare = u.split('|').next().unwrap_or(u);
             let known = own.iter().chain(document.iter()).any(|p| p.url == bare);
-            if !known && !bare.starts_with(BASE) {
+            if let Some((_, why)) = region.unevaluable.iter().find(|(u, _)| *u == bare) {
+                notes.push(format!(
+                    "declared profile '{bare}' is one the reference validator cannot evaluate ({why}); not applied"
+                ));
+            } else if !known && !bare.starts_with(BASE) {
                 notes.push(format!("declared profile '{bare}' is not one of {}'s; not applied", region.title));
             }
         }

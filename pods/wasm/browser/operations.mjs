@@ -21,7 +21,7 @@ export async function checkOperations(bytes) {
   for (const fixture of fixtures) check(`validate ${fixture.name}`, () => assert(pod.validate(fixture.json).valid === fixture.valid, "Unexpected verdict"));
   check("OperationOutcome", () => assert(pod.operationOutcome("{").issue.some(i => i.severity === "fatal"), "Fatal parse finding missing"));
   check("discovery regions and profile kinds", () => {
-    const d = pod.profiles(); same(d.regions.map(r => r.name), ["au", "us", "ips"], "Region inventory");
+    const d = pod.profiles(); same(d.regions.map(r => r.name), ["au", "us", "uk", "ca", "nz", "ips"], "Region inventory");
     assert(d.profiles.some(p => p.url === HR && p.kind === "resource"), "Heart-rate profile missing");
     assert(d.profiles.some(p => p.kind === "extension"), "Extension inventory missing");
   });

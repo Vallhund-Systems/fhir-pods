@@ -36,6 +36,8 @@
 //! - `https://healthterminologies.gov.au/fhir/ValueSet/date-accuracy-indicator-1` — no ValueSet https://healthterminologies.gov.au/fhir/ValueSet/date-accuracy-indicator-1
 //! - `https://healthterminologies.gov.au/fhir/ValueSet/ihi-record-status-1` — no ValueSet https://healthterminologies.gov.au/fhir/ValueSet/ihi-record-status-1
 //! - `https://healthterminologies.gov.au/fhir/ValueSet/ihi-status-1` — no ValueSet https://healthterminologies.gov.au/fhir/ValueSet/ihi-status-1
+//! - `https://nzhts.digital.health.nz/fhir/ValueSet/atc-code` — no ValueSet https://nzhts.digital.health.nz/fhir/ValueSet/atc-code
+//! - `https://nzhts.digital.health.nz/fhir/ValueSet/nzmt-type` — no ValueSet https://nzhts.digital.health.nz/fhir/ValueSet/nzmt-type
 
 /// (value set URL, sorted [(system, code, display)]), sorted by URL.
 pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
@@ -336,6 +338,21 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
             ),
             ("http://terminology.hl7.org/CodeSystem/allergyintolerance-verification", "refuted", "Refuted"),
             ("http://terminology.hl7.org/CodeSystem/allergyintolerance-verification", "unconfirmed", "Unconfirmed"),
+        ],
+    ),
+    (
+        "http://hl7.org/fhir/ValueSet/appointmentstatus",
+        &[
+            ("http://hl7.org/fhir/appointmentstatus", "arrived", "Arrived"),
+            ("http://hl7.org/fhir/appointmentstatus", "booked", "Booked"),
+            ("http://hl7.org/fhir/appointmentstatus", "cancelled", "Cancelled"),
+            ("http://hl7.org/fhir/appointmentstatus", "checked-in", "Checked In"),
+            ("http://hl7.org/fhir/appointmentstatus", "entered-in-error", "Entered in error"),
+            ("http://hl7.org/fhir/appointmentstatus", "fulfilled", "Fulfilled"),
+            ("http://hl7.org/fhir/appointmentstatus", "noshow", "No Show"),
+            ("http://hl7.org/fhir/appointmentstatus", "pending", "Pending"),
+            ("http://hl7.org/fhir/appointmentstatus", "proposed", "Proposed"),
+            ("http://hl7.org/fhir/appointmentstatus", "waitlist", "Waitlisted"),
         ],
     ),
     (
@@ -857,6 +874,15 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
         ],
     ),
     (
+        "http://hl7.org/fhir/ValueSet/history-status",
+        &[
+            ("http://hl7.org/fhir/history-status", "completed", "Completed"),
+            ("http://hl7.org/fhir/history-status", "entered-in-error", "Entered in Error"),
+            ("http://hl7.org/fhir/history-status", "health-unknown", "Health Unknown"),
+            ("http://hl7.org/fhir/history-status", "partial", "Partial"),
+        ],
+    ),
+    (
         "http://hl7.org/fhir/ValueSet/hl7-work-group",
         &[
             ("http://terminology.hl7.org/CodeSystem/hl7-work-group", "aid", "Application Implementation and Design"),
@@ -1175,6 +1201,23 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
             ("http://hl7.org/fhir/observation-status", "preliminary", "Preliminary"),
             ("http://hl7.org/fhir/observation-status", "registered", "Registered"),
             ("http://hl7.org/fhir/observation-status", "unknown", "Unknown"),
+        ],
+    ),
+    (
+        "http://hl7.org/fhir/ValueSet/participantrequired",
+        &[
+            ("http://hl7.org/fhir/participantrequired", "information-only", "Information Only"),
+            ("http://hl7.org/fhir/participantrequired", "optional", "Optional"),
+            ("http://hl7.org/fhir/participantrequired", "required", "Required"),
+        ],
+    ),
+    (
+        "http://hl7.org/fhir/ValueSet/participationstatus",
+        &[
+            ("http://hl7.org/fhir/participationstatus", "accepted", "Accepted"),
+            ("http://hl7.org/fhir/participationstatus", "declined", "Declined"),
+            ("http://hl7.org/fhir/participationstatus", "needs-action", "Needs Action"),
+            ("http://hl7.org/fhir/participationstatus", "tentative", "Tentative"),
         ],
     ),
     (
@@ -1547,6 +1590,16 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
         ],
     ),
     (
+        "http://hl7.org/fhir/ValueSet/slotstatus",
+        &[
+            ("http://hl7.org/fhir/slotstatus", "busy", "Busy"),
+            ("http://hl7.org/fhir/slotstatus", "busy-tentative", "Busy (Tentative)"),
+            ("http://hl7.org/fhir/slotstatus", "busy-unavailable", "Busy (Unavailable)"),
+            ("http://hl7.org/fhir/slotstatus", "entered-in-error", "Entered in error"),
+            ("http://hl7.org/fhir/slotstatus", "free", "Free"),
+        ],
+    ),
+    (
         "http://hl7.org/fhir/ValueSet/specimen-status",
         &[
             ("http://hl7.org/fhir/specimen-status", "available", "Available"),
@@ -1836,6 +1889,122 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
         ],
     ),
     (
+        "https://fhir.hl7.org.uk/ValueSet/UKCore-BirthSex",
+        &[
+            ("http://terminology.hl7.org/CodeSystem/v3-AdministrativeGender", "F", "Female"),
+            ("http://terminology.hl7.org/CodeSystem/v3-AdministrativeGender", "M", "Male"),
+            ("http://terminology.hl7.org/CodeSystem/v3-AdministrativeGender", "UN", "Undifferentiated"),
+            ("http://terminology.hl7.org/CodeSystem/v3-NullFlavor", "UNK", "unknown"),
+        ],
+    ),
+    (
+        "https://fhir.hl7.org.uk/ValueSet/UKCore-NHSNumberVerificationStatus",
+        &[
+            ("http://terminology.hl7.org/CodeSystem/v3-NullFlavor", "NI", "NoInformation"),
+            (
+                "https://fhir.hl7.org.uk/CodeSystem/UKCore-NHSNumberVerificationStatusEngland",
+                "01",
+                "Number present and verified",
+            ),
+            (
+                "https://fhir.hl7.org.uk/CodeSystem/UKCore-NHSNumberVerificationStatusEngland",
+                "02",
+                "Number present but not traced",
+            ),
+            ("https://fhir.hl7.org.uk/CodeSystem/UKCore-NHSNumberVerificationStatusEngland", "03", "Trace required"),
+            (
+                "https://fhir.hl7.org.uk/CodeSystem/UKCore-NHSNumberVerificationStatusEngland",
+                "04",
+                "Trace attempted - No match or multiple match found",
+            ),
+            (
+                "https://fhir.hl7.org.uk/CodeSystem/UKCore-NHSNumberVerificationStatusEngland",
+                "05",
+                "Trace needs to be resolved - (NHS number or patient detail conflict)",
+            ),
+            ("https://fhir.hl7.org.uk/CodeSystem/UKCore-NHSNumberVerificationStatusEngland", "06", "Trace in progress"),
+            (
+                "https://fhir.hl7.org.uk/CodeSystem/UKCore-NHSNumberVerificationStatusEngland",
+                "07",
+                "Number not present and trace not required",
+            ),
+            (
+                "https://fhir.hl7.org.uk/CodeSystem/UKCore-NHSNumberVerificationStatusEngland",
+                "08",
+                "Trace postponed (baby under six weeks old)",
+            ),
+            (
+                "https://fhir.hl7.org.uk/CodeSystem/UKCore-NHSNumberVerificationStatusWales",
+                "01",
+                "Number present & traced",
+            ),
+            (
+                "https://fhir.hl7.org.uk/CodeSystem/UKCore-NHSNumberVerificationStatusWales",
+                "02",
+                "Number present but not traced",
+            ),
+            ("https://fhir.hl7.org.uk/CodeSystem/UKCore-NHSNumberVerificationStatusWales", "03", "Trace required"),
+            (
+                "https://fhir.hl7.org.uk/CodeSystem/UKCore-NHSNumberVerificationStatusWales",
+                "04",
+                "Trace attempted – no match or multiple match found",
+            ),
+            (
+                "https://fhir.hl7.org.uk/CodeSystem/UKCore-NHSNumberVerificationStatusWales",
+                "05",
+                "Trace needs to be resolved (NHS number or patient detail conflict)",
+            ),
+            ("https://fhir.hl7.org.uk/CodeSystem/UKCore-NHSNumberVerificationStatusWales", "06", "Trace in progress"),
+            (
+                "https://fhir.hl7.org.uk/CodeSystem/UKCore-NHSNumberVerificationStatusWales",
+                "07",
+                "Number not present and trace not required",
+            ),
+            (
+                "https://fhir.hl7.org.uk/CodeSystem/UKCore-NHSNumberVerificationStatusWales",
+                "08",
+                "Trace postponed (baby under six weeks old)",
+            ),
+            (
+                "https://fhir.hl7.org.uk/CodeSystem/UKCore-NHSNumberVerificationStatusWales",
+                "nn",
+                "Number present and traced using Welsh NHS AR",
+            ),
+        ],
+    ),
+    (
+        "https://nzhts.digital.health.nz/fhir/ValueSet/funded-programme-code",
+        &[
+            (
+                "https://standards.digital.health.nz/ns/funded-programme-code",
+                "DENTAL_ADULT_EMERGENCY",
+                "Dental Care – Adult Emergency",
+            ),
+            (
+                "https://standards.digital.health.nz/ns/funded-programme-code",
+                "DENTAL_CHILD",
+                "Dental Care - Children up to age 13",
+            ),
+            (
+                "https://standards.digital.health.nz/ns/funded-programme-code",
+                "ENROLLING_GP_PRACTICE",
+                "General Practice Enrollment",
+            ),
+            (
+                "https://standards.digital.health.nz/ns/funded-programme-code",
+                "OTHER",
+                "Some other funded programme not otherwise defined",
+            ),
+        ],
+    ),
+    (
+        "https://nzhts.digital.health.nz/fhir/ValueSet/nhi-use-code",
+        &[
+            ("http://hl7.org/fhir/identifier-use", "official", "Official"),
+            ("http://hl7.org/fhir/identifier-use", "old", "Old"),
+        ],
+    ),
+    (
         "https://profiles.ihe.net/ITI/BALP/ValueSet/AuthZsubTypeVS",
         &[
             (
@@ -1929,6 +2098,7 @@ pub static DISPLAYS: &[(&str, &str, &str)] = &[
     ("http://terminology.hl7.org/CodeSystem/v2-0074", "LAB", "Laboratory"),
     ("http://terminology.hl7.org/CodeSystem/v2-0203", "EI", "Employee number"),
     ("http://terminology.hl7.org/CodeSystem/v2-0203", "HC", "Health Card Number"),
+    ("http://terminology.hl7.org/CodeSystem/v2-0203", "JHN", "Jurisdictional health number (Canada)"),
     ("http://terminology.hl7.org/CodeSystem/v2-0203", "MB", "Member Number"),
     ("http://terminology.hl7.org/CodeSystem/v2-0203", "MC", "Patient's Medicare number"),
     ("http://terminology.hl7.org/CodeSystem/v2-0203", "MR", "Medical record number"),

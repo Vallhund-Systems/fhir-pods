@@ -22,12 +22,15 @@ PRIMARIES=(
   "$C/package-balp/package"     # ihe.iti.balp 1.1.4
   "$C/package-au-base/package"  # hl7.fhir.au.base 6.0.0 — every profile, since 0.9.1 (its examples are in the corpus)
   "$C/package-ext/package"      # hl7.fhir.uv.extensions.r4 5.3.0 — every extension, since 0.9.1 (contexts and values checked for all)
+  "$C/package-uk/package"       # fhir.r4.ukcore.stu2 2.1.0 — since 0.13.0 (export region `uk`)
+  "$C/package-ca/package"       # hl7.fhir.ca.baseline 1.2.0 — since 0.13.0 (export region `ca`)
+  "$C/package-nz/package"       # fhir.org.nz.ig.base 3.1.0 — since 0.13.0 (export region `nz`)
 )
 DEPS=(
 )
 THO="$C/package-tho/package"      # hl7.terminology.r4 7.3.0 — the code systems' content (tools/gen_codesystems.py)
 R4="$C/package-r4/package"        # hl7.fhir.r4.core 4.0.1 — the element-type table, the implied vital-sign profiles, the base AuditEvent / Provenance and patient-record resources (tools/gen_all.py BASE_RESOURCES)
-PROVENANCE="hl7.fhir.au.core 2.0.0 + hl7.fhir.us.core 6.1.0 + hl7.fhir.uv.ipa 1.1.0 + hl7.fhir.uv.ips 2.0.1 + hl7.fhir.au.ps 1.0.0 + ihe.iti.balp 1.1.4 + hl7.fhir.au.base 6.0.0 + hl7.fhir.uv.extensions.r4 5.3.0 + hl7.fhir.r4.core 4.0.1 (AuditEvent, Provenance)"
+PROVENANCE="hl7.fhir.au.core 2.0.0 + hl7.fhir.us.core 6.1.0 + hl7.fhir.uv.ipa 1.1.0 + hl7.fhir.uv.ips 2.0.1 + hl7.fhir.au.ps 1.0.0 + ihe.iti.balp 1.1.4 + hl7.fhir.au.base 6.0.0 + hl7.fhir.uv.extensions.r4 5.3.0 + fhir.r4.ukcore.stu2 2.1.0 + hl7.fhir.ca.baseline 1.2.0 + fhir.org.nz.ig.base 3.1.0 + hl7.fhir.r4.core 4.0.1 (AuditEvent, Provenance)"
 
 for d in "${PRIMARIES[@]}" "${DEPS[@]}" "$R4" "$THO"; do
   [ -d "$d" ] || { echo "missing package dir $d — run: python3 conformance/make_corpus.py" >&2; exit 1; }

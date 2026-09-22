@@ -11,7 +11,7 @@ JS  ──operation inputs──►  JS wrapper  ──C ABI──►  Rust comp
 ```
 
 The wrapper uses `pod_alloc` / `pod_free` and the shared ABI 12 entrypoints.
-The module carries 992 compiled profiles from the pinned IGs and R4
+The module carries 1,147 compiled profiles from the pinned IGs and R4
 extension/base definitions, 126 bundled value sets, base code-system
 membership tables, FHIRPath, transformation and assembly engines, and HL7 v2
 maps. The v0.10.0 artifact is 2,387,366 bytes (586,075 bytes gzip-9).
@@ -180,7 +180,7 @@ as `Provenance` is.
 ```js
 const { regions, profiles } = pod.profiles();
 // regions   → [{ name: "au", title, guide, document: "au-ps" }, …]
-// profiles  → [{ url, name, resourceType, kind: "resource" | "datatype" | "extension", base }, …]  (992)
+// profiles  → [{ url, name, resourceType, kind: "resource" | "datatype" | "extension", base }, …]  (1147)
 const slots = pod.slots(profiles.find((p) => p.name === "AU Core Blood Pressure").url);
 // slots[i]  → { path, type, choices, min, max, mustSupport,
 //               fixed: [{ path: "component:SystolicBP.valueQuantity.code", value: "mm[Hg]" }, …],   ← what the profile fixes beside it
@@ -222,9 +222,11 @@ declared profile not applied). A record is one patient's: a second Patient
 or a resource about someone else is an error. Where the region's document asks its entries for a
 second profile (the IPS's Condition beside US Core's) it is declared
 alongside and verified (`also`, `alsoMissing`). Regions: `au` (AU Core + AU
-Patient Summary), `us` (US Core + IPS document), `ips` (the international
-floor — what to use for a jurisdiction without a compiled guide; the pod
-refuses a region it does not know, and `profiles()` lists the ones it does). Offline, an IPS
+Patient Summary), `us` (US Core + IPS document), `uk` (UK Core STU2 + IPS
+document), `ca` (CA Baseline + IPS document), `nz` (NZ Base + IPS
+document), `ips` (the international floor — what to use for a jurisdiction
+without a compiled guide; the pod refuses a region it does not know, and
+`profiles()` lists the ones it does). Offline, an IPS
 document with any Observation needs the IG's two pregnancy LOINC sets
 loaded (`loadTerminology`) to tell its pregnancy entries apart — the same
 limit the reference validator has without a terminology server.

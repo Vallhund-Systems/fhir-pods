@@ -209,7 +209,10 @@ through. The rules are structural and closed, so a host can predict them:
   identity, never a jurisdiction's profile.
 - A type with one profile lineage in the region (a Patient, an
   AllergyIntolerance — AU Core's and AU PS's derived from it) takes the most
-  specific: there is nothing to tell apart.
+  specific: there is nothing to tell apart — unless the leaf adds
+  identifying content its root lacks (CA Baseline's laboratory Observation
+  fixes a category its general Observation does not), in which case it is
+  a sibling in all but lineage and identity decides.
 - Among sibling profiles of a type, the ones whose *identifying* content the
   resource carries survive: a fixed `code.coding` (any one of the profile's,
   so AU's SNOMED beside LOINC is not required of the record) or fixed
@@ -225,7 +228,10 @@ through. The rules are structural and closed, so a host can predict them:
   extensible; the IPS Device as performer) is never matched by content: it
   is listed as `specialised` on the region and reached only by declaration.
   US Core's Simple Observation ("any simple observations not otherwise
-  covered") is the guide's own catch-all and matches.
+  covered") is the guide's own catch-all and matches. In UK Core the "Lab"
+  Observation, DiagnosticReport and ServiceRequest variants are
+  specialised (no fixed category); in CA Baseline the implantable Device
+  and the Provider-Registry Practitioner/PractitionerRole profiles are.
 - Among survivors, a profile whose identity is a strict subset of another
   survivor's (a category alone beside a category and a code) is the less
   specific one and is dropped, as is one another survivor derives from.

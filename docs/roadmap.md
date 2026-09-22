@@ -20,6 +20,7 @@ delivery surfaces for that operation family.
 | Wider base coverage | 0.9 | Published R4 examples, compiled extension definitions and contexts, and base code-system membership |
 | Published validator test lanes | 0.10 | Pinned upstream cases, stored Java/Firely comparisons, and isolated ad-hoc profile compilation |
 | Export | 0.11 | A record written against the base R4 definitions re-profiled for a region (AU Core + AU PS, US Core + IPS, the IPS floor): profile selection by declared/fixed identity, `missing`/`extras`/`carried`/`note` per resource, conflicts refused, one patient, the region's document, the BALP event; base patient-record resources compiled as lowerable profiles |
+| Regions | 0.13 | UK Core STU2, CA Baseline and NZ Base compiled; `export` speaks `uk`, `ca`, `nz` (IPS document); package loaders find resources by content, not file name |
 | Discovery | 0.12 | `profiles()` (regions and every compiled profile); `slots()` with each slot's fixed neighbours and a composite slot's parts; a Quantity's unit from the fixed code |
 
 These rows describe the current behavior of capabilities introduced in each
@@ -60,13 +61,16 @@ current areas are:
 - **More inputs and guides.** Add fixtures and implementation guides when
   they exercise needed behavior, with explicit compiler support, terminology
   requirements, and differential evidence before claiming coverage.
-- **More regions.** `export` speaks `au`, `us` and `ips`; a jurisdiction
-  the registry has no guide for gets the IPS floor. Each further region is a
-  guide compiled through the generator (its packages, examples in the
+- **More regions.** `export` speaks `au`, `us`, `uk`, `ca`, `nz` and `ips`
+  (0.13.0 added the UK, Canada and New Zealand). Each further region is a
+  guide compiled through the generator (its package, examples in the
   corpus, its document kind if it has one) and a `Region` row naming its
   namespaces and any profile its guide scopes in words beyond its
-  structure. Candidates by market: UK Core, CA Baseline, ABDM (India),
-  nl-core; South Africa has no national guide and stays on the floor.
+  structure. Not yet: India's ABDM guide (no package on a registry; its
+  site refuses the package download), nl-core (beta packages only), the
+  German and Swiss national guides (their own base profiles, worth a
+  compiler pass of their own). South Africa has no national guide and
+  stays on the floor.
 - **Slot ergonomics.** `HumanName`, `Identifier` and `Address` slots are
   composite (`slots()` now lists their `parts`); splitting them the way
   `Quantity` is split would make a repeating name ambiguous, so they stay

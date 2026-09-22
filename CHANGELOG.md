@@ -14,6 +14,59 @@
   terminology callbacks, including reentrancy. Lowering fixtures include
   Ratio and inventory only profiles accepted by the resource lookup.
 
+## 0.13.0 — 2026-09-22
+
+**Three more regions.** `export` speaks `uk` (UK Core STU2 2.1.0), `ca`
+(CA Baseline 1.2.0) and `nz` (NZ Base 3.1.0), each with the IPS document
+(none has a patient summary of its own); `profiles()` lists them. UK Core
+has one general Observation profile and no vital-sign ones, so a blood
+pressure goes out as `UKCore-Observation` with the base `bp` declared
+beside it for the document (`also`); CA Baseline's general Observation
+takes vitals and its laboratory profile identifies by category; NZ Base
+has no Observation profile, so the document's `vitalsigns` family applies.
+Specialised (never by content): UK Core's Lab variants, CA Baseline's
+implantable Device and Provider-Registry practitioner profiles. Registry
+992 → 1,147 (155 profiles, 84 of them extensions); UK Core's 146 examples
+join the release corpus as base resources (its convention is no
+`meta.profile`), NZ Base's 5 profiled ones as profiled; CA Baseline ships
+no examples and is proven by the export lane alone. The export corpus is
+now 78 outputs (six regions).
+
+Two CA Baseline profiles are `unevaluable`: validator_cli 6.10.4 errors on
+every Condition ("Slicing cannot be evaluated: Unable to resolve
+discriminator … 'binding.valueSet'") and Immunization ("Could not match
+any of the 2 discriminators") under them, and the compiler defers the same
+slices — `export` never declares them (the IPS document's Condition and
+Immunization apply; a host that declares one is told why it was not
+applied). Ten UK Core examples are skipped from the gate with reasons
+(seven use extensions or a code system the STU2 package does not ship —
+the definition-resolution family; three fail the oracle's display-name
+check, which needs code-system display content the pods do not bundle).
+Release gate **1,750/1,750** (1,560 + 141 UK Core, 5 NZ Base, 39 more
+export outputs); base examples 4,811/5,290, 0 stricter; test-case lane
+unchanged; 236 tests; wasm 2.69 MB / 650 KB gz (+250 KB for the three
+guides).
+
+Selection: a single lineage takes its most specific member only when the
+leaf adds no identifying content its root lacks (CA Baseline's laboratory
+Observation derives from its general one and fixes a category: identity
+decides). Found on the way: CA Baseline's AllergyIntolerance slices
+`code.coding` by system, closed, with the SNOMED slice fixed to "no known
+allergy" — a SNOMED penicillin coding contradicts it and goes out as given
+with the reason.
+
+The package loaders (`gen_all.py`, `gen_valuesets.py`, `gen_codesystems.py`)
+find resources by `resourceType`, not file name (UK Core and CA Baseline
+name their files their own way); `make_corpus.py` takes `examples/` as
+well as `example/`. Generated files no longer carry the package list in
+their header (it lives in `mod.rs`), so adding a guide does not rewrite
+every file.
+
+Carries the review agent's independent verification of 0.12.1 (`662e857`,
+`8704ac0`: Quantity qualifiers and carriers preserved, absolute and
+versioned patient references judged, lift conflicts across the C ABI and
+CLI, ABI 12 C/browser evidence).
+
 ## 0.12.1 — 2026-09-21
 
 The Expo module's podspec and `build.gradle` carried a stale `0.5.1`

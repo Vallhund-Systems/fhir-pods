@@ -292,7 +292,7 @@ export function audit(kind: AuditKind, inputs: AuditInputs): Lowered {
 }
 
 /** A jurisdiction the exporter speaks: `au` (AU Core + AU Patient Summary), `us` (US Core + IPS document), `ips` (the international floor). */
-export type ExportRegion = "au" | "us" | "ips";
+export type ExportRegion = "au" | "us" | "uk" | "ca" | "nz" | "ips";
 
 /** What an export takes: the record's resources as the host lowered them (the base R4 definitions, or any), the document's inputs, and optionally the audit context. */
 export interface ExportInputs {

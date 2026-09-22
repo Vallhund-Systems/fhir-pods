@@ -68,14 +68,14 @@ fn inputs(resources: &[String], extra: &str) -> String {
 
 #[test]
 fn the_regions_are_the_compiled_guides_and_ips_is_the_floor() {
-    assert_eq!(REGIONS.iter().map(|r| r.name).collect::<Vec<_>>(), ["au", "us", "ips"]);
-    assert!(Region::parse("au").is_some() && Region::parse("nz").is_none());
+    assert_eq!(REGIONS.iter().map(|r| r.name).collect::<Vec<_>>(), ["au", "us", "uk", "ca", "nz", "ips"]);
+    assert!(Region::parse("au").is_some() && Region::parse("in").is_none());
     for r in REGIONS {
         assert!(!r.candidates("Patient").is_empty(), "{}: a region without a Patient profile", r.name);
         assert!(r.candidates("NutritionOrder").is_empty());
     }
     let v = Validator::new();
-    assert_eq!(v.export("nz", b"{}").unwrap_err(), ExportError::UnknownRegion);
+    assert_eq!(v.export("in", b"{}").unwrap_err(), ExportError::UnknownRegion);
     assert_eq!(v.export("au", b"[]").unwrap_err(), ExportError::InputsNotAnObject);
     assert_eq!(v.export("au", br#"{"resources":[{"id":"x"}]}"#).unwrap_err(), ExportError::ResourcesNotAnArray);
     assert_eq!(
@@ -465,4 +465,52 @@ fn the_audit_of_a_resources_only_export_reads_the_patient_and_a_document_require
         "{:?}",
         e.resources[0].notes
     );
+}
+
+#[test]
+fn the_same_record_speaks_the_united_kingdom_canada_and_new_zealand() {
+    let v = Validator::new();
+    let record = record(&v);
+    let table = Expansions::parse(IPS_PREGNANCY_SETS).unwrap();
+    // (region, Patient, blood pressure, `also` on the blood pressure, Condition)
+    for (region, patient, bp, bp_also, condition) in [
+        // UK Core has one general Observation profile and no vital-sign ones: the
+        // IPS document's `vitalsigns` requirement is met by the base `bp` beside it
+        (
+            "uk",
+            "UK Core Patient",
+            "UK Core Observation",
+            Some("Observation Blood Pressure Profile"),
+            "UK Core Condition",
+        ),
+        // CA Baseline: the general Observation (its laboratory profile identifies by category);
+        // its Condition profile is one the reference validator cannot evaluate (a
+        // binding.valueSet discriminator), so the IPS document's Condition applies
+        (
+            "ca",
+            "Patient Profile",
+            "Observation Profile (General Use)",
+            Some("Observation Blood Pressure Profile"),
+            "Condition (IPS)",
+        ),
+        // NZ Base has no Observation profile: the document's `vitalsigns` family — a `bp`
+        ("nz", "NZ Patient", "Observation Blood Pressure Profile", None, "Condition resource for use in NZ"),
+    ] {
+        let e = v.export_with(region, inputs(&record, "").as_bytes(), &table).unwrap();
+        let by_id = |id: &str| e.resources.iter().find(|r| r.id.as_deref() == Some(id)).unwrap();
+        assert_eq!(by_id("u1").profile.map(|p| p.name), Some(patient), "{region}: {:?}", by_id("u1").note);
+        assert_eq!(by_id("bp1").profile.map(|p| p.name), Some(bp), "{region}: {:?}", by_id("bp1").note);
+        assert_eq!(by_id("bp1").also.map(|p| p.name), bp_also, "{region}: {:?}", by_id("bp1").notes);
+        assert_eq!(by_id("c1").profile.map(|p| p.name), Some(condition), "{region}: {:?}", by_id("c1").note);
+        let d = e.document.as_ref().unwrap();
+        assert!(d.document.contains("Bundle-uv-ips"));
+        for r in &e.resources {
+            assert!(
+                r.validation.is_valid() || !r.missing.is_empty(),
+                "{region} {}: {}",
+                r.resource_type,
+                wire::report(&r.validation)
+            );
+        }
+    }
 }

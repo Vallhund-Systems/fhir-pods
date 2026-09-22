@@ -14,6 +14,7 @@ Usage:
     gen_all.py [--primaries N] <out/dir> "<provenance>" <primary pkg> [<pkg> ...]
 """
 import glob
+import re
 import json
 import os
 import sys
@@ -48,6 +49,24 @@ RUST_KEYWORDS = {"as", "break", "const", "continue", "crate", "else", "enum", "e
                  "virtual", "yield", "try", "gen"}
 
 
+
+def package_files(pkg, resource_type):
+    """Every JSON file in a package dir whose `resourceType` is the one asked
+    for, sorted. By content, not by file name: the HL7 packages name files
+    `StructureDefinition-*.json`, UK Core `UKCore-*.json` /
+    `Extension-*.json`, CA Baseline `structuredefinition-profile-*.json`."""
+    out = []
+    for path in sorted(glob.glob(os.path.join(pkg, "*.json"))):
+        try:
+            with open(path, "rb") as fh:
+                head = fh.read(4096)
+        except OSError:
+            continue
+        m = re.search(rb'"resourceType"\s*:\s*"([A-Za-z]+)"', head)
+        if m and m.group(1).decode() == resource_type:
+            out.append(path)
+    return out
+
 def mod_name(sd_id):
     """A profile id as a Rust module name: lower snake case, never starting
     with a digit, never a keyword."""
@@ -74,7 +93,7 @@ def main():
     # canonical URL -> file, across every package (the resolver's index)
     index, cache = {}, {}
     for pkg in pkg_dirs + ([base_dir] if base_dir else []):
-        for path in glob.glob(os.path.join(pkg, "StructureDefinition-*.json")):
+        for path in package_files(pkg, "StructureDefinition"):
             sd = json.load(open(path))
             if sd.get("resourceType") == "StructureDefinition" and sd.get("url"):
                 index.setdefault(sd["url"], path)
@@ -99,7 +118,7 @@ def main():
 
     targets = []
     for i, pkg in enumerate(pkg_dirs[:primaries]):
-        for path in sorted(glob.glob(os.path.join(pkg, "StructureDefinition-*.json"))):
+        for path in package_files(pkg, "StructureDefinition"):
             sd = json.load(open(path))
             if is_profile(sd) and (sd.get("kind") == "resource" or datatype_profile(sd)):
                 targets.append(sd)
@@ -116,7 +135,7 @@ def main():
                 referenced.add(url)
                 stack.append(load(url))
     for pkg in pkg_dirs[primaries:]:
-        for path in sorted(glob.glob(os.path.join(pkg, "StructureDefinition-*.json"))):
+        for path in package_files(pkg, "StructureDefinition"):
             sd = json.load(open(path))
             if is_profile(sd) and sd.get("url") in referenced and (datatype_profile(sd) or sd.get("kind") == "resource"):
                 targets.append(sd)
@@ -127,7 +146,7 @@ def main():
     # are compiled and applied here too, as `IMPLIED`.
     implied = []
     if base_dir:
-        for path in sorted(glob.glob(os.path.join(base_dir, "StructureDefinition-*.json"))):
+        for path in package_files(base_dir, "StructureDefinition"):
             sd = json.load(open(path))
             if sd.get("id") in BASE_VITALS and (sd.get("snapshot") or {}).get("element"):
                 targets.append(sd)

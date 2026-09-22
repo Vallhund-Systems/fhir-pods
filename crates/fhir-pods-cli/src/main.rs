@@ -35,7 +35,7 @@ Usage:
   fhir-pods --help | --version
 
 Audit kinds: read, query, create, update, delete; or patient- prefixed variants.
-Export regions: au, us, ips. Input: a JSON object with resources, author, date, and optionally audit.
+Export regions: au, us, uk, ca, nz, ips. Input: a JSON object with resources, author, date, and optionally audit.
 Input defaults to stdin. Use -- before positional arguments beginning with -.
 POLICY_FILE may be - only when the resource is read from a file.
 --terminology TABLE is accepted by validate, lower, lift, document, audit, export,
@@ -141,7 +141,7 @@ fn parse(args: Vec<OsString>) -> Result<Args, Failure> {
                 "slots" => "slots needs a profile URL",
                 "lift" => "lift needs a profile URL or an empty string for a declared profile",
                 "document" => "document needs ips or au-ps",
-                "export" => "export needs a region: au, us or ips",
+                "export" => "export needs a region: au, us, uk, ca, nz or ips",
                 _ => "audit needs an event kind; use --help",
             }));
         }

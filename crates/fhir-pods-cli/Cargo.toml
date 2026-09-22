@@ -1,6 +1,6 @@
 [package]
 name = "fhir-pods-cli"
-version = "0.12.1"
+version = "0.13.0"
 edition = "2021"
 license = "MIT"
 description = "Local CLI for the fhir-pods compliance runtime: FHIR lift/lower, validation, de-identification, documents, audit, and HL7 v2."

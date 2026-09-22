@@ -23,6 +23,24 @@ import sys
 LICENSED = {"http://snomed.info/sct", "http://loinc.org"}
 
 
+
+def package_files(pkg, resource_type):
+    """Every JSON file in a package dir whose `resourceType` is the one asked
+    for, sorted. By content, not by file name: the HL7 packages name files
+    `StructureDefinition-*.json`, UK Core `UKCore-*.json` /
+    `Extension-*.json`, CA Baseline `structuredefinition-profile-*.json`."""
+    out = []
+    for path in sorted(glob.glob(os.path.join(pkg, "*.json"))):
+        try:
+            with open(path, "rb") as fh:
+                head = fh.read(4096)
+        except OSError:
+            continue
+        m = re.search(rb'"resourceType"\s*:\s*"([A-Za-z]+)"', head)
+        if m and m.group(1).decode() == resource_type:
+            out.append(path)
+    return out
+
 def rs(s):
     return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
@@ -103,10 +121,10 @@ def main():
 
     value_sets, code_systems = {}, {}
     for pkg in pkgs:  # first package wins — put the base spec first
-        for f in glob.glob(os.path.join(pkg, "ValueSet-*.json")):
+        for f in package_files(pkg, "ValueSet"):
             j = json.load(open(f))
             value_sets.setdefault(j.get("url"), j)
-        for f in glob.glob(os.path.join(pkg, "CodeSystem-*.json")):
+        for f in package_files(pkg, "CodeSystem"):
             j = json.load(open(f))
             code_systems.setdefault(j.get("url"), j)
 
