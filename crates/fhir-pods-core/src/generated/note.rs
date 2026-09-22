@@ -52,6 +52,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     lowering: &LOWERING,
     must_support: &[],
     contexts: &[("element", "Resource"), ("element", "Composition.section"), ("element", "Observation.component")],
+    deferred: &[],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

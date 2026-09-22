@@ -60,6 +60,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "CommunicationRequest"),
         ("element", "SupplyRequest"),
     ],
+    deferred: &[],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

@@ -80,6 +80,9 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    deferred: &[
+        ("DocumentReference.category", "uscore", "its discriminator (pattern on $this) is outside the compiler's support"),
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

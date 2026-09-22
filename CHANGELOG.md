@@ -14,6 +14,23 @@
   terminology callbacks, including reentrancy. Lowering fixtures include
   Ratio and inventory only profiles accepted by the resource lookup.
 
+## 0.13.1 — 2026-09-22
+
+**Deferred slices are reported.** The compiled profile carries the slices
+the compiler could not discriminate (`CompiledProfile::deferred`: element,
+slice, why — 81 across the registry; `docs/scope.md` lists the families),
+and validation emits an information `not-supported` issue whenever a
+resource reaches such an element ("slice 'dva' of Patient.identifier in
+AU Core Patient was not checked: its discriminator (pattern on type) is
+outside the compiler's support"). Verdicts do not change; what was
+quietly unchecked is now in the report. An `OperationOutcome` for a clean
+resource that reaches one carries that issue in place of "All OK".
+
+The base-examples lane pins its own oracle IG list (`base.py` `BASE_IGS`,
+the seven guides its recorded verdicts were taken with) instead of
+following `run.IGS`, which 0.13.0 widened for the release corpus; the
+lane reruns clean at 4,811/5,290, 0 stricter.
+
 ## 0.13.0 — 2026-09-22
 
 **Three more regions.** `export` speaks `uk` (UK Core STU2 2.1.0), `ca`

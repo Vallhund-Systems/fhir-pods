@@ -62,6 +62,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "VisionPrescription"),
         ("element", "Task"),
     ],
+    deferred: &[],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

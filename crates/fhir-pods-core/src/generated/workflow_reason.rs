@@ -201,6 +201,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "Flag"),
         ("element", "NutritionOrder"),
     ],
+    deferred: &[],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

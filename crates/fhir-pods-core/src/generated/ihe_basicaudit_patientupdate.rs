@@ -176,6 +176,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    deferred: &[
+        ("AuditEvent.subtype", "anyUpdate", "its discriminator (value on $this) is outside the compiler's support"),
+        ("AuditEvent.agent", "user", "its discriminator (value on type) is outside the compiler's support"),
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

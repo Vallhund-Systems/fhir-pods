@@ -64,6 +64,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "SpecimenDefinition"),
         ("element", "ValueSet"),
     ],
+    deferred: &[],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

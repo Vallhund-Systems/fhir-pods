@@ -63,6 +63,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    deferred: &[
+        ("Condition.code.coding", "HealthConcernCode", "its discriminator (value on binding.valueSet) is outside the compiler's support"),
+        ("Condition.code.coding", "@default", "its discriminator (value on binding.valueSet) is outside the compiler's support"),
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

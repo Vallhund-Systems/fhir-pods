@@ -297,6 +297,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     lowering: &LOWERING,
     must_support: &[],
     contexts: &[("element", "date"), ("element", "dateTime")],
+    deferred: &[],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

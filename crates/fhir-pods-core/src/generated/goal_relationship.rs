@@ -153,6 +153,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     lowering: &LOWERING,
     must_support: &[],
     contexts: &[("element", "Goal"), ("element", "PlanDefinition.goal")],
+    deferred: &[],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

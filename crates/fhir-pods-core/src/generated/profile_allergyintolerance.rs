@@ -118,6 +118,11 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    deferred: &[
+        ("AllergyIntolerance.code.coding", "@default", "its discriminator (value on system) is outside the compiler's support"),
+        ("AllergyIntolerance.reaction.substance.coding", "NonDrugAllergen", "its discriminator (value on system) is outside the compiler's support"),
+        ("AllergyIntolerance.reaction.substance.coding", "@default", "its discriminator (value on system) is outside the compiler's support"),
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

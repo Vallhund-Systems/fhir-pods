@@ -58,6 +58,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     contexts: &[
         ("element", "Identifier"),
     ],
+    deferred: &[
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

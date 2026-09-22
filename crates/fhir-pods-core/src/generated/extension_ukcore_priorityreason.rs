@@ -43,6 +43,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     lowering: &LOWERING,
     must_support: &[],
     contexts: &[("element", "ServiceRequest.priority")],
+    deferred: &[],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

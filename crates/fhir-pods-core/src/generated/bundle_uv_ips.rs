@@ -846,6 +846,14 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    deferred: &[
+        ("Bundle.entry", "careplan", "its discriminator (type on resource, profile on resource) is outside the compiler's support"),
+        ("Bundle.entry", "clinicalimpression", "its discriminator (type on resource, profile on resource) is outside the compiler's support"),
+        ("Bundle.entry", "consent", "its discriminator (type on resource, profile on resource) is outside the compiler's support"),
+        ("Bundle.entry", "device", "its discriminator (type on resource, profile on resource) is outside the compiler's support"),
+        ("Bundle.entry", "documentreference", "its discriminator (type on resource, profile on resource) is outside the compiler's support"),
+        ("Bundle.entry", "immunizationrecommendation", "its discriminator (type on resource, profile on resource) is outside the compiler's support"),
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

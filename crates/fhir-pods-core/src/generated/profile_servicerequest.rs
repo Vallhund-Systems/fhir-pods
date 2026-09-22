@@ -70,6 +70,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    deferred: &[
+        ("ServiceRequest.code.coding", "LabOrder", "its discriminator (value on system) is outside the compiler's support"),
+        ("ServiceRequest.code.coding", "@default", "its discriminator (value on system) is outside the compiler's support"),
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

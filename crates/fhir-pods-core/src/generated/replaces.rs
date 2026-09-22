@@ -69,6 +69,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "TerminologyCapabilities"),
         ("element", "TestScript"),
     ],
+    deferred: &[],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

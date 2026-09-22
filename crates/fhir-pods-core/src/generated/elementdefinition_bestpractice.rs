@@ -55,6 +55,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "ElementDefinition.constraint"),
         ("extension", "http://hl7.org/fhir/StructureDefinition/targetConstraint"),
     ],
+    deferred: &[],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

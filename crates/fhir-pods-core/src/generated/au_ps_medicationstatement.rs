@@ -97,6 +97,12 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    deferred: &[
+        ("MedicationStatement.medication[x]:medicationCodeableConcept.coding:pbs.extension", "medicationClass", "a slicing nested three levels deep is not compiled"),
+        ("MedicationStatement.medication[x]:medicationCodeableConcept.coding:amt.extension", "medicationClass", "a slicing nested three levels deep is not compiled"),
+        ("MedicationStatement.medication[x]:medicationCodeableConcept.coding", "pbs", "its discriminator (pattern on $this) is outside the compiler's support"),
+        ("MedicationStatement.medication[x]:medicationCodeableConcept.coding", "amt", "its discriminator (pattern on $this) is outside the compiler's support"),
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

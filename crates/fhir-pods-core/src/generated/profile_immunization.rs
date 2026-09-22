@@ -101,6 +101,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    deferred: &[
+        ("Immunization.vaccineCode.coding", "Generic", "its discriminator (pattern on system, pattern on code) is outside the compiler's support"),
+        ("Immunization.vaccineCode.coding", "Tradename", "its discriminator (pattern on system, pattern on code) is outside the compiler's support"),
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

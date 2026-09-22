@@ -305,7 +305,7 @@ asked what they can't answer. `system` is "" for a bare `code` element.
 
 ## Status
 
-The current package is **0.13.0, ABI 12**. The release build produces iOS
+The current package is **0.13.1, ABI 12**. The release build produces iOS
 XCFramework slices, Android libraries, and a packed Expo artifact. This
 package exposes the full operation family documented above.
 

@@ -78,6 +78,23 @@ pub(crate) fn validate_at_with<D: Document>(
     for slicing in profile.slicings {
         check_slicing(slicing, doc, &scope, "", &mut r);
     }
+    // a slice the compiler could not discriminate: unenforced, and said so
+    // wherever the resource actually reaches the sliced element — never a
+    // silently weaker verdict
+    for (element, name, why) in profile.deferred {
+        // outer slice labels (`Composition.section:x.entry`) are the
+        // profile's naming; presence is judged on the element itself
+        let plain: String =
+            element.split('.').map(|seg| seg.split(':').next().unwrap_or(seg)).collect::<Vec<_>>().join(".");
+        if !doc.instances(&plain).is_empty() {
+            r.push(
+                Severity::Information,
+                IssueType::NotSupported,
+                &format!("{element}:{name}"),
+                format!("slice '{name}' of {element} in {} was not checked: {why}", profile.name),
+            );
+        }
+    }
     for inv in profile.invariants {
         check_invariant(inv, inv.path, doc, &scope, &mut r);
     }

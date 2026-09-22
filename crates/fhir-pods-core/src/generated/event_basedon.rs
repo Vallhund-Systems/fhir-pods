@@ -66,6 +66,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "PaymentNotice"),
         ("element", "PaymentReconciliation"),
     ],
+    deferred: &[],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

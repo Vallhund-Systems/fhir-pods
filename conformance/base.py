@@ -47,9 +47,19 @@ def select(limit=None, filt=None):
     return out[:limit] if limit else out
 
 
+# The guides the oracle loads for this lane: the base examples declare no
+# regional profile, so the list is pinned here rather than following
+# `run.IGS` (which grows with `export`'s regions) — a change to it would
+# stale the recorded oracle verdicts and triage, by design.
+BASE_IGS = [
+    "hl7.fhir.au.core#2.0.0", "hl7.fhir.us.core#6.1.0", "hl7.fhir.uv.ipa#1.1.0", "hl7.fhir.uv.ips#2.0.1",
+    "hl7.fhir.au.ps#1.0.0", "ihe.iti.balp#1.1.4", "hl7.fhir.au.base#6.0.0",
+]
+
+
 def configuration():
     return {"package": PACKAGE, "jar_version": run.JAR_VERSION,
-            "jar_sha256": digest(Path(run.JAR).read_bytes()), "igs": run.IGS,
+            "jar_sha256": digest(Path(run.JAR).read_bytes()), "igs": BASE_IGS,
             "fhir_version": "4.0", "terminology": "n/a", "allow_example_urls": True}
 
 
@@ -104,7 +114,7 @@ def oracle_batch(paths, batch):
     output = BASE / f"oracle-{batch}.json"
     output.unlink(missing_ok=True)
     args = [run.JAVA, "-Xmx6g", "-jar", run.JAR, *map(str, paths), "-version", "4.0",
-            *[arg for ig in run.IGS for arg in ("-ig", ig)], "-tx", "n/a",
+            *[arg for ig in BASE_IGS for arg in ("-ig", ig)], "-tx", "n/a",
             "-allow-example-urls", "true", "-output", str(output)]
     proc = subprocess.run(args, capture_output=True, text=True, timeout=900)
     (BASE / f"oracle-{batch}.log").write_text(proc.stdout + proc.stderr)

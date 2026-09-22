@@ -196,6 +196,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "ValueSet.identifier"),
         ("element", "ConceptMap.identifier"),
     ],
+    deferred: &[],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

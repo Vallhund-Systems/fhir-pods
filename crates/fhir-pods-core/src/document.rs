@@ -1206,6 +1206,7 @@ mod context_tests {
             invariants: &[],
             must_support: &[],
             contexts,
+            deferred: &[],
             lowering: &crate::generated::cqf_libraryalias::LOWERING,
         }
     }

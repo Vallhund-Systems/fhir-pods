@@ -55,6 +55,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("fhirpath", "extension('http://hl7.org/fhir/StructureDefinition/structuredefinition-fmm').value"),
         ("fhirpath", "extension('http://hl7.org/fhir/StructureDefinition/structuredefinition-standards-status').value"),
     ],
+    deferred: &[],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

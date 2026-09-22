@@ -276,6 +276,26 @@ agrees with the reference validator on every verdict; the two IPS documents
 are invalid on both sides offline, for the pregnancy-profile ambiguity the
 IPS's LOINC sets resolve when loaded.
 
+## Deferred slices are said, not silent
+
+81 slices across the registry have discriminators the compiler cannot
+resolve — a `value`/`pattern` on an element that carries a binding rather
+than a fixed value (AU Core's AMT/PBS medication codings, US Core's
+`category:us-core`, CA Baseline's `binding.valueSet` and `@default`
+slices), a reference discriminated by what it resolves to beyond the
+registry (the AU PS and IPS bundles' CarePlan/Consent/Device entries), a
+`$this` with no type (BALP's `subtype:anyRead`, `agent:user`), sub-extension
+slices, and slicings nested three levels deep. Each is compiled as
+`deferred` (element, slice, why) and not enforced. Since 0.13.1 a resource
+that reaches the sliced element gets an **information** issue
+(`not-supported`): "slice 'dva' of Patient.identifier in AU Core Patient
+was not checked: its discriminator (pattern on type) is outside the
+compiler's support" — so a `valid` verdict is never quietly weaker than it
+looks, and a host can see exactly where the reference validator would look
+harder. The mustSupport-only and non-required-binding-only element
+constraints (610) are not slices and carry nothing to enforce; they
+surface through `mustSupportGaps`.
+
 ## What we skip, never guess
 
 - FHIRPath outside the supported core: `htmlChecks()` (xhtml validity),

@@ -207,6 +207,13 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    deferred: &[
+        ("AuditEvent.agent:user.extension", "assuranceLevel", "its discriminator (value on url, value on value.ofType(Identifier).type) is outside the compiler's support"),
+        ("AuditEvent.agent:user.extension", "otherId", "its discriminator (value on url, value on value.ofType(Identifier).type) is outside the compiler's support"),
+        ("AuditEvent.agent:user.extension", "otherId/subject-id", "its discriminator (value on url, value on value.ofType(Identifier).type) is outside the compiler's support"),
+        ("AuditEvent.agent:user.extension", "otherId/npi", "its discriminator (value on url, value on value.ofType(Identifier).type) is outside the compiler's support"),
+        ("AuditEvent.agent:user.extension", "otherId/provider-id", "its discriminator (value on url, value on value.ofType(Identifier).type) is outside the compiler's support"),
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

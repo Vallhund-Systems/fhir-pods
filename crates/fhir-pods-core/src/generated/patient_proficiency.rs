@@ -148,6 +148,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "RelatedPerson.communication"),
         ("element", "Practitioner.communication"),
     ],
+    deferred: &[],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

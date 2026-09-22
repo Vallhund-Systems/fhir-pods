@@ -70,6 +70,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "Measure.group"),
         ("element", "Measure.group.population"),
     ],
+    deferred: &[],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

@@ -112,6 +112,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    deferred: &[
+        ("MedicationRequest.supportingInformation", "bodyHeight", "its discriminator (profile on resolve) is outside the compiler's support"),
+        ("MedicationRequest.supportingInformation", "bodyWeight", "its discriminator (profile on resolve) is outside the compiler's support"),
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

@@ -52,6 +52,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     lowering: &LOWERING,
     must_support: &[],
     contexts: &[("element", "Quantity")],
+    deferred: &[
+        ("Extension.extension", "confidence", "its discriminator (value on url) is outside the compiler's support"),
+        ("Extension.extension", "interval", "its discriminator (value on url) is outside the compiler's support"),
+    ],
 };
 
 /// How to build a resource for this profile (see `compiled::Lowering`).

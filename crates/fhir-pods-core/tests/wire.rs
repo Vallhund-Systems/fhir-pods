@@ -24,6 +24,19 @@ fn operation_outcome_success_carries_one_informational_issue() {
     let v = validate_bytes(with_text.as_bytes());
     assert!(v.is_valid());
     let o = v.to_operation_outcome();
+    // AU Core Patient's `identifier:dva` slice is one the compiler could not
+    // discriminate: the outcome says so (information), and is valid
+    assert!(o.contains("\"severity\":\"information\",\"code\":\"not-supported\""), "{o}");
+    assert!(o.contains("slice 'dva' of Patient.identifier in AU Core Patient was not checked"), "{o}");
+    // the same resource under the base Patient alone reaches no deferred
+    // slice: the one "all OK" issue
+    let base = with_text.replace(
+        "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+        "http://hl7.org/fhir/StructureDefinition/Patient",
+    );
+    let v = validate_bytes(base.as_bytes());
+    assert!(v.is_valid());
+    let o = v.to_operation_outcome();
     assert!(o.contains("\"severity\":\"information\",\"code\":\"informational\""), "{o}");
 }
 

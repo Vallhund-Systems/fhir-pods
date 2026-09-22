@@ -180,6 +180,14 @@ pub struct CompiledProfile {
     /// or for `extension` the url of the extension it nests in. Empty for
     /// anything but an extension profile.
     pub contexts: &'static [(&'static str, &'static str)],
+    /// Slices the compiler could not discriminate (a discriminator on a
+    /// binding rather than a fixed value, on what a reference resolves to
+    /// beyond the registry, on `$this` with no type; a slicing nested three
+    /// levels deep): (the sliced element's absolute path, the slice's name,
+    /// why). Not enforced — and a resource that reaches the element is told
+    /// so with an information issue, so `valid` is never quietly weaker than
+    /// it looks. See `docs/scope.md`.
+    pub deferred: &'static [(&'static str, &'static str, &'static str)],
 }
 
 impl CompiledProfile {

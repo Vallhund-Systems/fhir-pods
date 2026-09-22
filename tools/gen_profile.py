@@ -772,7 +772,8 @@ def build(sd, load=None):
         for name, sl in sg.slices.items():
             discs = resolve_discriminators(sliced_path, sg, sl, load)
             if discs is None:
-                deferred.append(("undiscriminable slice", f"{label}:{name}"))
+                how = ", ".join(f"{t} on {pth}" for t, pth in sg.disc) or "no discriminator"
+                deferred.append((f"undiscriminable slice ({how})", f"{label}:{name}"))
                 continue
             for rel, nsg in sl.slicings.items():
                 nested = compile_slicing(sliced_path + "." + rel, nsg, f"{label}:{name}.{rel}")
@@ -901,6 +902,30 @@ def context_applies_to_r4(cx):
     return True
 
 
+def deferred_slices(deferred):
+    """The deferred *slices* (not the mustSupport-only elements), as the
+    runtime reports them: (the sliced element's absolute path with any outer
+    slice labels, the slice name, why) — so a resource that reaches the
+    element is told the slice was not checked."""
+    out = []
+    for reason, eid in deferred:
+        if reason.startswith("undiscriminable slice"):
+            element, name = eid.rsplit(":", 1)
+            why = reason[len("undiscriminable slice "):].strip("()")
+            out.append((element, name, f"its discriminator ({why}) is outside the compiler's support"))
+        elif reason.startswith("nested slicing"):
+            # `Composition.section:x.entry:y.z:w` — the innermost slicing
+            element, name = eid.rsplit(":", 1)
+            name = name.split(".")[0]
+            out.append((element, name, "a slicing nested three levels deep is not compiled"))
+    seen, uniq = set(), []
+    for d in out:
+        if d not in seen:
+            seen.add(d)
+            uniq.append(d)
+    return uniq
+
+
 def emit(sd, provenance, load=None):
     """The Rust source for the profile, and `(elements, slices, deferred)` counts."""
     c = build(sd, load)
@@ -950,6 +975,9 @@ def emit(sd, provenance, load=None):
                 contexts.append(("element", extra))
     for kind, expr in contexts:
         out.append(f"        ({rs(kind)}, {rs(expr)}),")
+    out += ["    ],", "    deferred: &["]
+    for element, name, why in deferred_slices(c.deferred):
+        out.append(f"        ({rs(element)}, {rs(name)}, {rs(why)}),")
     out += ["    ],", "};", ""]
     fixed, slices, slots = lowering_of(sd, load)
     out += ["/// How to build a resource for this profile (see `compiled::Lowering`).", "pub static LOWERING: Lowering = Lowering {", "    fixed: &["]
