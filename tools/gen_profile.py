@@ -671,6 +671,11 @@ def collect(sd):
             if obj is not None:
                 sl.objpat[""] = obj      # what a `pattern $this` discriminator resolves to
                 sl.subs.setdefault("", Rule()).patterns = tuple((a, tuple(p)) for a, p in groups_of(obj))
+            # a required binding on the slice itself: what a `value` /
+            # `pattern $this` discriminator resolves to when nothing is fixed
+            # (AU Core's AMT / PBS codings, US Core's category slices)
+            if rule.binding:
+                sl.subs.setdefault("", Rule()).binding = rule.binding
             sl.invariants += slice_invariants(e, "")
             continue
         # a slice sub-element
@@ -755,6 +760,17 @@ def resolve_discriminators(sliced_path, sg, sl, load):
             groups = profile_discriminators(load(sl.profile), dpath)
             if groups:
                 discs.extend(group_discriminators(groups))
+                continue
+        # nothing fixed, but a required binding at the discriminator path:
+        # membership in the set is the discriminator (decided through the
+        # terminology provider at run time; undecided is neither a match nor
+        # a mismatch)
+        if val is None:
+            key = "" if dpath == "$this" else dpath
+            bound = sl.subs.get(key)
+            if bound and bound.binding:
+                vs, kind = bound.binding
+                discs.append(("member", "$this" if dpath == "$this" else "$this." + dpath, vs, kind))
                 continue
         if val is None:
             return None
@@ -861,6 +877,12 @@ def emit_slicing(path, closed, slices, indent):
                 out.append(f"{pad}        Discriminator::ResolvedType {{ types: {strs(d[1])} }},")
             elif d[0] == "resolved-profile":
                 out.append(f"{pad}        Discriminator::ResolvedProfile {{ urls: {strs(d[1])} }},")
+            elif d[0] == "member":
+                kind = {"code": "Code", "Coding": "Coding", "CodeableConcept": "CodeableConcept"}[d[3]]
+                out.append(
+                    f"{pad}        Discriminator::Member {{ path: {rs(d[1])}, "
+                    f"binding: Binding {{ value_set: {rs(d[2])}, kind: BindingKind::{kind} }} }},"
+                )
             else:
                 out.append(f"{pad}        Discriminator::Value {{ path: {rs(d[1])}, value: {rs(d[2])} }},")
         prof = f"Some({rs(sl.profile)})" if sl.profile else "None"

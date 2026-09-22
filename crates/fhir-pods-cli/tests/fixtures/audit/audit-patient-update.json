@@ -55,7 +55,8 @@
         "coding": [
           {
             "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
-            "code": "AUT"
+            "code": "AUT",
+            "display": "author (originator)"
           }
         ]
       }
@@ -111,7 +112,8 @@
   "subtype": [
     {
       "system": "http://hl7.org/fhir/restful-interaction",
-      "code": "update"
+      "code": "update",
+      "display": "update"
     }
   ],
   "type": {

@@ -209,7 +209,7 @@ definitions as lowerable profiles (the region-neutral vocabulary `export`
 re-profiles from).
 The type table covers every R4 resource and datatype.
 
-Terminology includes **126 value sets** and code membership tables for
+Terminology includes **146 value sets** and code membership tables for
 **1,212 complete code systems** from R4 core and HL7 terminology (THO 7.3.0).
 SNOMED CT and LOINC terminology content, and externally hosted sets, come
 through the host's terminology provider or expansion tables. Fixed profile
@@ -225,7 +225,7 @@ does not infer a jurisdiction or supply a complete regional compliance regime.
 
 | Surface | Delivery |
 | --- | --- |
-| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.13.1 artifact is 2,706,858 bytes (652,275 bytes gzip-9). [Guide](pods/wasm/README.md) |
+| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.14.0 artifact is 2,717,072 bytes (654,642 bytes gzip-9). [Guide](pods/wasm/README.md) |
 | **Expo** | Native iOS XCFramework and Android jniLibs behind the Expo Modules API. [Guide](pods/expo/README.md) |
 | **Rust / C** | `fhir_pods_core` directly or the shared [ABI 12 header](crates/fhir-pods-ffi/include/fhir_pods.h) |
 | **CLI** | Local JSON/ER7 input, structured output, and exit codes for scripting. [Guide](crates/fhir-pods-cli/README.md) |
@@ -263,7 +263,7 @@ compliance.
 
 The broader lanes enforce reviewed baselines: new or changed differences and
 unusable evidence fail. Exclusions are never counted as agreement. The latest
-release records **236 Rust workspace tests** and **18 Python harness
+release records **237 Rust workspace tests** and **18 Python harness
 checks**; the [changelog](CHANGELOG.md) separates released artifacts from
 unreleased corrections. [Conformance commands](conformance/README.md) and
 [detailed scope](docs/scope.md) describe reproduction and the remaining gaps.

@@ -141,8 +141,12 @@ fn find_slice<'p>(profile: &'p CompiledProfile, element: &str, label: &str) -> O
 }
 
 /// Does an instance belong to the slice, by the profile's own discriminators?
-fn in_slice(slice: &Slice, inst: &TreeDoc<'_, '_>) -> bool {
+/// A `Member` discriminator the provider cannot decide is not a claim.
+fn in_slice(slice: &Slice, inst: &TreeDoc<'_, '_>, tx: &dyn TerminologyProvider) -> bool {
     slice.discriminators.iter().all(|d| match d {
+        Discriminator::Member { path, binding } => {
+            matches!(crate::engine::membership_at(binding, inst, path, tx), crate::terminology::Membership::Member)
+        }
         Discriminator::Value { path, value } => inst.scalars(path).contains(value),
         Discriminator::Pattern { path, pairs } => inst.instances(path).iter().any(|n| {
             pairs.iter().all(|(rel, v)| {
@@ -168,7 +172,13 @@ fn in_slice(slice: &Slice, inst: &TreeDoc<'_, '_>) -> bool {
 /// slices under the same element, so an unlabelled repeating slot takes
 /// only the items none of them claims and a slice instance is never lifted
 /// twice.
-fn extract(doc: &TreeDoc<'_, '_>, profile: &CompiledProfile, path: &str, sibling_slices: &[&str]) -> Option<Node> {
+fn extract(
+    doc: &TreeDoc<'_, '_>,
+    profile: &CompiledProfile,
+    path: &str,
+    sibling_slices: &[&str],
+    tx: &dyn TerminologyProvider,
+) -> Option<Node> {
     let mut nodes: Vec<TreeDoc<'_, '_>> = alloc::vec![*doc];
     let mut element = String::new();
     let segs: Vec<&str> = path.split('.').collect();
@@ -194,7 +204,7 @@ fn extract(doc: &TreeDoc<'_, '_>, profile: &CompiledProfile, path: &str, sibling
         match label {
             Some(l) => {
                 let slice = find_slice(profile, &element, l)?;
-                next.retain(|inst| in_slice(slice, inst));
+                next.retain(|inst| in_slice(slice, inst, tx));
                 if next.is_empty() {
                     return None;
                 }
@@ -203,7 +213,7 @@ fn extract(doc: &TreeDoc<'_, '_>, profile: &CompiledProfile, path: &str, sibling
                 next.retain(|inst| {
                     !sibling_slices.iter().any(|sl| {
                         let l = sl.split_once(':').map(|(_, l)| l).unwrap_or("");
-                        find_slice(profile, &element, l).is_some_and(|slice| in_slice(slice, inst))
+                        find_slice(profile, &element, l).is_some_and(|slice| in_slice(slice, inst, tx))
                     })
                 });
                 if next.is_empty() {
@@ -245,7 +255,7 @@ pub fn lift_with(
     let mut missing: Vec<&'static str> = Vec::new();
 
     for key in PASS_THROUGH {
-        if let Some(v) = extract(doc, profile, key, &[]) {
+        if let Some(v) = extract(doc, profile, key, &[], tx) {
             inputs.push((String::from(*key), v));
         }
         covered.push(String::from(*key));
@@ -325,7 +335,7 @@ pub fn lift_with(
             // composite represented by child slots can still carry other
             // content (Quantity.comparator, extensions, primitive carriers).
             covered.push(unlabelled(key));
-            if let Some(v) = extract(doc, profile, key, &siblings) {
+            if let Some(v) = extract(doc, profile, key, &siblings, tx) {
                 inputs.push((key.clone(), v));
                 found = true;
             }
@@ -334,12 +344,17 @@ pub fn lift_with(
             let ext_key =
                 if parent.is_empty() { alloc::format!("_{leaf}") } else { alloc::format!("{parent}._{leaf}") };
             covered.push(unlabelled(&ext_key));
-            if let Some(v) = extract(doc, profile, &ext_key, &[]) {
+            if let Some(v) = extract(doc, profile, &ext_key, &[], tx) {
                 inputs.push((ext_key, v));
                 found = true;
             }
         }
         if !found && slot.min >= 1 {
+            // an unlabelled slot whose instances its slices claimed (`subtype`
+            // beside `subtype:anyRead`): the element is there, in the slices
+            if !slot.path.contains(':') && siblings.iter().any(|sl| extract(doc, profile, sl, &[], tx).is_some()) {
+                continue;
+            }
             // a labelled slot whose slice the profile does not compile (the
             // lowering table outstrips the slicing) is met by the element itself
             let label_unresolved = slot.path.split('.').find_map(|seg| seg.split_once(':')).is_some_and(|(base, _)| {
@@ -347,7 +362,7 @@ pub fn lift_with(
                 let label = slot.path.split(':').nth(1).map(|r| r.split('.').next().unwrap_or(r)).unwrap_or("");
                 find_slice(profile, &element, label).is_none()
             });
-            if label_unresolved && keys.iter().any(|k| extract(doc, profile, &unlabelled(k), &[]).is_some()) {
+            if label_unresolved && keys.iter().any(|k| extract(doc, profile, &unlabelled(k), &[], tx).is_some()) {
                 continue;
             }
             // a slot behind an optional gate (`agent:user.who` when no user was
@@ -377,7 +392,7 @@ pub fn lift_with(
         if gate.contains(':') || has_slots || reached {
             continue;
         }
-        if let Some(v) = extract(doc, profile, path, &[]) {
+        if let Some(v) = extract(doc, profile, path, &[], tx) {
             let agrees = matches!(&v, Node::Str(s) if s == value)
                 || matches!(&v, Node::Bool(b) if b.to_string() == *value)
                 || matches!(&v, Node::Number(n) if n == value);
@@ -400,7 +415,7 @@ pub fn lift_with(
         if !parent.is_empty() && !last.contains(':') && is_repeating(profile.resource_type, &unlabelled(parent)) {
             continue;
         }
-        if let Some(v) = extract(doc, profile, path, &[]) {
+        if let Some(v) = extract(doc, profile, path, &[], tx) {
             let agrees = matches!(&v, Node::Str(s) if s == value)
                 || matches!(&v, Node::Bool(b) if b.to_string() == *value)
                 || matches!(&v, Node::Number(n) if n == value);
@@ -457,7 +472,7 @@ pub fn lift_with(
         let items = doc.instances(&alloc::format!("$this.{element}"));
         let mut claimed = 0usize;
         for (i, inst) in items.iter().enumerate() {
-            if slices.iter().any(|sl| in_slice(sl, inst)) {
+            if slices.iter().any(|sl| in_slice(sl, inst, tx)) {
                 continue;
             }
             if own_fixed && claimed == 0 {

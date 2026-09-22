@@ -6,21 +6,19 @@
 //!
 //! Not bundled (answered through the terminology seam):
 //! - `http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113762.1.4.1240.3` — no ValueSet http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113762.1.4.1240.3
-//! - `http://hl7.org/fhir/ValueSet/all-languages` — no complete CodeSystem urn:ietf:bcp:47
-//! - `http://hl7.org/fhir/ValueSet/mimetypes` — no complete CodeSystem urn:ietf:bcp:13
-//! - `http://hl7.org/fhir/ValueSet/narrative-language-control` — no complete CodeSystem urn:ietf:bcp:47
 //! - `http://hl7.org/fhir/ValueSet/obligation` — filter on http://hl7.org/fhir/CodeSystem/obligation
 //! - `http://hl7.org/fhir/ValueSet/parent-relationship-codes` — filter on http://terminology.hl7.org/CodeSystem/v3-RoleCode
 //! - `http://hl7.org/fhir/ValueSet/sibling-relationship-codes` — filter on http://terminology.hl7.org/CodeSystem/v3-RoleCode
 //! - `http://hl7.org/fhir/ValueSet/structure-laterality-vs` — licensed http://snomed.info/sct
-//! - `http://hl7.org/fhir/ValueSet/timezones` — no complete CodeSystem https://www.iana.org/time-zones
-//! - `http://hl7.org/fhir/ValueSet/ucum-units` — no complete CodeSystem http://unitsofmeasure.org
 //! - `http://hl7.org/fhir/us/core/ValueSet/birthsex` — no ValueSet http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113762.1.4.1
 //! - `http://hl7.org/fhir/us/core/ValueSet/detailed-ethnicity` — no ValueSet http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.114222.4.11.877
 //! - `http://hl7.org/fhir/us/core/ValueSet/detailed-race` — no ValueSet http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.1.11.14914
 //! - `http://hl7.org/fhir/us/core/ValueSet/omb-ethnicity-category` — no ValueSet http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.114222.4.11.837
 //! - `http://hl7.org/fhir/us/core/ValueSet/omb-race-category` — no ValueSet http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.114222.4.11.836
+//! - `http://hl7.org/fhir/us/core/ValueSet/us-core-diagnosticreport-category` — licensed http://loinc.org
 //! - `http://hl7.org/fhir/us/core/ValueSet/us-core-documentreference-type` — licensed http://loinc.org
+//! - `http://hl7.org/fhir/us/core/ValueSet/us-core-servicerequest-category` — licensed http://snomed.info/sct
+//! - `http://hl7.org/fhir/uv/ips/ValueSet/absent-or-unknown-procedures-uv-ips` — no ValueSet http://hl7.org/fhir/uv/ips/ValueSet/absent-or-unknown-procedures-uv-ips
 //! - `http://hl7.org/fhir/uv/ips/ValueSet/diagnostics-report-status-uv-ips` — exclude form
 //! - `http://hl7.org/fhir/uv/ips/ValueSet/edd-method-uv-ips` — licensed http://loinc.org
 //! - `http://hl7.org/fhir/uv/ips/ValueSet/imaging-study-status-uv-ips` — exclude form
@@ -28,9 +26,13 @@
 //! - `http://hl7.org/fhir/uv/ips/ValueSet/results-status-uv-ips` — exclude form
 //! - `http://terminology.hl7.org/ValueSet/conformance-expectation` — no ValueSet http://terminology.hl7.org/ValueSet/conformance-expectation
 //! - `http://terminology.hl7.org/ValueSet/cql-access-modifier` — no ValueSet http://terminology.hl7.org/ValueSet/cql-access-modifier
+//! - `http://terminology.hl7.org/ValueSet/jurisdiction` — no ValueSet http://terminology.hl7.org/ValueSet/jurisdiction
 //! - `http://terminology.hl7.org/ValueSet/sex-parameter-for-clinical-use` — no ValueSet http://terminology.hl7.org/ValueSet/sex-parameter-for-clinical-use
 //! - `http://terminology.hl7.org/ValueSet/smart-capabilities` — no ValueSet http://terminology.hl7.org/ValueSet/smart-capabilities
+//! - `https://healthterminologies.gov.au/fhir/ValueSet/amt-vaccine-1` — no ValueSet https://healthterminologies.gov.au/fhir/ValueSet/amt-vaccine-1
+//! - `https://healthterminologies.gov.au/fhir/ValueSet/australian-immunisation-register-vaccine-1` — no ValueSet https://healthterminologies.gov.au/fhir/ValueSet/australian-immunisation-register-vaccine-1
 //! - `https://healthterminologies.gov.au/fhir/ValueSet/australian-indigenous-status-1` — no ValueSet https://healthterminologies.gov.au/fhir/ValueSet/australian-indigenous-status-1
+//! - `https://healthterminologies.gov.au/fhir/ValueSet/australian-medication-1` — no ValueSet https://healthterminologies.gov.au/fhir/ValueSet/australian-medication-1
 //! - `https://healthterminologies.gov.au/fhir/ValueSet/australian-veteran-status-1` — no ValueSet https://healthterminologies.gov.au/fhir/ValueSet/australian-veteran-status-1
 //! - `https://healthterminologies.gov.au/fhir/ValueSet/concurrent-supply-grounds-1` — no ValueSet https://healthterminologies.gov.au/fhir/ValueSet/concurrent-supply-grounds-1
 //! - `https://healthterminologies.gov.au/fhir/ValueSet/date-accuracy-indicator-1` — no ValueSet https://healthterminologies.gov.au/fhir/ValueSet/date-accuracy-indicator-1
@@ -1093,6 +1095,15 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
         ],
     ),
     (
+        "http://hl7.org/fhir/ValueSet/medicationrequest-category",
+        &[
+            ("http://terminology.hl7.org/CodeSystem/medicationrequest-category", "community", "Community"),
+            ("http://terminology.hl7.org/CodeSystem/medicationrequest-category", "discharge", "Discharge"),
+            ("http://terminology.hl7.org/CodeSystem/medicationrequest-category", "inpatient", "Inpatient"),
+            ("http://terminology.hl7.org/CodeSystem/medicationrequest-category", "outpatient", "Outpatient"),
+        ],
+    ),
+    (
         "http://hl7.org/fhir/ValueSet/medicationrequest-intent",
         &[
             ("http://hl7.org/fhir/CodeSystem/medicationrequest-intent", "filler-order", "Filler Order"),
@@ -1723,6 +1734,26 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
         ],
     ),
     (
+        "http://hl7.org/fhir/us/core/ValueSet/us-core-clinical-result-observation-category",
+        &[
+            ("http://terminology.hl7.org/CodeSystem/observation-category", "activity", "Activity"),
+            ("http://terminology.hl7.org/CodeSystem/observation-category", "exam", "Exam"),
+            ("http://terminology.hl7.org/CodeSystem/observation-category", "imaging", "Imaging"),
+            ("http://terminology.hl7.org/CodeSystem/observation-category", "laboratory", "Laboratory"),
+            ("http://terminology.hl7.org/CodeSystem/observation-category", "procedure", "Procedure"),
+            ("http://terminology.hl7.org/CodeSystem/observation-category", "therapy", "Therapy"),
+            ("http://terminology.hl7.org/CodeSystem/observation-category", "vital-signs", "Vital Signs"),
+        ],
+    ),
+    (
+        "http://hl7.org/fhir/us/core/ValueSet/us-core-documentreference-category",
+        &[(
+            "http://hl7.org/fhir/us/core/CodeSystem/us-core-documentreference-category",
+            "clinical-note",
+            "Clinical Note",
+        )],
+    ),
+    (
         "http://hl7.org/fhir/us/core/ValueSet/us-core-narrative-status",
         &[
             ("http://hl7.org/fhir/narrative-status", "additional", "additional"),
@@ -1734,6 +1765,49 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
         &[
             ("http://hl7.org/fhir/observation-status", "entered-in-error", "Entered in Error"),
             ("http://hl7.org/fhir/observation-status", "final", "Final"),
+        ],
+    ),
+    (
+        "http://hl7.org/fhir/us/core/ValueSet/us-core-problem-or-health-concern",
+        &[
+            ("http://hl7.org/fhir/us/core/CodeSystem/condition-category", "health-concern", "Health Concern"),
+            ("http://terminology.hl7.org/CodeSystem/condition-category", "problem-list-item", "Problem List Item"),
+        ],
+    ),
+    (
+        "http://hl7.org/fhir/us/core/ValueSet/us-core-screening-assessment-condition-category",
+        &[
+            ("http://hl7.org/fhir/us/core/CodeSystem/us-core-category", "cognitive-status", "Cognitive Status"),
+            ("http://hl7.org/fhir/us/core/CodeSystem/us-core-category", "disability-status", "Disability Status"),
+            ("http://hl7.org/fhir/us/core/CodeSystem/us-core-category", "functional-status", "Functional Status"),
+            ("http://hl7.org/fhir/us/core/CodeSystem/us-core-category", "sdoh", "SDOH"),
+        ],
+    ),
+    (
+        "http://hl7.org/fhir/us/core/ValueSet/us-core-screening-assessment-observation-category",
+        &[
+            ("http://hl7.org/fhir/us/core/CodeSystem/us-core-category", "cognitive-status", "Cognitive Status"),
+            ("http://hl7.org/fhir/us/core/CodeSystem/us-core-category", "disability-status", "Disability Status"),
+            ("http://hl7.org/fhir/us/core/CodeSystem/us-core-category", "functional-status", "Functional Status"),
+            ("http://hl7.org/fhir/us/core/CodeSystem/us-core-category", "sdoh", "SDOH"),
+        ],
+    ),
+    (
+        "http://hl7.org/fhir/us/core/ValueSet/us-core-simple-observation-category",
+        &[
+            ("http://hl7.org/fhir/us/core/CodeSystem/us-core-category", "cognitive-status", "Cognitive Status"),
+            ("http://hl7.org/fhir/us/core/CodeSystem/us-core-category", "disability-status", "Disability Status"),
+            ("http://hl7.org/fhir/us/core/CodeSystem/us-core-category", "functional-status", "Functional Status"),
+            ("http://hl7.org/fhir/us/core/CodeSystem/us-core-category", "sdoh", "SDOH"),
+            ("http://terminology.hl7.org/CodeSystem/observation-category", "activity", "Activity"),
+            ("http://terminology.hl7.org/CodeSystem/observation-category", "exam", "Exam"),
+            ("http://terminology.hl7.org/CodeSystem/observation-category", "imaging", "Imaging"),
+            ("http://terminology.hl7.org/CodeSystem/observation-category", "laboratory", "Laboratory"),
+            ("http://terminology.hl7.org/CodeSystem/observation-category", "procedure", "Procedure"),
+            ("http://terminology.hl7.org/CodeSystem/observation-category", "social-history", "Social History"),
+            ("http://terminology.hl7.org/CodeSystem/observation-category", "survey", "Survey"),
+            ("http://terminology.hl7.org/CodeSystem/observation-category", "therapy", "Therapy"),
+            ("http://terminology.hl7.org/CodeSystem/observation-category", "vital-signs", "Vital Signs"),
         ],
     ),
     (
@@ -2005,6 +2079,28 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
         ],
     ),
     (
+        "https://profiles.ihe.net/ITI/BALP/ValueSet/AllReadVS",
+        &[
+            ("http://hl7.org/fhir/restful-interaction", "read", "read"),
+            ("http://hl7.org/fhir/restful-interaction", "vread", "vread"),
+        ],
+    ),
+    (
+        "https://profiles.ihe.net/ITI/BALP/ValueSet/AllSearchVS",
+        &[
+            ("http://hl7.org/fhir/restful-interaction", "search", "search"),
+            ("http://hl7.org/fhir/restful-interaction", "search-system", "search-system"),
+            ("http://hl7.org/fhir/restful-interaction", "search-type", "search-type"),
+        ],
+    ),
+    (
+        "https://profiles.ihe.net/ITI/BALP/ValueSet/AllUpdateVS",
+        &[
+            ("http://hl7.org/fhir/restful-interaction", "patch", "patch"),
+            ("http://hl7.org/fhir/restful-interaction", "update", "update"),
+        ],
+    ),
+    (
         "https://profiles.ihe.net/ITI/BALP/ValueSet/AuthZsubTypeVS",
         &[
             (
@@ -2017,6 +2113,14 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
                 "AuthZ-Role",
                 "Authorization Decision using only Roles",
             ),
+        ],
+    ),
+    (
+        "https://profiles.ihe.net/ITI/BALP/ValueSet/DataSources",
+        &[
+            ("http://terminology.hl7.org/CodeSystem/v3-ParticipationType", "AUT", "author (originator)"),
+            ("http://terminology.hl7.org/CodeSystem/v3-ParticipationType", "CST", "Custodian"),
+            ("http://terminology.hl7.org/CodeSystem/v3-ParticipationType", "INF", "Informant"),
         ],
     ),
     (
@@ -2035,6 +2139,20 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
             ("http://terminology.hl7.org/CodeSystem/object-role", "4", "Domain Resource"),
         ],
     ),
+];
+
+/// Sets that are the whole of one or more code systems the packages do not
+/// ship: (value set URL, sorted systems) — membership by system alone.
+pub static WHOLE_SYSTEMS: &[(&str, &[&str])] = &[
+    ("http://hl7.org/fhir/ValueSet/all-languages", &["urn:ietf:bcp:47"]),
+    ("http://hl7.org/fhir/ValueSet/mimetypes", &["urn:ietf:bcp:13"]),
+    (
+        "http://hl7.org/fhir/ValueSet/narrative-language-control",
+        &["http://hl7.org/fhir/narrative-language-control", "urn:ietf:bcp:47"],
+    ),
+    ("http://hl7.org/fhir/ValueSet/timezones", &["https://www.iana.org/time-zones"]),
+    ("http://hl7.org/fhir/ValueSet/ucum-units", &["http://unitsofmeasure.org"]),
+    ("http://terminology.hl7.org.au/ValueSet/pbs-item", &["http://pbs.gov.au/code/item"]),
 ];
 
 /// Displays for the codings the registry fixes, from the packages' code

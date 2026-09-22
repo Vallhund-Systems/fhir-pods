@@ -16,3 +16,11 @@ these expectations is not a new reference-validator run; the CLI tests verify
 command dispatch, serialization and exits.
 Changes to expected records should be reviewed against the pinned example
 and relevant profile before updating a fixture.
+
+**Refreshed for 0.14.0** (implementation agent): the ten records changed in
+one way only — `subtype` codings now carry a `display` ("read", "search-type",
+"update", …) because the BALP `AllReadVS` / `AllSearchVS` / `AllUpdateVS`
+sets are bundled since 0.14.0 (they became `Member` slice discriminators),
+and lowering fills a fixed coding's display from a bundled set. No other
+byte differs; the manifest hashes were recomputed from the regenerated
+`audit_corpus` outputs.

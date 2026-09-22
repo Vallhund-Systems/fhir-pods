@@ -107,7 +107,8 @@
   "subtype": [
     {
       "system": "http://hl7.org/fhir/restful-interaction",
-      "code": "read"
+      "code": "read",
+      "display": "read"
     }
   ],
   "type": {

@@ -44,7 +44,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             Slice { name: "us-core", discriminators: &[
                 Discriminator::Pattern { path: "$this.coding", pairs: &[("system", "http://terminology.hl7.org/CodeSystem/observation-category"), ("code", "laboratory")] },
             ], min: 1, max: Max::Bounded(1), elements: &[
-                ElementConstraint { path: "$this", min: 0, max: Max::Star, fixed: None, required_binding: None, types: &[], patterns: &[("coding", &[("system", "http://terminology.hl7.org/CodeSystem/observation-category"), ("code", "laboratory")])] },
+                ElementConstraint { path: "$this", min: 0, max: Max::Star, fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/us/core/ValueSet/us-core-clinical-result-observation-category", kind: BindingKind::CodeableConcept }), types: &[], patterns: &[("coding", &[("system", "http://terminology.hl7.org/CodeSystem/observation-category"), ("code", "laboratory")])] },
             ], invariants: &[
             ], profiles: &[
             ], slicings: &[

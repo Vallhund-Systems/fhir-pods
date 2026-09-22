@@ -844,3 +844,68 @@ fn f066_fhirpath_context_preserves_the_primitive_carrier_identity() {
         assert!(report.contains("structuredefinition-conformance-derivedFrom is not allowed"), "{report}");
     }
 }
+
+/// 0.14.0: a slice with nothing fixed and a `required` binding where its
+/// discriminator points is decided by membership — through the bundled
+/// sets, a whole-system set, or the host's provider; a set nobody can
+/// decide leaves the instance unassigned, with a warning, never an error.
+#[test]
+fn a_slice_discriminated_by_a_binding_is_decided_by_membership() {
+    use fhir_pods_core::terminology::{Expansions, Membership, TerminologyProvider};
+    use fhir_pods_core::{wire, Validator};
+    let v = Validator::new();
+    // AU Core Medication: `code.coding:pbs` is every code of the PBS item
+    // system (a whole-system set — the system decides), `:amt` an AMT set
+    // the pod does not ship (the seam)
+    let pbs = br#"{"resourceType":"Medication","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-medication"]},
+        "code":{"coding":[{"system":"http://pbs.gov.au/code/item","code":"10001J"}],"text":"Amoxicillin"}}"#;
+    let r = v.validate(pbs);
+    assert!(r.is_valid(), "{}", wire::report(&r));
+    assert!(!r.report.issues.iter().any(|i| i.message.contains("could not be assigned")), "{}", wire::report(&r));
+    // an AMT coding: the set is not bundled — unassigned, said, not an error
+    let amt = br#"{"resourceType":"Medication","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-medication"]},
+        "code":{"coding":[{"system":"http://snomed.info/sct","code":"21433011000036107"}],"text":"Amoxicillin"}}"#;
+    let r = v.validate(amt);
+    assert!(r.is_valid(), "{}", wire::report(&r));
+    assert!(
+        r.report.issues.iter().any(|i| i.severity == fhir_pods_core::validate::Severity::Warning
+            && i.message.contains("could not be assigned to a slice")
+            && i.message.contains("australian-medication-1")),
+        "{}",
+        wire::report(&r)
+    );
+    // with a table that answers for the AMT set, the coding is the slice's
+    let table = Expansions::parse(
+        "fhir-pods-terminology 1\n= https://healthterminologies.gov.au/fhir/ValueSet/australian-medication-1\nhttp://snomed.info/sct\t21433011000036107\t\n",
+    )
+    .unwrap();
+    let r = v.validate_with(amt, &table);
+    assert!(
+        r.is_valid() && !r.report.issues.iter().any(|i| i.message.contains("could not be assigned")),
+        "{}",
+        wire::report(&r)
+    );
+    // and a provider that says NO puts it in neither slice: an error only where the slicing is closed
+    struct Never;
+    impl TerminologyProvider for Never {
+        fn validate_code(&self, _: &str, _: &str, _: &str) -> Membership {
+            Membership::NotMember
+        }
+    }
+    let r = v.validate_with(amt, &Never);
+    assert!(!r.report.issues.iter().any(|i| i.message.contains("could not be assigned")), "{}", wire::report(&r));
+
+    // US Core Condition (problems / health concerns): `category:us-core` is
+    // a required slice bound to a bundled two-code set — decided offline
+    let problem = br#"{"resourceType":"Condition","meta":{"profile":["http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns"]},
+        "clinicalStatus":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/condition-clinical","code":"active"}]},
+        "category":[{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/condition-category","code":"problem-list-item"}]}],
+        "code":{"coding":[{"system":"http://snomed.info/sct","code":"38341003"}]},"subject":{"reference":"Patient/1"}}"#;
+    let r = v.validate(problem);
+    assert!(r.is_valid(), "{}", wire::report(&r));
+    let other =
+        String::from_utf8_lossy(problem).replace(r#""code":"problem-list-item""#, r#""code":"encounter-diagnosis""#);
+    let r = v.validate(other.as_bytes());
+    assert!(!r.is_valid(), "encounter-diagnosis is not a problem or health concern: {}", wire::report(&r));
+    assert!(r.report.issues.iter().any(|i| i.message.contains("category:us-core is required")), "{}", wire::report(&r));
+}

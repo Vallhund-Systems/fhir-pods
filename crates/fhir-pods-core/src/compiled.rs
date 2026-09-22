@@ -69,6 +69,14 @@ pub enum Discriminator {
     ResolvedType { types: &'static [&'static str] },
     /// … whose target conforms to one of these registry profiles.
     ResolvedProfile { urls: &'static [&'static str] },
+    /// The coded value at `path` (`$this` for the instance itself) is a
+    /// member of the binding's value set — a slice with nothing fixed and a
+    /// `required` binding where its `value`/`pattern` discriminator points
+    /// (AU Core's AMT and PBS codings, US Core's category slices). Decided
+    /// through the terminology provider; a set the provider cannot decide
+    /// leaves the instance unassigned — neither a match nor a mismatch —
+    /// and the report says so.
+    Member { path: &'static str, binding: Binding },
 }
 
 #[derive(Debug, PartialEq, Eq)]

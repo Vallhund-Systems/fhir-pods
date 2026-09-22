@@ -14,6 +14,39 @@
   terminology callbacks, including reentrancy. Lowering fixtures include
   Ratio and inventory only profiles accepted by the resource lookup.
 
+## 0.14.0 — 2026-09-22
+
+**Slices discriminated by a binding are compiled.** A slice with nothing
+fixed where its `value`/`pattern` discriminator points, but a `required`
+binding there, becomes `Discriminator::Member { path, binding }`: the
+instance belongs to the slice when its coded value is a member of the set
+— through the bundled sets, a whole-system set, or the host's terminology
+provider. 30 of the 81 deferred slices are now enforced: AU Core's and AU
+PS's AMT / PBS medication codings and AMT / AIR vaccine codings, US Core's
+`category:us-core` on Condition, DiagnosticReport, DocumentReference,
+MedicationRequest, ServiceRequest, Clinical Result and Simple Observation
+and its `screening-assessment` slices, IPS's absent-or-unknown procedure,
+BALP's `subtype:anyRead / anySearch / anyUpdate` and `DataSources`. An
+undecidable set (AMT is SNOMED, the seam) leaves the instance unassigned:
+neither claimed nor refused, a warning at the sliced element, a required
+slice's minimum not counted against while an instance stands undecided,
+and a closed slicing not failed for it. `lift` claims an instance for a
+`Member` slice only when the provider says member.
+
+**Whole-system value sets.** A set that is every code of one or more
+systems the packages do not ship (AU's `pbs-item`; BCP-47 languages, MIME
+types) is bundled as `WHOLE_SYSTEMS`: membership by system alone for a
+Coding; a bare `code` stays undecided. 146 sets bundled (+11: the US Core
+category sets, BALP's), 6 whole-system, 35 at the seam.
+
+Consequences: 51 slices remain deferred (families in `docs/scope.md`);
+the BALP `subtype` codings gain their `display` from the now-bundled
+sets, so the CLI's frozen audit fixtures were refreshed (README there
+says exactly what changed); an unlabelled slot's minimum is met by
+instances its slices claimed (`subtype` beside `subtype:anyRead`).
+Verdicts: gate 1,750/1,750; base examples 4,811/5,290, 0 stricter;
+test-case lane unchanged; 237 tests.
+
 ## 0.13.1 — 2026-09-22
 
 **Deferred slices are reported.** The compiled profile carries the slices

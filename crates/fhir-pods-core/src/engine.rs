@@ -6,8 +6,8 @@ use alloc::vec::Vec;
 use alloc::string::String;
 
 use crate::compiled::{
-    BindingKind, CompiledProfile, Discriminator, ElementConstraint, InvariantSeverity, Max, ProfileInvariant, Slice,
-    Slicing,
+    Binding, BindingKind, CompiledProfile, Discriminator, ElementConstraint, InvariantSeverity, Max, ProfileInvariant,
+    Slice, Slicing,
 };
 use crate::document::Document;
 use crate::path::{self, Verdict};
@@ -337,6 +337,64 @@ fn check_element<D: Document>(
     }
 }
 
+/// Is the coded value at `path` a member of the set? `Code`: the scalar;
+/// `Coding`: its system + code; `CodeableConcept`: any coding decides
+/// membership, none decided is unknown.
+pub(crate) fn membership_at<D: Document>(
+    b: &Binding,
+    inst: &D,
+    path: &str,
+    tx: &dyn TerminologyProvider,
+) -> Membership {
+    let vs = b.value_set;
+    let mut verdict = Membership::Unknown;
+    let mut seen = false;
+    let fold = |verdict: &mut Membership, m: Membership| match m {
+        Membership::Member => *verdict = Membership::Member,
+        Membership::NotMember if !matches!(*verdict, Membership::Member) => *verdict = Membership::NotMember,
+        _ => {}
+    };
+    match b.kind {
+        BindingKind::Code => {
+            for code in inst.scalars(path) {
+                seen = true;
+                fold(&mut verdict, tx.validate_code(vs, "", code));
+            }
+        }
+        BindingKind::Coding => {
+            for c in inst.instances(path) {
+                if let Some((system, code)) = coding_of(&c) {
+                    seen = true;
+                    fold(&mut verdict, tx.validate_code(vs, system, code));
+                }
+            }
+        }
+        BindingKind::CodeableConcept => {
+            let mut unknown = false;
+            for cc in inst.instances(path) {
+                for c in cc.instances("$this.coding") {
+                    if let Some((system, code)) = coding_of(&c) {
+                        seen = true;
+                        match tx.validate_code(vs, system, code) {
+                            Membership::Member => return Membership::Member,
+                            Membership::Unknown => unknown = true,
+                            Membership::NotMember => fold(&mut verdict, Membership::NotMember),
+                        }
+                    }
+                }
+            }
+            if unknown {
+                return Membership::Unknown;
+            }
+        }
+    }
+    if !seen {
+        // nothing coded there: not this slice's, decidedly
+        return Membership::NotMember;
+    }
+    verdict
+}
+
 fn coding_of(inst: &impl Document) -> Option<(&str, &str)> {
     let code = inst.scalars("$this.code").into_iter().next()?;
     let system = inst.scalars("$this.system").into_iter().next().unwrap_or("");
@@ -362,44 +420,76 @@ fn report_membership(m: Membership, vs: &str, what: &str, label: &str, r: &mut R
 /// all match; type slices are selected by key in `check_slicing`; a Bundle
 /// entry is discriminated by its resource's type, or by conformance to a
 /// profile — a validation pass within the same bundle.
-fn matches<D: Document>(slice: &Slice, inst: &D, scope: &Scope<'_, D>) -> bool {
-    slice.discriminators.iter().all(|d| match d {
-        Discriminator::ResourceType { path, ty } => {
-            inst.instances(path).iter().any(|res| res.scalars("$this.resourceType") == [*ty])
+/// Whether an instance belongs to a slice: yes, no, or — a `Member`
+/// discriminator whose set the provider cannot decide — undecided.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Belongs {
+    Yes,
+    No,
+    Undecided(&'static str),
+}
+
+fn matches<D: Document>(slice: &Slice, inst: &D, scope: &Scope<'_, D>) -> Belongs {
+    let mut undecided = None;
+    for d in slice.discriminators {
+        if let Discriminator::Member { path, binding } = d {
+            match membership_at(binding, inst, path, scope.tx) {
+                Membership::Member => {}
+                Membership::NotMember => return Belongs::No,
+                Membership::Unknown => undecided = Some(binding.value_set),
+            }
+        } else if !matches_one(d, inst, scope) {
+            return Belongs::No;
         }
-        Discriminator::Profile { path, url } => {
-            let Some(profile) = crate::REGISTRY.iter().find(|p| p.url == *url) else { return false };
-            scope.depth < MAX_INHERIT
-                && inst.instances(path).iter().any(|res| {
-                    res.scalars("$this.resourceType") == [profile.resource_type]
-                        && scope.conformance(profile, res).is_valid()
-                })
-        }
-        Discriminator::ResolvedType { types } => scope
-            .resolved(inst)
-            .is_some_and(|target| target.scalars("$this.resourceType").iter().any(|t| types.contains(t))),
-        Discriminator::ResolvedProfile { urls } => {
-            scope.depth < MAX_INHERIT
-                && scope.resolved(inst).is_some_and(|target| {
-                    urls.iter().filter_map(|u| crate::REGISTRY.iter().find(|p| p.url == *u)).any(|p| {
-                        target.scalars("$this.resourceType") == [p.resource_type]
-                            && scope.conformance(p, &target).is_valid()
+    }
+    match undecided {
+        Some(vs) => Belongs::Undecided(vs),
+        None => Belongs::Yes,
+    }
+}
+
+fn matches_one<D: Document>(d: &Discriminator, inst: &D, scope: &Scope<'_, D>) -> bool {
+    {
+        match d {
+            Discriminator::ResourceType { path, ty } => {
+                inst.instances(path).iter().any(|res| res.scalars("$this.resourceType") == [*ty])
+            }
+            Discriminator::Profile { path, url } => {
+                let Some(profile) = crate::REGISTRY.iter().find(|p| p.url == *url) else { return false };
+                scope.depth < MAX_INHERIT
+                    && inst.instances(path).iter().any(|res| {
+                        res.scalars("$this.resourceType") == [profile.resource_type]
+                            && scope.conformance(profile, res).is_valid()
                     })
+            }
+            Discriminator::ResolvedType { types } => scope
+                .resolved(inst)
+                .is_some_and(|target| target.scalars("$this.resourceType").iter().any(|t| types.contains(t))),
+            Discriminator::ResolvedProfile { urls } => {
+                scope.depth < MAX_INHERIT
+                    && scope.resolved(inst).is_some_and(|target| {
+                        urls.iter().filter_map(|u| crate::REGISTRY.iter().find(|p| p.url == *u)).any(|p| {
+                            target.scalars("$this.resourceType") == [p.resource_type]
+                                && scope.conformance(p, &target).is_valid()
+                        })
+                    })
+            }
+            Discriminator::Value { path, value } => inst.scalars(path).contains(value),
+            Discriminator::Pattern { path, pairs } => inst.instances(path).iter().any(|n| {
+                pairs.iter().all(|(rel, value)| {
+                    let mut p = String::from("$this");
+                    if !rel.is_empty() {
+                        p.push('.');
+                        p.push_str(rel);
+                    }
+                    n.scalars(&p).contains(value)
                 })
+            }),
+            Discriminator::Type { .. } => true,
+            // decided in `matches`, three ways
+            Discriminator::Member { .. } => true,
         }
-        Discriminator::Value { path, value } => inst.scalars(path).contains(value),
-        Discriminator::Pattern { path, pairs } => inst.instances(path).iter().any(|n| {
-            pairs.iter().all(|(rel, value)| {
-                let mut p = String::from("$this");
-                if !rel.is_empty() {
-                    p.push('.');
-                    p.push_str(rel);
-                }
-                n.scalars(&p).contains(value)
-            })
-        }),
-        Discriminator::Type { .. } => true,
-    })
+    }
 }
 
 /// `Bundle`'s own invariants (bdl-1 … bdl-12) on a Bundle no compiled
@@ -610,6 +700,9 @@ fn check_slicing<D: Document>(slicing: &Slicing, doc: &D, scope: &Scope<'_, D>, 
         let mut matched = 0usize;
         // which slices each instance matched: more than one is an error
         let mut hits: Vec<Vec<&str>> = vec![Vec::new(); all.len()];
+        // instances no slice could claim or refuse: a `Member` discriminator
+        // whose set the provider cannot decide — (instance, set)
+        let mut undecided: Vec<(usize, &'static str)> = Vec::new();
         let mut label = String::new();
         for slice in slicing.slices {
             label.clear();
@@ -621,19 +714,29 @@ fn check_slicing<D: Document>(slicing: &Slicing, doc: &D, scope: &Scope<'_, D>, 
                 None => all
                     .iter()
                     .enumerate()
-                    .filter(|(i, inst)| {
-                        let hit = matches(slice, *inst, scope);
-                        if hit {
+                    .filter(|(i, inst)| match matches(slice, *inst, scope) {
+                        Belongs::Yes => {
                             hits[*i].push(slice.name);
+                            true
                         }
-                        hit
+                        Belongs::Undecided(vs) => {
+                            if !undecided.iter().any(|(j, _)| j == i) {
+                                undecided.push((*i, vs));
+                            }
+                            false
+                        }
+                        Belongs::No => false,
                     })
                     .map(|(_, inst)| inst.clone())
                     .collect(),
             };
             matched += insts.len();
             let count = insts.len() as u32;
-            if count < slice.min {
+            // an undecided instance may be this slice's: its minimum is not
+            // an error while that stands (the warning below says so)
+            let could_be_here =
+                slice.discriminators.iter().any(|d| matches!(d, Discriminator::Member { .. })) && !undecided.is_empty();
+            if count < slice.min && !could_be_here {
                 r.push(
                     Severity::Error,
                     IssueType::Required,
@@ -729,12 +832,28 @@ fn check_slicing<D: Document>(slicing: &Slicing, doc: &D, scope: &Scope<'_, D>, 
                 format!("{base} has an element matching more than one slice ({})", names.join(", ")),
             );
         }
-        if slicing.closed && matched < all.len() {
+        // an instance a slice matched is decided, whatever another slice
+        // could not say about it
+        undecided.retain(|(i, _)| hits[*i].is_empty());
+        for (i, vs) in &undecided {
+            r.push(
+                Severity::Warning,
+                IssueType::NotSupported,
+                &base,
+                format!(
+                    "{base}[{i}] could not be assigned to a slice: no bundled terminology for {vs}; membership not checked"
+                ),
+            );
+        }
+        if slicing.closed && matched + undecided.len() < all.len() {
             r.push(
                 Severity::Error,
                 IssueType::Structure,
                 &base,
-                format!("{base} has {} element(s) matching no slice (closed slicing)", all.len() - matched),
+                format!(
+                    "{base} has {} element(s) matching no slice (closed slicing)",
+                    all.len() - matched - undecided.len()
+                ),
             );
         }
     }

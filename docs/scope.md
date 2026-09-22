@@ -278,15 +278,24 @@ IPS's LOINC sets resolve when loaded.
 
 ## Deferred slices are said, not silent
 
-81 slices across the registry have discriminators the compiler cannot
-resolve — a `value`/`pattern` on an element that carries a binding rather
-than a fixed value (AU Core's AMT/PBS medication codings, US Core's
-`category:us-core`, CA Baseline's `binding.valueSet` and `@default`
-slices), a reference discriminated by what it resolves to beyond the
+51 slices across the registry have discriminators the compiler cannot
+resolve — a reference discriminated by what it resolves to beyond the
 registry (the AU PS and IPS bundles' CarePlan/Consent/Device entries), a
-`$this` with no type (BALP's `subtype:anyRead`, `agent:user`), sub-extension
-slices, and slicings nested three levels deep. Each is compiled as
-`deferred` (element, slice, why) and not enforced. Since 0.13.1 a resource
+`pattern`/`value` on a path where the slice carries neither a fixed value
+nor a `required` binding (CA Baseline's `binding.valueSet` and `@default`
+slices, AU Core's `identifier:dva`, BALP's `agent:user`), sub-extension
+slices, and slicings nested three levels deep. (Since 0.14.0 a slice whose
+discriminator points at a `required` binding is compiled as a `Member`
+discriminator and decided by membership — AU Core's AMT and PBS medication
+and vaccine codings, US Core's `category:us-core` and screening-assessment
+slices, BALP's `subtype:anyRead/anySearch/anyUpdate`: 30 of the 81 that
+were deferred. Membership comes from the bundled sets, from a whole-system
+set (PBS items: the system decides), or from the host's provider; a set
+nobody can decide leaves the instance unassigned — neither claimed nor
+refused, a warning at the sliced element, never an error, and a required
+slice's minimum is not counted against while an instance stands
+undecided.) Each remaining one is compiled as `deferred` (element, slice,
+why) and not enforced. Since 0.13.1 a resource
 that reaches the sliced element gets an **information** issue
 (`not-supported`): "slice 'dva' of Patient.identifier in AU Core Patient
 was not checked: its discriminator (pattern on type) is outside the

@@ -67,6 +67,24 @@ class Expander:
                 return d
         return None
 
+    def whole_systems(self, url):
+        """The systems a set is the whole of — every include a bare system
+        (no concepts, no filter), no excludes, no nested sets, none licensed
+        — or `None`."""
+        j = self.vs.get(url.split("|")[0])
+        if not j:
+            return None
+        compose = j.get("compose") or {}
+        if compose.get("exclude"):
+            return None
+        systems = []
+        for inc in compose.get("include", []):
+            system = inc.get("system")
+            if not system or inc.get("valueSet") or inc.get("concept") or inc.get("filter") or system in LICENSED:
+                return None
+            systems.append(system)
+        return sorted(set(systems)) or None
+
     def expand(self, url, seen=()):
         """`(codes, why)`: a sorted list of (system, code, display) — or
         `(None, reason)` when the set cannot be expanded offline."""
@@ -129,11 +147,18 @@ def main():
             code_systems.setdefault(j.get("url"), j)
 
     ex = Expander(value_sets, code_systems)
-    bundled, skipped = [], []
+    bundled, skipped, whole = [], [], []
     for url in sorted(urls):
         codes, why = ex.expand(url)
         if codes is None:
-            skipped.append((url, why))
+            # a set that is every code of one or more systems the packages
+            # do not ship (AU's PBS items): membership is decided by the
+            # system alone — the code's existence is the system's to say
+            systems = ex.whole_systems(url)
+            if systems:
+                whole.append((url, systems))
+            else:
+                skipped.append((url, why))
         else:
             bundled.append((url, codes))
 
@@ -174,6 +199,12 @@ def main():
                 f.write(f"        ({rs(s)}, {rs(c)}, {rs(d)}),\n")
             f.write("    ]),\n")
         f.write("];\n\n")
+        f.write("/// Sets that are the whole of one or more code systems the packages do not\n")
+        f.write("/// ship: (value set URL, sorted systems) — membership by system alone.\n")
+        f.write("pub static WHOLE_SYSTEMS: &[(&str, &[&str])] = &[\n")
+        for url, systems in sorted(whole):
+            f.write(f"    ({rs(url)}, &[{', '.join(rs(x) for x in systems)}]),\n")
+        f.write("];\n\n")
         f.write("/// Displays for the codings the registry fixes, from the packages' code\n")
         f.write("/// systems: sorted (system, code, display).\n")
         f.write("pub static DISPLAYS: &[(&str, &str, &str)] = &[\n")
@@ -181,8 +212,8 @@ def main():
             f.write(f"    ({rs(system)}, {rs(code)}, {rs(d)}),\n")
         f.write("];\n")
     print(
-        f"wrote {out_path}: {len(bundled)} sets, {n} codes, {len(displays)} fixed-coding displays; "
-        f"{len(skipped)} sets left to the seam"
+        f"wrote {out_path}: {len(bundled)} sets, {n} codes, {len(whole)} whole-system sets, "
+        f"{len(displays)} fixed-coding displays; {len(skipped)} sets left to the seam"
     )
 
 

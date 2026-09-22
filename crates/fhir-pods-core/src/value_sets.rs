@@ -4,7 +4,7 @@
 //! engine degrades that to a warning. SNOMED- and LOINC-bound sets are
 //! intentionally absent: they resolve at runtime through the terminology seam.
 
-use crate::value_sets_table::{DISPLAYS, SETS};
+use crate::value_sets_table::{DISPLAYS, SETS, WHOLE_SYSTEMS};
 
 /// A bundled set's codes: sorted (system, code, display).
 pub type Codes = &'static [(&'static str, &'static str, &'static str)];
@@ -22,6 +22,12 @@ fn set(url: &str) -> Option<Codes> {
 /// Is (`system`, `code`) in the bundled set at `url`? An empty `system` (a
 /// bare `code` element) matches the code in any of the set's systems.
 pub fn membership(url: &str, system: &str, code: &str) -> Option<bool> {
+    // a set that is the whole of a system the packages do not ship: the
+    // system decides; a bare code cannot be placed
+    let base = url.split('|').next().unwrap_or(url);
+    if let Ok(i) = WHOLE_SYSTEMS.binary_search_by(|(u, _)| u.cmp(&base)) {
+        return if system.is_empty() { None } else { Some(WHOLE_SYSTEMS[i].1.contains(&system)) };
+    }
     let codes = set(url)?;
     Some(if system.is_empty() {
         codes.iter().any(|(_, c, _)| *c == code)

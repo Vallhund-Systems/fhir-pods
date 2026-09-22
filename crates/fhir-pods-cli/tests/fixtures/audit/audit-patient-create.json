@@ -55,7 +55,8 @@
         "coding": [
           {
             "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
-            "code": "AUT"
+            "code": "AUT",
+            "display": "author (originator)"
           }
         ]
       }
