@@ -1,17 +1,141 @@
 {
-  "recordedAt": "2026-09-17T00:08:04.387Z",
-  "browser": "Chrome/153.0.8010.48",
+  "recordedAt": "2026-09-22T18:11:40.740Z",
+  "browser": "Chrome/153.0.8010.53",
+  "revision": "662e857027a6f3ff4356f20ee275ae7ea257c35e",
+  "dirtyPaths": [],
+  "sourceHashes": {
+    "browser/run.mjs": "5733ff74b7e547033daf792847a0517c8fbde2c7dec7722f1dbedc1e6c181bf6",
+    "browser/smoke.mjs": "856990acfbce652b8f15c2b94c7924b96c023e4e24ecc97d983faa0848135798",
+    "browser/operations.mjs": "54041f57bc6bdbdc164399b41e882289e74334182a83f0617f253b42fe09c688",
+    "browser/index.html": "ea3073461c46d6b0bc2cf74cc61c4272367cfacda1f7cc76a8e8fe5084ad7676",
+    "bench/fixtures.mjs": "9b3b95d1eec370024ab6401191b9c781571c4efe05d6e0c40e9fa083fe042e21",
+    "src/index.js": "98cc2e16085f09d6d0831b84fe3c57d96db71b9de5987c3a897c3454fe9b523f"
+  },
+  "node": "v25.9.0",
+  "platform": "darwin",
+  "architecture": "arm64",
   "status": "passed",
-  "abi": 7,
-  "wasmBytes": 982350,
-  "wasmSha256": "cee620b4a624a353ce0256a86aacf5fc5c46f88aa841220c6979f84744a56d1f",
+  "wasmBytes": 2448962,
+  "wasmSha256": "ebc02f6a56b9a223a7bb4b6ab8bb145573fbeb125bfe8406feb7487c082e21fb",
+  "abi": 12,
   "checks": [
-    "PASS validate au-patient",
-    "PASS validate base-heart-rate",
-    "PASS validate au-patient-missing-required",
-    "PASS validate malformed-json",
-    "PASS lower AU Core Patient",
-    "PASS deidentify synthetic identifiers and name",
-    "PASS IPS document assembly and validation roundtrip"
-  ]
+    {
+      "name": "ABI matches wrapper",
+      "pass": true
+    },
+    {
+      "name": "validate au-patient",
+      "pass": true
+    },
+    {
+      "name": "validate base-heart-rate",
+      "pass": true
+    },
+    {
+      "name": "validate au-patient-missing-required",
+      "pass": true
+    },
+    {
+      "name": "validate malformed-json",
+      "pass": true
+    },
+    {
+      "name": "OperationOutcome",
+      "pass": true
+    },
+    {
+      "name": "discovery regions and profile kinds",
+      "pass": true
+    },
+    {
+      "name": "slot fixed values and composite parts",
+      "pass": true
+    },
+    {
+      "name": "must-support gaps",
+      "pass": true
+    },
+    {
+      "name": "lower/lift preserve variable content",
+      "pass": true
+    },
+    {
+      "name": "lift conflicts cross the ABI",
+      "pass": true
+    },
+    {
+      "name": "deidentify result and residual",
+      "pass": true
+    },
+    {
+      "name": "IPS document assembly",
+      "pass": true
+    },
+    {
+      "name": "audit",
+      "pass": true
+    },
+    {
+      "name": "v2 conversion and coverage fields",
+      "pass": true
+    },
+    {
+      "name": "AU export document and audit",
+      "pass": true
+    },
+    {
+      "name": "export preserves qualifiers and carriers",
+      "pass": true
+    },
+    {
+      "name": "export refuses fixed-value conversion",
+      "pass": true
+    },
+    {
+      "name": "export patient reference forms",
+      "pass": true
+    },
+    {
+      "name": "unknown region and rejected operation",
+      "pass": true
+    },
+    {
+      "name": "terminology load, rejected replacement and clear",
+      "pass": true
+    },
+    {
+      "name": "provider validate",
+      "pass": true
+    },
+    {
+      "name": "provider OperationOutcome",
+      "pass": true
+    },
+    {
+      "name": "provider lower",
+      "pass": true
+    },
+    {
+      "name": "provider lift",
+      "pass": true
+    },
+    {
+      "name": "provider document",
+      "pass": true
+    },
+    {
+      "name": "provider US export",
+      "pass": true
+    },
+    {
+      "name": "provider audit and v2 routes",
+      "pass": true
+    },
+    {
+      "name": "provider reentrant load and validation",
+      "pass": true
+    }
+  ],
+  "callbackCount": 14,
+  "reentrantCount": 1
 }
