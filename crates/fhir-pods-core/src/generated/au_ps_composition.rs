@@ -181,7 +181,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 ] },
                 Slicing { path: "$this.entry", closed: false, slices: &[
                     Slice { name: "medicationStatementOrRequest", discriminators: &[
-                        Discriminator::ResolvedProfile { urls: super::intern::S48 },
+                        Discriminator::ResolvedProfile { urls: super::intern::S49 },
                     ], min: 0, max: Max::Star, elements: &[
                     ], invariants: &[
                     ], profiles: &[

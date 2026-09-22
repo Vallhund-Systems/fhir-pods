@@ -27,7 +27,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "AuditEvent.entity.description", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "AuditEvent.entity.detail.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "AuditEvent.entity.detail.type", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "AuditEvent.entity.detail.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S49, patterns: &[] },
+        ElementConstraint { path: "AuditEvent.entity.detail.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S50, patterns: &[] },
         ElementConstraint { path: "AuditEvent.entity.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "AuditEvent.entity.lifecycle", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "AuditEvent.entity.name", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },

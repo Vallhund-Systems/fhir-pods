@@ -62,7 +62,7 @@ pub static LOWERING: Lowering = Lowering {
     slots: &[Slot {
         path: "value[x]",
         ty: "choice",
-        choices: super::intern::S52,
+        choices: super::intern::S53,
         min: 1,
         max: Max::Bounded(1),
         must_support: false,

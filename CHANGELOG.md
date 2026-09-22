@@ -14,6 +14,26 @@
   terminology callbacks, including reentrancy. Lowering fixtures include
   Ratio and inventory only profiles accepted by the resource lookup.
 
+## 0.14.1 — 2026-09-22
+
+**More discriminator shapes compiled** (51 → 29 deferred): the `required`
+binding a slice inherits from its datatype profile (AU Core Patient's
+`identifier:dva` — `type` bound to DVA entitlements, then the fixed DVA
+system enforced); the nearest bound ancestor of a part-path discriminator
+(`coding.system` under a bound `coding` or a bound CodeableConcept slice —
+CA Condition's `HealthConcernCode`); a nested slice's own binding (AU's
+`medication[x]:medicationCodeableConcept.coding:amt/pbs` inside the type
+slice); `resolve()` to a base vital-sign profile the registry carries
+(AU's `supportingInformation:bodyHeight/bodyWeight` — a second body weight
+now exceeds the slice; IPS `DiagnosticReport.result:observation-results`);
+and a Bundle entry whose `resource` is typed as the resource itself (the
+AU PS and IPS `entry:consent`, `device`, `careteam`, `clinicalimpression`,
+`documentreference`, `immunizationrecommendation` — findings now carry
+the slice's label). What remains deferred is, in every case, a defect of
+the published guide (`docs/scope.md` names each). Verdicts: gate
+1,750/1,750; base examples 4,811/5,290, 0 stricter; test-case lane
+unchanged; 238 tests.
+
 ## 0.14.0 — 2026-09-22
 
 **Slices discriminated by a binding are compiled.** A slice with nothing

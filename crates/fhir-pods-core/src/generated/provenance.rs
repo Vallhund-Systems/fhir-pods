@@ -56,7 +56,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "occurred[x]",
             ty: "choice",
-            choices: super::intern::S109,
+            choices: super::intern::S110,
             min: 0,
             max: Max::Bounded(1),
             must_support: false,

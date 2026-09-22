@@ -334,7 +334,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "extension:value.value[x]",
             ty: "choice",
-            choices: super::intern::S78,
+            choices: super::intern::S79,
             min: 1,
             max: Max::Bounded(1),
             must_support: false,
@@ -350,7 +350,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "extension:property.extension:value.value[x]",
             ty: "choice",
-            choices: super::intern::S78,
+            choices: super::intern::S79,
             min: 1,
             max: Max::Bounded(1),
             must_support: false,

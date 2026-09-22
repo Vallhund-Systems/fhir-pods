@@ -21,7 +21,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "DeviceUseStatement.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/device-statement-status|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
         ElementConstraint { path: "DeviceUseStatement.subject", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "DeviceUseStatement.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "DeviceUseStatement.timing[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S105, patterns: &[] },
+        ElementConstraint { path: "DeviceUseStatement.timing[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S106, patterns: &[] },
     ],
     slicings: &[
     ],
@@ -54,7 +54,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "timing[x]",
             ty: "choice",
-            choices: super::intern::S106,
+            choices: super::intern::S107,
             min: 0,
             max: Max::Bounded(1),
             must_support: false,

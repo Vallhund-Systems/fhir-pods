@@ -46,7 +46,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 value_set: "http://hl7.org/fhir/ValueSet/ucum-units",
                 kind: BindingKind::CodeableConcept,
             }),
-            types: super::intern::S71,
+            types: super::intern::S72,
             patterns: &[],
         },
     ],
@@ -65,7 +65,7 @@ pub static LOWERING: Lowering = Lowering {
     slots: &[Slot {
         path: "value[x]",
         ty: "choice",
-        choices: super::intern::S72,
+        choices: super::intern::S73,
         min: 1,
         max: Max::Bounded(1),
         must_support: false,

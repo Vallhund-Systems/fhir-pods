@@ -278,23 +278,27 @@ IPS's LOINC sets resolve when loaded.
 
 ## Deferred slices are said, not silent
 
-51 slices across the registry have discriminators the compiler cannot
-resolve — a reference discriminated by what it resolves to beyond the
-registry (the AU PS and IPS bundles' CarePlan/Consent/Device entries), a
-`pattern`/`value` on a path where the slice carries neither a fixed value
-nor a `required` binding (CA Baseline's `binding.valueSet` and `@default`
-slices, AU Core's `identifier:dva`, BALP's `agent:user`), sub-extension
-slices, and slicings nested three levels deep. (Since 0.14.0 a slice whose
-discriminator points at a `required` binding is compiled as a `Member`
-discriminator and decided by membership — AU Core's AMT and PBS medication
-and vaccine codings, US Core's `category:us-core` and screening-assessment
-slices, BALP's `subtype:anyRead/anySearch/anyUpdate`: 30 of the 81 that
-were deferred. Membership comes from the bundled sets, from a whole-system
-set (PBS items: the system decides), or from the host's provider; a set
-nobody can decide leaves the instance unassigned — neither claimed nor
-refused, a warning at the sliced element, never an error, and a required
-slice's minimum is not counted against while an instance stands
-undecided.) Each remaining one is compiled as `deferred` (element, slice,
+29 slices across the registry have discriminators the compiler cannot
+resolve, and every one is a defect of its guide as published: a `value`
+discriminator on a code the profile neither fixes nor binds as required
+(AU's `category:specificDiscipline` / `anatomicRegionOfInterest`; CA
+Baseline's `NonDrugAllergen`, `LabOrder` and `@default` slices; CA's
+Immunization `Generic`/`Tradename` — the reference validator errors on
+those too), a discriminator on `binding.valueSet` (CA Condition), a
+sub-extension whose `url` the published definition never fixes
+(QuantityConfidenceInterval), BALP's SAML `otherId` slices on
+`value.ofType(Identifier).type`, and AU's `medicationClass` extension
+slices nested three levels deep. (0.14.0 compiled slices whose
+discriminator points at a `required` binding as `Member` discriminators —
+decided by membership through the bundled sets, a whole-system set or the
+host's provider, undecided never an error; 0.14.1 added the binding
+inherited from a slice's datatype profile (AU's DVA number), the nearest
+bound ancestor of a part-path discriminator, `resolve()` to a base
+vital-sign profile the registry carries (AU's `supportingInformation:
+bodyHeight/bodyWeight`, IPS's `DiagnosticReport.result`), and Bundle
+entries whose `resource` is typed as the resource itself (the AU PS and
+IPS `entry:consent/device/careteam/…`): 52 of the 81 once deferred.)
+Each remaining one is compiled as `deferred` (element, slice,
 why) and not enforced. Since 0.13.1 a resource
 that reaches the sliced element gets an **information** issue
 (`not-supported`): "slice 'dva' of Patient.identifier in AU Core Patient

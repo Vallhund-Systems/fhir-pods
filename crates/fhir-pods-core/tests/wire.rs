@@ -24,20 +24,24 @@ fn operation_outcome_success_carries_one_informational_issue() {
     let v = validate_bytes(with_text.as_bytes());
     assert!(v.is_valid());
     let o = v.to_operation_outcome();
-    // AU Core Patient's `identifier:dva` slice is one the compiler could not
-    // discriminate: the outcome says so (information), and is valid
-    assert!(o.contains("\"severity\":\"information\",\"code\":\"not-supported\""), "{o}");
-    assert!(o.contains("slice 'dva' of Patient.identifier in AU Core Patient was not checked"), "{o}");
-    // the same resource under the base Patient alone reaches no deferred
-    // slice: the one "all OK" issue
-    let base = with_text.replace(
-        "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
-        "http://hl7.org/fhir/StructureDefinition/Patient",
-    );
-    let v = validate_bytes(base.as_bytes());
-    assert!(v.is_valid());
-    let o = v.to_operation_outcome();
+    // every slice of AU Core Patient is discriminated (0.14.1 compiles the
+    // DVA identifier by membership): the one "all OK" issue
     assert!(o.contains("\"severity\":\"information\",\"code\":\"informational\""), "{o}");
+    // a profile with a slice the compiler still cannot discriminate (AU
+    // Core Pathology Result's `category:specificDiscipline`: a `value`
+    // discriminator on a code the profile neither fixes nor binds as
+    // required): the outcome says so (information) in place of "all OK"
+    let path = r#"{"resourceType":"Observation","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-diagnosticresult-path"]},
+        "text":{"status":"generated","div":"<div xmlns=\"http://www.w3.org/1999/xhtml\">A result.</div>"},
+        "status":"final","category":[{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/observation-category","code":"laboratory"}]},
+        {"coding":[{"system":"http://terminology.hl7.org/CodeSystem/v2-0074","code":"CH"}]}],
+        "code":{"coding":[{"system":"http://loinc.org","code":"2339-0"}]},"subject":{"reference":"Patient/1"},
+        "effectiveDateTime":"2026-09-20T08:00:00+10:00","performer":[{"reference":"Practitioner/1"}],
+        "valueQuantity":{"value":5.4,"unit":"mmol/L","system":"http://unitsofmeasure.org","code":"mmol/L"}}"#;
+    let v = validate_bytes(path.as_bytes());
+    let o = v.to_operation_outcome();
+    assert!(o.contains("\"severity\":\"information\",\"code\":\"not-supported\""), "{o}");
+    assert!(o.contains("slice 'specificDiscipline' of Observation.category in AU Core Pathology Result Observation was not checked"), "{o}");
 }
 
 #[test]

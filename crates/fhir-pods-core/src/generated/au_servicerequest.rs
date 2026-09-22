@@ -20,7 +20,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "ServiceRequest.intent", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/request-intent|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
         ElementConstraint { path: "ServiceRequest.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "ServiceRequest.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "ServiceRequest.occurrence[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S50, patterns: &[] },
+        ElementConstraint { path: "ServiceRequest.occurrence[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S51, patterns: &[] },
         ElementConstraint { path: "ServiceRequest.patientInstruction", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "ServiceRequest.performerType", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "ServiceRequest.priority", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/request-priority|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },

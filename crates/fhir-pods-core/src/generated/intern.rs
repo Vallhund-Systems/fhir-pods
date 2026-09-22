@@ -216,6 +216,10 @@ pub static S45: &[&str] = &[
 ];
 pub static S46: &[&str] = &["timingPeriod", "timingDateTime"];
 pub static S47: &[&str] = &[
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-results-laboratory-pathology-uv-ips",
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-results-radiology-uv-ips",
+];
+pub static S48: &[&str] = &[
     "http://hl7.org/fhir/StructureDefinition/Observation",
     "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-pregnancy-edd-uv-ips",
     "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-pregnancy-outcome-uv-ips",
@@ -233,23 +237,23 @@ pub static S47: &[&str] = &[
     "http://hl7.org.au/fhir/core/StructureDefinition/au-core-resprate",
     "http://hl7.org.au/fhir/core/StructureDefinition/au-core-waistcircum",
 ];
-pub static S48: &[&str] = &[
+pub static S49: &[&str] = &[
     "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-medicationstatement",
     "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-medicationrequest",
 ];
-pub static S49: &[&str] = &["string", "base64Binary"];
-pub static S50: &[&str] = &["dateTime", "Period", "Timing"];
-pub static S51: &[&str] = &["Ratio", "Quantity"];
-pub static S52: &[&str] = &["valueDateTime", "valueAge", "valuePeriod", "valueRange", "valueString"];
-pub static S53: &[&str] = &["Reference", "markdown"];
-pub static S54: &[&str] = &["Reference", "canonical", "uri"];
-pub static S55: &[&str] = &["valueReference", "valueCanonical", "valueUri"];
-pub static S56: &[&str] = &["string", "Coding"];
-pub static S57: &[&str] = &["valueString", "valueCoding"];
-pub static S58: &[&str] = &["valueDateTime", "valuePeriod"];
-pub static S59: &[&str] = &["uri", "CodeableConcept"];
-pub static S60: &[&str] = &["valueUri", "valueCodeableConcept"];
-pub static S61: &[&str] = &[
+pub static S50: &[&str] = &["string", "base64Binary"];
+pub static S51: &[&str] = &["dateTime", "Period", "Timing"];
+pub static S52: &[&str] = &["Ratio", "Quantity"];
+pub static S53: &[&str] = &["valueDateTime", "valueAge", "valuePeriod", "valueRange", "valueString"];
+pub static S54: &[&str] = &["Reference", "markdown"];
+pub static S55: &[&str] = &["Reference", "canonical", "uri"];
+pub static S56: &[&str] = &["valueReference", "valueCanonical", "valueUri"];
+pub static S57: &[&str] = &["string", "Coding"];
+pub static S58: &[&str] = &["valueString", "valueCoding"];
+pub static S59: &[&str] = &["valueDateTime", "valuePeriod"];
+pub static S60: &[&str] = &["uri", "CodeableConcept"];
+pub static S61: &[&str] = &["valueUri", "valueCodeableConcept"];
+pub static S62: &[&str] = &[
     "string",
     "boolean",
     "integer",
@@ -263,23 +267,23 @@ pub static S61: &[&str] = &[
     "Quantity",
     "Ratio",
 ];
-pub static S62: &[&str] = &["Duration", "Range"];
-pub static S63: &[&str] = &["valueDuration", "valueRange"];
-pub static S64: &[&str] = &["canonical", "uri"];
-pub static S65: &[&str] = &["valueCanonical", "valueUri"];
-pub static S66: &[&str] = &["boolean", "string", "integer", "Quantity", "Ratio", "Range"];
-pub static S67: &[&str] = &["dateTime", "instant", "Period"];
-pub static S68: &[&str] = &["valueDateTime", "valueInstant", "valuePeriod"];
-pub static S69: &[&str] = &["string", "Reference"];
-pub static S70: &[&str] = &["valueString", "valueReference"];
-pub static S71: &[&str] = &["CodeableConcept", "canonical"];
-pub static S72: &[&str] = &["valueCodeableConcept", "valueCanonical"];
-pub static S73: &[&str] = &["valueBoolean", "valueCodeableConcept"];
-pub static S74: &[&str] = &["uri", "canonical"];
-pub static S75: &[&str] = &["valueUri", "valueCanonical"];
-pub static S76: &[&str] = &["date", "Age", "boolean"];
-pub static S77: &[&str] = &["valueDate", "valueAge", "valueBoolean"];
-pub static S78: &[&str] = &[
+pub static S63: &[&str] = &["Duration", "Range"];
+pub static S64: &[&str] = &["valueDuration", "valueRange"];
+pub static S65: &[&str] = &["canonical", "uri"];
+pub static S66: &[&str] = &["valueCanonical", "valueUri"];
+pub static S67: &[&str] = &["boolean", "string", "integer", "Quantity", "Ratio", "Range"];
+pub static S68: &[&str] = &["dateTime", "instant", "Period"];
+pub static S69: &[&str] = &["valueDateTime", "valueInstant", "valuePeriod"];
+pub static S70: &[&str] = &["string", "Reference"];
+pub static S71: &[&str] = &["valueString", "valueReference"];
+pub static S72: &[&str] = &["CodeableConcept", "canonical"];
+pub static S73: &[&str] = &["valueCodeableConcept", "valueCanonical"];
+pub static S74: &[&str] = &["valueBoolean", "valueCodeableConcept"];
+pub static S75: &[&str] = &["uri", "canonical"];
+pub static S76: &[&str] = &["valueUri", "valueCanonical"];
+pub static S77: &[&str] = &["date", "Age", "boolean"];
+pub static S78: &[&str] = &["valueDate", "valueAge", "valueBoolean"];
+pub static S79: &[&str] = &[
     "valueBase64Binary",
     "valueBoolean",
     "valueCanonical",
@@ -331,36 +335,36 @@ pub static S78: &[&str] = &[
     "valueDosage",
     "valueMeta",
 ];
-pub static S79: &[&str] = &["integer", "Quantity"];
-pub static S80: &[&str] = &["valueInteger", "valueQuantity"];
-pub static S81: &[&str] = &["date", "dateTime", "time", "decimal", "integer", "Quantity"];
-pub static S82: &[&str] = &["valueDate", "valueDateTime", "valueTime", "valueDecimal", "valueInteger", "valueQuantity"];
-pub static S83: &[&str] =
+pub static S80: &[&str] = &["integer", "Quantity"];
+pub static S81: &[&str] = &["valueInteger", "valueQuantity"];
+pub static S82: &[&str] = &["date", "dateTime", "time", "decimal", "integer", "Quantity"];
+pub static S83: &[&str] = &["valueDate", "valueDateTime", "valueTime", "valueDecimal", "valueInteger", "valueQuantity"];
+pub static S84: &[&str] =
     &["boolean", "dateTime", "decimal", "integer", "string", "CodeableConcept", "Quantity", "Ratio"];
-pub static S84: &[&str] = &["string", "uri"];
-pub static S85: &[&str] = &["string", "url"];
-pub static S86: &[&str] = &["valueString", "valueUrl"];
-pub static S87: &[&str] = &["integer", "date", "time", "string", "Coding", "Reference"];
-pub static S88: &[&str] = &["valueInteger", "valueDate", "valueTime", "valueString", "valueCoding", "valueReference"];
-pub static S89: &[&str] = &["Period", "Duration"];
-pub static S90: &[&str] = &["valuePeriod", "valueDuration"];
-pub static S91: &[&str] = &["boolean", "CodeableConcept", "Quantity", "Range", "Expression"];
-pub static S92: &[&str] = &["valueBoolean", "valueCodeableConcept", "valueQuantity", "valueRange", "valueExpression"];
-pub static S93: &[&str] = &["string", "markdown"];
-pub static S94: &[&str] = &["valueString", "valueMarkdown"];
-pub static S95: &[&str] = &["string", "code", "integer", "boolean", "decimal", "url", "canonical"];
-pub static S96: &[&str] =
+pub static S85: &[&str] = &["string", "uri"];
+pub static S86: &[&str] = &["string", "url"];
+pub static S87: &[&str] = &["valueString", "valueUrl"];
+pub static S88: &[&str] = &["integer", "date", "time", "string", "Coding", "Reference"];
+pub static S89: &[&str] = &["valueInteger", "valueDate", "valueTime", "valueString", "valueCoding", "valueReference"];
+pub static S90: &[&str] = &["Period", "Duration"];
+pub static S91: &[&str] = &["valuePeriod", "valueDuration"];
+pub static S92: &[&str] = &["boolean", "CodeableConcept", "Quantity", "Range", "Expression"];
+pub static S93: &[&str] = &["valueBoolean", "valueCodeableConcept", "valueQuantity", "valueRange", "valueExpression"];
+pub static S94: &[&str] = &["string", "markdown"];
+pub static S95: &[&str] = &["valueString", "valueMarkdown"];
+pub static S96: &[&str] = &["string", "code", "integer", "boolean", "decimal", "url", "canonical"];
+pub static S97: &[&str] =
     &["valueString", "valueCode", "valueInteger", "valueBoolean", "valueDecimal", "valueUrl", "valueCanonical"];
-pub static S97: &[&str] = &["canonical", "Reference", "uri"];
-pub static S98: &[&str] = &["valueCanonical", "valueReference", "valueUri"];
-pub static S99: &[&str] = &["string", "Timing"];
-pub static S100: &[&str] = &["valueString", "valueTiming"];
-pub static S101: &[&str] = &["Age", "Range", "string"];
-pub static S102: &[&str] = &["Period", "date", "string"];
-pub static S103: &[&str] = &["Age", "Range", "Period", "string"];
-pub static S104: &[&str] = &["boolean", "Age", "Range", "date", "string"];
-pub static S105: &[&str] = &["Timing", "Period", "dateTime"];
-pub static S106: &[&str] = &["timingTiming", "timingPeriod", "timingDateTime"];
-pub static S107: &[&str] = &["deceasedBoolean", "deceasedDateTime"];
-pub static S108: &[&str] = &["multipleBirthBoolean", "multipleBirthInteger"];
-pub static S109: &[&str] = &["occurredPeriod", "occurredDateTime"];
+pub static S98: &[&str] = &["canonical", "Reference", "uri"];
+pub static S99: &[&str] = &["valueCanonical", "valueReference", "valueUri"];
+pub static S100: &[&str] = &["string", "Timing"];
+pub static S101: &[&str] = &["valueString", "valueTiming"];
+pub static S102: &[&str] = &["Age", "Range", "string"];
+pub static S103: &[&str] = &["Period", "date", "string"];
+pub static S104: &[&str] = &["Age", "Range", "Period", "string"];
+pub static S105: &[&str] = &["boolean", "Age", "Range", "date", "string"];
+pub static S106: &[&str] = &["Timing", "Period", "dateTime"];
+pub static S107: &[&str] = &["timingTiming", "timingPeriod", "timingDateTime"];
+pub static S108: &[&str] = &["deceasedBoolean", "deceasedDateTime"];
+pub static S109: &[&str] = &["multipleBirthBoolean", "multipleBirthInteger"];
+pub static S110: &[&str] = &["occurredPeriod", "occurredDateTime"];

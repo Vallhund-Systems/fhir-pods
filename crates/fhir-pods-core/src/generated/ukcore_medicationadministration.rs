@@ -16,7 +16,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "MedicationAdministration.dosage.dose", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "MedicationAdministration.dosage.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "MedicationAdministration.dosage.method", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "MedicationAdministration.dosage.rate[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S51, patterns: &[] },
+        ElementConstraint { path: "MedicationAdministration.dosage.rate[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S52, patterns: &[] },
         ElementConstraint { path: "MedicationAdministration.dosage.route", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "MedicationAdministration.dosage.site", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "MedicationAdministration.dosage.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },

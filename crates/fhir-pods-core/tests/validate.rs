@@ -909,3 +909,63 @@ fn a_slice_discriminated_by_a_binding_is_decided_by_membership() {
     assert!(!r.is_valid(), "encounter-diagnosis is not a problem or health concern: {}", wire::report(&r));
     assert!(r.report.issues.iter().any(|i| i.message.contains("category:us-core is required")), "{}", wire::report(&r));
 }
+
+/// 0.14.1: three more discriminator shapes compile — an Identifier slice
+/// whose datatype profile binds `type` (AU's DVA number: membership), a
+/// Reference slice discriminated by what it resolves to when the target
+/// is a base vital-sign profile the registry carries, and a Bundle entry
+/// whose `resource` is typed as the resource itself.
+#[test]
+fn identifier_type_bindings_resolved_targets_and_typed_entries_discriminate() {
+    use fhir_pods_core::{wire, Validator};
+    let v = Validator::new();
+    // AU Core Patient: a DVA number is `identifier:dva` by the DVA-entitlement
+    // type binding (bundled) — the slice's fixed system is then enforced
+    let dva = br#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},
+        "identifier":[{"type":{"coding":[{"system":"http://terminology.hl7.org.au/CodeSystem/v2-0203","code":"DVG"}]},"system":"http://ns.electronichealth.net.au/id/dva","value":"NBUR9080"}],
+        "name":[{"family":"Citizen"}],"gender":"female","birthDate":"1988-04-12"}"#;
+    let r = v.validate(dva);
+    assert!(r.is_valid(), "{}", wire::report(&r));
+    assert!(
+        !r.report.issues.iter().any(|i| i.message.contains("slice 'dva'")),
+        "no longer deferred: {}",
+        wire::report(&r)
+    );
+    let wrong_system =
+        String::from_utf8_lossy(dva).replace("http://ns.electronichealth.net.au/id/dva", "http://example.org/dva");
+    let r = v.validate(wrong_system.as_bytes());
+    assert!(!r.is_valid(), "a DVA-typed identifier must carry the DVA system: {}", wire::report(&r));
+    assert!(r.report.issues.iter().any(|i| i.path.contains("identifier:dva")), "{}", wire::report(&r));
+
+    // AU Core MedicationRequest: `supportingInformation:bodyWeight` is the
+    // reference that resolves to a base body-weight Observation (contained)
+    let mr = br##"{"resourceType":"MedicationRequest","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-medicationrequest"]},
+        "contained":[{"resourceType":"Observation","id":"wt","status":"final",
+            "category":[{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/observation-category","code":"vital-signs"}]}],
+            "code":{"coding":[{"system":"http://loinc.org","code":"29463-7"}]},"subject":{"reference":"Patient/1"},"effectiveDateTime":"2026-09-20",
+            "valueQuantity":{"value":64,"unit":"kg","system":"http://unitsofmeasure.org","code":"kg"}}],
+        "status":"active","intent":"order","medicationCodeableConcept":{"coding":[{"system":"http://pbs.gov.au/code/item","code":"10001J"}],"text":"Amoxicillin"},
+        "subject":{"reference":"Patient/1"},"authoredOn":"2026-09-20","requester":{"reference":"Practitioner/1"},
+        "supportingInformation":[{"reference":"#wt"},{"reference":"#wt"}]}"##;
+    let r = v.validate(mr);
+    assert!(
+        r.report
+            .issues
+            .iter()
+            .any(|i| i.path.contains("supportingInformation:bodyWeight") && i.message.contains("exceeds max 1")),
+        "two body weights resolve to the bodyWeight slice (max 1): {}",
+        wire::report(&r)
+    );
+
+    // AU PS Bundle: an entry whose resource is a Consent is `entry:consent`
+    // by its type — the slice's own rules reach it (its fullUrl is required
+    // there, and the finding is labelled with the slice)
+    let bundle = r#"{"resourceType":"Bundle","meta":{"profile":["http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-bundle"]},"type":"document","timestamp":"2026-09-21T10:00:00+10:00",
+        "entry":[{"resource":{"resourceType":"Consent","id":"c1","status":"active","scope":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/consentscope","code":"patient-privacy"}]},"category":[{"coding":[{"system":"http://loinc.org","code":"59284-0"}]}]}}]}"#;
+    let r = v.validate(bundle.as_bytes());
+    assert!(
+        r.report.issues.iter().any(|i| i.path == "Bundle.entry:consent.fullUrl"),
+        "the Consent entry is the consent slice's: {}",
+        wire::report(&r)
+    );
+}

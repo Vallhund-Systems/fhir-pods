@@ -141,6 +141,7 @@ class SliceSpec:
     objpat: dict = field(default_factory=dict)     # relative path ("" = the slice itself) -> pattern object
     invariants: list = field(default_factory=list) # (rel path or "", key, severity, human, expr, types)
     sub_profiles: dict = field(default_factory=dict)  # relative path -> [profile urls] (a Bundle entry's resource)
+    sub_types: dict = field(default_factory=dict)      # relative path -> resource type code, when the element's type IS a resource type (a Bundle entry's `resource` typed `Consent`)
     target_profiles: list = field(default_factory=list)  # a Reference slice's targetProfile urls (for `resolve()` discriminators)
     slicings: dict = field(default_factory=dict)   # relative path -> SlicingSpec (a slicing inside this slice)
     compiled_slicings: list = field(default_factory=list)  # [(rel path, closed, [(name, SliceSpec, discs)])]
@@ -195,6 +196,30 @@ def groups_of(obj, base=""):
     for anchor, pairs in groups:
         out.append((f"{base}.{anchor}" if base else anchor, pairs))
     return out
+
+
+# Complex datatypes (uppercase, not resources) a sub-element may be typed as.
+DATATYPE_CODES = {
+    "BackboneElement", "Element", "Extension", "Narrative", "Meta", "Reference", "Identifier", "HumanName", "Address",
+    "ContactPoint", "CodeableConcept", "Coding", "Quantity", "SimpleQuantity", "Age", "Duration", "Count", "Distance",
+    "Money", "MoneyQuantity", "Period", "Range", "Ratio", "Timing", "Dosage", "Attachment", "Annotation", "Signature",
+    "SampledData", "ContactDetail", "Contributor", "DataRequirement", "Expression", "ParameterDefinition",
+    "RelatedArtifact", "TriggerDefinition", "UsageContext", "ElementDefinition", "MarketingStatus", "Population",
+    "ProdCharacteristic", "ProductShelfLife", "SubstanceAmount", "Resource", "DomainResource",
+}
+
+
+def profile_binding(ref, dpath):
+    """`(value_set, kind)` when an external profile binds (`required`) the
+    element at `dpath` — an Identifier profile whose `type` is bound rather
+    than patterned (AU Base's DVA number): membership discriminates."""
+    if not ref:
+        return None
+    want = f"{ref.get('type')}.{dpath}"
+    for e in (ref.get("snapshot") or {}).get("element", []):
+        if ":" not in e.get("id", "") and e.get("path") == want:
+            return binding_of(e)
+    return None
 
 
 def profile_discriminators(ref, dpath):
@@ -650,6 +675,8 @@ def collect(sd):
                 nsl.type = types[0].get("code") if types else None
                 nsl.profile = (types[0].get("profile") or [None])[0] if types else None
                 nsl.target_profiles = [p.split("|")[0] for t in types for p in t.get("targetProfile", [])]
+                if rule.binding:
+                    nsl.subs.setdefault("", Rule()).binding = rule.binding
                 nsl.invariants += slice_invariants(e, "")
             else:
                 nname, nrel = nested_tail.split(".", 1)
@@ -667,6 +694,7 @@ def collect(sd):
             sl.min, sl.max = rule.min, rule.max
             sl.type = types[0].get("code") if types else None
             sl.profile = (types[0].get("profile") or [None])[0] if types else None
+            sl.target_profiles = [p.split("|")[0] for t in types for p in t.get("targetProfile", [])]
             obj = object_fixed(e)
             if obj is not None:
                 sl.objpat[""] = obj      # what a `pattern $this` discriminator resolves to
@@ -689,6 +717,10 @@ def collect(sd):
         profs = [p.split("|")[0] for t in e.get("type", []) for p in t.get("profile", [])]
         if profs:
             sl.sub_profiles[rel] = profs
+        else:
+            codes = [t.get("code") for t in e.get("type", []) if t.get("code")]
+            if len(codes) == 1 and codes[0] and codes[0][0].isupper() and codes[0] not in DATATYPE_CODES:
+                sl.sub_types[rel] = codes[0]
         rule = Rule.of(e)
         obj = object_fixed(e)
         if obj is not None:
@@ -731,6 +763,14 @@ def resolve_discriminators(sliced_path, sg, sl, load):
                 return None
             discs.append(("type", choice_key(sliced_path, sl.type)))
             continue
+        # a Bundle entry's `resource` typed as the resource itself (`Consent`,
+        # `Device`): the type discriminates; a `profile` discriminator with no
+        # profile named is the type's alone
+        if dtype in ("type", "profile") and dpath in sl.sub_types and dpath not in sl.sub_profiles:
+            rt = ("rtype", "$this." + dpath, sl.sub_types[dpath])
+            if rt not in discs:
+                discs.append(rt)
+            continue
         if dtype in ("type", "profile") and dpath in sl.sub_profiles and load:
             # a Bundle entry's resource: its type, or conformance to its profile
             sds = [load(u) for u in sl.sub_profiles[dpath]]
@@ -768,9 +808,29 @@ def resolve_discriminators(sliced_path, sg, sl, load):
         if val is None:
             key = "" if dpath == "$this" else dpath
             bound = sl.subs.get(key)
-            if bound and bound.binding:
-                vs, kind = bound.binding
-                discs.append(("member", "$this" if dpath == "$this" else "$this." + dpath, vs, kind))
+            binding = bound.binding if bound else None
+            at = key
+            # the discriminator names a part of a bound coded element
+            # (`coding.system` under a `coding` bound to v2-0074, or under a
+            # CodeableConcept slice bound as a whole): the nearest bound
+            # ancestor's membership decides
+            if not binding:
+                parent = key
+                while "." in parent and not binding:
+                    parent = parent.rsplit(".", 1)[0]
+                    pb = sl.subs.get(parent)
+                    if pb and pb.binding:
+                        binding, at = pb.binding, parent
+                if not binding and key:
+                    pb = sl.subs.get("")
+                    if pb and pb.binding:
+                        binding, at = pb.binding, ""
+            # the slice's own datatype profile binds it there
+            if not binding and sl.profile and load:
+                binding = profile_binding(load(sl.profile), dpath)
+            if binding:
+                vs, kind = binding
+                discs.append(("member", "$this" if at == "" else "$this." + at, vs, kind))
                 continue
         if val is None:
             return None

@@ -444,7 +444,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "extension:time[x].value[x]",
             ty: "choice",
-            choices: super::intern::S58,
+            choices: super::intern::S59,
             min: 1,
             max: Max::Bounded(1),
             must_support: false,

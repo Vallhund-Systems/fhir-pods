@@ -68,7 +68,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "deceased[x]",
             ty: "choice",
-            choices: super::intern::S107,
+            choices: super::intern::S108,
             min: 0,
             max: Max::Bounded(1),
             must_support: false,
@@ -85,7 +85,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "multipleBirth[x]",
             ty: "choice",
-            choices: super::intern::S108,
+            choices: super::intern::S109,
             min: 0,
             max: Max::Bounded(1),
             must_support: false,

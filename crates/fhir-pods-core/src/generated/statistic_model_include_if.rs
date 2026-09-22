@@ -138,7 +138,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                         max: Max::Bounded(1),
                         fixed: None,
                         required_binding: None,
-                        types: super::intern::S91,
+                        types: super::intern::S92,
                         patterns: &[],
                     },
                 ],
@@ -167,7 +167,7 @@ pub static LOWERING: Lowering = Lowering {
     slots: &[Slot {
         path: "extension:value.value[x]",
         ty: "choice",
-        choices: super::intern::S92,
+        choices: super::intern::S93,
         min: 1,
         max: Max::Bounded(1),
         must_support: false,

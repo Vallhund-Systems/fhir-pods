@@ -29,6 +29,7 @@
 //! - `http://terminology.hl7.org/ValueSet/jurisdiction` — no ValueSet http://terminology.hl7.org/ValueSet/jurisdiction
 //! - `http://terminology.hl7.org/ValueSet/sex-parameter-for-clinical-use` — no ValueSet http://terminology.hl7.org/ValueSet/sex-parameter-for-clinical-use
 //! - `http://terminology.hl7.org/ValueSet/smart-capabilities` — no ValueSet http://terminology.hl7.org/ValueSet/smart-capabilities
+//! - `https://fhir.infoway-inforoute.ca/ValueSet/healthconcerncode` — no ValueSet https://fhir.infoway-inforoute.ca/ValueSet/healthconcerncode
 //! - `https://healthterminologies.gov.au/fhir/ValueSet/amt-vaccine-1` — no ValueSet https://healthterminologies.gov.au/fhir/ValueSet/amt-vaccine-1
 //! - `https://healthterminologies.gov.au/fhir/ValueSet/australian-immunisation-register-vaccine-1` — no ValueSet https://healthterminologies.gov.au/fhir/ValueSet/australian-immunisation-register-vaccine-1
 //! - `https://healthterminologies.gov.au/fhir/ValueSet/australian-indigenous-status-1` — no ValueSet https://healthterminologies.gov.au/fhir/ValueSet/australian-indigenous-status-1

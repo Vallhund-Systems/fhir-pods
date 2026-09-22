@@ -138,7 +138,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                         max: Max::Bounded(1),
                         fixed: None,
                         required_binding: None,
-                        types: super::intern::S83,
+                        types: super::intern::S84,
                         patterns: &[],
                     },
                 ],
