@@ -98,7 +98,7 @@ try {
   await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1300, deviceScaleFactor: 1, mobile: false });
   browser = (await send("Browser.getVersion")).product;
   await send("Page.navigate", { url });
-  await until(() => evaluate("document.documentElement.dataset.runtime"), "runtime initialization");
+  await until(() => evaluate("document.documentElement?.dataset.runtime"), "runtime initialization");
   await check("initial AU preview includes unsupported findings; all six destinations are discovered", async () => {
     await selectView("export");
     const result = JSON.parse(await evaluate("document.getElementById('json-output').textContent"));
