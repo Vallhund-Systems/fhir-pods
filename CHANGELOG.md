@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.12.1 — 2026-09-21
+
+The Expo module's podspec and `build.gradle` carried a stale `0.5.1`
+version string (a host's `Podfile.lock` said `FhirPodsExpo (0.5.1)` for
+0.12.0's binaries); both now read `pods/expo/package.json`. Found by the
+ABI 12 simulator exercise: 17 checks on iPhone 17 and Pixel 8, identical
+outputs, incl. export for `au`/`us`, the refused contradiction and the
+refused foreign patient. No core change.
+
 ## 0.12.0 — 2026-09-21
 
 **What a fresh review of 0.11.0's exporter found, taken** (F074–F087 in

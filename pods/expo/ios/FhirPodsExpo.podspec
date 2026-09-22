@@ -1,7 +1,12 @@
+require 'json'
+
+# One version: the package's (pods/expo/package.json), bumped by the release.
+package = JSON.parse(File.read(File.join(__dir__, '..', 'package.json')))
+
 Pod::Spec.new do |s|
   s.name           = 'FhirPodsExpo'
-  s.version        = '0.5.1'
-  s.summary        = 'Embeddable FHIR verifier (expo pod) — Rust core over a lean C ABI.'
+  s.version        = package['version']
+  s.summary        = 'Embeddable FHIR compliance runtime (expo pod) — Rust core over a lean C ABI.'
   s.license        = { :type => 'MIT' }
   s.author         = 'Justin Grosvenor'
   s.homepage       = 'https://github.com/justinGrosvenor/fhir-pods'

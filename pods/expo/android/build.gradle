@@ -3,14 +3,18 @@ plugins {
   id 'expo-module-gradle-plugin'
 }
 
+// One version: the package's (pods/expo/package.json), bumped by the release.
+def packageJson = new groovy.json.JsonSlurper().parse(file("../package.json"))
+def packageVersion = packageJson.version as String
+
 group = 'dev.fhirpods'
-version = '0.5.1'
+version = packageVersion
 
 android {
   namespace "expo.modules.fhirpods"
   defaultConfig {
-    versionCode 3
-    versionName "0.5.1"
+    versionCode 1
+    versionName packageVersion
   }
   // The Rust core, built per ABI by scripts/build-android-jnilibs.sh into
   // src/main/jniLibs/<abi>/libfhir_pods_ffi.so (the default jniLibs dir).

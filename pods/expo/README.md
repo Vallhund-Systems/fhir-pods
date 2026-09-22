@@ -303,21 +303,22 @@ asked what they can't answer. `system` is "" for a bare `code` element.
 
 ## Status
 
-The current package is **0.12.0, ABI 12**. The release build produces iOS
+The current package is **0.12.1, ABI 12**. The release build produces iOS
 XCFramework slices, Android libraries, and a packed Expo artifact. This
 package exposes the full operation family documented above.
 
-The latest recorded simulator exercise used the **v0.5.1 / ABI 7** artifact
-on 2026-09-17 in a fresh Expo 57 / React Native 0.86 app. Nine checks passed
-on both an iPhone 17 simulator and a Pixel 8 Android 15 emulator: validate,
-lower, deidentify, document, terminologyNeeds, slots, operationOutcome,
-mustSupportGaps, and loadTerminology. The test also checked ABI identity;
-both platforms returned identical synthetic results.
-
-That exercise establishes delivery for the tested artifact and operations.
-Audit, lift, v2, export and discovery arrived later, and current ABI 12 simulator
-coverage remains to be refreshed. Package build success and core conformance results
-are recorded separately from simulator execution.
+The latest simulator exercise used the **0.12.0 / ABI 12** artifact on
+2026-09-21 in a fresh Expo 57 / React Native 0.86 app: **17 checks passed on
+both an iPhone 17 simulator and a Pixel 8 Android 15 emulator with identical
+outputs** — abi, validate, operationOutcome, mustSupportGaps, slots (fixed
+neighbours and parts), lower (unit from the fixed code), lift, profiles,
+export for `au` and `us` (document and audit event valid; a contradiction
+and another patient's resource refused), document, audit, v2, deidentify,
+terminologyNeeds. Mean per-call times in a debug build were ~0.1 ms for
+validate and ~10 ms for a whole-record `au` export. The evidence (outputs,
+the scratch app's source, toolchain) is kept with the project's planning
+records, not here. 0.12.1 only corrects the podspec/gradle version string
+that exercise found; the binaries are unchanged.
 
 ## Boundary
 
