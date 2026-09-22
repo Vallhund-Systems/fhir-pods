@@ -58,6 +58,11 @@ have validation errors; inspect its report before using it.
 
 ## Use
 
+Try the [reference health app](examples/health-app/README.md): one synthetic
+check-in mapped to base FHIR, exported to any compiled region, with visible
+coverage, terminology, audit and host decisions before local download.
+Run `node examples/health-app/serve.mjs` after building the WASM artifact.
+
 The WASM pod exposes the operations on one instance. The host loads the
 module bytes; see the [WASM guide](pods/wasm/README.md) for build and loading
 instructions.

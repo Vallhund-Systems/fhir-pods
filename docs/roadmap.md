@@ -29,6 +29,11 @@ The [README](../README.md#current-capabilities) is the operation overview.
 
 ## The latest source work
 
+The [reference health app](../examples/health-app/README.md) demonstrates a
+host model mapped once to base R4 and exported through discovered regions.
+It keeps missing/lost data, unsupported checks, terminology needs and host
+decisions visible, with local FHIR/review downloads and lift inspection.
+
 0.11.0 added `export` (ABI 11): the host writes one transformer against the
 base R4 definitions and the runtime speaks the jurisdiction. 0.12.0 (ABI 12)
 takes the fresh review of it — nothing replaced, nothing silently dropped,
@@ -87,9 +92,9 @@ requirements. The host still supplies:
 
 - Domain-field mappings to and from profile slots, and decisions about
   lifted `missing` / `extras` or transformed content.
-- Profile and policy selection, including regional and destination-specific
-  requirements. The current compiled registry is listed in the README;
-  jurisdiction discovery and automatic rule selection are not implemented.
+- Destination and policy selection. `profiles()` discovers compiled regions,
+  and `export()` selects their profiles from the record's declared/content
+  identity. The host chooses the destination and any additional requirements.
 - Consent, authorization, credentials, persistence, and transport. A SMART
   on FHIR client can fetch records and pass them to lift/validate.
 - External terminology access and any source-specific v2 dialect handling.

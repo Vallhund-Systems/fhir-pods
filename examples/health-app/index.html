@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Daily check-in · fhir-pods reference app</title>
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <header class="masthead">
+    <a class="brand" href="./"><span class="brand-mark" aria-hidden="true">↗</span> fhir-pods <span class="brand-note">/ reference app</span></a>
+    <span class="local-badge"><span aria-hidden="true">●</span> Local runtime</span>
+  </header>
+  <main>
+    <section class="intro">
+      <div><p class="eyebrow">A health app that speaks at the edges</p><h1>One check-in.<br>Every destination.</h1><p class="lead">Keep your app’s data model. Let the runtime apply the destination’s profiles, and make the gaps visible.</p></div>
+      <ol class="flow" aria-label="Integration flow">
+        <li><span>01</span><div><strong>Your app</strong><small>A person and a pulse reading</small></div></li>
+        <li><span>02</span><div><strong>Base FHIR</strong><small>One reusable mapping</small></div></li>
+        <li><span>03</span><div><strong>Regional output</strong><small>Profiles, findings and an audit record</small></div></li>
+      </ol>
+    </section>
+
+    <p id="runtime-status" role="status" class="runtime-status">Loading the local runtime…</p>
+    <div class="workspace">
+      <section class="card input-card" aria-labelledby="check-in-title">
+        <div class="section-top"><span class="step">01 / APP DATA</span><span class="tag">Synthetic</span></div>
+        <h2 id="check-in-title">Daily check-in</h2>
+        <p class="subtle">A small app model, with no regional profile fields.</p>
+        <form id="check-in">
+          <fieldset id="app-fields" disabled>
+            <label class="preset-label">Try a record<select id="preset"><option value="complete">Complete check-in</option><option value="missing">Missing birth date</option><option value="qualified">Qualified reading (&lt;)</option></select></label>
+            <div class="form-grid">
+              <label>Given name<input id="given" name="given" required maxlength="80" autocomplete="off"></label>
+              <label>Family name<input id="family" name="family" required maxlength="80" autocomplete="off"></label>
+              <label>Date of birth<input id="birth-date" name="birthDate" type="date"><small>Leave blank to reveal regional requirements.</small></label>
+              <label>Recorded gender<select id="gender" name="gender"><option value="unknown">Unknown</option><option value="female">Female</option><option value="male">Male</option><option value="other">Other</option></select></label>
+            </div>
+            <div class="reading-box">
+              <span class="eyebrow">Pulse reading</span>
+              <div class="reading-controls"><label><span class="sr-only">Reading qualifier</span><select id="comparator" aria-label="Reading qualifier"><option value="">Exact</option><option value="<">Less than</option></select></label><label><span class="sr-only">Heart rate</span><input id="bpm" name="bpm" type="number" min="1" max="999" step="0.1" required aria-label="Heart rate"></label><span class="unit">beats/min</span></div>
+              <label>Measured at (UTC)<input id="measured-at" name="measuredAt" type="datetime-local" step="1" required></label>
+            </div>
+            <div class="form-actions"><button id="build" class="button primary" type="submit">Build export <span aria-hidden="true">↗</span></button><button id="reset" class="button quiet" type="button">Reset</button></div>
+          </fieldset>
+        </form>
+        <p class="local-note">Synthetic data stays in this page. JSON downloads are local files.</p>
+      </section>
+
+      <section class="card output-card" aria-labelledby="destination-title">
+        <div class="section-top"><span class="step">02 / DESTINATION</span><span id="region-count" class="tag">Discovering…</span></div>
+        <h2 id="destination-title">Choose where it goes</h2>
+        <div id="regions" class="region-grid" role="group" aria-label="Export destination"></div>
+        <p id="guide" class="guide"></p>
+        <label class="summary-toggle"><input id="include-document" type="checkbox" disabled><span>Include a patient summary<small>Assemble and check the region’s document.</small></span></label>
+
+        <div id="decision" class="decision waiting" role="status" aria-live="polite"><span class="decision-icon" aria-hidden="true">…</span><div><h3 id="decision-title">Preparing your preview</h3><p id="decision-detail">The runtime runs here, in your browser.</p></div></div>
+        <div id="counts" class="counts" hidden></div>
+        <div id="resources" class="resources"></div>
+        <div id="findings" class="findings"></div>
+        <div id="limitations-panel" class="limitations-panel" hidden><label class="summary-toggle"><input id="acknowledge-limits" type="checkbox"><span>Allow the listed unsupported checks for this local demo download<small>This records a host decision, not a resolved check. Any record or destination change clears it. Errors, missing values and unresolved terminology still block download.</small></span></label></div>
+        <p id="audit-status" class="audit-status"></p>
+        <div class="download-actions"><button id="download-fhir" type="button" class="button primary" disabled>Download FHIR</button><button id="download-review" type="button" class="button secondary" disabled>Download review JSON</button></div>
+        <p class="policy-note">Download follows this example’s host policy. Passing the available checks is not a legal-compliance certification.</p>
+      </section>
+    </div>
+
+    <details id="integration-details" class="card developer-panel">
+      <summary><span>Under the hood</span><small>Host model → base FHIR → export → lift</small></summary>
+      <div class="developer-content">
+        <div id="inspector-tabs" class="inspector-tabs" role="group" aria-label="Inspect integration data">
+          <button type="button" data-view="host" aria-pressed="true">App data</button><button type="button" data-view="base" aria-pressed="false">Base FHIR</button><button type="button" data-view="export" aria-pressed="false">Export report</button><button type="button" data-view="audit" aria-pressed="false">Audit record</button><button type="button" data-view="lift" aria-pressed="false">Lift reading</button>
+        </div>
+        <p id="inspector-help" class="subtle"></p><pre id="json-output" tabindex="0" aria-label="Integration JSON">No preview yet.</pre>
+        <details class="terminology-panel"><summary>Host-supplied terminology</summary><p>Unresolved memberships stay visible. Load a table in the runtime’s terminology format to recheck this record; the example bundles no external expansions.</p><div class="terminology-actions"><label class="file-label">Load terminology table<input id="terminology-file" type="file" accept=".txt,text/plain" disabled></label><button id="clear-terminology" type="button" class="button secondary" disabled>Clear table</button></div><p id="terminology-status" role="status">Bundled terminology only.</p></details>
+      </div>
+    </details>
+  </main>
+  <footer><span>fhir-pods · compliance runtime</span><a href="./README.md">Integration notes ↗</a><span id="abi-label"></span></footer>
+</body>
+</html>
