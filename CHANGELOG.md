@@ -1,5 +1,66 @@
 # Changelog
 
+## 0.12.0 — 2026-09-21
+
+**What a fresh review of 0.11.0's exporter found, taken** (F074–F087 in
+planning). The exporter's claims — nothing invented, nothing silently
+dropped — were not true as implemented; they are now:
+- A record value that disagrees with a leaf the target profile fixes (a
+  blood pressure in kPa; the profile fixes `mm[Hg]`) was silently
+  overwritten by the profile's value. `lift` now reports `conflicts`
+  (single-valued places and a slice's own instance only — a pattern on a
+  repeating element is one instance's, which lowering adds), and `export`
+  refuses to re-profile such a resource: out as given, the contradiction
+  in `note`.
+- Content no slot took was dropped, and much of it was not even in
+  `extras` (a third `component`, a local coding beside LOINC's, a second
+  category, `meta.security`/`tag`/`source`, a note, a performer, an
+  issued instant, `code.text`, an AllergyIntolerance's criticality…).
+  `lift` now names an item of a sliced or fixed repeating element no
+  slice claims (`component[2]`, `code.coding[1]`) and lifts `meta` (all
+  but `profile`) as the record's; `lower` keeps that `meta`; `export`
+  carries every extra back where the profile's shape allows and lists it
+  as `carried`, leaving only what sits beneath a repeating element the
+  profile rebuilt in `extras`. A contained performer no longer orphans
+  (`dom-3`); the IPS tobacco-use and pregnancy profiles keep the value
+  they have no slot for.
+- US Core Smoking Status matched every social-history observation (its
+  only compiled identity is the category; the code binding is
+  extensible) and tied with US Core's pregnancy/occupation/sexual-
+  orientation profiles: `specialised` now means never by content, and a
+  survivor whose identity is a strict subset of another's is dropped.
+- AU Core / AU PS Smoking Status doubled the LOINC coding and lost the
+  profile's SNOMED one: the generator no longer emits a spare unlabelled
+  slot for a container whose own pattern supplies an instance
+  (`gen_profile.py`).
+- Another patient's observation went into the summary, valid; two
+  Patients picked one silently: a record is one patient's —
+  `ExportError::SeveralPatients` / `NotThisPatient(index, reference)`.
+- `_effectiveDateTime` (a choice slot's carrier) was refused as "not an
+  input"; `lower` resolves carriers of a choice's concrete keys.
+- `audit` without a document failed for want of `data`: the patient's
+  record (`Patient/<id>`) is what was read.
+- `also` went silently missing when the document's candidates tied; a
+  target that is or derives from one of them satisfies the document, and
+  an unsettled requirement is a note. A declared profile the region does
+  not have is noted as not applied. The README no longer claims an unknown
+  region falls back to `ips` (it is refused; `profiles()` lists them).
+
+**Discovery** (ABI 12): `fhir_pods_profiles()` / wasm `profiles()` / Expo
+`profiles()` / CLI `profiles` — the regions `export` speaks and every
+compiled profile (`url`, `name`, `resourceType`, `kind`, `base`).
+`slots()` shows per slot what the profile fixes beside or beneath it
+(`fixed`) and a composite datatype slot's members from the base element
+table (`parts`: a `HumanName`'s `family`, `given`…), rendered once in the
+core (`CompiledProfile::slots_json`) for the C ABI and the CLI alike.
+A Quantity's `unit` is optional where the profile fixes the UCUM `code`:
+lowering writes the code as the unit when none is given (the profile's
+own content, not a guess) and keeps a host's display unit when one is —
+the unit/`mm[Hg]` footgun closed.
+
+Proof: 228 workspace tests (12 export, 3 discovery), 18 wasm tests; release
+gate and base examples as recorded in the planning report.
+
 ## 0.11.0 — 2026-09-21
 
 **Export** (ABI 11): `fhir_pods_export(region, inputs)` (+ `_tx`, `_host_tx`,

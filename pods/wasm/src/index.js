@@ -3,7 +3,7 @@
 // WebAssembly does (browser, edge runtimes, Node, Bun, Deno).
 
 /** The ABI this wrapper speaks; a module reporting anything else is refused. */
-export const ABI_VERSION = 11;
+export const ABI_VERSION = 12;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -98,6 +98,8 @@ export async function instantiate(source, options = {}) {
       if (out.error) throw new Error(`fhir-pods: ${out.error}`);
       return out;
     },
+    // Discovery: the regions `export` speaks and every compiled profile.
+    profiles: () => JSON.parse(call(ex.fhir_pods_profiles)),
     slots: (profileUrl) => {
       const out = JSON.parse(call(ex.fhir_pods_slots, profileUrl));
       if (out.error) throw new Error(`fhir-pods: ${out.error}`);

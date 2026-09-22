@@ -473,7 +473,10 @@ def lowering_of(sd, load=None):
         # slices supply (BALP's disclosure: `entity` 2..* with one required
         # `patient` slice): the rest are plain inputs, whatever its slices fix
         own_slices = [m for (sp, m) in slices if sp.startswith(lp + ":") and "." not in sp[len(lp) + 1:]] if path in sliced else []
-        spare_container = bool(own_slices) and (e.get("min", 0) or 0) > sum(own_slices)
+        # the element's own fixed leaves (a pattern coding on `code.coding`
+        # beside a LOINC slice) supply an instance too
+        own_fixed = 1 if any(fp.rpartition(".")[0] == lp for fp, _ in fixed) else 0
+        spare_container = bool(own_slices) and (e.get("min", 0) or 0) > sum(own_slices) + own_fixed
         if scalar_fixed(e) is not None or object_fixed(e) is not None:
             continue
         # a labelled path is judged by its own slice's fixed leaves; the
@@ -545,6 +548,14 @@ def lowering_of(sd, load=None):
                 continue
             add_slot(parent + ".value", "decimal", (), 1, 1, True)
             add_slot(parent + ".unit", "string", (), 0, 1, True)
+    # …and its `unit` is optional: lowering writes the fixed UCUM code as the
+    # unit when the host gives none (the profile's own content), so the slot
+    # says 0 even where the profile requires the element
+    fixed_codes = {lp.rpartition(".")[0] for lp, _ in fixed if lp.endswith(".code")}
+    for slot in slots:
+        parent, _, leaf = slot["path"].rpartition(".")
+        if leaf == "unit" and parent in fixed_codes and type_of.get(parent) in QUANTITY:
+            slot["min"] = 0
     # gates: an optional element (min 0) on the way to a fixed leaf — the leaf
     # applies only when an input reaches into it (component:SystolicBP
     # .valueQuantity stays absent when the host gives a dataAbsentReason)

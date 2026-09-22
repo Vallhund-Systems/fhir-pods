@@ -229,8 +229,10 @@ fn a_declared_profile_settles_the_choice_and_content_no_slot_takes_is_named() {
         "{}",
         wire::report(&o.validation)
     );
-    assert_eq!(o.extras, ["bodySite"], "no US Core lab slot takes bodySite: not carried, named");
-    assert!(!o.resource.contains("bodySite"));
+    // no US Core lab slot takes bodySite: carried as given, named as carried, verified with the rest
+    assert_eq!(o.carried, ["bodySite"]);
+    assert!(o.extras.is_empty(), "{:?}", o.extras);
+    assert!(o.resource.contains(r#""bodySite":{"text":"finger"}"#), "{}", o.resource);
     // and the same glucose without the declaration: laboratory category identifies it
     let undeclared = obs.replace(
         r#""meta":{"profile":["http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-lab"]},"#,
@@ -265,4 +267,202 @@ fn the_export_is_audited_as_a_patient_read_of_the_document() {
     // an audit that cannot be built is the export's error, not a silent gap
     let bad = r#","audit":{"recorded":"2026-09-21T00:00:00Z"}"#;
     assert!(matches!(v.export("au", inputs(&record, bad).as_bytes()).unwrap_err(), ExportError::Audit(_)));
+}
+
+/// What the fresh review of v0.11.0 found: nothing invented, nothing
+/// silently dropped, nobody else's data.
+#[test]
+fn a_record_that_contradicts_the_profiles_fixed_content_goes_out_as_given_and_says_why() {
+    let v = Validator::new();
+    // a blood pressure in kPa: the base bp fixes mm[Hg], so lowering it is
+    // refused by the base profile itself — hand-write the resource instead
+    let kpa = r#"{"resourceType":"Observation","id":"bp-kpa","status":"final",
+        "category":[{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/observation-category","code":"vital-signs"}]}],
+        "code":{"coding":[{"system":"http://loinc.org","code":"85354-9"}]},"subject":{"reference":"Patient/u1"},
+        "effectiveDateTime":"2026-09-20T08:00:00+10:00",
+        "component":[{"code":{"coding":[{"system":"http://loinc.org","code":"8480-6"}]},"valueQuantity":{"value":16.1,"unit":"kPa","system":"http://unitsofmeasure.org","code":"kPa"}},
+                     {"code":{"coding":[{"system":"http://loinc.org","code":"8462-4"}]},"valueQuantity":{"value":10.5,"unit":"kPa","system":"http://unitsofmeasure.org","code":"kPa"}}]}"#;
+    for region in ["au", "us", "ips"] {
+        let e = v.export(region, format!(r#"{{"resources":[{kpa}],"document":false}}"#).as_bytes()).unwrap();
+        let r = &e.resources[0];
+        assert!(r.profile.is_none(), "{region}: re-profiled a kPa pressure as {:?}", r.profile.map(|p| p.name));
+        let note = r.note.as_deref().unwrap();
+        assert!(
+            note.starts_with("not re-profiled:") && note.contains("kPa") && note.contains("mm[Hg]"),
+            "{region}: {note}"
+        );
+        assert!(r.resource.contains(r#""code":"kPa""#) && !r.resource.contains("mm[Hg]"), "{region}: {}", r.resource);
+    }
+}
+
+#[test]
+fn what_no_slot_takes_is_carried_not_dropped_and_what_cannot_be_is_named() {
+    let v = Validator::new();
+    let table = Expansions::parse(IPS_PREGNANCY_SETS).unwrap();
+    // a base bp with a third component (mean arterial pressure), a local
+    // coding beside LOINC, a second category, security labels, a note, an
+    // issued instant, a performer and a text on the code
+    let bp = v
+        .lower(
+            &format!("{BASE}bp"),
+            br#"{"id":"bp1","status":"final","subject":"Patient/u1","effectiveDateTime":"2026-09-20T08:00:00+10:00",
+            "component:SystolicBP.valueQuantity.value":121,"component:DiastolicBP.valueQuantity.value":79}"#,
+        )
+        .unwrap()
+        .resource;
+    let rich = bp
+        .replace(
+            r#""component":["#,
+            r#""component":[{"code":{"coding":[{"system":"http://loinc.org","code":"8478-0"}]},"valueQuantity":{"value":93,"unit":"mm[Hg]","system":"http://unitsofmeasure.org","code":"mm[Hg]"}},"#,
+        )
+        .replace(
+            r#""meta":{"profile":["http://hl7.org/fhir/StructureDefinition/bp"]}"#,
+            r#""meta":{"profile":["http://hl7.org/fhir/StructureDefinition/bp"],"security":[{"system":"http://terminology.hl7.org/CodeSystem/v3-Confidentiality","code":"R"}],"source":"http://example.org/app-7"},"note":[{"text":"seated"}],"issued":"2026-09-20T08:05:00+10:00","performer":[{"reference":"Patient/u1"}]"#,
+        )
+        .replace(
+            r#""code":{"coding":[{"system":"http://loinc.org","code":"85354-9"}]}}"#,
+            r#""code":{"coding":[{"system":"http://loinc.org","code":"85354-9"},{"system":"http://example.org/local","code":"BP"}],"text":"Blood pressure"}}"#,
+        );
+    assert!(v.validate(rich.as_bytes()).is_valid(), "{}", wire::report(&v.validate(rich.as_bytes())));
+    for region in ["au", "us", "ips"] {
+        let e =
+            v.export_with(region, format!(r#"{{"resources":[{rich}],"document":false}}"#).as_bytes(), &table).unwrap();
+        let r = &e.resources[0];
+        assert!(r.profile.is_some(), "{region}: {:?}", r.note);
+        let out = &r.resource;
+        for kept in [
+            "8478-0",
+            r#""code":"R""#,
+            "http://example.org/app-7",
+            r#""text":"seated""#,
+            "2026-09-20T08:05:00+10:00",
+            "http://example.org/local",
+            r#""text":"Blood pressure""#,
+        ] {
+            assert!(out.contains(kept), "{region} lost {kept}: {out}");
+        }
+        for c in ["component[0]", "code.coding[1]", "note", "issued", "performer", "code.text"] {
+            assert!(r.carried.iter().any(|x| x == c), "{region} carried {:?}, extras {:?}", r.carried, r.extras);
+        }
+        assert!(r.extras.is_empty(), "{region}: {:?}", r.extras);
+        assert!(r.validation.is_valid(), "{region}: {}", wire::report(&r.validation));
+    }
+}
+
+#[test]
+fn a_smoking_status_keeps_its_value_and_is_not_every_social_history_observation() {
+    let v = Validator::new();
+    let smoking = r#"{"resourceType":"Observation","id":"s1","status":"final",
+        "category":[{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/observation-category","code":"social-history"}]}],
+        "code":{"coding":[{"system":"http://loinc.org","code":"72166-2"}]},"subject":{"reference":"Patient/u1"},
+        "effectiveDateTime":"2026-09-20T08:00:00+10:00","valueCodeableConcept":{"coding":[{"system":"http://snomed.info/sct","code":"266919005"}]}}"#;
+    // the IPS's tobacco-use profile: the value is no slot of it, and is carried
+    let e = v.export("ips", format!(r#"{{"resources":[{smoking}],"document":false}}"#).as_bytes()).unwrap();
+    let r = &e.resources[0];
+    assert_eq!(r.profile.map(|p| p.name), Some("Observation Social History - Tobacco Use (IPS)"));
+    assert!(r.resource.contains("266919005") && r.resource.contains("social-history"), "{}", r.resource);
+    assert!(r.validation.is_valid(), "{}", wire::report(&r.validation));
+    // AU: the profile's own SNOMED coding joins LOINC's, nothing doubled
+    let e = v.export("au", format!(r#"{{"resources":[{smoking}],"document":false}}"#).as_bytes()).unwrap();
+    let r = &e.resources[0];
+    assert_eq!(r.profile.map(|p| p.name), Some("AU PS Smoking Status"), "{:?}", r.note);
+    assert_eq!(r.resource.matches("72166-2").count(), 1, "{}", r.resource);
+    assert!(r.resource.contains("1747861000168109"), "{}", r.resource);
+    assert!(r.validation.is_valid(), "{}", wire::report(&r.validation));
+    // US Core's smoking-status profile is any social-history observation in
+    // structure: never taken by content. A care-experience preference with
+    // that category is not a smoking status; a pregnancy status is its own
+    let preference = smoking.replace("72166-2", "95541-9");
+    let e = v.export("us", format!(r#"{{"resources":[{preference}],"document":false}}"#).as_bytes()).unwrap();
+    assert_ne!(e.resources[0].profile.map(|p| p.name), Some("US Core Smoking Status Observation Profile"));
+    let pregnancy = smoking.replace("72166-2", "82810-3").replace("266919005", "77386006");
+    let e = v.export("us", format!(r#"{{"resources":[{pregnancy}],"document":false}}"#).as_bytes()).unwrap();
+    assert_eq!(
+        e.resources[0].profile.map(|p| p.name),
+        Some("US Core Observation Pregnancy Status Profile"),
+        "{:?}",
+        e.resources[0].note
+    );
+    // and declared, US Core Smoking Status is honoured
+    let declared = smoking.replace(
+        r#""id":"s1","#,
+        r#""id":"s1","meta":{"profile":["http://hl7.org/fhir/us/core/StructureDefinition/us-core-smokingstatus"]},"#,
+    );
+    let e = v.export("us", format!(r#"{{"resources":[{declared}],"document":false}}"#).as_bytes()).unwrap();
+    assert_eq!(e.resources[0].profile.map(|p| p.name), Some("US Core Smoking Status Observation Profile"));
+}
+
+#[test]
+fn nobody_elses_data_leaves_in_a_record_and_a_record_is_one_patients() {
+    let v = Validator::new();
+    let record = record(&v);
+    let other = record[2]
+        .replace(r#""id":"hr1""#, r#""id":"hr2""#)
+        .replace(r#""reference":"Patient/u1""#, r#""reference":"Patient/OTHER""#);
+    let mut with_other = record.clone();
+    with_other.push(other);
+    assert_eq!(
+        v.export("au", inputs(&with_other, "").as_bytes()).unwrap_err(),
+        ExportError::NotThisPatient(5, "Patient/OTHER".into())
+    );
+    let second = record[0].replace(r#""id":"u1""#, r#""id":"u2""#);
+    let mut two = record.clone();
+    two.push(second);
+    assert_eq!(v.export("au", inputs(&two, "").as_bytes()).unwrap_err(), ExportError::SeveralPatients);
+}
+
+#[test]
+fn a_primitive_carrier_on_a_choice_and_a_contained_performer_survive_re_profiling() {
+    let v = Validator::new();
+    let bp = v
+        .lower(
+            &format!("{BASE}bp"),
+            br#"{"id":"bp1","status":"final","subject":"Patient/u1","effectiveDateTime":"2026-09-20T08:00:00+10:00",
+            "component:SystolicBP.valueQuantity.value":121,"component:DiastolicBP.valueQuantity.value":79}"#,
+        )
+        .unwrap()
+        .resource
+        .replace(
+            r#""effectiveDateTime":"2026-09-20T08:00:00+10:00""#,
+            r##""effectiveDateTime":"2026-09-20T08:00:00+10:00","_effectiveDateTime":{"extension":[{"url":"http://example.org/ext/precision","valueString":"approx"}]},"contained":[{"resourceType":"Practitioner","id":"pr","name":[{"family":"Who"}]}],"performer":[{"reference":"#pr"}]"##,
+        );
+    for region in ["au", "us", "ips"] {
+        let e = v.export(region, format!(r#"{{"resources":[{bp}],"document":false}}"#).as_bytes()).unwrap();
+        let r = &e.resources[0];
+        assert!(r.profile.is_some(), "{region}: {:?}", r.note);
+        assert!(r.resource.contains(r#""_effectiveDateTime":{"extension""#), "{region}: {}", r.resource);
+        assert!(r.resource.contains(r##""reference":"#pr""##), "{region}: {}", r.resource);
+        assert!(r.validation.is_valid(), "{region}: {}", wire::report(&r.validation));
+    }
+}
+
+#[test]
+fn the_audit_of_a_resources_only_export_reads_the_patient_and_a_document_requirement_is_satisfied_by_the_target() {
+    let v = Validator::new();
+    let record = record(&v);
+    let audit = r#","audit":{"recorded":"2026-09-21T00:00:00Z","client":{"who":"Device/app-7","network":"10.0.0.7"},
+        "server":{"who":{"display":"api.example.org"},"network":"https://api.example.org/r4"},
+        "source":{"observer":"Device/app-7","site":"app"},"transaction":"req-1"},"document":false"#;
+    let e = v.export("au", inputs(&record, audit).as_bytes()).unwrap();
+    let a = e.audit.as_ref().unwrap();
+    assert!(a.validation.is_valid(), "{}", wire::report(&a.validation));
+    assert_eq!(a.resource.matches(r#""reference":"Patient/u1""#).count(), 2, "patient and data: {}", a.resource);
+    // a US blood pressure satisfies the IPS document's `vitalsigns` entry
+    // requirement through its own lineage: nothing else declared, no note
+    let e = v.export("us", inputs(&record, r#","document":false"#).as_bytes()).unwrap();
+    let bp = e.resources.iter().find(|r| r.id.as_deref() == Some("bp1")).unwrap();
+    assert_eq!(bp.profile.map(|p| p.name), Some("US Core Blood Pressure Profile"));
+    assert!(bp.also.is_none() && bp.notes.is_empty(), "{:?}", bp.notes);
+    // a declared profile of another region is not applied, and said
+    let foreign = record[2].replace(
+        "http://hl7.org/fhir/StructureDefinition/heartrate",
+        "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate",
+    );
+    let e = v.export("us", format!(r#"{{"resources":[{foreign}],"document":false}}"#).as_bytes()).unwrap();
+    assert_eq!(e.resources[0].profile.map(|p| p.name), Some("US Core Heart Rate Profile"));
+    assert!(
+        e.resources[0].notes.iter().any(|n| n.contains("au-core-heartrate") && n.contains("not applied")),
+        "{:?}",
+        e.resources[0].notes
+    );
 }

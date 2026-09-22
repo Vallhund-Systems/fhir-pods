@@ -171,6 +171,21 @@ failed action is not a BALP basic event — lower it from the base
 `AuditEvent` definition (`lower("http://hl7.org/fhir/StructureDefinition/AuditEvent", …)`),
 as `Provenance` is.
 
+## Discovery — what is compiled in, and what a slot wants
+
+```ts
+import { profiles, slots } from "fhir-pods-expo";
+
+const { regions, profiles: compiled } = profiles();
+// regions  → [{ name: "au", title, guide, document: "au-ps" }, …]
+// compiled → [{ url, name, resourceType, kind: "resource" | "datatype" | "extension", base }, …]
+const bp = slots(compiled.find((p) => p.name === "AU Core Blood Pressure")!.url);
+// bp[i]    → { path, type, choices, min, max, mustSupport, fixed: [{ path, value }], parts: [{ name, type, repeats, required }] }
+```
+
+A Quantity's `unit` slot is optional where the profile fixes the UCUM
+`code`: lowering writes the code as the unit when none is given.
+
 ## Export — a record spoken for a region
 
 ```ts
@@ -182,7 +197,7 @@ const out = exportRecord("au", {
   audit: { recorded, client, server, user, source, transaction },  // optional: the BALP patient-read of this export
 });
 // out.region        → { name: "au", title: "Australia", guide: "AU Core 2.0.0 resources, AU Patient Summary 1.0.0 document" }
-// out.resources[i]  → { index, resourceType, id, profile: {url, name} | null, also, resource, validation, missing, alsoMissing, extras, note }
+// out.resources[i]  → { index, resourceType, id, profile: {url, name} | null, also, resource, validation, missing, alsoMissing, extras, carried, note, notes }
 // out.document      → { kind: "au-ps", document, placed, omitted, validation } | null   (`document: false` to skip)
 // out.audit         → { resource, validation } | null
 ```
@@ -195,13 +210,18 @@ profiles, a type with one profile lineage takes it — and re-profiles it
 through that profile's slots: the jurisdiction's codings, categories and
 slices come from the profile, the data from the record, the `id` stays.
 What the region requires and the record lacks is `missing`, never
-invented; content the profile has no slot for is `extras` and is not
-carried; a resource nothing in the region profiles goes out as given with
-the reason in `note`. Where the region's document asks its entries for a
+invented; what no slot takes is carried as given where the profile's shape
+allows (`carried`) and verified, or named in `extras` where it cannot be; a
+record that contradicts what the profile fixes is not re-profiled and says
+so in `note`; a resource nothing in the region profiles goes out as given
+with the reason in `note`; `notes` say what else a host should know (a
+declared profile not applied). A record is one patient's: a second Patient
+or a resource about someone else is an error. Where the region's document asks its entries for a
 second profile (the IPS's Condition beside US Core's) it is declared
 alongside and verified (`also`, `alsoMissing`). Regions: `au` (AU Core + AU
 Patient Summary), `us` (US Core + IPS document), `ips` (the international
-floor — what a jurisdiction without a compiled guide gets). The function is
+floor — what to use for a jurisdiction without a compiled guide; the pod
+refuses a region it does not know, and `profiles()` lists the ones it does). The function is
 `exportRecord` because `export` is a reserved word. Offline, an IPS
 document with any Observation needs the IG's two pregnancy LOINC sets
 loaded (`loadTerminology`) to tell its pregnancy entries apart — the same
@@ -283,7 +303,7 @@ asked what they can't answer. `system` is "" for a bare `code` element.
 
 ## Status
 
-The current package is **0.11.0, ABI 11**. The release build produces iOS
+The current package is **0.12.0, ABI 12**. The release build produces iOS
 XCFramework slices, Android libraries, and a packed Expo artifact. This
 package exposes the full operation family documented above.
 
@@ -295,7 +315,7 @@ mustSupportGaps, and loadTerminology. The test also checked ABI identity;
 both platforms returned identical synthetic results.
 
 That exercise establishes delivery for the tested artifact and operations.
-Audit, lift, v2 and export arrived later, and current ABI 11 simulator
+Audit, lift, v2, export and discovery arrived later, and current ABI 12 simulator
 coverage remains to be refreshed. Package build success and core conformance results
 are recorded separately from simulator execution.
 

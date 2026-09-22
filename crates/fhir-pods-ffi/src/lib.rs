@@ -48,7 +48,7 @@ fn validator() -> &'static Validator {
 
 /// Bump when the exported surface or the memory contract changes; the
 /// wrappers refuse a mismatched module.
-pub const ABI_VERSION: u32 = 11;
+pub const ABI_VERSION: u32 = 12;
 
 /// The compiled terminology table the host loaded (`fhir_pods_terminology_load`),
 /// consulted after the bundled sets and before any host callback.
@@ -620,26 +620,15 @@ pub unsafe extern "C" fn fhir_pods_slots(profile: *const u8, profile_len: usize)
     let Some(p) = fhir_pods_core::resource_profile(url) else {
         return pack(b"{\"error\":\"no compiled profile with that URL\"}");
     };
-    let mut out = String::from("{\"slots\":[");
-    for (i, s) in p.lowering.slots.iter().enumerate() {
-        if i > 0 {
-            out.push(',');
-        }
-        out.push_str(&format!(
-            "{{\"path\":\"{}\",\"type\":\"{}\",\"choices\":[{}],\"min\":{},\"max\":{},\"mustSupport\":{}}}",
-            s.path,
-            s.ty,
-            s.choices.iter().map(|c| format!("\"{c}\"")).collect::<Vec<_>>().join(","),
-            s.min,
-            match s.max {
-                fhir_pods_core::compiled::Max::Bounded(n) => n.to_string(),
-                fhir_pods_core::compiled::Max::Star => "null".into(),
-            },
-            s.must_support
-        ));
-    }
-    out.push_str("]}");
-    pack(out.as_bytes())
+    pack(p.slots_json().as_bytes())
+}
+
+/// Discovery: what is compiled in — the regions `export` speaks and every
+/// registry profile: `{"regions": [{"name", "title", "guide", "document"}],
+/// "profiles": [{"url", "name", "resourceType", "kind", "base"}]}`.
+#[no_mangle]
+pub extern "C" fn fhir_pods_profiles() -> *mut u8 {
+    pack(fhir_pods_core::catalogue_json().as_bytes())
 }
 
 fn lower_json(profile: &[u8], inputs: &[u8], tx: &dyn TerminologyProvider) -> String {
@@ -1050,6 +1039,14 @@ mod android {
         let (k, i) = (bytes_in(&mut env, &kind), bytes_in(&mut env, &inputs));
         let doc = with_java(&mut env, &provider, |tx| audit_json(&k, &i, tx));
         bytes_out(&mut env, &doc)
+    }
+
+    #[no_mangle]
+    pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_profiles<'l>(
+        mut env: JNIEnv<'l>,
+        _this: JObject<'l>,
+    ) -> jbyteArray {
+        bytes_out(&mut env, &fhir_pods_core::catalogue_json())
     }
 
     #[no_mangle]

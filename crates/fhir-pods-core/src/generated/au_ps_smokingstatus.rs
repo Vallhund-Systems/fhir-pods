@@ -116,7 +116,6 @@ pub static LOWERING: Lowering = Lowering {
     slices: &[("category:socialHistory", 1), ("code.coding:loincSmokingStatus", 1)],
     slots: &[
         Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
-        Slot { path: "code.coding", ty: "Coding", choices: &[], min: 2, max: Max::Star, must_support: false },
         Slot { path: "subject", ty: "Reference", choices: &[], min: 1, max: Max::Bounded(1), must_support: true },
         Slot {
             path: "effectiveDateTime",

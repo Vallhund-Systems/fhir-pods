@@ -125,15 +125,30 @@ takes it), the resource is re-profiled through that profile's slots — the
 jurisdiction's fixed content comes from the profile, the record's data from
 the record, the `id` stays so references between resources survive — and
 what the region requires that the record lacks is `missing`, never
-invented. Where the region's document asks its entries for a second
-profile (the IPS's Condition beside US Core's), it is declared alongside
-and verified too (`also`, `alsoMissing`). A resource nothing in the region
-profiles goes out as given, base-validated, with the reason in `note`.
-Regions: `au`, `us`, `ips`; a jurisdiction the registry has no guide for is
-exported as `ips`, the international floor, and says so. Offline, an IPS
+invented. What no slot takes is **carried** as given where the profile's
+shape allows (a note, a performer, a security label, a third component, a
+local coding beside LOINC's) and verified with the rest; what cannot be
+(beneath a repeating element the profile rebuilt) is `extras`, named. A
+record that contradicts what the profile fixes (a pressure in kPa where
+the profile fixes mm[Hg]) is not re-profiled: it goes out as given with
+the contradiction in `note`. Where the region's document asks its entries
+for a second profile (the IPS's Condition beside US Core's), it is
+declared alongside and verified too (`also`, `alsoMissing`). A resource
+nothing in the region profiles goes out as given, base-validated, with the
+reason in `note`. A record is one patient's: a second `Patient`, or a
+resource about someone else, is an error, not an export. Regions: `au`,
+`us`, `ips` (the international floor — what to use for a jurisdiction
+without a compiled guide; `profiles()` lists them). Offline, an IPS
 document with any Observation needs the IG's two pregnancy LOINC sets
 loaded (`loadTerminology`, code-only) to tell its pregnancy entries apart —
 the same limit the reference validator has without a terminology server.
+
+Discovery goes with it: `profiles()` lists the regions and every compiled
+profile (url, name, resource type, kind, base); `slots(url)` shows, per
+slot, what the profile fixes beside it (`fixed` — the UCUM code next to a
+Quantity's `unit`, which lowering writes as the unit when none is given)
+and the members of a composite datatype slot (`parts` — a `HumanName`'s
+`family`, `given`…), so a host fills either without the specification.
 
 In Rust, the shared operation context is currently named `Validator`:
 
@@ -197,9 +212,9 @@ does not infer a jurisdiction or supply a complete regional compliance regime.
 
 | Surface | Delivery |
 | --- | --- |
-| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.11.0 artifact is 2,429,615 bytes (596,818 bytes gzip-9). [Guide](pods/wasm/README.md) |
+| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.12.0 artifact is 2,446,304 bytes (602,164 bytes gzip-9). [Guide](pods/wasm/README.md) |
 | **Expo** | Native iOS XCFramework and Android jniLibs behind the Expo Modules API. [Guide](pods/expo/README.md) |
-| **Rust / C** | `fhir_pods_core` directly or the shared [ABI 11 header](crates/fhir-pods-ffi/include/fhir_pods.h) |
+| **Rust / C** | `fhir_pods_core` directly or the shared [ABI 12 header](crates/fhir-pods-ffi/include/fhir_pods.h) |
 | **CLI** | Local JSON/ER7 input, structured output, and exit codes for scripting. [Guide](crates/fhir-pods-cli/README.md) |
 
 The Rust core is `no_std` with `alloc`, zero dependencies, and no `unsafe`.
@@ -228,14 +243,14 @@ compliance.
 
 | Lane | Latest recorded result |
 | --- | --- |
-| Release corpus | **1,560/1,560** verdicts agree at v0.11.0 (1,521 + the 39 export outputs) |
+| Release corpus | **1,560/1,560** verdicts agree at v0.12.0 (1,521 + the 39 export outputs) |
 | Published R4 examples | **4,811/5,290** compared verdicts agree; **479** reviewed lenient differences; **2** explicit oracle exclusions out of 5,292 selected inputs; no stricter verdicts |
 | Published validator base tests | **57/84** agree with stored Java outcomes; **14/20** with stored Firely outcomes; differences are reviewed individually |
 | Ad-hoc profile tests | **10 of 53** cases compare: **9/10** agree with Java and **7/7** with Firely where available; other cases have compiler, snapshot, or manifest exclusions |
 
 The broader lanes enforce reviewed baselines: new or changed differences and
 unusable evidence fail. Exclusions are never counted as agreement. The latest
-release records **219 Rust workspace tests** and **18 Python harness
+release records **228 Rust workspace tests** and **18 Python harness
 checks**; the [changelog](CHANGELOG.md) separates released artifacts from
 unreleased corrections. [Conformance commands](conformance/README.md) and
 [detailed scope](docs/scope.md) describe reproduction and the remaining gaps.

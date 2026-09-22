@@ -217,13 +217,18 @@ through. The rules are structural and closed, so a host can predict them:
   terminology provider decides as a member — a set it cannot decide
   identifies nothing. Identified profiles beat unidentified ones; a profile
   another survivor derives from is dropped.
-- A profile with no identifying content that its guide scopes in words to a
-  kind of resource (AU Core Diagnostic Result — "specialist or other
-  diagnostic results"; US Core Observation Clinical Result — "clinical test
-  results"; the IPS Device as performer) is never matched by type alone: it
+- A profile its guide scopes in words to a kind of resource its compiled
+  structure does not identify (AU Core Diagnostic Result — "specialist or
+  other diagnostic results"; US Core Observation Clinical Result —
+  "clinical test results"; US Core Smoking Status, whose only compiled
+  identity is the social-history category because its code binding is
+  extensible; the IPS Device as performer) is never matched by content: it
   is listed as `specialised` on the region and reached only by declaration.
   US Core's Simple Observation ("any simple observations not otherwise
   covered") is the guide's own catch-all and matches.
+- Among survivors, a profile whose identity is a strict subset of another
+  survivor's (a category alone beside a category and a code) is the less
+  specific one and is dropped, as is one another survivor derives from.
 - Nothing of the region's identifies → what its document asks of such an
   entry (the base `vitalsigns` family for the IPS, which has no vital-sign
   profiles of its own) → else the resource goes out as given, base-validated,
@@ -233,11 +238,28 @@ through. The rules are structural and closed, so a host can predict them:
   not derive from (the IPS's Condition beside US Core's), that profile is
   declared alongside and verified: `also`, `alsoMissing`.
 
-The re-profiling is `lift` through the target then `lower`: the profile's
-fixed content is the profile's, the record's slots are the record's, and
-`id` is carried so references survive. A required slot the record lacks is
-`missing`; content no slot takes is `extras` and is not carried; neither is
-invented. The oracle lane (`examples/export_corpus.rs`, 39 files: one base
+The re-profiling is `lift` through the target then `lower`, then what no
+slot took carried back: the profile's fixed content is the profile's, the
+record's slots are the record's, `id` and `meta` (all but `profile`) are
+carried so references and security labels survive. A required slot the
+record lacks is `missing`; content no slot takes is carried as given where
+the profile's shape allows — a top-level member, an item of a repeating
+element no slice claims (`component[2]`, `code.coding[1]`), a leaf under
+single-valued parents (`code.text`) — and listed as `carried`; what cannot
+be (beneath a repeating element the profile rebuilt, `component.interpretation`)
+is `extras`. Nothing is invented, and nothing is replaced: a record value
+at a leaf the profile fixes that disagrees with it (`conflicts` from
+`lift`: a kPa pressure where the profile fixes mm[Hg]) stops the
+re-profiling — the resource goes out as given with the contradiction in
+`note`. Only a single-valued place or a slice's own instance can conflict;
+a pattern on a repeating element (`code.coding` must contain SNOMED's) is
+one instance's, which lowering adds. `notes` carry what else the host
+should know: a declared profile the region does not have (not applied), a
+document requirement several profiles fit (none declared). A record is one
+patient's: a second `Patient`, or a `subject`/`patient` naming another,
+is an error before anything is built. The document's entry profiles may
+come from another guide — the AU Patient Summary names IPS profiles for
+its pregnancy and device entries — and are taken as the document asks. The oracle lane (`examples/export_corpus.rs`, 39 files: one base
 record for every region, each resource, the document, the audit event)
 agrees with the reference validator on every verdict; the two IPS documents
 are invalid on both sides offline, for the pregnancy-profile ambiguity the

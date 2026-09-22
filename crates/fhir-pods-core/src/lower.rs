@@ -70,13 +70,22 @@ static PASS_THROUGH: &[Slot] = &[
 ];
 
 fn find_slot<'p>(profile: &'p CompiledProfile, key: &'p str) -> Option<Target<'p>> {
-    // `_birthDate`: the primitive-extension form of a scalar slot, placed verbatim
-    if let Some(bare) = key.rsplit_once('.').and_then(|(p, l)| l.strip_prefix('_').map(|l| (p, l))) {
-        let bare_key = alloc::format!("{}.{}", bare.0, bare.1);
-        return profile.lowering.slots.iter().find(|s| s.path == bare_key).map(|_| Target { key, ty: "Element" });
-    }
-    if let Some(bare) = key.strip_prefix('_') {
-        return profile.lowering.slots.iter().find(|s| s.path == bare).map(|_| Target { key, ty: "Element" });
+    // `_birthDate` / `component:SystolicBP._valueQuantity`: the primitive-
+    // extension carrier of a scalar slot, or of a choice slot's concrete key,
+    // placed verbatim
+    let (prefix, leaf) = key.rsplit_once('.').map(|(p, l)| (Some(p), l)).unwrap_or((None, key));
+    if let Some(bare) = leaf.strip_prefix('_') {
+        let bare_key = match prefix {
+            Some(p) => alloc::format!("{p}.{bare}"),
+            None => bare.to_string(),
+        };
+        let carried = profile.lowering.slots.iter().any(|s| {
+            s.path == bare_key
+                || (s.ty == "choice"
+                    && s.path.rsplit_once('.').map(|(p, _)| Some(p)).unwrap_or(None) == prefix
+                    && s.choices.contains(&bare))
+        });
+        return carried.then_some(Target { key, ty: "Element" });
     }
     for slot in profile.lowering.slots.iter().chain(PASS_THROUGH) {
         if slot.path == key {
@@ -159,6 +168,10 @@ fn leaf_type(resource_type: &'static str, path: &str) -> Option<&'static str> {
         ty = Some(ch.ty);
     }
     ty
+}
+
+fn is_quantity(ty: &str) -> bool {
+    matches!(ty, "Quantity" | "SimpleQuantity" | "Age" | "Duration" | "Count" | "Distance" | "MoneyQuantity")
 }
 
 /// A fixed leaf's value as the JSON kind its type has: the generator keeps
@@ -382,6 +395,22 @@ pub fn lower_with(
 
     // 1. the host's inputs
     for (key, value) in members {
+        // `meta` is the record's, all but its `profile` (the profile's):
+        // security labels, tags, source, version kept beside the declaration
+        if key.as_ref() == "meta" {
+            if let Value::Object(given) = value {
+                if let Some(Node::Object(meta)) = root.member_mut("meta") {
+                    for (k, v) in given {
+                        if k.as_ref() != "profile" && !meta.iter().any(|(m, _)| m == k.as_ref()) {
+                            meta.push((k.to_string(), Node::from_value(v)));
+                        }
+                    }
+                }
+            } else {
+                issues.push(Severity::Error, IssueType::Structure, key, "'meta' must be an object".into());
+            }
+            continue;
+        }
         let Some(target) = find_slot(profile, key) else {
             issues.push(
                 Severity::Error,
@@ -538,6 +567,25 @@ pub fn lower_with(
                 if leaf_name == "code" && in_coding {
                     fill_display(holder, tx);
                 }
+            }
+        }
+    }
+
+    // 3. a Quantity whose unit the profile fixes as a UCUM `code` and the
+    //    host gave a value for but no `unit`: the code is the unit — the
+    //    profile's own content, not a guess (`mm[Hg]` is a unit string as
+    //    UCUM writes it); a host that has a display unit still gives one
+    for (path, value) in l.fixed {
+        let Some((parent, "code")) = path.rsplit_once('.') else { continue };
+        if !active(path) || !leaf_type(profile.resource_type, parent).is_some_and(is_quantity) {
+            continue;
+        }
+        let holder = place(&mut root, parent, profile.resource_type, &mut instances);
+        if let Node::Object(kvs) = holder {
+            let at = kvs.iter().position(|(m, _)| m == "value");
+            if let Some(i) = at.filter(|_| !kvs.iter().any(|(m, _)| m == "unit")) {
+                // right after the value, where a host's own unit would sit
+                kvs.insert(i + 1, ("unit".into(), Node::Str((*value).into())));
             }
         }
     }

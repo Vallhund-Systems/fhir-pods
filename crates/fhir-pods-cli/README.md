@@ -24,6 +24,7 @@ fhir-pods document au-ps < inputs.json
 fhir-pods audit read audit-inputs.json
 fhir-pods audit patient-query < audit-inputs.json
 fhir-pods export au record.json            # au | us | ips: {"resources": [...], "author", "date", "audit"?}
+fhir-pods profiles                         # what is compiled in: regions and every profile
 fhir-pods v2 message.hl7 --timezone +10:00 --code-system LOCAL=https://example.org/codes
 fhir-pods v2 --structure ORU_R01
 fhir-pods needs patient.json

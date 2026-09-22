@@ -149,7 +149,7 @@ pub static LOWERING: Lowering = Lowering {
             path: "valueQuantity.unit",
             ty: "string",
             choices: &[],
-            min: 1,
+            min: 0,
             max: Max::Bounded(1),
             must_support: true,
         },

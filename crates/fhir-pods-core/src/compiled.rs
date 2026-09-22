@@ -181,3 +181,84 @@ pub struct CompiledProfile {
     /// anything but an extension profile.
     pub contexts: &'static [(&'static str, &'static str)],
 }
+
+impl CompiledProfile {
+    /// The pods' `slots` JSON: `{"slots": [{"path", "type", "choices",
+    /// "min", "max", "mustSupport", "fixed": [{"path", "value"}], "parts":
+    /// [{"name", "type", "repeats", "required"}]}]}` — `fixed` is what the
+    /// profile fixes beside the slot under the same parent (the UCUM `code`
+    /// beside a Quantity's `unit`), `parts` the members of a composite
+    /// datatype slot (a `HumanName`'s `family`, `given`…) from the base
+    /// element table, so a host can fill either without the specification.
+    pub fn slots_json(&self) -> alloc::string::String {
+        use crate::wire::escape;
+        use alloc::string::ToString;
+        let mut out = alloc::string::String::from("{\"slots\":[");
+        for (i, s) in self.lowering.slots.iter().enumerate() {
+            if i > 0 {
+                out.push(',');
+            }
+            out.push_str("{\"path\":\"");
+            escape(&mut out, s.path);
+            out.push_str("\",\"type\":\"");
+            escape(&mut out, s.ty);
+            out.push_str("\",\"choices\":[");
+            for (j, c) in s.choices.iter().enumerate() {
+                if j > 0 {
+                    out.push(',');
+                }
+                out.push('"');
+                escape(&mut out, c);
+                out.push('"');
+            }
+            out.push_str("],\"min\":");
+            out.push_str(&s.min.to_string());
+            out.push_str(",\"max\":");
+            match s.max {
+                Max::Bounded(n) => out.push_str(&n.to_string()),
+                Max::Star => out.push_str("null"),
+            }
+            out.push_str(",\"mustSupport\":");
+            out.push_str(if s.must_support { "true" } else { "false" });
+            // the fixed leaves beside this slot: same parent, or — for a
+            // composite slot — beneath it
+            out.push_str(",\"fixed\":[");
+            let parent = s.path.rsplit_once('.').map(|(p, _)| p);
+            let mut first = true;
+            for (path, value) in self.lowering.fixed {
+                let beside = parent.is_some_and(|p| path.rsplit_once('.').is_some_and(|(q, _)| q == p));
+                let beneath = path.strip_prefix(s.path).is_some_and(|r| r.starts_with('.'));
+                if !(beside || beneath) {
+                    continue;
+                }
+                if !first {
+                    out.push(',');
+                }
+                first = false;
+                out.push_str("{\"path\":\"");
+                escape(&mut out, path);
+                out.push_str("\",\"value\":\"");
+                escape(&mut out, value);
+                out.push_str("\"}");
+            }
+            out.push_str("],\"parts\":[");
+            for (j, (name, codes, repeats, required)) in crate::typing::members(s.ty).iter().enumerate() {
+                if j > 0 {
+                    out.push(',');
+                }
+                out.push_str("{\"name\":\"");
+                escape(&mut out, name);
+                out.push_str("\",\"type\":\"");
+                escape(&mut out, codes.trim_start_matches(['#', '~']));
+                out.push_str("\",\"repeats\":");
+                out.push_str(if *repeats { "true" } else { "false" });
+                out.push_str(",\"required\":");
+                out.push_str(if *required { "true" } else { "false" });
+                out.push('}');
+            }
+            out.push_str("]}");
+        }
+        out.push_str("]}");
+        out
+    }
+}

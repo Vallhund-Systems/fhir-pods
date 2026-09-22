@@ -10,7 +10,7 @@ JS  ──operation inputs──►  JS wrapper  ──C ABI──►  Rust comp
     ◄──output + findings──            ◄─────────         (wasm32)
 ```
 
-The wrapper uses `pod_alloc` / `pod_free` and the shared ABI 11 entrypoints.
+The wrapper uses `pod_alloc` / `pod_free` and the shared ABI 12 entrypoints.
 The module carries 992 compiled profiles from the pinned IGs and R4
 extension/base definitions, 126 bundled value sets, base code-system
 membership tables, FHIRPath, transformation and assembly engines, and HL7 v2
@@ -173,6 +173,22 @@ failed action is not a BALP basic event — lower it from the base
 `AuditEvent` definition (`pod.lower("http://hl7.org/fhir/StructureDefinition/AuditEvent", …)`),
 as `Provenance` is.
 
+### Discovery — what is compiled in, and what a slot wants
+
+```js
+const { regions, profiles } = pod.profiles();
+// regions   → [{ name: "au", title, guide, document: "au-ps" }, …]
+// profiles  → [{ url, name, resourceType, kind: "resource" | "datatype" | "extension", base }, …]  (992)
+const slots = pod.slots(profiles.find((p) => p.name === "AU Core Blood Pressure").url);
+// slots[i]  → { path, type, choices, min, max, mustSupport,
+//               fixed: [{ path: "component:SystolicBP.valueQuantity.code", value: "mm[Hg]" }, …],   ← what the profile fixes beside it
+//               parts: [{ name: "family", type: "string", repeats: false, required: false }, …] }  ← a composite slot's members
+```
+
+A Quantity's `unit` slot is optional where the profile fixes the UCUM
+`code`: lowering writes the code as the unit when none is given (`mm[Hg]`),
+and keeps a host's own display unit when one is.
+
 ### Export — a record spoken for a region
 
 ```js
@@ -182,7 +198,7 @@ const out = pod.export("au", {
   audit: { recorded, client, server, user, source, transaction },  // optional: the BALP patient-read of this export
 });
 // out.region        → { name: "au", title: "Australia", guide: "AU Core 2.0.0 resources, AU Patient Summary 1.0.0 document" }
-// out.resources[i]  → { index, resourceType, id, profile: {url, name} | null, also, resource, validation, missing, alsoMissing, extras, note }
+// out.resources[i]  → { index, resourceType, id, profile: {url, name} | null, also, resource, validation, missing, alsoMissing, extras, carried, note, notes }
 // out.document      → { kind: "au-ps", document, placed, omitted, validation } | null   (`document: false` to skip)
 // out.audit         → { resource, validation } | null
 ```
@@ -195,13 +211,18 @@ profiles, a type with one profile lineage takes it — and re-profiles it
 through that profile's slots: the jurisdiction's codings, categories and
 slices come from the profile, the data from the record, the `id` stays.
 What the region requires and the record lacks is `missing`, never
-invented; content the profile has no slot for is `extras` and is not
-carried; a resource nothing in the region profiles goes out as given with
-the reason in `note`. Where the region's document asks its entries for a
+invented; what no slot takes is carried as given where the profile's shape
+allows (`carried`) and verified, or named in `extras` where it cannot be; a
+record that contradicts what the profile fixes is not re-profiled and says
+so in `note`; a resource nothing in the region profiles goes out as given
+with the reason in `note`; `notes` say what else a host should know (a
+declared profile not applied). A record is one patient's: a second Patient
+or a resource about someone else is an error. Where the region's document asks its entries for a
 second profile (the IPS's Condition beside US Core's) it is declared
 alongside and verified (`also`, `alsoMissing`). Regions: `au` (AU Core + AU
 Patient Summary), `us` (US Core + IPS document), `ips` (the international
-floor — what a jurisdiction without a compiled guide gets). Offline, an IPS
+floor — what to use for a jurisdiction without a compiled guide; the pod
+refuses a region it does not know, and `profiles()` lists the ones it does). Offline, an IPS
 document with any Observation needs the IG's two pregnancy LOINC sets
 loaded (`loadTerminology`) to tell its pregnancy entries apart — the same
 limit the reference validator has without a terminology server.

@@ -9,8 +9,8 @@
 extern "C" {
 #endif
 
-/* ABI version; a host refuses a mismatched module. This header is ABI 11. */
-#define FHIR_PODS_ABI_VERSION 11u
+/* ABI version; a host refuses a mismatched module. This header is ABI 12. */
+#define FHIR_PODS_ABI_VERSION 12u
 uint32_t fhir_pods_abi_version(void);
 
 /* Allocate `len` bytes in the module for the host to fill. */
@@ -141,6 +141,11 @@ uint8_t *fhir_pods_audit_tx(const uint8_t *kind, size_t kind_len, const uint8_t 
 uint8_t *fhir_pods_export(const uint8_t *region, size_t region_len, const uint8_t *inputs, size_t inputs_len);
 uint8_t *fhir_pods_export_tx(const uint8_t *region, size_t region_len, const uint8_t *inputs, size_t inputs_len,
                              fhir_pods_tx_callback cb, void *ctx);
+
+/* Discovery: what is compiled in — {"regions": [{"name","title","guide",
+ * "document"}], "profiles": [{"url","name","resourceType","kind","base"}]}
+ * ("kind": resource | datatype | extension). No input. */
+uint8_t *fhir_pods_profiles(void);
 
 /* Compiled terminology. Load a table (the line format tools/compile_valueset.py
  * writes from $expand responses): it answers after the bundled sets and before

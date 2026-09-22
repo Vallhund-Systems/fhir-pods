@@ -1,6 +1,6 @@
 use fhir_pods_core::{
     assemble::Assembled,
-    compiled::{CompiledProfile, Max},
+    compiled::CompiledProfile,
     deidentify::{Deidentified, Finding},
     lift::Lifted,
     lower::Lowered,
@@ -128,30 +128,7 @@ pub fn needs(needs: &[Need], validation: &Validation) -> String {
 }
 
 pub fn slots(profile: &CompiledProfile) -> String {
-    let slots = Node::Array(
-        profile
-            .lowering
-            .slots
-            .iter()
-            .map(|s| {
-                Node::Object(vec![
-                    ("path".into(), Node::Str(s.path.into())),
-                    ("type".into(), Node::Str(s.ty.into())),
-                    ("choices".into(), Node::Array(s.choices.iter().map(|c| Node::Str((*c).into())).collect())),
-                    ("min".into(), Node::Number(s.min.to_string())),
-                    (
-                        "max".into(),
-                        match s.max {
-                            Max::Bounded(n) => Node::Number(n.to_string()),
-                            Max::Star => Node::Null,
-                        },
-                    ),
-                    ("mustSupport".into(), Node::Bool(s.must_support)),
-                ])
-            })
-            .collect(),
-    );
-    Node::Object(vec![("slots".into(), slots)]).to_json()
+    profile.slots_json()
 }
 
 pub fn must_support(gaps: &[&str], validation: &Validation) -> String {

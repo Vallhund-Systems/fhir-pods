@@ -19,7 +19,8 @@ delivery surfaces for that operation family.
 | HL7 v2 | 0.8 | Compiled ER7-to-FHIR message conversion with skipped, unplaced, and unmapped input reporting |
 | Wider base coverage | 0.9 | Published R4 examples, compiled extension definitions and contexts, and base code-system membership |
 | Published validator test lanes | 0.10 | Pinned upstream cases, stored Java/Firely comparisons, and isolated ad-hoc profile compilation |
-| Export | 0.11 | A record written against the base R4 definitions re-profiled for a region (AU Core + AU PS, US Core + IPS, the IPS floor): profile selection by declared/fixed identity, `missing`/`extras`/`note` per resource, the region's document, the BALP event; base patient-record resources compiled as lowerable profiles |
+| Export | 0.11 | A record written against the base R4 definitions re-profiled for a region (AU Core + AU PS, US Core + IPS, the IPS floor): profile selection by declared/fixed identity, `missing`/`extras`/`carried`/`note` per resource, conflicts refused, one patient, the region's document, the BALP event; base patient-record resources compiled as lowerable profiles |
+| Discovery | 0.12 | `profiles()` (regions and every compiled profile); `slots()` with each slot's fixed neighbours and a composite slot's parts; a Quantity's unit from the fixed code |
 
 These rows describe the current behavior of capabilities introduced in each
 release; follow-up corrections are recorded in the [changelog](../CHANGELOG.md).
@@ -27,8 +28,10 @@ The [README](../README.md#current-capabilities) is the operation overview.
 
 ## The latest source work
 
-0.11.0 adds `export` (ABI 11): the host writes one transformer against the
-base R4 definitions and the runtime speaks the jurisdiction. The changes
+0.11.0 added `export` (ABI 11): the host writes one transformer against the
+base R4 definitions and the runtime speaks the jurisdiction. 0.12.0 (ABI 12)
+takes the fresh review of it — nothing replaced, nothing silently dropped,
+one patient — and adds discovery (`profiles()`, slot `fixed`/`parts`). The changes
 after v0.10.0 that it carries make the published-base lane a regression gate
 with hashed evidence and individually reviewed differences, and correct
 primitive-carrier invariant evaluation, extension-owner context checks, and
@@ -64,11 +67,10 @@ current areas are:
   namespaces and any profile its guide scopes in words beyond its
   structure. Candidates by market: UK Core, CA Baseline, ABDM (India),
   nl-core; South Africa has no national guide and stays on the floor.
-- **Slot ergonomics.** `slots()` does not expose a slot's fixed siblings (a
-  `valueQuantity.unit` beside a fixed UCUM `code`, so a host can pass a unit
-  that contradicts the code the profile fixes and still validate), and
-  `HumanName`, `Identifier` and `Address` slots are composite where
-  `Quantity` is split into parts. Both are generator work.
+- **Slot ergonomics.** `HumanName`, `Identifier` and `Address` slots are
+  composite (`slots()` now lists their `parts`); splitting them the way
+  `Quantity` is split would make a repeating name ambiguous, so they stay
+  objects.
 
 The extended fuzz campaign remains deferred. Existing bounded seeded checks
 run under `cargo test`; separate libFuzzer targets are available. Neither is

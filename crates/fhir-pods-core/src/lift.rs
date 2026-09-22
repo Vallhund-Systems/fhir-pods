@@ -34,8 +34,27 @@ pub struct Lifted {
     /// Required slots (`min >= 1`) the resource has no value for.
     pub missing: Vec<&'static str>,
     /// Element paths present in the resource that no slot, fixed leaf or
-    /// pass-through member covers — not lifted, named.
+    /// pass-through member covers — not lifted, named. An item of a
+    /// repeating element that no slice claims and no slot takes is named
+    /// with its index (`component[2]`, `code.coding[1]`).
     pub extras: Vec<String>,
+    /// Values the resource carries at leaves the profile fixes, that
+    /// disagree with the fixed value: the record is not this profile's
+    /// kind as it stands (a blood pressure in kPa under a profile that
+    /// fixes mm[Hg]) — lowering the inputs would replace the value, so a
+    /// caller re-profiling must not.
+    pub conflicts: Vec<Conflict>,
+}
+
+/// A record value that disagrees with what the profile fixes there.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Conflict {
+    /// The labelled path of the fixed leaf.
+    pub path: &'static str,
+    /// What the record carries there, as text.
+    pub given: String,
+    /// What the profile fixes.
+    pub fixed: &'static str,
 }
 
 /// Why lifting could not start.
@@ -69,6 +88,8 @@ const PASS_THROUGH: &[&str] =
     &["id", "text", "contained", "extension", "modifierExtension", "language", "implicitRules"];
 
 /// Members that are the profile's or the wire's, never the record's.
+/// `meta.profile` is the profile's; the rest of `meta` (security labels,
+/// tags, source, version) is the record's and is lifted under `meta`.
 const NOT_DATA: &[&str] = &["resourceType", "meta"];
 
 /// Does the base spec make `element` (unlabelled, resource-relative) an array?
@@ -204,6 +225,16 @@ pub fn lift_with(
     for key in NOT_DATA {
         covered.push(String::from(*key));
     }
+    if let Some(Value::Object(meta)) = doc.instances("$this.meta").first().map(|m| m.value()) {
+        let rest: Vec<(String, Node)> = meta
+            .iter()
+            .filter(|(k, _)| k.as_ref() != "profile")
+            .map(|(k, v)| (k.to_string(), Node::from_value(v)))
+            .collect();
+        if !rest.is_empty() {
+            inputs.push((String::from("meta"), Node::Object(rest)));
+        }
+    }
     // the optional gates (`agent:user`, `action`): a slice or element lowering
     // opens only when an input reaches into it
     let gate_of = |path: &str| -> Option<&'static str> {
@@ -325,10 +356,93 @@ pub fn lift_with(
         }
     }
 
+    // the record's own values at the profile's fixed leaves, where they disagree
+    let mut conflicts = Vec::new();
+    for (path, value) in profile.lowering.fixed {
+        // a leaf fixed under an unlabelled repeating element (a pattern on
+        // `code.coding`: some coding must carry it) is one instance's; the
+        // record's other instances are its own, and lowering adds the
+        // profile's — only a single-valued place, or a slice's own
+        // instance, can disagree
+        let parent = path.rsplit_once('.').map(|(p, _)| p).unwrap_or("");
+        let last = parent.rsplit('.').next().unwrap_or("");
+        if !parent.is_empty() && !last.contains(':') && is_repeating(profile.resource_type, &unlabelled(parent)) {
+            continue;
+        }
+        if let Some(v) = extract(doc, profile, path, &[]) {
+            let agrees = matches!(&v, Node::Str(s) if s == value)
+                || matches!(&v, Node::Bool(b) if b.to_string() == *value)
+                || matches!(&v, Node::Number(n) if n == value);
+            if !agrees && !matches!(v, Node::Array(_) | Node::Object(_)) {
+                conflicts.push(Conflict { path, given: v.to_json().trim_matches('"').to_string(), fixed: value });
+            }
+        }
+    }
+
     // what the record carries that nothing above covers
     let mut extras = Vec::new();
     if let Value::Object(kvs) = doc.value() {
         walk_extras(kvs, "", &covered, &mut extras);
+    }
+    // an item of a repeating element the profile slices or fixes into that
+    // no slice claims and no unlabelled slot takes: the profile's content
+    // covers the element's paths, not this instance
+    for element in fixed_or_sliced_arrays(profile) {
+        let unlabelled_slot =
+            profile.lowering.slots.iter().any(|s| unlabelled(s.path) == element && !s.path.contains(':'));
+        if unlabelled_slot {
+            continue;
+        }
+        let slices: Vec<&Slice> = profile
+            .slicings
+            .iter()
+            .filter(|sl| sl.path == alloc::format!("{}.{element}", profile.resource_type))
+            .flat_map(|sl| sl.slices.iter())
+            .collect();
+        // a slice the lowering table names but the slicing does not compile
+        // (its discriminator is beyond the compiler): its instances cannot
+        // be told from the record's — nothing is claimed unclaimed here
+        let uncompiled_label = profile
+            .lowering
+            .slots
+            .iter()
+            .map(|s| s.path)
+            .chain(profile.lowering.slices.iter().map(|(p, _)| *p))
+            .filter_map(|p| p.strip_prefix(element.as_str()).and_then(|r| r.strip_prefix(':')))
+            .map(|r| r.split('.').next().unwrap_or(r))
+            .any(|label| !slices.iter().any(|sl| sl.name == label));
+        if uncompiled_label {
+            continue;
+        }
+        // the fixed groups the element's own pattern supplies (`code.coding`
+        // with a fixed system + code: one instance is the profile's)
+        let own_fixed = profile
+            .lowering
+            .fixed
+            .iter()
+            .filter(|(p, _)| p.rsplit_once('.').is_some_and(|(parent, _)| *parent == element))
+            .count()
+            > 0;
+        let items = doc.instances(&alloc::format!("$this.{element}"));
+        let mut claimed = 0usize;
+        for (i, inst) in items.iter().enumerate() {
+            if slices.iter().any(|sl| in_slice(sl, inst)) {
+                continue;
+            }
+            if own_fixed && claimed == 0 {
+                // the one instance the element's own fixed leaves describe
+                let carries = profile.lowering.fixed.iter().all(|(p, v)| {
+                    p.rsplit_once('.').is_none_or(|(parent, leaf)| {
+                        parent != element || inst.scalars(&alloc::format!("$this.{leaf}")).contains(v)
+                    })
+                });
+                if carries {
+                    claimed += 1;
+                    continue;
+                }
+            }
+            extras.push(alloc::format!("{element}[{i}]"));
+        }
     }
     extras.sort();
     extras.dedup();
@@ -345,7 +459,29 @@ pub fn lift_with(
         }
         validation.report.issues.extend(report.issues);
     }
-    Ok(Lifted { inputs, validation, missing, extras })
+    Ok(Lifted { inputs, validation, missing, extras, conflicts })
+}
+
+/// The repeating elements (unlabelled, resource-relative) the profile
+/// slices or has fixed leaves directly beneath — where an instance the
+/// profile does not describe is the record's and must be named.
+fn fixed_or_sliced_arrays(profile: &CompiledProfile) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for s in profile.slicings {
+        if let Some(rel) = s.path.strip_prefix(profile.resource_type).and_then(|r| r.strip_prefix('.')) {
+            if is_repeating(profile.resource_type, rel) && !out.iter().any(|o| o == rel) {
+                out.push(rel.to_string());
+            }
+        }
+    }
+    for (path, _) in profile.lowering.fixed {
+        let Some((parent, _)) = path.rsplit_once('.') else { continue };
+        let plain = unlabelled(parent);
+        if plain == parent && is_repeating(profile.resource_type, &plain) && !out.contains(&plain) {
+            out.push(plain);
+        }
+    }
+    out
 }
 
 /// Element paths under `kvs` (at `prefix`) that no covered path reaches:

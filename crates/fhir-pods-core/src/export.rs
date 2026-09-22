@@ -55,8 +55,9 @@ pub struct Region {
     /// The patient summary document assembled for the region.
     pub document: Option<assemble::Kind>,
     /// Profiles the guide scopes, in words, to a kind of resource their
-    /// structure does not identify (a "diagnostic result", a "clinical test
-    /// result", a device "as performer"): never matched by type alone — a
+    /// compiled structure does not identify (a "diagnostic result", a
+    /// "clinical test result", "smoking status" whose code binding is only
+    /// extensible, a device "as performer"): never matched by content — a
     /// host that means one declares it. Everything else with no identifying
     /// content is the guide's general profile for the type, and matches.
     pub specialised: &'static [&'static str],
@@ -83,10 +84,15 @@ pub static REGIONS: &[Region] = &[
         guide: "US Core 6.1.0 resources, International Patient Summary 2.0.1 document",
         prefixes: &["http://hl7.org/fhir/us/core/StructureDefinition/"],
         document: Some(assemble::Kind::Ips),
-        // "non-laboratory clinical test results" — the Simple Observation
-        // profile is the guide's own catch-all ("any simple observations
-        // that are not otherwise covered")
-        specialised: &["http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-clinical-result"],
+        // "non-laboratory clinical test results"; "smoking status" (its
+        // structure is any social-history observation: the code binding
+        // is extensible, so nothing compiled identifies it). The Simple
+        // Observation profile is the guide's own catch-all ("any simple
+        // observations that are not otherwise covered") and stays.
+        specialised: &[
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-clinical-result",
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-smokingstatus",
+        ],
     },
     Region {
         name: "ips",
@@ -167,6 +173,12 @@ pub enum ExportError {
     Document(assemble::AssembleError),
     /// The audit event could not be built from `audit`.
     Audit(crate::audit::AuditError),
+    /// More than one `Patient` among the resources: a record is one patient's.
+    SeveralPatients,
+    /// A resource whose `subject` / `patient` names a Patient other than the
+    /// record's (`Patient/<other id>` at `resources[index]`): another
+    /// person's data does not leave in this export.
+    NotThisPatient(usize, String),
 }
 
 impl core::fmt::Display for ExportError {
@@ -187,6 +199,12 @@ impl core::fmt::Display for ExportError {
             ExportError::NotAResource(i) => write!(f, "inputs.resources[{i}] is not a FHIR R4 resource"),
             ExportError::Document(e) => write!(f, "document: {e}"),
             ExportError::Audit(e) => write!(f, "audit: {e}"),
+            ExportError::SeveralPatients => {
+                f.write_str("inputs.resources holds more than one Patient; a record is one patient's")
+            }
+            ExportError::NotThisPatient(i, r) => {
+                write!(f, "inputs.resources[{i}] is about '{r}', not this record's Patient; not exported")
+            }
         }
     }
 }
@@ -217,11 +235,20 @@ pub struct ExportedResource {
     /// Required slots of `also` the record has no value for.
     pub also_missing: Vec<&'static str>,
     /// Element paths of the given resource the target profile has no slot
-    /// for: not carried into the export.
+    /// for and the export could not carry (beneath a repeating element the
+    /// profile rebuilt): left out, named.
     pub extras: Vec<String>,
+    /// Element paths the target profile has no slot for that the export
+    /// carried as given (a top-level member, an item of a repeating element
+    /// no slice claims, a leaf under single-valued parents) — verified
+    /// with the rest.
+    pub carried: Vec<String>,
     /// Why no profile applied (none in the region for the type; several and
-    /// none declared), or the given resource declared none of the region's.
+    /// none declared; the record contradicts what the profile fixes).
     pub note: Option<String>,
+    /// What a host should know about the choice: a declared profile that
+    /// was not applied, a document requirement that could not be settled.
+    pub notes: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -337,12 +364,15 @@ fn derives_from(mut from: &'static CompiledProfile, url: &str) -> bool {
 
 /// The profile(s) a resource is exported through: the region's own, and —
 /// when the region's patient summary asks its entries for a different one
-/// the target does not already derive from — that one too, declared
-/// beside it and verified.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// the target does not already satisfy — that one too, declared beside it
+/// and verified. `notes` are what a host should know about the choice: a
+/// declared profile that was ignored, a document requirement that could
+/// not be settled.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Selection {
     pub target: &'static CompiledProfile,
     pub also: Option<&'static CompiledProfile>,
+    pub notes: Vec<String>,
 }
 
 /// Among `candidates`, the ones the resource identifies with, most specific
@@ -357,21 +387,32 @@ fn matching(
     if let Some(only) = single_lineage(candidates) {
         return alloc::vec![only];
     }
-    let matching: Vec<(&'static CompiledProfile, bool)> = candidates
+    let matching: Vec<(&'static CompiledProfile, Vec<&'static str>)> = candidates
         .iter()
         .filter_map(|p| {
-            let idents = identifying(p);
-            if idents.is_empty() && region.specialised.contains(&p.url) {
+            if region.specialised.contains(&p.url) {
                 return None;
             }
-            idents.iter().all(|id| identifies(resource, id, tx)).then_some((*p, !idents.is_empty()))
+            let idents = identifying(p);
+            idents
+                .iter()
+                .all(|id| identifies(resource, id, tx))
+                .then(|| (*p, idents.iter().map(|id| id.anchor).collect::<Vec<_>>()))
         })
         .collect();
-    let any_identified = matching.iter().any(|(_, identified)| *identified);
+    let any_identified = matching.iter().any(|(_, anchors)| !anchors.is_empty());
     matching
         .iter()
-        .filter(|(p, identified)| {
-            (*identified || !any_identified) && !matching.iter().any(|(q, _)| q.url != p.url && derives_from(q, p.url))
+        .filter(|(p, anchors)| {
+            let identified = !anchors.is_empty();
+            // a profile another survivor derives from, or whose identity is
+            // a strict subset of another survivor's (a category alone
+            // beside a category and a code), is the less specific one
+            let outdone = matching.iter().any(|(q, qa)| {
+                q.url != p.url
+                    && (derives_from(q, p.url) || (anchors.iter().all(|a| qa.contains(a)) && qa.len() > anchors.len()))
+            });
+            (identified || !any_identified) && !outdone
         })
         .map(|(p, _)| *p)
         .collect()
@@ -402,14 +443,37 @@ pub fn select(region: &Region, resource: &Node, tx: &dyn TerminologyProvider) ->
     if own.is_empty() && document.is_empty() {
         return Err(format!("no {} profile for {rt}", region.title));
     }
-    // what the document asks of an entry of this type, when that is settled
-    let for_document: Option<&'static CompiledProfile> = match matching(region, &document, resource, tx).as_slice() {
-        [one] => Some(one),
-        _ => None,
-    };
-    let with_document = |target: &'static CompiledProfile| Selection {
-        target,
-        also: for_document.filter(|d| d.url != target.url && !derives_from(target, d.url)),
+    // what the document asks of an entry of this type: the candidates the
+    // resource identifies with; settled when one, or when the target is
+    // (or derives from) one of them
+    let for_document = matching(region, &document, resource, tx);
+    let mut notes: Vec<String> = Vec::new();
+    // declared profiles the region does not know: said, not silently passed over
+    if let Some(Node::Array(urls)) = resource.member("meta").and_then(|m| m.member("profile")) {
+        for u in urls.iter().filter_map(Node::as_str) {
+            let bare = u.split('|').next().unwrap_or(u);
+            let known = own.iter().chain(document.iter()).any(|p| p.url == bare);
+            if !known && !bare.starts_with(BASE) {
+                notes.push(format!("declared profile '{bare}' is not one of {}'s; not applied", region.title));
+            }
+        }
+    }
+    let with_document = |target: &'static CompiledProfile, mut notes: Vec<String>| {
+        let satisfied = for_document.iter().any(|d| d.url == target.url || derives_from(target, d.url));
+        let also = match for_document.as_slice() {
+            _ if satisfied => None,
+            [one] => Some(*one),
+            [] => None,
+            several => {
+                notes.push(format!(
+                    "the {} document asks its {rt} entries for one of {}; none settled, so none declared",
+                    region.title,
+                    names(several)
+                ));
+                None
+            }
+        };
+        Selection { target, also, notes }
     };
     // a declared profile settles it: one of the region's own; or, where the
     // region has none for the type, one its document asks for (a base
@@ -423,22 +487,23 @@ pub fn select(region: &Region, resource: &Node, tx: &dyn TerminologyProvider) ->
             .find_map(|u| among.iter().find(|p| p.url == u).copied())
     };
     if let Some(p) = declared(&own) {
-        return Ok(with_document(p));
+        return Ok(with_document(p, notes));
     }
     if own.is_empty() {
         if let Some(p) = declared(&document) {
-            return Ok(Selection { target: p, also: None });
+            return Ok(Selection { target: p, also: None, notes });
         }
     }
     match matching(region, &own, resource, tx).as_slice() {
-        [one] => Ok(with_document(one)),
+        [one] => Ok(with_document(one, notes)),
         // nothing of the region's own identifies with it: what its document
         // asks of such an entry is the profile (a `bp` for the IPS, whose
         // sections name the base `vitalsigns` and which has no vitals
-        // profiles of its own); failing that, none
-        [] => match for_document {
-            Some(d) => Ok(Selection { target: d, also: None }),
-            None => {
+        // profiles of its own; an IPS profile the AU summary names for a
+        // section); failing that, none
+        [] => match for_document.as_slice() {
+            [d] => Ok(Selection { target: d, also: None, notes }),
+            _ => {
                 let mut all: Vec<&'static CompiledProfile> = own.iter().chain(document.iter()).copied().collect();
                 all.dedup_by_key(|p| p.url);
                 Err(format!(
@@ -486,6 +551,20 @@ pub fn export_with(
     let member = |k: &str| members.iter().find(|(m, _)| m.as_ref() == k).map(|(_, v)| v);
     let Some(Value::Array(given)) = member("resources") else { return Err(ExportError::ResourcesNotAnArray) };
 
+    // one patient: the record's Patient, and every resource about someone
+    let patient_ids: Vec<String> = given
+        .iter()
+        .filter_map(|g| {
+            let n = Node::from_value(g);
+            (n.member("resourceType").and_then(Node::as_str) == Some("Patient"))
+                .then(|| n.member("id").and_then(Node::as_str).map(String::from).unwrap_or_default())
+        })
+        .collect();
+    if patient_ids.len() > 1 {
+        return Err(ExportError::SeveralPatients);
+    }
+    let patient_ref = patient_ids.first().filter(|id| !id.is_empty()).map(|id| format!("Patient/{id}"));
+
     let mut resources: Vec<ExportedResource> = Vec::with_capacity(given.len());
     for (index, g) in given.iter().enumerate() {
         let node = Node::from_value(g);
@@ -494,39 +573,89 @@ pub fn export_with(
             _ => return Err(ExportError::ResourcesNotAnArray),
         };
         let id = node.member("id").and_then(Node::as_str).map(String::from);
+        for key in ["subject", "patient"] {
+            let Some(r) = node.member(key).and_then(|m| m.member("reference")).and_then(Node::as_str) else { continue };
+            // with the record's Patient among the resources, every subject is that patient
+            if let Some(pr) = &patient_ref {
+                if r.starts_with("Patient/") && r != pr {
+                    return Err(ExportError::NotThisPatient(index, r.into()));
+                }
+            }
+        }
         let bytes = node.to_json();
+        let as_given =
+            |note: String, notes: Vec<String>, resources: &mut Vec<ExportedResource>| -> Result<(), ExportError> {
+                let validation = validator.validate_with(bytes.as_bytes(), tx);
+                if validation.report.issues.iter().any(|i| i.path == "resourceType") {
+                    return Err(ExportError::NotAResource(index));
+                }
+                resources.push(ExportedResource {
+                    index,
+                    resource_type: rt.clone(),
+                    id: id.clone(),
+                    profile: None,
+                    also: None,
+                    resource: bytes.clone(),
+                    validation,
+                    missing: Vec::new(),
+                    also_missing: Vec::new(),
+                    extras: Vec::new(),
+                    carried: Vec::new(),
+                    note: Some(note),
+                    notes,
+                });
+                Ok(())
+            };
         match select(region, &node, tx) {
-            Ok(Selection { target, also }) => {
+            Ok(Selection { target, also, mut notes }) => {
                 // the profile was chosen by the resource's own type, so a
                 // lift that cannot start means the resource is not one
                 let lifted = lift::lift_with(target, bytes.as_bytes(), validator, tx)
                     .map_err(|_| ExportError::NotAResource(index))?;
+                // the record contradicts what the profile fixes: re-profiling
+                // would replace its values — it goes out as given, and says why
+                if !lifted.conflicts.is_empty() {
+                    let why = lifted
+                        .conflicts
+                        .iter()
+                        .map(|c| format!("{} is '{}' where {} fixes '{}'", c.path, c.given, target.name, c.fixed))
+                        .collect::<Vec<_>>()
+                        .join("; ");
+                    as_given(format!("not re-profiled: {why}; exported as given"), notes, &mut resources)?;
+                    continue;
+                }
                 let parsed =
                     crate::json::parse(lifted.inputs.as_bytes()).map_err(|_| ExportError::NotAResource(index))?;
                 let lowered = lower::lower_with(target, &parsed, Some(validator), tx)
                     .map_err(|_| ExportError::NotAResource(index))?;
-                let (resource, validation, also_missing) = match also {
-                    None => (lowered.resource, lowered.validation, Vec::new()),
-                    // declared beside the target, verified against both;
-                    // what the second one requires and the record lacks
-                    Some(second) => {
-                        let mut node = crate::json::parse(lowered.resource.as_bytes())
-                            .map(|v| Node::from_value(&v))
-                            .map_err(|_| ExportError::NotAResource(index))?;
-                        let profiles = node
-                            .member_or_insert("meta", Node::Object(Vec::new()))
-                            .member_or_insert("profile", Node::Array(Vec::new()));
-                        if let Node::Array(urls) = profiles {
-                            urls.push(Node::Str(second.url.into()));
-                        }
-                        let resource = node.to_json();
-                        let validation = validator.validate_with(resource.as_bytes(), tx);
-                        let also_missing = lift::lift_with(second, resource.as_bytes(), validator, tx)
-                            .map(|l| l.missing)
-                            .unwrap_or_default();
-                        (resource, validation, also_missing)
+                let mut out = crate::json::parse(lowered.resource.as_bytes())
+                    .map(|v| Node::from_value(&v))
+                    .map_err(|_| ExportError::NotAResource(index))?;
+                // what no slot took, carried back where the profile's shape
+                // allows it — the record's, verified with the rest
+                let (carried, extras) = carry_back(&node, &mut out, &lifted.extras);
+                if let Some(second) = also {
+                    let profiles = out
+                        .member_or_insert("meta", Node::Object(Vec::new()))
+                        .member_or_insert("profile", Node::Array(Vec::new()));
+                    if let Node::Array(urls) = profiles {
+                        urls.push(Node::Str(second.url.into()));
                     }
+                }
+                let resource = out.to_json();
+                let validation = validator.validate_with(resource.as_bytes(), tx);
+                let also_missing = match also {
+                    Some(second) => lift::lift_with(second, resource.as_bytes(), validator, tx)
+                        .map(|l| l.missing)
+                        .unwrap_or_default(),
+                    None => Vec::new(),
                 };
+                if let Some(second) = also {
+                    notes.push(format!(
+                        "the {} document asks its {rt} entries for {}: declared beside {} and verified",
+                        region.title, second.name, target.name
+                    ));
+                }
                 resources.push(ExportedResource {
                     index,
                     resource_type: rt,
@@ -537,29 +666,13 @@ pub fn export_with(
                     validation,
                     missing: lifted.missing,
                     also_missing,
-                    extras: lifted.extras,
+                    extras,
+                    carried,
                     note: None,
+                    notes,
                 });
             }
-            Err(why) => {
-                let validation = validator.validate_with(bytes.as_bytes(), tx);
-                if validation.report.issues.iter().any(|i| i.path == "resourceType") {
-                    return Err(ExportError::NotAResource(index));
-                }
-                resources.push(ExportedResource {
-                    index,
-                    resource_type: rt,
-                    id,
-                    profile: None,
-                    also: None,
-                    resource: bytes,
-                    validation,
-                    missing: Vec::new(),
-                    also_missing: Vec::new(),
-                    extras: Vec::new(),
-                    note: Some(format!("{why}; exported as given")),
-                });
-            }
+            Err(why) => as_given(format!("{why}; exported as given"), Vec::new(), &mut resources)?,
         }
     }
 
@@ -599,10 +712,12 @@ pub fn export_with(
                 .iter()
                 .find(|r| r.resource_type == "Patient")
                 .and_then(|r| r.id.as_ref().map(|id| format!("Patient/{id}")));
+            // what was read: the document; without one, the patient's record
             let data = document
                 .as_ref()
                 .and_then(|d| crate::json::parse(d.document.as_bytes()).ok().map(|v| Node::from_value(&v)))
-                .and_then(|b| b.member("id").and_then(Node::as_str).map(|id| format!("Bundle/{id}")));
+                .and_then(|b| b.member("id").and_then(Node::as_str).map(|id| format!("Bundle/{id}")))
+                .or_else(|| patient.clone());
             let has = |k: &str| given.iter().any(|(m, _)| m.as_ref() == k);
             let mut members: Vec<(String, Node)> = Vec::with_capacity(given.len() + 2);
             if let Some(p) = patient.filter(|_| !has("patient")) {
@@ -623,6 +738,62 @@ pub fn export_with(
     };
 
     Ok(Exported { region, resources, document, audit })
+}
+
+/// Carry the given resource's `extras` into the lowered one where its
+/// shape allows: a top-level member the lowered resource lacks; an item of
+/// a repeating element no slice claimed (`component[2]`), appended; a leaf
+/// under single-valued parents that exist in both (`code.text`). Anything
+/// beneath a repeating element the profile rebuilt is left out and named.
+/// Returns (carried, left out).
+fn carry_back(given: &Node, out: &mut Node, extras: &[String]) -> (Vec<String>, Vec<String>) {
+    let mut carried = Vec::new();
+    let mut left = Vec::new();
+    for path in extras {
+        // `component[2]`: an unclaimed item of a repeating element
+        if let Some((element, idx)) = path.rsplit_once('[').and_then(|(e, i)| i.strip_suffix(']').map(|i| (e, i))) {
+            let Ok(i) = idx.parse::<usize>() else {
+                left.push(path.clone());
+                continue;
+            };
+            let item = element.split('.').try_fold(given, |n, seg| n.member(seg)).and_then(|n| match n {
+                Node::Array(xs) => xs.get(i),
+                _ => None,
+            });
+            let target = element.split('.').try_fold(&mut *out, |n, seg| n.member_mut(seg));
+            match (item, target) {
+                (Some(item), Some(Node::Array(xs))) => {
+                    xs.push(item.clone());
+                    carried.push(path.clone());
+                }
+                _ => left.push(path.clone()),
+            }
+            continue;
+        }
+        // a leaf whose every ancestor is a single object on both sides
+        let segs: Vec<&str> = path.split('.').collect();
+        let (parents, leaf) = segs.split_at(segs.len() - 1);
+        let from = parents.iter().try_fold(given, |n, seg| match n.member(seg) {
+            Some(m @ Node::Object(_)) => Some(m),
+            _ => None,
+        });
+        let to = parents.iter().try_fold(&mut *out, |n, seg| match n.member_mut(seg) {
+            Some(m @ Node::Object(_)) => Some(m),
+            _ => None,
+        });
+        match (from, to) {
+            (Some(from), Some(Node::Object(kvs))) if !kvs.iter().any(|(k, _)| k == leaf[0]) => {
+                for key in [leaf[0].to_string(), format!("_{}", leaf[0])] {
+                    if let Some(v) = from.member(&key) {
+                        kvs.push((key, v.clone()));
+                    }
+                }
+                carried.push(path.clone());
+            }
+            _ => left.push(path.clone()),
+        }
+    }
+    (carried, left)
 }
 
 impl Exported {
@@ -706,6 +877,15 @@ impl Exported {
                 wire::escape(&mut s, e);
                 s.push('"');
             }
+            s.push_str("],\"carried\":[");
+            for (j, e) in r.carried.iter().enumerate() {
+                if j > 0 {
+                    s.push(',');
+                }
+                s.push('"');
+                wire::escape(&mut s, e);
+                s.push('"');
+            }
             s.push_str("],\"note\":");
             match &r.note {
                 Some(n) => {
@@ -715,7 +895,16 @@ impl Exported {
                 }
                 None => s.push_str("null"),
             }
-            s.push('}');
+            s.push_str(",\"notes\":[");
+            for (j, n) in r.notes.iter().enumerate() {
+                if j > 0 {
+                    s.push(',');
+                }
+                s.push('"');
+                wire::escape(&mut s, n);
+                s.push('"');
+            }
+            s.push_str("]}");
         }
         s.push_str("],\"document\":");
         match &self.document {

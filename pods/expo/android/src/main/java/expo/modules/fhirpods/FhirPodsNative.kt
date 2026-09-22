@@ -51,6 +51,9 @@ internal object FhirPodsNative {
   /** {"resource","validation"} — an IHE BALP AuditEvent for a kind of event, or {"error"}. */
   external fun audit(kind: ByteArray, inputs: ByteArray, terminology: FhirPodsTerminology?): ByteArray
 
+  /** {"regions","profiles"} — what is compiled in. */
+  external fun profiles(): ByteArray
+
   /** {"region","resources","document","audit"} — a record re-profiled for a region, or {"error"}. */
   external fun export(region: ByteArray, inputs: ByteArray, terminology: FhirPodsTerminology?): ByteArray
 

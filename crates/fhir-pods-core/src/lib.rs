@@ -349,6 +349,70 @@ pub fn resource_profile(url: &str) -> Option<&'static compiled::CompiledProfile>
     crate::REGISTRY.iter().find(|p| p.url == url).filter(|p| p.resource_type != "Extension").copied()
 }
 
+/// What is compiled in, for a host to discover without the specification:
+/// `{"regions": [{"name", "title", "guide", "document"}], "profiles":
+/// [{"url", "name", "resourceType", "kind", "base"}]}` — every registry
+/// profile (`kind`: `resource` a host may lower into, lift from or export
+/// through; `datatype` a slice inherits; `extension`), and the regions
+/// `export` speaks.
+pub fn catalogue_json() -> String {
+    use wire::escape;
+    let mut out = String::from("{\"regions\":[");
+    for (i, r) in export::REGIONS.iter().enumerate() {
+        if i > 0 {
+            out.push(',');
+        }
+        out.push_str("{\"name\":\"");
+        out.push_str(r.name);
+        out.push_str("\",\"title\":\"");
+        escape(&mut out, r.title);
+        out.push_str("\",\"guide\":\"");
+        escape(&mut out, r.guide);
+        out.push_str("\",\"document\":");
+        match r.document {
+            Some(k) => {
+                out.push('"');
+                out.push_str(k.name());
+                out.push('"');
+            }
+            None => out.push_str("null"),
+        }
+        out.push('}');
+    }
+    out.push_str("],\"profiles\":[");
+    for (i, p) in crate::REGISTRY.iter().enumerate() {
+        if i > 0 {
+            out.push(',');
+        }
+        out.push_str("{\"url\":\"");
+        escape(&mut out, p.url);
+        out.push_str("\",\"name\":\"");
+        escape(&mut out, p.name);
+        out.push_str("\",\"resourceType\":\"");
+        escape(&mut out, p.resource_type);
+        out.push_str("\",\"kind\":\"");
+        out.push_str(if p.resource_type == "Extension" {
+            "extension"
+        } else if typemap::RESOURCES.binary_search(&p.resource_type).is_ok() {
+            "resource"
+        } else {
+            "datatype"
+        });
+        out.push_str("\",\"base\":");
+        match p.base {
+            Some(b) => {
+                out.push('"');
+                escape(&mut out, b);
+                out.push('"');
+            }
+            None => out.push_str("null"),
+        }
+        out.push('}');
+    }
+    out.push_str("]}");
+    out
+}
+
 /// [`Validator::lower`] without a validator (the invariants are re-parsed).
 pub fn lower_bytes(url: &str, inputs: &[u8]) -> Result<lower::Lowered, lower::LowerError> {
     let profile = resource_profile(url).ok_or(lower::LowerError::UnknownProfile)?;

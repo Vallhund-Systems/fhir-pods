@@ -71,6 +71,11 @@ public class FhirPodsExpoModule: Module {
       call2(fhir_pods_audit_tx, kind, inputsJson)
     }
 
+    // Discovery: {"regions","profiles"}.
+    Function("profiles") { () -> String in
+      call({ _, _, _, _ in fhir_pods_profiles() }, "")
+    }
+
     // Export: {"region","resources","document","audit"} or {"error"}.
     Function("export") { (region: String, inputsJson: String) -> String in
       call2(fhir_pods_export_tx, region, inputsJson)

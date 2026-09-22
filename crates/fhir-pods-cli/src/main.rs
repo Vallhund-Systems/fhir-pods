@@ -30,6 +30,7 @@ Usage:
   fhir-pods v2 --structure NAME
   fhir-pods needs [FILE|-]
   fhir-pods slots PROFILE_URL
+  fhir-pods profiles
   fhir-pods must-support [FILE|-]
   fhir-pods --help | --version
 
@@ -39,7 +40,7 @@ Input defaults to stdin. Use -- before positional arguments beginning with -.
 POLICY_FILE may be - only when the resource is read from a file.
 --terminology TABLE is accepted by validate, lower, lift, document, audit, export,
 v2, needs and must-support. TABLE may be - only with a resource file.
-slots and v2 --structure read no stdin. v2 input is ER7 text; other inputs are JSON.
+slots, profiles and v2 --structure read no stdin. v2 input is ER7 text; other inputs are JSON.
 Results are JSON on stdout. Usage/I/O errors are JSON on stderr.
 Exit 0: valid result (deidentify: no remaining findings; lift: no missing; v2: no unplaced;
 export: every resource, the document and the audit event valid).
@@ -81,6 +82,7 @@ fn parse(args: Vec<OsString>) -> Result<Args, Failure> {
             | "v2"
             | "needs"
             | "slots"
+            | "profiles"
             | "must-support"
     ) {
         return Err(bad("unknown command; use --help"));
@@ -104,7 +106,7 @@ fn parse(args: Vec<OsString>) -> Result<Args, Failure> {
                 policy = Some(PathBuf::from(tail.next().ok_or_else(|| bad("--policy needs a file path"))?));
             }
             Some("--outcome") if !literal && command == "validate" && !outcome => outcome = true,
-            Some("--terminology") if !literal && !matches!(command, "deidentify" | "slots") => {
+            Some("--terminology") if !literal && !matches!(command, "deidentify" | "slots" | "profiles") => {
                 if terminology.is_some() {
                     return Err(bad("--terminology may only be supplied once"));
                 }
@@ -168,6 +170,9 @@ fn parse(args: Vec<OsString>) -> Result<Args, Failure> {
     if command == "slots" && !positional.is_empty() {
         return Err(bad("slots accepts a profile URL, not an input file"));
     }
+    if command == "profiles" && !positional.is_empty() {
+        return Err(bad("profiles takes no arguments"));
+    }
     let options = Node::Object(vec![
         ("timezone".into(), timezone.map(Node::Str).unwrap_or(Node::Null)),
         ("codeSystems".into(), Node::Object(code_systems)),
@@ -203,6 +208,9 @@ fn run(args: Args) -> Result<(String, bool), Failure> {
         let profile = fhir_pods_core::resource_profile(url)
             .ok_or_else(|| Failure::Rejected("no compiled profile with that URL".into()))?;
         return Ok((output::slots(profile), true));
+    }
+    if args.command == "profiles" {
+        return Ok((fhir_pods_core::catalogue_json(), true));
     }
     if let Some(name) = args.structure {
         let tree = fhir_pods_core::v2::convert::structure_tree(&name)

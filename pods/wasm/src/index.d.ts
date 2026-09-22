@@ -41,6 +41,33 @@ export interface OperationOutcomeIssue {
 }
 
 /** One variable input of a profile. */
+/** A fixed leaf beside or beneath a slot: what the profile supplies there. */
+export interface SlotFixed {
+  path: string;
+  value: string;
+}
+
+/** A member of a composite datatype slot (a `HumanName`'s `family`, `given`…), from the base element table. */
+export interface SlotPart {
+  name: string;
+  type: string;
+  repeats: boolean;
+  required: boolean;
+}
+
+export interface CatalogueProfile {
+  url: string;
+  name: string;
+  resourceType: string;
+  kind: "resource" | "datatype" | "extension";
+  base: string | null;
+}
+
+export interface Catalogue {
+  regions: { name: ExportRegion; title: string; guide: string; document: DocumentKind | null }[];
+  profiles: CatalogueProfile[];
+}
+
 export interface Slot {
   /** Labelled, resource-relative path: `subject`, `component:SystolicBP.valueQuantity.value`. */
   path: string;
@@ -52,6 +79,10 @@ export interface Slot {
   /** `null` = unbounded. */
   max: number | null;
   mustSupport: boolean;
+  /** What the profile fixes beside this slot (same parent) or beneath it: a Quantity `unit` slot shows the fixed UCUM `code`, which lowering writes as the unit when none is given. */
+  fixed: SlotFixed[];
+  /** For a composite datatype slot, its members — what to write in the object. Empty for a primitive. */
+  parts: SlotPart[];
 }
 
 export interface Lowered {
@@ -288,6 +319,8 @@ export interface Pod {
    */
   lower(profileUrl: string, inputs: Record<string, unknown> | string): Lowered;
   /** The inputs a profile takes. */
+  /** What is compiled in: the regions `export` speaks and every profile in the registry. */
+  profiles(): Catalogue;
   slots(profileUrl: string): Slot[];
   /**
    * The reverse of `lower`: a resource read back into the profile's slots

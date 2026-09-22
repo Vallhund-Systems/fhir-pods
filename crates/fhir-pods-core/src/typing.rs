@@ -117,6 +117,19 @@ pub fn required_resource_children(ty: &str) -> impl Iterator<Item = &'static str
     span.iter().filter(|(rel, _, _, required)| *required && !rel.contains('.')).map(|(rel, _, _, _)| *rel)
 }
 
+/// A datatype's direct members, in table order: name, type code(s) (`|`
+/// separated for a choice; `#path` for a backbone), whether it repeats,
+/// whether the base requires it. Empty for a resource or an unknown type —
+/// what a host needs to write a composite slot (`HumanName`, `Identifier`,
+/// `Address`) without the specification open.
+pub fn members(ty: &str) -> alloc::vec::Vec<(&'static str, &'static str, bool, bool)> {
+    let span = if crate::typemap::RESOURCES.binary_search(&ty).is_ok() { &[][..] } else { range_of(ty).unwrap_or(&[]) };
+    span.iter()
+        .filter(|(rel, _, _, _)| !rel.contains('.'))
+        .map(|(rel, code, repeats, required)| (*rel, CODES[*code as usize], *repeats, *required))
+        .collect()
+}
+
 /// Every type name the table knows, for a lookup by other spellings.
 pub fn type_names() -> impl Iterator<Item = &'static str> {
     TYPES.iter().copied()
