@@ -13,8 +13,8 @@
 //!
 //! What the region demands and the record does not have is reported, never
 //! invented: a required slot the resource lacks is `missing`; content the
-//! target profile has no slot for is `extras` and is *not* carried (a
-//! re-profiled resource is the profile's shape); a resource with no
+//! target profile has no slot for is carried where the output shape allows
+//! it, or reported in `extras` when it cannot be carried; a resource with no
 //! profile in the region — or several and no way to tell — is exported as
 //! given, base-validated, with the reason.
 //!
@@ -63,8 +63,8 @@ pub struct Region {
     pub specialised: &'static [&'static str],
 }
 
-/// The regions compiled in. `ips` is the international floor: a region the
-/// registry has no guide for is exported as `ips`, and says so.
+/// The regions compiled in. A host can explicitly select `ips` as the
+/// international floor. Unknown region names are rejected.
 pub static REGIONS: &[Region] = &[
     Region {
         name: "au",
@@ -176,8 +176,8 @@ pub enum ExportError {
     /// More than one `Patient` among the resources: a record is one patient's.
     SeveralPatients,
     /// A resource whose `subject` / `patient` names a Patient other than the
-    /// record's (`Patient/<other id>` at `resources[index]`): another
-    /// person's data does not leave in this export.
+    /// record's (relative or absolute, optionally versioned, at
+    /// `resources[index]`). Unresolved identity is reported in `notes`.
     NotThisPatient(usize, String),
 }
 
@@ -247,7 +247,8 @@ pub struct ExportedResource {
     /// none declared; the record contradicts what the profile fixes).
     pub note: Option<String>,
     /// What a host should know about the choice: a declared profile that
-    /// was not applied, a document requirement that could not be settled.
+    /// was not applied, a document requirement that could not be settled,
+    /// or a patient reference whose identity the host must resolve.
     pub notes: Vec<String>,
 }
 
@@ -525,6 +526,56 @@ fn names(ps: &[&'static CompiledProfile]) -> String {
     ps.iter().map(|p| p.name).collect::<Vec<_>>().join(", ")
 }
 
+// Recognize a REST patient identity without discarding an absolute URL's
+// authority. Absolute same-id references still need host resolution.
+fn patient_id(reference: &str) -> Option<(&str, bool)> {
+    if reference.contains(['?', '#']) {
+        return None;
+    }
+    let (path, absolute) =
+        if let Some(rest) = reference.strip_prefix("https://").or_else(|| reference.strip_prefix("http://")) {
+            let (authority, path) = rest.split_once('/')?;
+            if authority.is_empty() {
+                return None;
+            }
+            (path, true)
+        } else {
+            (reference, false)
+        };
+    let parts: Vec<&str> = path.split('/').collect();
+    let tail = match parts.as_slice() {
+        [rest @ .., "_history", version] if !version.is_empty() => rest,
+        _ => parts.as_slice(),
+    };
+    match tail {
+        [prefix @ .., "Patient", id] if !id.is_empty() && (absolute || prefix.is_empty()) => Some((id, absolute)),
+        _ => None,
+    }
+}
+
+fn patient_notes(node: &Node, record_id: Option<&str>, index: usize) -> Result<Vec<String>, ExportError> {
+    let mut notes = Vec::new();
+    for key in ["subject", "patient"] {
+        let Some(subject) = node.member(key) else { continue };
+        let reference = subject.member("reference").and_then(Node::as_str);
+        if let (Some(record_id), Some(reference)) = (record_id, reference) {
+            if let Some((id, absolute)) = patient_id(reference) {
+                if id != record_id {
+                    return Err(ExportError::NotThisPatient(index, reference.into()));
+                }
+                if !absolute {
+                    continue;
+                }
+            }
+        }
+        notes.push(format!(
+            "patient identity not established for {key}{}; the host must resolve this reference against the record's Patient",
+            reference.map(|r| format!(" '{r}'")).unwrap_or_default()
+        ));
+    }
+    Ok(notes)
+}
+
 /// Export the resources for `region`. Inputs:
 ///
 /// ```json
@@ -563,7 +614,7 @@ pub fn export_with(
     if patient_ids.len() > 1 {
         return Err(ExportError::SeveralPatients);
     }
-    let patient_ref = patient_ids.first().filter(|id| !id.is_empty()).map(|id| format!("Patient/{id}"));
+    let record_patient_id = patient_ids.first().filter(|id| !id.is_empty()).map(String::as_str);
 
     let mut resources: Vec<ExportedResource> = Vec::with_capacity(given.len());
     for (index, g) in given.iter().enumerate() {
@@ -573,15 +624,7 @@ pub fn export_with(
             _ => return Err(ExportError::ResourcesNotAnArray),
         };
         let id = node.member("id").and_then(Node::as_str).map(String::from);
-        for key in ["subject", "patient"] {
-            let Some(r) = node.member(key).and_then(|m| m.member("reference")).and_then(Node::as_str) else { continue };
-            // with the record's Patient among the resources, every subject is that patient
-            if let Some(pr) = &patient_ref {
-                if r.starts_with("Patient/") && r != pr {
-                    return Err(ExportError::NotThisPatient(index, r.into()));
-                }
-            }
-        }
+        let identity_notes = patient_notes(&node, record_patient_id, index)?;
         let bytes = node.to_json();
         let as_given =
             |note: String, notes: Vec<String>, resources: &mut Vec<ExportedResource>| -> Result<(), ExportError> {
@@ -608,6 +651,7 @@ pub fn export_with(
             };
         match select(region, &node, tx) {
             Ok(Selection { target, also, mut notes }) => {
+                notes.extend(identity_notes);
                 // the profile was chosen by the resource's own type, so a
                 // lift that cannot start means the resource is not one
                 let lifted = lift::lift_with(target, bytes.as_bytes(), validator, tx)
@@ -672,7 +716,7 @@ pub fn export_with(
                     notes,
                 });
             }
-            Err(why) => as_given(format!("{why}; exported as given"), Vec::new(), &mut resources)?,
+            Err(why) => as_given(format!("{why}; exported as given"), identity_notes, &mut resources)?,
         }
     }
 
@@ -784,7 +828,7 @@ fn carry_back(given: &Node, out: &mut Node, extras: &[String]) -> (Vec<String>, 
         match (from, to) {
             (Some(from), Some(Node::Object(kvs))) if !kvs.iter().any(|(k, _)| k == leaf[0]) => {
                 for key in [leaf[0].to_string(), format!("_{}", leaf[0])] {
-                    if let Some(v) = from.member(&key) {
+                    if let Some(v) = from.member(&key).filter(|_| !kvs.iter().any(|(k, _)| k == &key)) {
                         kvs.push((key, v.clone()));
                     }
                 }

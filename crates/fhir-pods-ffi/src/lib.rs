@@ -403,31 +403,7 @@ fn lift_json(profile: &[u8], resource: &[u8], tx: &dyn TerminologyProvider) -> S
             return s;
         }
     };
-    let mut s = String::with_capacity(l.inputs.len() + 512);
-    s.push_str("{\"inputs\":");
-    s.push_str(&l.inputs);
-    s.push_str(",\"validation\":");
-    s.push_str(&wire::report(&l.validation));
-    s.push_str(",\"missing\":[");
-    for (i, m) in l.missing.iter().enumerate() {
-        if i > 0 {
-            s.push(',');
-        }
-        s.push('"');
-        wire::escape(&mut s, m);
-        s.push('"');
-    }
-    s.push_str("],\"extras\":[");
-    for (i, e) in l.extras.iter().enumerate() {
-        if i > 0 {
-            s.push(',');
-        }
-        s.push('"');
-        wire::escape(&mut s, e);
-        s.push('"');
-    }
-    s.push_str("]}");
-    s
+    l.to_json()
 }
 
 /// Audit: an `AuditEvent` for a `kind` of event (`read`, `patient-read`,
@@ -1319,9 +1295,17 @@ mod tests {
             assert!(
                 out.starts_with("{\"inputs\":{")
                     && out.contains("\"valueQuantity.value\":72")
-                    && out.contains("\"missing\":[],\"extras\":[]}"),
+                    && out.contains("\"missing\":[],\"extras\":[],\"conflicts\":[]}"),
                 "{out}"
             );
+            let conflict = resource.replace("\"code\":\"/min\"", "\"code\":\"Hz\"");
+            let out = unpack(fhir_pods_lift(url.as_ptr(), url.len(), conflict.as_ptr(), conflict.len()));
+            let actual = fhir_pods_core::node::Node::from_value(&fhir_pods_core::json::parse(out.as_bytes()).unwrap());
+            let expected = fhir_pods_core::node::Node::from_value(
+                &fhir_pods_core::json::parse(br#"[{"path":"valueQuantity.code","given":"Hz","fixed":"/min"}]"#)
+                    .unwrap(),
+            );
+            assert_eq!(actual.member("conflicts"), Some(&expected));
             let err = unpack(fhir_pods_lift(url.as_ptr(), url.len(), b"[]".as_ptr(), 2));
             assert_eq!(err, "{\"error\":\"input is not a FHIR resource\"}");
         }

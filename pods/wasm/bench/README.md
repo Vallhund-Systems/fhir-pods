@@ -9,8 +9,10 @@ node pods/wasm/bench/run.mjs --iterations 2000 --output /tmp/fhir-pods-bench.jso
 
 Requires Node 22+. `--wasm /path/to/artifact.wasm` selects another artifact.
 The script emits one dated JSON line and optionally appends it to `--output`.
-`measurements.jsonl` contains the recorded development run, including its dirty
-tree flag, artifact SHA-256 and fixed fixture hashes.
+`measurements.jsonl` retains the dated ABI 7 development run and appends the
+2026-09-22 ABI 12 run after v0.12.1. Each names its exact revision, dirty-tree
+state, artifact SHA-256 and fixture hashes; the latest also hashes runner and
+wrapper sources. The ABI 12 source commit is unreleased, not the v0.12.1 tag.
 
 Each fixture is checked before measurement, warmed for 200 calls, then measured
 in five rounds. The report includes all samples and median/min/max microseconds

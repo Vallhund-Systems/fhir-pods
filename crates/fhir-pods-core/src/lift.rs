@@ -46,6 +46,34 @@ pub struct Lifted {
     pub conflicts: Vec<Conflict>,
 }
 
+impl Lifted {
+    /// Shared result shape for the C ABI and CLI, including fixed-value conflicts.
+    pub fn to_json(&self) -> String {
+        let missing = Node::Array(self.missing.iter().map(|p| Node::Str((*p).into())).collect());
+        let extras = Node::Array(self.extras.iter().cloned().map(Node::Str).collect());
+        let conflicts = Node::Array(
+            self.conflicts
+                .iter()
+                .map(|c| {
+                    Node::Object(alloc::vec![
+                        ("path".into(), Node::Str(c.path.into())),
+                        ("given".into(), Node::Str(c.given.clone())),
+                        ("fixed".into(), Node::Str(c.fixed.into())),
+                    ])
+                })
+                .collect(),
+        );
+        alloc::format!(
+            "{{\"inputs\":{},\"validation\":{},\"missing\":{},\"extras\":{},\"conflicts\":{}}}",
+            self.inputs,
+            crate::wire::report(&self.validation),
+            missing.to_json(),
+            extras.to_json(),
+            conflicts.to_json()
+        )
+    }
+}
+
 /// A record value that disagrees with what the profile fixes there.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Conflict {
@@ -281,7 +309,6 @@ pub fn lift_with(
         siblings.dedup();
         let mut found = false;
         for key in &keys {
-            covered.push(unlabelled(key));
             // a slot with slots of its own beneath it (`valueQuantity` over
             // `valueQuantity.value`) is lifted through those: the parts are
             // the record's, the rest of the container is the profile's
@@ -294,6 +321,10 @@ pub fn lift_with(
                 found = true;
                 continue;
             }
+            // Only a slot actually extracted whole covers its subtree. A
+            // composite represented by child slots can still carry other
+            // content (Quantity.comparator, extensions, primitive carriers).
+            covered.push(unlabelled(key));
             if let Some(v) = extract(doc, profile, key, &siblings) {
                 inputs.push((key.clone(), v));
                 found = true;
@@ -494,8 +525,9 @@ fn walk_extras(
     out: &mut Vec<String>,
 ) {
     for (key, value) in kvs {
-        let bare = key.strip_prefix('_').unwrap_or(key);
-        let path = if prefix.is_empty() { String::from(bare) } else { alloc::format!("{prefix}.{bare}") };
+        // A fixed primitive covers its value, not its extension carrier.
+        // Carriers extracted for variable slots have their own covered paths.
+        let path = if prefix.is_empty() { key.to_string() } else { alloc::format!("{prefix}.{key}") };
         let exact_or_below = covered.iter().any(|c| *c == path || path.starts_with(&alloc::format!("{c}.")));
         if exact_or_below {
             continue;

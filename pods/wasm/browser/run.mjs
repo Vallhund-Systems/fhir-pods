@@ -5,10 +5,17 @@ import { readFile, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve, extname, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { spawn } from "node:child_process";
+import { spawn, execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
+const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
+const git = (...args) => execFileSync("git",args,{cwd:repoRoot,encoding:"utf8"}).trim();
+const files = ["browser/run.mjs","browser/smoke.mjs","browser/operations.mjs","browser/index.html","bench/fixtures.mjs","src/index.js"];
+const sha256 = data => createHash("sha256").update(data).digest("hex");
+const sourceHashes = Object.fromEntries(await Promise.all(files.map(async file=>[file,sha256(await readFile(join(root,file)))])));
+const provenance = {revision:git("rev-parse","HEAD"),dirtyPaths:git("status","--porcelain","--untracked-files=no").split("\n").filter(Boolean),sourceHashes,node:process.version,platform:process.platform,architecture:process.arch};
 const chrome = process.env.CHROME ?? (process.platform === "darwin" ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" : "chromium");
 const profile = await mkdtemp(join(tmpdir(), "fhir-pods-browser-"));
 const server = createServer(async (request, response) => {
@@ -63,7 +70,8 @@ try {
   }
   if (!report) throw new Error("Browser smoke did not finish within 30 seconds");
   const browser = await send("Browser.getVersion");
-  console.log(JSON.stringify({ recordedAt: new Date().toISOString(), browser: browser.product, ...report }, null, 2));
+  for(const file of files) if(sha256(await readFile(join(root,file)))!==sourceHashes[file]) throw new Error(`Source changed during browser run: ${file}`);
+  console.log(JSON.stringify({ recordedAt: new Date().toISOString(), browser: browser.product, ...provenance, ...report }, null, 2));
   if (report.status !== "passed") process.exitCode = 1;
 } finally {
   socket?.close();

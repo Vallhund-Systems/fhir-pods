@@ -40,15 +40,7 @@ pub fn converted(result: &Converted) -> String {
 }
 
 pub fn lifted(result: &Lifted) -> String {
-    let missing = Node::Array(result.missing.iter().map(|s| Node::Str((*s).into())).collect());
-    let extras = Node::Array(result.extras.iter().cloned().map(Node::Str).collect());
-    format!(
-        "{{\"inputs\":{},\"validation\":{},\"missing\":{},\"extras\":{}}}",
-        result.inputs,
-        wire::report(&result.validation),
-        missing.to_json(),
-        extras.to_json()
-    )
+    result.to_json()
 }
 
 pub fn deidentified(result: &Deidentified) -> String {

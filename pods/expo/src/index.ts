@@ -113,6 +113,8 @@ export interface Lifted {
   missing: string[];
   /** Element paths present that no slot, fixed leaf or pass-through member covers. */
   extras: string[];
+  /** Record values that disagree with fixed leaves; lowering would replace them. */
+  conflicts: { path: string; given: string; fixed: string }[];
 }
 
 /** Options for converting an HL7 v2 message. */

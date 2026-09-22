@@ -80,14 +80,16 @@ pod.mustSupportGaps(JSON.stringify(patient));
 ### Lifting
 
 ```js
-const { inputs, validation, missing, extras } = pod.lift("…/au-core-heartrate", observation);
+const { inputs, validation, missing, extras, conflicts } = pod.lift("…/au-core-heartrate", observation);
 // inputs: { status, subject, effectiveDateTime, "valueQuantity.value", "valueQuantity.unit" }
 ```
 
 The reverse of lowering: the profile's slots read out of a resource — what a
 host maps to its own model, and nothing the profile fixes. `missing` names
 the required slots the resource lacks; `extras` names element paths no slot
-covers, so nothing is left behind unnamed; `validation` is the verdict on the
+covers; `conflicts` lists fixed leaves with their `path`, `given` and `fixed`
+values. Inspect these before rebuilding: lowering supplies the fixed value.
+`validation` is the verdict on the
 way in. `pod.lift("", resource)` takes the most specific compiled profile the
 resource declares. `pod.lower(url, inputs)` rebuilds the slot-covered content.
 Inspect `extras` before a round trip: uncovered values are listed but are not

@@ -54,6 +54,7 @@ def cases():
     slot('Coding',BASE+'AuditEvent',audit,'type',audit['type'])
     slot('BackboneElement',BASE+'Provenance',PROV,'agent',{'who':{'reference':'Practitioner/synthetic'}},['agent',0])
     quantity_seed={k:v for k,v in HR.items() if not k.startswith('valueQuantity.')}
+    slot('Ratio',BASE+'Medication',{},'amount',{'numerator':{'value':1},'denominator':{'value':2}})
     slot('Quantity',AU+'au-core-heartrate',quantity_seed,'valueQuantity',{'value':72,'unit':'beats/minute','system':'http://unitsofmeasure.org','code':'/min'})
     add('quantity-shorthand',AU+'au-core-heartrate',{**quantity_seed,'valueQuantity':72,'valueQuantity.unit':'beats/minute'},preserve=[['valueQuantity','value',72]])
     add('reference-shorthand',AU+'au-core-heartrate',HR,preserve=[['subject','reference','Patient/synthetic']])

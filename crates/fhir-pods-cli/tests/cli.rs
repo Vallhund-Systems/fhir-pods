@@ -273,3 +273,15 @@ fn lift_usage_and_io_errors_are_json_on_stderr() {
     assert_eq!(help.status.code(), Some(0));
     assert!(String::from_utf8(help.stdout).unwrap().contains("lift PROFILE_URL|\"\""));
 }
+
+#[test]
+fn lift_exposes_fixed_value_conflicts_in_the_shared_result_shape() {
+    let resource = heart_rate().to_json().replace("\"code\":\"/min\"", "\"code\":\"Hz\"");
+    let lifted = result(&call(&["lift", HR], resource.as_bytes()), 1);
+    let conflicts = lifted.member("conflicts").unwrap();
+    let expected =
+        Node::from_value(&json::parse(br#"[{"path":"valueQuantity.code","given":"Hz","fixed":"/min"}]"#).unwrap());
+    assert_eq!(conflicts, &expected);
+    let native = fhir_pods_core::Validator::new().lift(HR, resource.as_bytes()).unwrap();
+    assert_eq!(lifted, Node::from_value(&json::parse(native.to_json().as_bytes()).unwrap()));
+}

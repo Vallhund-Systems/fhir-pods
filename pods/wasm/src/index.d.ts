@@ -98,6 +98,8 @@ export interface Lifted {
   missing: string[];
   /** Element paths present that no slot, fixed leaf or pass-through member covers. */
   extras: string[];
+  /** Record values that disagree with fixed leaves; lowering would replace them. */
+  conflicts: { path: string; given: string; fixed: string }[];
 }
 
 /** Options for converting an HL7 v2 message. */
@@ -326,8 +328,9 @@ export interface Pod {
    * The reverse of `lower`: a resource read back into the profile's slots
    * (`profileUrl` "" takes the most specific compiled profile the resource
    * declares). `inputs` is what `lower` takes; `missing` names required
-   * slots the resource lacks; `extras` names element paths no slot covers,
-   * so nothing is left behind unnamed. Validated on the way in. Throws only
+   * slots the resource lacks; `extras` names element paths no slot covers;
+   * `conflicts` names values that disagree with fixed profile content.
+   * Validated on the way in. Throws only
    * when it cannot start.
    */
   lift(profileUrl: string, resource: Record<string, unknown> | string): Lifted;

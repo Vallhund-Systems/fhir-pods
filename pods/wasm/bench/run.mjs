@@ -48,6 +48,8 @@ const git = (...argv) => execFileSync("git", argv, { cwd: root, encoding: "utf8"
 const report = {
   recordedAt: new Date().toISOString(), revision: git("rev-parse", "HEAD"),
   trackedSourceDirty: Boolean(git("status", "--porcelain", "--untracked-files=no")),
+  dirtyPaths: git("status", "--porcelain", "--untracked-files=no").split("\n").filter(Boolean),
+  sourceHashes: Object.fromEntries(await Promise.all(["bench/run.mjs","bench/fixtures.mjs","src/index.js"].map(async file=>[file,sha256(await readFile(new URL(`../${file}`,import.meta.url)))]))),
   runtime: process.version, platform: process.platform, architecture: process.arch,
   cpu: os.cpus()[0]?.model, abi: pod.abiVersion,
   wasm: { bytes: bytes.length, gzip9Bytes: gzipSync(bytes, { level: 9 }).length, sha256: sha256(bytes) },

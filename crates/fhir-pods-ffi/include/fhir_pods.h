@@ -67,7 +67,7 @@ uint8_t *fhir_pods_lower_tx(const uint8_t *profile, size_t profile_len, const ui
  * (`profile` a canonical URL, or empty to take the most specific compiled
  * profile the resource declares): {"inputs": {...slot path: value...},
  * "validation": {...}, "missing": [required slots absent], "extras":
- * [element paths no slot covers]} — or {"error": "..."}. A host's map from
+ * [element paths no slot covers], "conflicts": [{"path","given","fixed"}]} — or {"error": "..."}. A host's map from
  * FHIR to its own model is a map from slot paths to fields. */
 uint8_t *fhir_pods_lift(const uint8_t *profile, size_t profile_len, const uint8_t *resource, size_t resource_len);
 uint8_t *fhir_pods_lift_tx(const uint8_t *profile, size_t profile_len, const uint8_t *resource, size_t resource_len,
@@ -134,7 +134,7 @@ uint8_t *fhir_pods_audit_tx(const uint8_t *kind, size_t kind_len, const uint8_t 
  * read is recorded as a BALP patient-read when "audit" is given. Out:
  * {"region": {"name","title","guide"}, "resources": [{"index",
  * "resourceType", "id", "profile", "also", "resource", "validation",
- * "missing", "alsoMissing", "extras", "note"}], "document": {"kind",
+ * "missing", "alsoMissing", "extras", "carried", "note", "notes"}], "document": {"kind",
  * "document", "placed", "omitted", "validation"} | null, "audit":
  * {"resource", "validation"} | null} — or {"error": "..."} when it could
  * not start. The `_tx` twin takes the terminology callback. */

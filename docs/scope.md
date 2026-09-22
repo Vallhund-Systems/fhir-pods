@@ -255,9 +255,14 @@ re-profiling — the resource goes out as given with the contradiction in
 a pattern on a repeating element (`code.coding` must contain SNOMED's) is
 one instance's, which lowering adds. `notes` carry what else the host
 should know: a declared profile the region does not have (not applied), a
-document requirement several profiles fit (none declared). A record is one
-patient's: a second `Patient`, or a `subject`/`patient` naming another,
-is an error before anything is built. The document's entry profiles may
+document requirement several profiles fit (none declared), or unresolved
+patient identity. A second `Patient`, or a top-level `subject`/`patient`
+reference naming a different recognizable Patient id, rejects the export.
+Same-id relative references may include `/_history/<version>`. Absolute
+same-id references, opaque or logical references, and a missing record
+Patient id produce an unresolved-identity note for the host. Matching an
+absolute URL's suffix does not establish server identity; nested references
+are outside this consistency check. The document's entry profiles may
 come from another guide — the AU Patient Summary names IPS profiles for
 its pregnancy and device entries — and are taken as the document asks. The oracle lane (`examples/export_corpus.rs`, 39 files: one base
 record for every region, each resource, the document, the audit event)

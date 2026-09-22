@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- Export preserves unextracted Quantity qualifiers, extensions and fixed
+  primitive carriers where its output shape permits, naming the rest in
+  `extras`. Copying a primitive and its carrier no longer duplicates a key.
+- Patient consistency accepts versioned relative references and rejects
+  recognizable foreign Patient ids in absolute references. Unresolved
+  authorities and logical references receive explicit host-resolution notes.
+- Lift results include `conflicts` through C, CLI and JavaScript, using the
+  same core serializer. ABI remains 12.
+- C and browser checks cover ABI 12 operations, discovery, export and
+  terminology callbacks, including reentrancy. Lowering fixtures include
+  Ratio and inventory only profiles accepted by the resource lookup.
+
 ## 0.12.1 — 2026-09-21
 
 The Expo module's podspec and `build.gradle` carried a stale `0.5.1`

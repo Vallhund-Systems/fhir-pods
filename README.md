@@ -41,7 +41,7 @@ whether a particular import, export, or transformation is acceptable.
 
 | Operation | What it does | What comes back |
 | --- | --- | --- |
-| **Lift** | Extract a resource's variable data through a compiled profile; use an explicit profile or one declared by the resource | Slot inputs, validation, missing required slots, and paths not covered by the extraction (`extras`) |
+| **Lift** | Extract a resource's variable data through a compiled profile; use an explicit profile or one declared by the resource | Slot inputs, validation, missing required slots, uncovered paths (`extras`), and fixed-value `conflicts` |
 | **Lower / slots** | Inspect a profile's inputs and build a resource from them, supplying the profile's fixed content | Resource and validation, including unknown inputs, type conflicts, and unmet constraints |
 | **Validate** | Check base R4 structure and supported rules, declared profiles (including nested resources), extension placement, and available terminology | A typed report or FHIR `OperationOutcome`; unsupported checks and unresolved terminology are visible; must-support gaps are available separately |
 | **De-identify** | Apply the built-in `safe-harbor` policy or host rules: remove or mask identifying fields, reduce date precision, and pseudonymise identifiers and references with a host-supplied salt | Transformed resource, validation, an applied-action trail, remaining checker findings, and free-text sites retained by host rules (`residual`) |
@@ -135,8 +135,13 @@ the contradiction in `note`. Where the region's document asks its entries
 for a second profile (the IPS's Condition beside US Core's), it is
 declared alongside and verified too (`also`, `alsoMissing`). A resource
 nothing in the region profiles goes out as given, base-validated, with the
-reason in `note`. A record is one patient's: a second `Patient`, or a
-resource about someone else, is an error, not an export. Regions: `au`,
+reason in `note`. A second `Patient`, or a top-level `subject` / `patient`
+reference with a different recognizable Patient id, rejects the export.
+Relative references may include `/_history/<version>`. Absolute references
+with a matching id, opaque or logical references, and records without a
+Patient id receive an unresolved-identity `notes` entry for the host to
+resolve; this check does not establish identity across servers or nested
+resources. Regions: `au`,
 `us`, `ips` (the international floor — what to use for a jurisdiction
 without a compiled guide; `profiles()` lists them). Offline, an IPS
 document with any Observation needs the IG's two pregnancy LOINC sets
