@@ -47,6 +47,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "Organization.contact"),
         ("fhirpath", "ofType(ExtendedContactDetail)"),
     ],
+    references: &[],
     deferred: &[],
 };
 

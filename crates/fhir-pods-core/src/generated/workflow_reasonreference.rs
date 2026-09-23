@@ -57,6 +57,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "Media"),
         ("element", "NutritionOrder"),
     ],
+    references: &[("Extension.value[x]", super::intern::S235)],
     deferred: &[],
 };
 

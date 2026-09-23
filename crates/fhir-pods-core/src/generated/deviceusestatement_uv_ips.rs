@@ -26,7 +26,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "DeviceUseStatement.subject.reference", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "DeviceUseStatement.subject.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "DeviceUseStatement.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "DeviceUseStatement.timing[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S36, patterns: &[] },
+        ElementConstraint { path: "DeviceUseStatement.timing[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S101, patterns: &[] },
     ],
     slicings: &[
         Slicing { path: "DeviceUseStatement.timing[x]", closed: false, slices: &[
@@ -55,6 +55,14 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    references: &[
+        ("DeviceUseStatement.basedOn", &["http://hl7.org/fhir/StructureDefinition/ServiceRequest"]),
+        ("DeviceUseStatement.subject", &["http://hl7.org/fhir/uv/ips/StructureDefinition/Patient-uv-ips"]),
+        ("DeviceUseStatement.derivedFrom", super::intern::S125),
+        ("DeviceUseStatement.source", super::intern::S87),
+        ("DeviceUseStatement.device", &["http://hl7.org/fhir/uv/ips/StructureDefinition/Device-uv-ips"]),
+        ("DeviceUseStatement.reasonReference", super::intern::S126),
+    ],
     deferred: &[
     ],
 };
@@ -69,7 +77,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "timing[x]",
             ty: "choice",
-            choices: super::intern::S46,
+            choices: super::intern::S127,
             min: 1,
             max: Max::Bounded(1),
             must_support: true,

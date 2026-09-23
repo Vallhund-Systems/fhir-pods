@@ -94,6 +94,7 @@ def main():
         f.write("//! resource and complex datatype as (path relative to its type, type-code\n")
         f.write("//! index, repeats), grouped by type in `TYPES` order and sorted within a\n")
         f.write("//! type by path; `RANGES[i]` is type `TYPES[i]`'s span of `TABLE`.\n\n")
+        f.write("use crate::compiled::{Binding, BindingKind};\n\n")
         f.write("/// Every resource and complex datatype name, sorted.\n")
         f.write("pub static TYPES: &[&str] = &[\n")
         for t in types:
@@ -133,6 +134,95 @@ def main():
             for c in e.get("constraint", []):
                 if c.get("key", "").startswith("bdl") and c.get("expression"):
                     f.write(f'    ({rs(e["path"])}, {rs(c["key"])}, {str(c.get("severity") == "error").lower()}, {rs(c.get("human", ""))}, {rs(c["expression"])}),\n')
+        f.write("];\n\n")
+        # Every resource's own invariants (org-1, pat-1, cmp-1, obs-6 …), on
+        # the root or on any element: what a resource owes when no profile
+        # applies (a profile's snapshot restates them). dom-*/ele-*/ext-*
+        # are checked elsewhere; bdl-* above.
+        f.write("/// Every resource's own invariants, root and element: (resource type,\n")
+        f.write("/// element path, key, is_error, human, expression, the element's types —\n")
+        f.write("/// for a choice `[x]`, the concrete keys to evaluate).\n")
+        f.write("#[allow(clippy::type_complexity)]\n")
+        f.write("pub static RESOURCE_INVARIANTS: &[(&str, &str, &str, bool, &str, &str, &[&str])] = &[\n")
+        for t in types:
+            sd = sds[t]
+            if sd.get("kind") != "resource" or t in ("Bundle", "DomainResource", "Resource"):
+                continue
+            seen = set()
+            for e in (sd.get("snapshot") or {}).get("element", []):
+                if ":" in e.get("id", ""):
+                    continue
+                path = e.get("path", "")
+                for c in e.get("constraint", []):
+                    key, expr = c.get("key", ""), c.get("expression")
+                    if not key or not expr or key.split("-")[0] in ("dom", "ele", "ext", "bdl") or (path, key) in seen:
+                        continue
+                    seen.add((path, key))
+                    etypes = [t] if "." not in path else [x["code"] for x in e.get("type", []) if x.get("code")]
+                    tys = ", ".join(rs(x) for x in etypes)
+                    f.write(f'    ({rs(t)}, {rs(path)}, {rs(key)}, {str(c.get("severity") == "error").lower()}, {rs(c.get("human", ""))}, {rs(expr)}, &[{tys}]),\n')
+        f.write("];\n\n")
+        # Every datatype's own invariants (cpt-2, per-1, qty-3, rng-2, tim-* …):
+        # what an element of that type owes wherever it sits — a resource's
+        # own element, an extension's value, a datatype inside a datatype —
+        # so the shape walk evaluates them at every typed object it visits.
+        # The context is spelled as the walk's typing context: the type
+        # itself, or the bare `Type.path` of an inline element. Constraints on a
+        # primitive-typed element (eld-3, txt-1) have no object to visit;
+        # ele-/ext- are structural, ref-1 is the walk's own contained check.
+        f.write("/// Every datatype's own invariants: (typing context, key, is_error, human,\n")
+        f.write("/// expression) — evaluated on every object of that context the shape walk meets;\n")
+        f.write("/// a backbone or inline element's context is its bare path (`Timing.repeat`).\n")
+        f.write("pub static DATATYPE_INVARIANTS: &[(&str, &str, bool, &str, &str)] = &[\n")
+        for t in types:
+            sd = sds[t]
+            if sd.get("kind") != "complex-type":
+                continue
+            seen = set()
+            for e in (sd.get("snapshot") or {}).get("element", []):
+                if ":" in e.get("id", ""):
+                    continue
+                path = e.get("path", "")
+                etypes = [x["code"] for x in e.get("type", []) if x.get("code")]
+                if "." in path and (not etypes or etypes[0][:1].islower()):
+                    continue
+                ctx = path  # the walk's context for an inline element is its bare path
+                for c in e.get("constraint", []):
+                    key, expr = c.get("key", ""), c.get("expression")
+                    if not key or not expr or key.split("-")[0] in ("ele", "ext", "ref") or "htmlChecks" in expr or (path, key) in seen:
+                        continue
+                    seen.add((path, key))
+                    f.write(f'    ({rs(ctx)}, {rs(key)}, {str(c.get("severity") == "error").lower()}, {rs(c.get("human", ""))}, {rs(expr)}),\n')
+        f.write("];\n\n")
+        # Every required binding the base definitions place on a coded
+        # element — a resource's own (`Patient.gender`), a backbone's
+        # (`Encounter.location.status`), a datatype's wherever it sits
+        # (`ContactPoint.system`, `Timing.repeat.periodUnit`) — keyed by the
+        # typing context the shape walk is in and the element's key. A
+        # choice element is left out (none in R4 binds `[x]` required).
+        f.write("/// Every required binding the base definitions place on a coded element:\n")
+        f.write("/// (typing context, element key, binding) — checked by the shape walk at\n")
+        f.write("/// every object of that context, profile or none (a datatype's), or with\n")
+        f.write("/// none (a resource's, which a profile's snapshot restates).\n")
+        f.write("pub static BASE_BINDINGS: &[(&str, &str, Binding)] = &[\n")
+        for t in types:
+            ctx_of = {t: t}
+            for e in sds[t]["snapshot"]["element"]:
+                codes = [x.get("code") for x in e.get("type", [])]
+                if codes in (["BackboneElement"], ["Element"]):
+                    ctx_of[e["path"]] = e["path"]  # the walk's context: the bare path
+            for e in sds[t]["snapshot"]["element"]:
+                path = e["path"]
+                b = e.get("binding") or {}
+                if "." not in path or path.endswith("[x]") or b.get("strength") != "required" or not b.get("valueSet"):
+                    continue
+                parent, key = path.rsplit(".", 1)
+                codes = [x.get("code") for x in e.get("type", [])]
+                kind = {"code": "Code", "Coding": "Coding", "CodeableConcept": "CodeableConcept"}.get(codes[0] if len(codes) == 1 else None)
+                if not kind or parent not in ctx_of:
+                    continue
+                vs = b["valueSet"].split("|")[0]
+                f.write(f'    ({rs(ctx_of[parent])}, {rs(key)}, Binding {{ value_set: {rs(vs)}, kind: BindingKind::{kind} }}),\n')
         f.write("];\n\n")
         f.write("/// The distinct type codes: `type|type…`, `#Backbone.path` (a backbone or\n")
         f.write("/// content reference), `~Element.path` (an inline Element).\n")

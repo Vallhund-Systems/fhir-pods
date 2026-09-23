@@ -895,7 +895,12 @@ fn carry_back(given: &Node, out: &mut Node, extras: &[String]) -> (Vec<String>, 
                 Node::Array(xs) => xs.get(i),
                 _ => None,
             });
-            let target = element.split('.').try_fold(&mut *out, |n, seg| n.member_mut(seg));
+            // the lowered resource may lack the element altogether (a
+            // profile that fixed nothing there): the array is made
+            let target = element.split('.').try_fold(&mut *out, |n, seg| match n {
+                Node::Object(_) => Some(n.member_or_insert(seg, Node::Array(Vec::new()))),
+                _ => None,
+            });
             match (item, target) {
                 (Some(item), Some(Node::Array(xs))) => {
                     xs.push(item.clone());

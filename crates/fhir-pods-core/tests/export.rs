@@ -505,12 +505,14 @@ fn the_same_record_speaks_the_united_kingdom_canada_and_new_zealand() {
         let d = e.document.as_ref().unwrap();
         assert!(d.document.contains("Bundle-uv-ips"));
         for r in &e.resources {
-            assert!(
-                r.validation.is_valid() || !r.missing.is_empty(),
-                "{region} {}: {}",
-                r.resource_type,
-                wire::report(&r.validation)
-            );
+            assert!(r.validation.is_valid(), "{region} {}: {}", r.resource_type, wire::report(&r.validation));
         }
+        // a profile with no slots of its own (NZ Patient decorates the base
+        // with extensions) carries the record whole — nothing is dropped
+        let patient = by_id("u1");
+        for kept in ["Citizen", "1988-04-12", "female", "urn:uuid:5b3a2b6e"] {
+            assert!(patient.resource.contains(kept), "{region} lost {kept}: {}", patient.resource);
+        }
+        assert!(patient.extras.is_empty(), "{region}: {:?}", patient.extras);
     }
 }

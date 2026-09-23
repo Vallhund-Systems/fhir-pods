@@ -52,6 +52,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     lowering: &LOWERING,
     must_support: &[],
     contexts: &[("element", "TriggerDefinition"), ("element", "ParameterDefinition")],
+    references: &[],
     deferred: &[],
 };
 

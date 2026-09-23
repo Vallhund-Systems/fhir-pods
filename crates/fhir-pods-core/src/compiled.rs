@@ -188,6 +188,15 @@ pub struct CompiledProfile {
     /// or for `extension` the url of the extension it nests in. Empty for
     /// anything but an extension profile.
     pub contexts: &'static [(&'static str, &'static str)],
+    /// Reference elements and the profiles their targets must conform to
+    /// (`ElementDefinition.type.targetProfile`): (absolute element path,
+    /// canonical urls). Checked when the reference resolves inside the
+    /// document — a bundle entry, a contained resource — against every
+    /// target the registry has compiled (a base resource canonical is a
+    /// type check); a reference nothing here can resolve, or targets none
+    /// of which are compiled, are not judged. The reference validator's
+    /// "Unable to find a profile match for … among choices".
+    pub references: &'static [(&'static str, &'static [&'static str])],
     /// Slices the compiler could not discriminate (a discriminator on a
     /// binding rather than a fixed value, on what a reference resolves to
     /// beyond the registry, on `$this` with no type; a slicing nested three

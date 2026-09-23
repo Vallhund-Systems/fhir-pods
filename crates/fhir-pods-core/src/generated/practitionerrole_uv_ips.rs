@@ -44,6 +44,13 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    references: &[
+        ("PractitionerRole.practitioner", &["http://hl7.org/fhir/uv/ips/StructureDefinition/Practitioner-uv-ips"]),
+        ("PractitionerRole.organization", &["http://hl7.org/fhir/uv/ips/StructureDefinition/Organization-uv-ips"]),
+        ("PractitionerRole.location", &["http://hl7.org/fhir/StructureDefinition/Location"]),
+        ("PractitionerRole.healthcareService", &["http://hl7.org/fhir/StructureDefinition/HealthcareService"]),
+        ("PractitionerRole.endpoint", &["http://hl7.org/fhir/StructureDefinition/Endpoint"]),
+    ],
     deferred: &[
     ],
 };

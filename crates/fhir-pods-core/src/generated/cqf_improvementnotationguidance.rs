@@ -48,6 +48,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "MeasureReport"),
         ("element", "MeasureReport.group"),
     ],
+    references: &[],
     deferred: &[],
 };
 

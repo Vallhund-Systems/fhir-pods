@@ -60,6 +60,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "CommunicationRequest"),
         ("element", "SupplyRequest"),
     ],
+    references: &[],
     deferred: &[],
 };
 

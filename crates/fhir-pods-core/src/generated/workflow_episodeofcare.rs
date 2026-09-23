@@ -97,6 +97,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "ServiceRequest"),
         ("element", "ChargeItem"),
     ],
+    references: &[("Extension.value[x]", &["http://hl7.org/fhir/StructureDefinition/EpisodeOfCare"])],
     deferred: &[],
 };
 

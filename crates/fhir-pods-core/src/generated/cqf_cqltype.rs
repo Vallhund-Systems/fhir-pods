@@ -48,6 +48,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "Parameters.parameter.part"),
         ("element", "Extension"),
     ],
+    references: &[],
     deferred: &[],
 };
 

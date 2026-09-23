@@ -15,7 +15,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Identifier.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Identifier.system", min: 1, max: Max::Bounded(1), fixed: Some("http://ns.electronichealth.net.au/id/pcehr/paio/1.0"), required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Identifier.type", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[("coding", &[("system", "http://terminology.hl7.org.au/CodeSystem/v2-0203"), ("code", "NOI")])] },
-        ElementConstraint { path: "Identifier.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/identifier-use|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
+        ElementConstraint { path: "Identifier.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Identifier.value", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
     ],
     slicings: &[
@@ -29,6 +29,9 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     must_support: &[
     ],
     contexts: &[
+    ],
+    references: &[
+        ("Identifier.assigner", &["http://hl7.org/fhir/StructureDefinition/Organization"]),
     ],
     deferred: &[
     ],

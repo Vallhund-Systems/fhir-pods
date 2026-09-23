@@ -34,7 +34,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             max: Max::Bounded(0),
             fixed: None,
             required_binding: None,
-            types: super::intern::S29,
+            types: super::intern::S83,
             patterns: &[],
         },
     ],
@@ -111,7 +111,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                         max: Max::Bounded(1),
                         fixed: None,
                         required_binding: None,
-                        types: super::intern::S100,
+                        types: super::intern::S236,
                         patterns: &[],
                     },
                 ],
@@ -168,6 +168,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     lowering: &LOWERING,
     must_support: &[],
     contexts: &[("element", "Patient"), ("element", "RelatedPerson")],
+    references: &[],
     deferred: &[],
 };
 
@@ -196,7 +197,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "extension:PreferredContactTimes.value[x]",
             ty: "choice",
-            choices: super::intern::S101,
+            choices: super::intern::S237,
             min: 1,
             max: Max::Bounded(1),
             must_support: false,

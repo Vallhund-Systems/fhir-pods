@@ -567,11 +567,55 @@ pub fn parse(src: &str) -> Result<Expr, Unsupported> {
 /// vital-sign date-precision expression applies only to dateTime, not
 /// effectivePeriod. Ordinary expression parsing remains literal.
 pub(crate) fn parse_constraint(src: &str) -> Result<Expr, Unsupported> {
-    parse(match src {
-        "fullUrl.contains('/_history/').not()" => "fullUrl.exists() implies fullUrl.contains('/_history/').not()",
-        "($this as dateTime).toString().length() >= 8" => "$this is dateTime implies $this.toString().length() >= 8",
-        _ => src,
-    })
+    parse_invariant("", src)
+}
+
+/// An invariant as the reference validator evaluates it: R4 published a
+/// handful of constraint expressions that are wrong as written (a bare
+/// element where `.exists()` was meant, a choice cast that is empty when
+/// the element is absent, an unanchored name regex), and validator_cli
+/// rewrites those before evaluating them (its `FHIRPathExpressionFixer`,
+/// 6.10.4). Matching its verdicts means matching its rewrites — by key
+/// where it rewrites by key, by the exact published text otherwise.
+pub(crate) fn parse_invariant(key: &str, src: &str) -> Result<Expr, Unsupported> {
+    let fixed = match key {
+        "opd-3" => {
+            "targetProfile.exists() implies (type = 'Reference' or type = 'canonical' or type.memberOf('http://hl7.org/fhir/ValueSet/resource-types'))"
+        }
+        "eld-19" => {
+            r#"path.matches('^[^\s\.,:;\'"\/|?!@#$%&*()\[\]{}]{1,64}(\.[^\s\.,:;\'"\/|?!@#$%&*()\[\]{}]{1,64}(\[x\])?(\:[^\s\.]+)?)*$')"#
+        }
+        "eld-20" => r"path.matches('^[A-Za-z][A-Za-z0-9]*(\.[a-z][A-Za-z0-9]*(\[x])?)*$')",
+        _ => match src {
+            "probability is decimal implies (probability as decimal) <= 100" => {
+                "(probability.exists() and (probability is decimal)) implies ((probability as decimal) <= 100)"
+            }
+            "probability is decimal implies probability.as(decimal) <= 100" => {
+                "probability.empty() or (probability is decimal implies probability.as(decimal) <= 100)"
+            }
+            "enableWhen.count() > 2 implies enableBehavior.exists()" => {
+                "enableWhen.count() >= 2 implies enableBehavior.exists()"
+            }
+            "fullUrl.contains('/_history/').not()" => "fullUrl.exists() implies fullUrl.contains('/_history/').not()",
+            "name.matches('[A-Z]([A-Za-z0-9_]){0,254}')" => {
+                "name.exists() implies name.matches('^[A-Z]([A-Za-z0-9_]){0,254}$')"
+            }
+            "clinicalStatus.exists() or verificationStatus.coding.where(system='http://terminology.hl7.org/CodeSystem/condition-ver-status' and code = 'entered-in-error').exists() or category.select($this='problem-list-item').empty()" => {
+                "(verificationStatus.coding.where(system='http://terminology.hl7.org/CodeSystem/condition-ver-status' and code = 'entered-in-error').exists() and category.coding.exists(system='http://terminology.hl7.org/CodeSystem/condition-category' and code ='problem-list-item').empty()) implies (clinicalStatus.exists())"
+            }
+            "offset.empty() or (when.exists() and ((when in ('C' | 'CM' | 'CD' | 'CV')).not()))" => {
+                "offset.empty() or (when.exists() and when.select($this in ('C' | 'CM' | 'CD' | 'CV')).allFalse())"
+            }
+            "(component.empty() and hasMember.empty()) implies (dataAbsentReason or value)" => {
+                "(component.empty() and hasMember.empty()) implies (dataAbsentReason.exists() or value.exists())"
+            }
+            "telecom or endpoint" => "telecom.exists() or endpoint.exists()",
+            // ours: a choice cast that is empty when the element is another type
+            "($this as dateTime).toString().length() >= 8" => "$this is dateTime implies $this.toString().length() >= 8",
+            _ => src,
+        },
+    };
+    parse(fixed)
 }
 
 /// One item of a FHIRPath collection.

@@ -1020,6 +1020,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    references: &[
+    ],
     deferred: &[
     ],
 };

@@ -8,8 +8,8 @@ coverage and the limits of reference-engine comparisons; the
 [architecture](architecture.md#operation-results-and-coverage) describe the
 rest of the runtime's result contracts.
 
-`conformance/run.py` records **1,521/1,521** verdict agreements at v0.10.0
-and after the subsequent core fixes, across seven pinned IGs. It includes
+`conformance/run.py` records **1,766/1,766** verdict agreements at v0.15.0
+(1,521/1,521 at v0.10.0), across ten pinned IGs. It includes
 published examples and probes, lifted/re-lowered and de-identified examples,
 assembled documents, audit records, and converted v2 messages. Wider lanes
 below deliberately retain reviewed differences and exclusions.
@@ -35,6 +35,37 @@ variants), our verdict equals the HL7 reference validator's
 Warnings and informational issues are **not** scored. Both sides emit them;
 they differ in volume and kind, and the differences are all in the areas below.
 
+## Beyond the verdict: every error, both ways (`conformance/reasons.py`)
+
+Agreeing on a verdict is not agreeing on *why*: a file both validators
+reject can hide an error only one of them raises. Since 0.15.0 a second lane
+reads the oracle's full output (`_oracle.bundle.json`, no JVM) beside ours
+and, for every file, lists **each error-level issue the oracle raises at an
+element where we raise none**, and **each we raise where it raises none** —
+paths normalised to one spelling, and a message matched by family (the two
+validators word one finding differently) so that a parent/child locus counts
+only when the messages say the same thing. It exits non-zero on any
+difference not named, path by path, in `conformance/reasons-triage.json`,
+and on a triaged file that no longer differs.
+
+On the 1,766-file corpus the residue is three cases, each with its reason
+in that file: a wrong display name (below), a profile declared for another
+resource type (the oracle applies it element by element; we refuse it in
+one error), and a second choice key the oracle discards unread while we
+also judge its format. Everything else the lane found on the way — datatype
+invariants never evaluated on unprofiled resources, the base's required
+bindings never checked without a profile, `ref-1` resolving against a
+nested contained's ids, a `#contained` target judged by profile where the
+oracle judges by type, a bundle entry's allowed-profile match ignoring the
+resource's own declared profiles, a code owed by an element present only
+through its carrier, an HL7-space URL that names nothing — is fixed, and
+sixteen fixtures now pin the binding family the corpus never covered.
+
+The lane also tallies, on files valid for both, the oracle's warning
+families we do not emit (terminology it cannot check without a server,
+definitions it cannot resolve, its choice among matching profiles, the
+performer recommendation …). Those are not gated; they are the table below.
+
 ## What the reference validator checks that we do not (yet)
 
 These families describe known coverage differences. Counts in this table
@@ -43,12 +74,12 @@ the current regression lanes track individual cases and evidence hashes.
 
 | Family | Historical count | What it is | Our stance |
 |---|---|---|---|
-| **Terminology without a server** | ~700 | "Unable to validate code … running without terminology services", "ValueSet … not found", "Could not confirm … extensible value set", "CodeSystem … doesn't provide any codes" | We bundle 126 value sets (gender, status codes, vitals UCUM, FHIR / HL7 v2 / v3 sets, …) and check `required` bindings against those; everything else is a `warning: no bundled terminology for <vs>`. The `TerminologyProvider` seam is where a host plugs NCTS / VSAC / a local cache in. SNOMED is never bundled (licence). |
-| **Display-name checking** | 1 error-level in a probe | "Wrong Display Name 'Laboratory' for …#vital-signs" | Not done — needs code-system content we don't ship (and for SNOMED, cannot). This can produce a path difference even when another issue makes both verdicts invalid. |
+| **Terminology without a server** | ~700 | "Unable to validate code … running without terminology services", "ValueSet … not found", "Could not confirm … extensible value set", "CodeSystem … doesn't provide any codes" | We bundle 289 value sets (every set the compiled profiles bind `required`, and every set the base definitions bind `required` — gender, status codes, contact-point systems, units of time, vitals UCUM, FHIR / HL7 v2 / v3 sets, …) and check `required` bindings against those, profile or none; everything else is a `warning: no bundled terminology for <vs>`. The `TerminologyProvider` seam is where a host plugs NCTS / VSAC / a local cache in. SNOMED is never bundled (licence). |
+| **Display-name checking** | 1 error-level in a probe | "Wrong Display Name 'Laboratory' for …#vital-signs" | Not done — needs the code systems' display strings (509 KB for the 1,212 systems we hold whole, and for SNOMED, never). The one corpus case is triaged in `reasons-triage.json`; the verdict agrees. |
 | **Best-practice recommendations** | 82 + 12 | "all observations should have a performer" (`obs-…` best practice), `dom-6` narrative | `dom-6` we evaluate as a warning (it is an ordinary invariant). The performer recommendation is validator policy, not a profile constraint; not emitted. |
 | **Multiple matching profiles** | 32 | The validator had to pick among candidate profiles (its own warning) | A resource that declares several profiles is validated against **every** one we have compiled (findings shared by two profiles are reported once; the report carries `profiles`). The oracle's warning here is about its own choice among *implicit* candidates, not declared ones. |
 | **Deprecation / advisories** | 5 + 2 | Deprecated extensions and concepts, "UCUM annotations like {T-Score} can be misleading" | Advisory, not conformance; not emitted. |
-| **Reference target types** | (none in corpus) | `subject` must reference a Patient | The reference validator does **not** enforce this offline either (`heartrate-subject-wrong-type` expects *valid* as a guard). Not enforced. |
+| **Reference target types** | (none in corpus) | `subject` must reference a Patient | Enforced as the reference validator enforces it (0.15.0): a target it can reach — a bundle entry, a contained resource — is held to the element's `targetProfile`s (a bundle entry by conformance, "Unable to find a profile match for … among choices"; a `#contained` resource by type only, as the oracle judges it). A `Patient/x` nobody can resolve is not judged by either side (`heartrate-subject-wrong-type` expects *valid* as a guard). |
 | **Default profiles** | — | An undeclared profile means the base resource | Same: no profile claimed; the base resource's own rules (shape, its required elements, one key per choice, `dom-3` / `dom-6`) still apply. A jurisdiction default is opt-in (`Validator::with_default_profile`). |
 | **Attachment fetching** | 1 | "Attachment content cannot be checked … error accessing <url>" | Never: a library does no I/O. |
 | **must-support** | 0 | Validators do not check must-support | Not an error by spec. Exposed separately: `must_support_gaps(resource)` (and `probe --must-support`) lists the selected profile's must-support elements the resource leaves empty where their parent is present — what a client certifying against the IG must populate when it has the data. Never in the validation report. |
@@ -74,8 +105,12 @@ on those the examples are clean, and agreement says only that. It runs
 apart from the release gate (parity, not cleanliness: the spec's own
 examples are not all valid, and several are conformance resources the
 reference validator holds to rules of its own kind). The latest baseline
-compares **5,290** of the **5,292** selected inputs: **4,811** verdicts agree,
-**479** are reviewed lenient differences, and none are stricter. The other
+compares **5,290** of the **5,292** selected inputs: **4,819** verdicts agree,
+**471** are reviewed lenient differences, and none are stricter (0.15.0's
+base-definition checks moved eight reviewed leniencies — ConceptMap targets,
+an ImplementationGuide rendering, the FiveWs / Definition / Event / Request
+logical models' invariants, a hierarchical ValueSet's expansion systems —
+into agreement). The other
 **two** inputs are explicit oracle exclusions and are never scored as
 agreement. The reviewed differences fall into these families:
 
@@ -145,7 +180,8 @@ expectations, not new runs of both engines. Manifest modules/options exclude
 407 cases; one more manifest entry names an absent upstream input. Neither
 exclusions nor unavailable inputs count as agreement.
 
-The **25 lenient cases** remain scored differences. Every case is named and
+The **20 lenient cases** remain scored differences (25 before 0.15.0: the
+base's required bindings and datatype invariants closed five). Every case is named and
 hashed in [`testcases-triage.json`](../conformance/testcases-triage.json).
 Their reasons extend the limitations above: Attachment size/hash; example-URL
 policy; uncompiled Questionnaire/RiskAssessment/Period invariants; external
@@ -197,6 +233,27 @@ resolution, slice → profile inheritance for `Identifier` and complex
 `Extension` types), and FHIRPath invariants with typed traversal. Every
 error-level finding either side raised on the corpus is in this set — that is
 the count above.
+
+Profile or no profile, the shape walk holds every resource to the base
+definitions themselves (0.15.0): every resource's own invariants (`org-1`,
+`pat-1`, `obs-6` …, 170 of them); every datatype's own invariants on every
+object of the type wherever it sits — `cpt-2` on a ContactPoint, `per-1`,
+`qty-3`, `rng-2`, `rat-1`, `att-1`, `tim-*` on a Timing's repeat, inside an
+extension's value or a datatype in a datatype; every `required` binding the
+base places on a coded element (366 of them: `Patient.gender`,
+`Observation.status`, `ContactPoint.system`, `Quantity.comparator`,
+`Narrative.status`, `Timing.repeat.periodUnit` …), a code present only
+through its `_carrier` still owing one ("No code provided, and a code is
+required from the value set"); `ref-1` against the ids of the nearest
+resource that is not itself contained (`%rootResource`, as the invariant
+reads); `dom-3` per orphaned contained resource; and, for a `uri` / `url`
+value under `http://hl7.org/fhir`, `http://terminology.hl7.org/` or
+`http://fhir.org/guides`, that it names a definition the packages hold
+(`http://hl7.org/fhir/sid/us-ssn.` does not; 7,983 canonicals and
+NamingSystem ids as 32-bit hashes, `src/known_urls.rs`) — the reference
+validator's own rule, which takes an unknown URL anywhere else on trust. A
+profile snapshot that merely restates a datatype's invariant or binding is
+not compiled a second time.
 
 ## Export: which profile, and what is never invented
 
@@ -450,4 +507,6 @@ JAVA_HOME=/opt/homebrew/opt/openjdk@17 python3 conformance/run.py
 ```
 
 The oracle runs once per corpus in one JVM; its full output (all severities)
-lands in `conformance/corpus/_oracle.bundle.json` for inspection.
+lands in `conformance/corpus/_oracle.bundle.json` for inspection — and is
+what `python3 conformance/reasons.py` reads, no JVM, to put every error
+side by side (evidence in `conformance/corpus-reasons/evidence.json`).

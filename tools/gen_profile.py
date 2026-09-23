@@ -66,11 +66,33 @@ def object_fixed(e):
     return None
 
 
+# A datatype's own required bindings (`ContactPoint.system`, `Timing.repeat.
+# periodUnit`), by base path: the shape walk checks these on every object of
+# the type (`typemap::BASE_BINDINGS`), so a snapshot that merely restates one
+# where it expanded the datatype (UK Core's `Patient.telecom.system`) is not
+# compiled a second time — a profile that binds the element tighter still is.
+DATATYPE_BINDINGS = {}
+
+
+def index_datatype_bindings(load):
+    for name in sorted(DATATYPE_CODES):
+        sd = load(DATATYPE_URL + name)
+        if not sd or sd.get("kind") != "complex-type":
+            continue
+        for e in (sd.get("snapshot") or {}).get("element", []):
+            b = e.get("binding") or {}
+            if b.get("strength") == "required" and b.get("valueSet"):
+                DATATYPE_BINDINGS[e["path"]] = b["valueSet"].split("|")[0]
+
+
 def binding_of(e):
     """`(value_set, kind)` for a required binding on a coded element; the kind
     says how the engine reads the instance (`code` / `Coding` / `CodeableConcept`)."""
     binding = e.get("binding") or {}
     if binding.get("strength") != "required" or not binding.get("valueSet"):
+        return None
+    base = (e.get("base") or {}).get("path", "")
+    if DATATYPE_BINDINGS.get(base) == binding["valueSet"].split("|")[0]:
         return None
     types = [t.get("code") for t in e.get("type", [])]
     for kind in ("code", "Coding", "CodeableConcept"):
@@ -270,6 +292,20 @@ def group_discriminators(groups):
     return out
 
 
+# The base datatypes whose own invariants the engine's shape walk evaluates
+# on every object of the type (`typemap::DATATYPE_INVARIANTS`): a snapshot
+# that restates one (UK Core expands `Patient.telecom` with cpt-2) must not
+# have it compiled a second time.
+DATATYPE_URL = "http://hl7.org/fhir/StructureDefinition/"
+
+
+def is_datatype_source(source, own_type):
+    if not source.startswith(DATATYPE_URL):
+        return False
+    name = source[len(DATATYPE_URL):]
+    return name != own_type and name in DATATYPE_CODES and name not in ("Element", "Extension", "BackboneElement", "Resource", "DomainResource")
+
+
 def invariants_of(sd):
     """(path, key, severity, human, expression, types) for every constraint on
     a non-sliced element, including the root. Slice-scoped constraints are
@@ -282,6 +318,11 @@ def invariants_of(sd):
         for c in e.get("constraint", []):
             key, expr = c.get("key"), c.get("expression")
             if not key or not expr or key in STRUCTURAL_INVARIANTS or (path, key) in seen:
+                continue
+            # a datatype's own invariant, restated where a snapshot expanded
+            # the type (`source` names the datatype): the shape walk evaluates
+            # those on every object of the type, profile or none
+            if is_datatype_source(c.get("source", ""), sd.get("type")):
                 continue
             seen.add((path, key))
             # The element's type code(s): what `$this is dateTime` resolves
@@ -303,6 +344,8 @@ def slice_invariants(e, rel):
         # a constraint the base spec's own types carry (`source` names the
         # base StructureDefinition) is the unsliced element's business
         if c.get("source", "").startswith("http://hl7.org/fhir/StructureDefinition/"):
+            continue
+        if is_datatype_source(c.get("source", ""), None):
             continue
         types = [t["code"] for t in e.get("type", []) if t.get("code")]
         out.append((rel, key, c.get("severity", "error"), c.get("human", ""), expr, types))
@@ -993,6 +1036,24 @@ def context_applies_to_r4(cx):
     return True
 
 
+def references_of(sd):
+    """Every unsliced Reference element with target profiles, as
+    (absolute path, canonical urls without `|version`) — the base `Resource`
+    alone names nothing to check and is left out."""
+    out = []
+    for e in (sd.get("snapshot") or {}).get("element", []):
+        if ":" in e.get("id", "") or "." not in e.get("path", ""):
+            continue
+        targets = []
+        for t in e.get("type", []):
+            if t.get("code") == "Reference":
+                targets += [u.split("|")[0] for u in t.get("targetProfile", [])]
+        targets = [u for u in dict.fromkeys(targets) if not u.endswith("/StructureDefinition/Resource")]
+        if targets:
+            out.append((e["path"], targets))
+    return out
+
+
 def deferred_slices(deferred):
     """The deferred *slices* (not the mustSupport-only elements), as the
     runtime reports them: (the sliced element's absolute path with any outer
@@ -1014,6 +1075,8 @@ def deferred_slices(deferred):
 
 
 def emit(sd, provenance, load=None):
+    if load and not DATATYPE_BINDINGS:
+        index_datatype_bindings(load)
     """The Rust source for the profile, and `(elements, slices, deferred)` counts."""
     c = build(sd, load)
     name = sd.get("title") or sd.get("name") or sd.get("id") or sd.get("url")
@@ -1062,6 +1125,9 @@ def emit(sd, provenance, load=None):
                 contexts.append(("element", extra))
     for kind, expr in contexts:
         out.append(f"        ({rs(kind)}, {rs(expr)}),")
+    out += ["    ],", "    references: &["]
+    for path, targets in references_of(sd):
+        out.append(f"        ({rs(path)}, {strs(targets)}),")
     out += ["    ],", "    deferred: &["]
     for element, name, why in deferred_slices(c.deferred):
         out.append(f"        ({rs(element)}, {rs(name)}, {rs(why)}),")

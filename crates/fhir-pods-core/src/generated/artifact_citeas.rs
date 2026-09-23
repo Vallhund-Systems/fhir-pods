@@ -34,7 +34,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             max: Max::Bounded(1),
             fixed: None,
             required_binding: None,
-            types: super::intern::S54,
+            types: super::intern::S178,
             patterns: &[],
         },
     ],
@@ -76,6 +76,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "TestScript"),
         ("element", "ValueSet"),
     ],
+    references: &[],
     deferred: &[],
 };
 

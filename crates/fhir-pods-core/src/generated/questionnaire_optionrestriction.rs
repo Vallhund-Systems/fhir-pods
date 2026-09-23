@@ -43,7 +43,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             max: Max::Bounded(1),
             fixed: None,
             required_binding: None,
-            types: super::intern::S29,
+            types: super::intern::S83,
             patterns: &[],
         },
     ],
@@ -90,7 +90,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                         max: Max::Bounded(1),
                         fixed: None,
                         required_binding: None,
-                        types: super::intern::S88,
+                        types: super::intern::S220,
                         patterns: &[],
                     },
                 ],
@@ -153,6 +153,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     lowering: &LOWERING,
     must_support: &[],
     contexts: &[("element", "Questionnaire.item"), ("element", "ElementDefinition")],
+    references: &[],
     deferred: &[],
 };
 
@@ -168,7 +169,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "extension:option.value[x]",
             ty: "choice",
-            choices: super::intern::S89,
+            choices: super::intern::S221,
             min: 1,
             max: Max::Bounded(1),
             must_support: false,

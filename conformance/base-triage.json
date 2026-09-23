@@ -45,16 +45,6 @@
     "oracle-unavailable": "Validator_cli 6.10.4 did not produce a usable outcome in prior repeated runs; explicitly excluded before comparison, never counted as agreement."
   },
   "differences": {
-    "Bundle-conceptmaps.json": {
-      "input_sha256": "3b6a7e9f2a8e2d13fc1ffa1524ede726e8f9122d90fa8e4918de0b1f194d8048",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "7e2a25d01c32892c26af598b16bde6c0a6a0d5021566a7c53f5fc35e139114f0",
-      "reasons": [
-        "conceptmap-definition",
-        "definition-resolution"
-      ]
-    },
     "Bundle-father.json": {
       "input_sha256": "f145307546d8982f6f69033728844e76a4713c1de63f8df88b24705c2aaadcaa",
       "ours": "valid",
@@ -3118,15 +3108,6 @@
         "xhtml-reference"
       ]
     },
-    "ConceptMap-103.json": {
-      "input_sha256": "ccb45baa81c8e3aaa97e114c28edaf5611b962e615d41b1917dc3c31156d26fc",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "d2126e00bd8af2ac8796547012a3dff49a46b9aa67e9f33b839b124b88144db7",
-      "reasons": [
-        "definition-resolution"
-      ]
-    },
     "ConceptMap-cm-administrative-gender-v3.json": {
       "input_sha256": "4763de16d63dfdb00e8ecde98c5f5e89a4d972598dd39c1a6a492687d00d8a90",
       "ours": "valid",
@@ -3316,15 +3297,6 @@
         "terminology-version"
       ]
     },
-    "ImplementationGuide-example.json": {
-      "input_sha256": "361d441a36c181b7690c5cb11f584ea0a231656ed490c9ccadbc2f1b0529f166",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "97af16c2481d342404298db3507792d63767156c773fe2cf0c04e8ebcf9166be",
-      "reasons": [
-        "publisher-policy"
-      ]
-    },
     "Measure-component-a-example.json": {
       "input_sha256": "30c2a994388a7c4478ffb1d6e24c7139ae5bf7e1af738d3e34480c9198459606",
       "ours": "valid",
@@ -3413,42 +3385,6 @@
       "oracle_signature": "81a9e2393901b9cd8789bfb3f410ecda3386256c2b66bd64c85d017a31bcd64e",
       "reasons": [
         "expression-definition"
-      ]
-    },
-    "StructureDefinition-Definition.json": {
-      "input_sha256": "1c52aceb7161ff4786c320884b1166fb3caa0bcfbb4bd4b9eb891e3cd2ff9bf6",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "f0e274cb67704141534a8efb456068081f81983e79e84463e78bf8a2a4185405",
-      "reasons": [
-        "profile-invariant"
-      ]
-    },
-    "StructureDefinition-Event.json": {
-      "input_sha256": "76e3f2f8f34356c638a17d8e653992204a280e31e50f9ba72c213da0c173fff4",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "f0e274cb67704141534a8efb456068081f81983e79e84463e78bf8a2a4185405",
-      "reasons": [
-        "profile-invariant"
-      ]
-    },
-    "StructureDefinition-FiveWs.json": {
-      "input_sha256": "03b942ea7eddd0acba38c6efec49f9ff2063e6b7ad34c8b4fca9e17d91c1be82",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "f0e274cb67704141534a8efb456068081f81983e79e84463e78bf8a2a4185405",
-      "reasons": [
-        "profile-invariant"
-      ]
-    },
-    "StructureDefinition-Request.json": {
-      "input_sha256": "58f431a66d025d06e0e3dd58fbcf25de7a943f3dd10220eaee021a4907d657eb",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "f0e274cb67704141534a8efb456068081f81983e79e84463e78bf8a2a4185405",
-      "reasons": [
-        "profile-invariant"
       ]
     },
     "StructureDefinition-Task.json": {
@@ -3926,16 +3862,6 @@
       "oracle_signature": "d83a867d51eaf7b2ae50bc37a9a3c22003d49a7fff9b704458ca281a8a173612",
       "reasons": [
         "terminology-filter"
-      ]
-    },
-    "ValueSet-example-hierarchical.json": {
-      "input_sha256": "402f6ab26a15120ff7f6351c8b139129bf04096b49931a0c250b3dcf80c2fbe8",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "1a1e5576b71c8e5ab1191501ebf3ff544b842a4674c4a08ddab15cdf3fd0505c",
-      "reasons": [
-        "canonical-fragment",
-        "definition-resolution"
       ]
     },
     "ValueSet-example-intensional.json": {

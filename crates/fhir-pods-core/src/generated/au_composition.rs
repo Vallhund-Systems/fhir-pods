@@ -28,7 +28,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Composition.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Composition.relatesTo.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/document-relationship-type|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
         ElementConstraint { path: "Composition.relatesTo.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Composition.relatesTo.target[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S44, patterns: &[] },
+        ElementConstraint { path: "Composition.relatesTo.target[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S120, patterns: &[] },
         ElementConstraint { path: "Composition.section.code", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Composition.section.emptyReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Composition.section.focus", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -67,6 +67,14 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     must_support: &[
     ],
     contexts: &[
+    ],
+    references: &[
+        ("Composition.encounter", &["http://hl7.org/fhir/StructureDefinition/Encounter"]),
+        ("Composition.author", super::intern::S122),
+        ("Composition.attester.party", super::intern::S123),
+        ("Composition.custodian", &["http://hl7.org/fhir/StructureDefinition/Organization"]),
+        ("Composition.relatesTo.target[x]", &["http://hl7.org/fhir/StructureDefinition/Composition"]),
+        ("Composition.section.author", super::intern::S122),
     ],
     deferred: &[
     ],

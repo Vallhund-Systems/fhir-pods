@@ -16,10 +16,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Observation.component.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Observation.component.dataAbsentReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Observation.component.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Observation.component.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S2, patterns: &[] },
+        ElementConstraint { path: "Observation.component.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S4, patterns: &[] },
         ElementConstraint { path: "Observation.dataAbsentReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Observation.device", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Observation.effective[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S16, patterns: &[] },
+        ElementConstraint { path: "Observation.effective[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S41, patterns: &[] },
         ElementConstraint { path: "Observation.encounter", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Observation.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Observation.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -37,7 +37,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Observation.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/observation-status|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
         ElementConstraint { path: "Observation.subject", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Observation.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Observation.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S2, patterns: &[] },
+        ElementConstraint { path: "Observation.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S4, patterns: &[] },
     ],
     slicings: &[
         Slicing { path: "Observation.category", closed: false, slices: &[
@@ -64,7 +64,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 Discriminator::Type { key: "valueQuantity" },
             ], min: 0, max: Max::Bounded(1), elements: &[
                 ElementConstraint { path: "$this.code", min: 1, max: Max::Bounded(1), fixed: Some("%"), required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.comparator", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/quantity-comparator|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.comparator", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
                 ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
                 ElementConstraint { path: "$this.system", min: 1, max: Max::Bounded(1), fixed: Some("http://unitsofmeasure.org"), required_binding: None, types: &[], patterns: &[] },
                 ElementConstraint { path: "$this.unit", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -84,7 +84,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Observation", key: "obs-6", severity: InvariantSeverity::Error, human: "dataAbsentReason SHALL only be present if Observation.value[x] is not present", expression: "dataAbsentReason.empty() or value.empty()", types: &["Observation"] },
         ProfileInvariant { path: "Observation", key: "obs-7", severity: InvariantSeverity::Error, human: "If Observation.code is the same as an Observation.component.code then the value element associated with the code SHALL NOT be present", expression: "value.empty() or component.code.where(coding.intersect(%resource.code.coding).exists()).empty()", types: &["Observation"] },
         ProfileInvariant { path: "Observation", key: "vs-2", severity: InvariantSeverity::Error, human: "If there is no component or hasMember element then either a value[x] or a data absent reason must be present.", expression: "(component.empty() and hasMember.empty()) implies (dataAbsentReason.exists() or value.exists())", types: &["Observation"] },
-        ProfileInvariant { path: "Observation.effective[x]", key: "vs-1", severity: InvariantSeverity::Error, human: "if Observation.effective[x] is dateTime and has a value then that value shall be precise to the day", expression: "($this as dateTime).toString().length() >= 8", types: super::intern::S16 },
+        ProfileInvariant { path: "Observation.effective[x]", key: "vs-1", severity: InvariantSeverity::Error, human: "if Observation.effective[x] is dateTime and has a value then that value shall be precise to the day", expression: "($this as dateTime).toString().length() >= 8", types: super::intern::S41 },
         ProfileInvariant { path: "Observation.referenceRange", key: "obs-3", severity: InvariantSeverity::Error, human: "Must have at least a low or a high or text", expression: "low.exists() or high.exists() or text.exists()", types: &["BackboneElement"] },
         ProfileInvariant { path: "Observation.component", key: "vs-3", severity: InvariantSeverity::Error, human: "If there is no a value a data absent reason must be present", expression: "value.exists() or dataAbsentReason.exists()", types: &["BackboneElement"] },
     ],
@@ -103,6 +103,17 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Observation.value[x]",
     ],
     contexts: &[
+    ],
+    references: &[
+        ("Observation.basedOn", super::intern::S5),
+        ("Observation.partOf", super::intern::S6),
+        ("Observation.subject", &["http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"]),
+        ("Observation.encounter", &["http://hl7.org/fhir/StructureDefinition/Encounter"]),
+        ("Observation.performer", super::intern::S7),
+        ("Observation.specimen", &["http://hl7.org/fhir/StructureDefinition/Specimen"]),
+        ("Observation.device", super::intern::S8),
+        ("Observation.hasMember", super::intern::S9),
+        ("Observation.derivedFrom", super::intern::S10),
     ],
     deferred: &[
     ],
@@ -125,7 +136,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "effective[x]",
             ty: "choice",
-            choices: super::intern::S17,
+            choices: super::intern::S46,
             min: 1,
             max: Max::Bounded(1),
             must_support: true,
@@ -133,7 +144,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "value[x]",
             ty: "choice",
-            choices: super::intern::S6,
+            choices: super::intern::S17,
             min: 0,
             max: Max::Bounded(1),
             must_support: true,

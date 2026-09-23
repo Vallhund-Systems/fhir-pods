@@ -43,7 +43,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             max: Max::Bounded(1),
             fixed: None,
             required_binding: None,
-            types: super::intern::S98,
+            types: super::intern::S232,
             patterns: &[],
         },
     ],
@@ -69,6 +69,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "DeviceUseStatement"),
         ("element", "DeviceUseStatement"),
     ],
+    references: &[("Extension.value[x]", super::intern::S233)],
     deferred: &[],
 };
 
@@ -79,7 +80,7 @@ pub static LOWERING: Lowering = Lowering {
     slots: &[Slot {
         path: "value[x]",
         ty: "choice",
-        choices: super::intern::S99,
+        choices: super::intern::S234,
         min: 1,
         max: Max::Bounded(1),
         must_support: false,

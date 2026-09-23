@@ -20,7 +20,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Coverage.costToBeneficiary.exception.type", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Coverage.costToBeneficiary.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Coverage.costToBeneficiary.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Coverage.costToBeneficiary.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S28, patterns: &[] },
+        ElementConstraint { path: "Coverage.costToBeneficiary.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S72, patterns: &[] },
         ElementConstraint { path: "Coverage.dependent", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Coverage.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Coverage.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -49,7 +49,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 ElementConstraint { path: "$this.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
                 ElementConstraint { path: "$this.system", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
                 ElementConstraint { path: "$this.type", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[("coding", &[("system", "http://terminology.hl7.org/CodeSystem/v2-0203"), ("code", "MB")])] },
-                ElementConstraint { path: "$this.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/identifier-use|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
                 ElementConstraint { path: "$this.value", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
             ], invariants: &[
             ], profiles: &[
@@ -102,6 +102,13 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Coverage.type",
     ],
     contexts: &[
+    ],
+    references: &[
+        ("Coverage.policyHolder", super::intern::S73),
+        ("Coverage.subscriber", super::intern::S50),
+        ("Coverage.beneficiary", &["http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"]),
+        ("Coverage.payor", super::intern::S74),
+        ("Coverage.contract", &["http://hl7.org/fhir/StructureDefinition/Contract"]),
     ],
     deferred: &[
     ],

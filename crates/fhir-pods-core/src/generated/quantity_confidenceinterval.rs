@@ -43,7 +43,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             max: Max::Bounded(1),
             fixed: None,
             required_binding: None,
-            types: super::intern::S29,
+            types: super::intern::S83,
             patterns: &[],
         },
     ],
@@ -52,6 +52,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     lowering: &LOWERING,
     must_support: &[],
     contexts: &[("element", "Quantity")],
+    references: &[],
     deferred: &[
         ("Extension.extension", "confidence", "its discriminator (value on url) is outside the compiler's support"),
         ("Extension.extension", "interval", "its discriminator (value on url) is outside the compiler's support"),

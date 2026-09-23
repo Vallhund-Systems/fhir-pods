@@ -56,6 +56,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "CapabilityStatement.rest.resource.interaction"),
         ("element", "CapabilityStatement.rest.resource.operation"),
     ],
+    references: &[],
     deferred: &[],
 };
 

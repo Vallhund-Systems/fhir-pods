@@ -56,6 +56,11 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    references: &[
+        ("Location.managingOrganization", &["http://hl7.org.au/fhir/core/StructureDefinition/au-core-organization"]),
+        ("Location.partOf", &["http://hl7.org/fhir/StructureDefinition/Location"]),
+        ("Location.endpoint", &["http://hl7.org/fhir/StructureDefinition/Endpoint"]),
+    ],
     deferred: &[
     ],
 };

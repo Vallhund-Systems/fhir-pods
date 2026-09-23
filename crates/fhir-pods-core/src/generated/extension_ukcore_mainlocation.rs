@@ -43,6 +43,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     lowering: &LOWERING,
     must_support: &[],
     contexts: &[("element", "Organization")],
+    references: &[("Extension.value[x]", &["http://hl7.org/fhir/StructureDefinition/Location"])],
     deferred: &[],
 };
 

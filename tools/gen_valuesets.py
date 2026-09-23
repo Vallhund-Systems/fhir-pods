@@ -134,7 +134,9 @@ class Expander:
 def main():
     generated, out_path, pkgs = sys.argv[1], sys.argv[2], sys.argv[3:]
     urls = set()
-    for f in glob.glob(os.path.join(generated, "*.rs")):
+    # the compiled profiles' bindings, and the base definitions' own required
+    # bindings (typemap.rs `BASE_BINDINGS`) the shape walk checks on every resource
+    for f in glob.glob(os.path.join(generated, "*.rs")) + [os.path.join(generated, "..", "typemap.rs")]:
         urls |= set(re.findall(r'value_set: "([^"|]+)', open(f).read()))
 
     value_sets, code_systems = {}, {}

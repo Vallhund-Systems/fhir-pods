@@ -24,8 +24,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Organization.telecom.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Organization.telecom.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Organization.telecom.rank", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Organization.telecom.system", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/contact-point-system|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
-        ElementConstraint { path: "Organization.telecom.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/contact-point-use|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
+        ElementConstraint { path: "Organization.telecom.system", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Organization.telecom.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Organization.telecom.value", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Organization.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
     ],
@@ -69,6 +69,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Organization.type",
     ],
     contexts: &[
+    ],
+    references: &[
+        ("Organization.partOf", &["http://hl7.org/fhir/StructureDefinition/Organization"]),
+        ("Organization.endpoint", &["http://hl7.org/fhir/StructureDefinition/Endpoint"]),
     ],
     deferred: &[
     ],

@@ -65,6 +65,21 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    references: &[
+        ("Encounter.subject", super::intern::S154),
+        ("Encounter.episodeOfCare", &["http://hl7.org/fhir/StructureDefinition/EpisodeOfCare"]),
+        ("Encounter.basedOn", &["http://hl7.org/fhir/StructureDefinition/ServiceRequest"]),
+        ("Encounter.participant.individual", super::intern::S163),
+        ("Encounter.appointment", &["http://hl7.org/fhir/StructureDefinition/Appointment"]),
+        ("Encounter.reasonReference", super::intern::S164),
+        ("Encounter.diagnosis.condition", super::intern::S21),
+        ("Encounter.account", &["http://hl7.org/fhir/StructureDefinition/Account"]),
+        ("Encounter.hospitalization.origin", super::intern::S22),
+        ("Encounter.hospitalization.destination", super::intern::S22),
+        ("Encounter.location.location", &["http://hl7.org/fhir/StructureDefinition/Location"]),
+        ("Encounter.serviceProvider", &["http://hl7.org/fhir/StructureDefinition/Organization"]),
+        ("Encounter.partOf", &["http://hl7.org/fhir/StructureDefinition/Encounter"]),
+    ],
     deferred: &[
     ],
 };

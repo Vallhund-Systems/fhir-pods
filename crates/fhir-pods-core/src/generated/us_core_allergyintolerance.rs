@@ -21,7 +21,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "AllergyIntolerance.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "AllergyIntolerance.lastOccurrence", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "AllergyIntolerance.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "AllergyIntolerance.onset[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S24, patterns: &[] },
+        ElementConstraint { path: "AllergyIntolerance.onset[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S62, patterns: &[] },
         ElementConstraint { path: "AllergyIntolerance.patient", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "AllergyIntolerance.reaction.description", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "AllergyIntolerance.reaction.exposureRoute", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -57,6 +57,12 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "AllergyIntolerance.verificationStatus",
     ],
     contexts: &[
+    ],
+    references: &[
+        ("AllergyIntolerance.patient", &["http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"]),
+        ("AllergyIntolerance.encounter", &["http://hl7.org/fhir/StructureDefinition/Encounter"]),
+        ("AllergyIntolerance.recorder", super::intern::S1),
+        ("AllergyIntolerance.asserter", super::intern::S2),
     ],
     deferred: &[
     ],

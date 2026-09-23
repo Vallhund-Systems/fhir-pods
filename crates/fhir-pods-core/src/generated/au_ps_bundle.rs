@@ -669,7 +669,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 ElementConstraint { path: "$this.search.score", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
             ], invariants: &[
             ], profiles: &[
-                ("$this.resource", super::intern::S48),
+                ("$this.resource", super::intern::S139),
             ], slicings: &[
             ], profile: None },
             Slice { name: "organization", discriminators: &[
@@ -876,6 +876,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Bundle.type",
     ],
     contexts: &[
+    ],
+    references: &[
     ],
     deferred: &[
     ],

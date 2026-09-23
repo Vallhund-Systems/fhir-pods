@@ -12,7 +12,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     elements: &[
         ElementConstraint { path: "DiagnosticReport.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "DiagnosticReport.conclusion", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "DiagnosticReport.effective[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S16, patterns: &[] },
+        ElementConstraint { path: "DiagnosticReport.effective[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S41, patterns: &[] },
         ElementConstraint { path: "DiagnosticReport.encounter", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "DiagnosticReport.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "DiagnosticReport.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -48,6 +48,17 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     must_support: &[
     ],
     contexts: &[
+    ],
+    references: &[
+        ("DiagnosticReport.basedOn", super::intern::S156),
+        ("DiagnosticReport.subject", super::intern::S157),
+        ("DiagnosticReport.encounter", &["http://hl7.org/fhir/StructureDefinition/Encounter"]),
+        ("DiagnosticReport.performer", super::intern::S77),
+        ("DiagnosticReport.resultsInterpreter", super::intern::S77),
+        ("DiagnosticReport.specimen", &["http://hl7.org.au/fhir/StructureDefinition/au-specimen"]),
+        ("DiagnosticReport.result", super::intern::S158),
+        ("DiagnosticReport.imagingStudy", &["http://hl7.org/fhir/StructureDefinition/ImagingStudy"]),
+        ("DiagnosticReport.media.link", &["http://hl7.org/fhir/StructureDefinition/Media"]),
     ],
     deferred: &[
     ],

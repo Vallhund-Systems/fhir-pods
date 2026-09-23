@@ -66,6 +66,12 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    references: &[
+        ("List.subject", super::intern::S157),
+        ("List.encounter", &["http://hl7.org/fhir/StructureDefinition/Encounter"]),
+        ("List.source", super::intern::S171),
+        ("List.entry.item", super::intern::S172),
+    ],
     deferred: &[
     ],
 };

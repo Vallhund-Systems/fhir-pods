@@ -78,6 +78,12 @@ pub(crate) fn validate_at_with<D: Document>(
     for slicing in profile.slicings {
         check_slicing(slicing, doc, &scope, "", &mut r);
     }
+    // a reference must point at what its element allows: judged where the
+    // target is in reach (a bundle entry, a contained resource) and at
+    // least one allowed profile is compiled
+    for (path, targets) in profile.references {
+        check_reference_targets(path, targets, doc, &scope, &mut r);
+    }
     // a slice the compiler could not discriminate: unenforced, and said so
     // wherever the resource actually reaches the sliced element — never a
     // silently weaker verdict
@@ -99,6 +105,84 @@ pub(crate) fn validate_at_with<D: Document>(
         check_invariant(inv, inv.path, doc, &scope, &mut r);
     }
     r
+}
+
+/// The reference validator's rule for a Reference element with target
+/// profiles: a reference that resolves inside the document must point at a
+/// resource of an allowed type that conforms to one of the allowed profiles
+/// the registry has compiled. A base resource canonical is a type check
+/// alone; targets none of which are compiled, or a reference out of reach,
+/// are not judged.
+fn check_reference_targets<D: Document>(
+    path: &str,
+    targets: &[&'static str],
+    doc: &D,
+    scope: &Scope<'_, D>,
+    r: &mut Report,
+) {
+    const BASE: &str = "http://hl7.org/fhir/StructureDefinition/";
+    // (resource type, compiled profile or None for a base canonical)
+    let allowed: Vec<(&'static str, Option<&'static CompiledProfile>)> = targets
+        .iter()
+        .filter_map(|url| {
+            let compiled: Option<&'static CompiledProfile> = crate::REGISTRY.iter().find(|p| p.url == *url).copied();
+            if let Some(ty) = url.strip_prefix(BASE) {
+                return match ty {
+                    "Resource" | "DomainResource" => None,
+                    t => Some(compiled.map(|p| (p.resource_type, Some(p))).unwrap_or((t, None))),
+                };
+            }
+            compiled.map(|p| (p.resource_type, Some(p)))
+        })
+        .collect();
+    if allowed.is_empty() || scope.depth >= MAX_INHERIT {
+        return;
+    }
+    // `Resource` among the targets: anything goes
+    if targets.iter().any(|u| u.ends_with("/StructureDefinition/Resource")) {
+        return;
+    }
+    for (i, inst) in doc.instances(path).iter().enumerate() {
+        let Some(reference) = inst.scalars("$this.reference").into_iter().next() else { continue };
+        let Some(target) = scope.resolved(inst) else { continue };
+        let rt = target.scalars("$this.resourceType");
+        let Some(rt) = rt.first().copied() else { continue };
+        let of_type: Vec<&(&'static str, Option<&'static CompiledProfile>)> =
+            allowed.iter().filter(|(t, _)| *t == rt).collect();
+        let label = format!("{path}[{i}]");
+        if of_type.is_empty() {
+            r.push(
+                Severity::Error,
+                IssueType::Structure,
+                &label,
+                format!(
+                    "{path} points at a {rt}, not one of the types it allows ({})",
+                    allowed.iter().map(|(t, _)| *t).collect::<Vec<_>>().join(", ")
+                ),
+            );
+            continue;
+        }
+        // a base type among the allowed of this type: the type is enough —
+        // and so is it for a contained resource (`#id`): the reference
+        // validator judges a contained target by type, a bundle entry by
+        // conformance (its 6.10.4 behaviour on the corpus; matched, not
+        // second-guessed)
+        if of_type.iter().any(|(_, p)| p.is_none()) || reference.starts_with('#') {
+            continue;
+        }
+        let conforms = of_type.iter().any(|(_, p)| p.is_some_and(|p| scope.conformance(p, &target).is_valid()));
+        if !conforms {
+            r.push(
+                Severity::Error,
+                IssueType::Structure,
+                &label,
+                format!(
+                    "Unable to find a profile match for {reference} among choices: {}",
+                    of_type.iter().filter_map(|(_, p)| p.map(|p| p.url)).collect::<Vec<_>>().join(", ")
+                ),
+            );
+        }
+    }
 }
 
 /// What a check needs beyond the node it looks at.
@@ -132,7 +216,48 @@ impl<D: Document> Scope<'_, D> {
 /// reporting at `label`. Outside the supported FHIRPath core: skipped,
 /// never guessed — and said so, once per invariant, so a silent gap never
 /// reads as a pass.
+/// dom-3, as the reference validator reports it: one finding per contained
+/// resource that nothing in its container refers to and that does not
+/// refer to its container, located at the contained resource — not one
+/// FHIRPath verdict at the root.
+fn contained_orphans<D: Document>(label: &str, doc: &D, scope: &Scope<'_, D>, r: &mut Report) {
+    for (i, contained) in doc.instances("$this.contained").iter().enumerate() {
+        let Some(id) = contained.scalars("$this.id").into_iter().next() else { continue };
+        if id.chars().any(|c| !(c.is_ascii_alphanumeric() || matches!(c, '-' | '.'))) {
+            continue; // not an id; the shape walk has said so
+        }
+        let referenced = format!(
+            "(descendants().reference | descendants().as(canonical) | descendants().as(uri) | descendants().as(url)).where($this = '#{id}').exists()"
+        );
+        let refers_back = "descendants().where(reference = '#').exists()";
+        let verdict = |expr: &str, ctx: &D| match path::parse_constraint(expr) {
+            Ok(e) => path::check_constraint_in(&e, ctx, None, Some(scope.root), scope.bundle),
+            Err(_) => Verdict::Unsupported,
+        };
+        if let (Verdict::Fail, Verdict::Fail) = (verdict(&referenced, doc), verdict(refers_back, contained)) {
+            r.push(
+                Severity::Error,
+                IssueType::Invariant,
+                &format!("{label}.contained[{i}]"),
+                format!(
+                    "dom-3: The contained resource '{id}' is not referenced to from elsewhere in the containing resource nor does it refer to the containing resource"
+                ),
+            );
+        }
+    }
+}
+
 fn check_invariant<D: Document>(inv: &ProfileInvariant, label: &str, doc: &D, scope: &Scope<'_, D>, r: &mut Report) {
+    if inv.key == "dom-3" {
+        if let Some(done) = scope.evaluated {
+            let mut done = done.borrow_mut();
+            if done.iter().any(|(e, p)| *e == inv.expression && *p == inv.path) {
+                return;
+            }
+            done.push((inv.expression, inv.path));
+        }
+        return contained_orphans(label, doc, scope, r);
+    }
     if let Some(done) = scope.evaluated {
         let mut done = done.borrow_mut();
         if done.iter().any(|(e, p)| *e == inv.expression && *p == inv.path) {
@@ -146,7 +271,7 @@ fn check_invariant<D: Document>(inv: &ProfileInvariant, label: &str, doc: &D, sc
             Some(e) => e,
             None => return not_evaluated(inv, label, r),
         },
-        None => match path::parse_constraint(inv.expression) {
+        None => match path::parse_invariant(inv.key, inv.expression) {
             Ok(e) => {
                 owned = e;
                 &owned
@@ -222,8 +347,10 @@ fn check_element<D: Document>(
                 format!("{label} is required (min {}, found {count})", el.min),
             );
         }
+        // a choice element never repeats: two keys for one `[x]` is the shape
+        // walk's finding ("allows one choice"), reported once, not a count
         if let Max::Bounded(m) = el.max {
-            if count > m {
+            if count > m && !el.path.ends_with("[x]") {
                 r.push(
                     Severity::Error,
                     IssueType::Structure,
@@ -300,8 +427,20 @@ fn check_element<D: Document>(
     let vs = b.value_set;
     match b.kind {
         BindingKind::Code => {
-            for code in doc.scalars(el.path) {
+            let codes = doc.scalars(el.path);
+            for code in &codes {
                 report_membership(tx.validate_code(vs, "", code), vs, code, label, r);
+            }
+            // an element present without a value (a `_name` carrier alone —
+            // a data-absent-reason) still owes the code the binding requires
+            let present: usize = doc.child_counts(el.path).iter().sum();
+            for _ in codes.len()..present {
+                r.push(
+                    Severity::Error,
+                    IssueType::CodeInvalid,
+                    label,
+                    String::from("No code provided, and a code is required from the value set"),
+                );
             }
         }
         BindingKind::Coding => {
@@ -340,12 +479,27 @@ fn check_element<D: Document>(
 /// Is the coded value at `path` a member of the set? `Code`: the scalar;
 /// `Coding`: its system + code; `CodeableConcept`: any coding decides
 /// membership, none decided is unknown.
+/// Membership of the coded object `inst` itself (a `Coding` or
+/// `CodeableConcept` reached by the shape walk) in the binding's set, and
+/// whether any coding was there to decide it.
+pub(crate) fn membership_of<D: Document>(b: &Binding, inst: &D, tx: &dyn TerminologyProvider) -> (Membership, bool) {
+    membership_seen(b, inst, "$this", tx)
+}
+
 pub(crate) fn membership_at<D: Document>(
     b: &Binding,
     inst: &D,
     path: &str,
     tx: &dyn TerminologyProvider,
 ) -> Membership {
+    match membership_seen(b, inst, path, tx) {
+        // nothing coded there: not this slice's, decidedly
+        (_, false) => Membership::NotMember,
+        (m, true) => m,
+    }
+}
+
+fn membership_seen<D: Document>(b: &Binding, inst: &D, path: &str, tx: &dyn TerminologyProvider) -> (Membership, bool) {
     let vs = b.value_set;
     let mut verdict = Membership::Unknown;
     let mut seen = false;
@@ -376,7 +530,7 @@ pub(crate) fn membership_at<D: Document>(
                     if let Some((system, code)) = coding_of(&c) {
                         seen = true;
                         match tx.validate_code(vs, system, code) {
-                            Membership::Member => return Membership::Member,
+                            Membership::Member => return (Membership::Member, true),
                             Membership::Unknown => unknown = true,
                             Membership::NotMember => fold(&mut verdict, Membership::NotMember),
                         }
@@ -384,15 +538,11 @@ pub(crate) fn membership_at<D: Document>(
                 }
             }
             if unknown {
-                return Membership::Unknown;
+                return (Membership::Unknown, true);
             }
         }
     }
-    if !seen {
-        // nothing coded there: not this slice's, decidedly
-        return Membership::NotMember;
-    }
-    verdict
+    (verdict, seen)
 }
 
 fn coding_of(inst: &impl Document) -> Option<(&str, &str)> {
@@ -513,6 +663,34 @@ pub(crate) fn bundle_invariants<D: Document>(doc: &D, cache: Option<&crate::Vali
 
 /// `DomainResource`'s own invariants on a resource no compiled profile
 /// applies to — the ones the shape walk does not already enforce.
+/// A resource's own invariants (org-1, pat-1, cmp-1 …) on a resource no
+/// compiled profile applies to — a profile's snapshot restates them, so
+/// only the unprofiled case reads the table.
+pub(crate) fn resource_invariants<D: Document>(
+    doc: &D,
+    rt: &'static str,
+    cache: Option<&crate::Validator>,
+    bundle: Option<&D>,
+) -> Report {
+    let mut r = Report::default();
+    let scope = Scope { root: doc, bundle, tx: &Bundled, depth: 0, cache, evaluated: None };
+    for (ty, path, key, is_error, human, expression, types) in crate::typemap::RESOURCE_INVARIANTS {
+        if *ty != rt {
+            continue;
+        }
+        let inv = ProfileInvariant {
+            path,
+            key,
+            severity: if *is_error { InvariantSeverity::Error } else { InvariantSeverity::Warning },
+            human,
+            expression,
+            types,
+        };
+        check_invariant(&inv, path, doc, &scope, &mut r);
+    }
+    r
+}
+
 pub(crate) fn domain_invariants<D: Document>(
     doc: &D,
     rt: &'static str,
@@ -799,26 +977,40 @@ fn check_slicing<D: Document>(slicing: &Slicing, doc: &D, scope: &Scope<'_, D>, 
                             .filter(|p| target.scalars("$this.resourceType") == [p.resource_type])
                             .map(|p| (*p, scope.conformance(p, &target)))
                             .collect();
-                        if reports.iter().any(|(_, rep)| rep.is_valid()) {
-                            continue;
-                        }
+                        // the reference validator judges each candidate with
+                        // the resource's own declared profiles applied as
+                        // well: a declared profile it fails sinks every
+                        // candidate, and the entry "did not match any of the
+                        // allowed profiles" (those failures are reported on
+                        // the entry itself, by the nested pass)
+                        let declared_ok = target.scalars("$this.meta.profile").iter().all(|u| {
+                            let u = u.split('|').next().unwrap_or(u);
+                            match crate::REGISTRY.iter().find(|p| p.url == u) {
+                                Some(d) => scope.conformance(d, &target).is_valid(),
+                                None => true,
+                            }
+                        });
+                        let any_valid = reports.iter().any(|(_, rep)| rep.is_valid());
                         match reports.as_slice() {
-                            [(profile, rep)] => forward(rep.clone(), profile, &label, r),
+                            [(profile, rep)] if !rep.is_valid() => forward(rep.clone(), profile, &label, r),
+                            [_] => {}
                             [] => r.push(
                                 Severity::Error,
                                 IssueType::Structure,
                                 &label,
                                 format!("{label} is not one of the resource types this entry allows"),
                             ),
-                            many => r.push(
+                            many if !(any_valid && declared_ok) => r.push(
                                 Severity::Error,
                                 IssueType::Structure,
                                 &label,
                                 format!(
-                                    "{label} conforms to none of [{}]",
-                                    many.iter().map(|(p, _)| p.name).collect::<Vec<_>>().join(", ")
+                                    "The entry resource did not match any of the allowed profiles (Type {}: {})",
+                                    many[0].0.resource_type,
+                                    many.iter().map(|(p, _)| p.url).collect::<Vec<_>>().join(", ")
                                 ),
                             ),
+                            _ => {}
                         }
                     }
                 }

@@ -13,7 +13,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Extension.extension", min: 2, max: Max::Star, fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Extension.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Extension.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org/fhir/StructureDefinition/DeviceDefinition-partVariableCount"), required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Extension.value[x]", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: super::intern::S29, patterns: &[] },
+        ElementConstraint { path: "Extension.value[x]", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: super::intern::S83, patterns: &[] },
     ],
     slicings: &[
         Slicing { path: "Extension.extension", closed: false, slices: &[
@@ -48,6 +48,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     must_support: &[
     ],
     contexts: &[
+    ],
+    references: &[
     ],
     deferred: &[
     ],

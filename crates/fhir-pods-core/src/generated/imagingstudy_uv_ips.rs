@@ -74,6 +74,20 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    references: &[
+        ("ImagingStudy.subject", super::intern::S129),
+        ("ImagingStudy.encounter", &["http://hl7.org/fhir/StructureDefinition/Encounter"]),
+        ("ImagingStudy.basedOn", super::intern::S133),
+        ("ImagingStudy.referrer", super::intern::S36),
+        ("ImagingStudy.interpreter", super::intern::S36),
+        ("ImagingStudy.endpoint", &["http://hl7.org/fhir/StructureDefinition/Endpoint"]),
+        ("ImagingStudy.procedureReference", &["http://hl7.org/fhir/StructureDefinition/Procedure"]),
+        ("ImagingStudy.location", &["http://hl7.org/fhir/StructureDefinition/Location"]),
+        ("ImagingStudy.reasonReference", super::intern::S134),
+        ("ImagingStudy.series.endpoint", &["http://hl7.org/fhir/StructureDefinition/Endpoint"]),
+        ("ImagingStudy.series.specimen", &["http://hl7.org/fhir/StructureDefinition/Specimen"]),
+        ("ImagingStudy.series.performer.actor", super::intern::S135),
+    ],
     deferred: &[
     ],
 };

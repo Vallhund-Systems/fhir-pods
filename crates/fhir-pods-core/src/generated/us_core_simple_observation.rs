@@ -16,10 +16,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Observation.component.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Observation.component.dataAbsentReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Observation.component.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Observation.component.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S2, patterns: &[] },
+        ElementConstraint { path: "Observation.component.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S4, patterns: &[] },
         ElementConstraint { path: "Observation.dataAbsentReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Observation.device", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Observation.effective[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S4, patterns: &[] },
+        ElementConstraint { path: "Observation.effective[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S13, patterns: &[] },
         ElementConstraint { path: "Observation.encounter", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Observation.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Observation.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -37,7 +37,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Observation.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/observation-status|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
         ElementConstraint { path: "Observation.subject", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Observation.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Observation.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S2, patterns: &[] },
+        ElementConstraint { path: "Observation.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S4, patterns: &[] },
     ],
     slicings: &[
         Slicing { path: "Observation.category", closed: false, slices: &[
@@ -73,6 +73,17 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    references: &[
+        ("Observation.basedOn", super::intern::S5),
+        ("Observation.partOf", super::intern::S6),
+        ("Observation.subject", &["http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"]),
+        ("Observation.encounter", &["http://hl7.org/fhir/StructureDefinition/Encounter"]),
+        ("Observation.performer", super::intern::S96),
+        ("Observation.specimen", &["http://hl7.org/fhir/StructureDefinition/Specimen"]),
+        ("Observation.device", super::intern::S8),
+        ("Observation.hasMember", super::intern::S61),
+        ("Observation.derivedFrom", super::intern::S112),
+    ],
     deferred: &[
     ],
 };
@@ -97,7 +108,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "effective[x]",
             ty: "choice",
-            choices: super::intern::S5,
+            choices: super::intern::S16,
             min: 0,
             max: Max::Bounded(1),
             must_support: true,
@@ -106,7 +117,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "value[x]",
             ty: "choice",
-            choices: super::intern::S6,
+            choices: super::intern::S17,
             min: 0,
             max: Max::Bounded(1),
             must_support: true,

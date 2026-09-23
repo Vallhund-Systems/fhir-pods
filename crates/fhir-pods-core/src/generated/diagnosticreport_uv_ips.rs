@@ -12,7 +12,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     elements: &[
         ElementConstraint { path: "DiagnosticReport.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "DiagnosticReport.conclusion", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "DiagnosticReport.effective[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S16, patterns: &[] },
+        ElementConstraint { path: "DiagnosticReport.effective[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S41, patterns: &[] },
         ElementConstraint { path: "DiagnosticReport.encounter", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "DiagnosticReport.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "DiagnosticReport.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -43,7 +43,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ] },
         Slicing { path: "DiagnosticReport.result", closed: false, slices: &[
             Slice { name: "observation-results", discriminators: &[
-                Discriminator::ResolvedProfile { urls: super::intern::S47 },
+                Discriminator::ResolvedProfile { urls: super::intern::S128 },
             ], min: 0, max: Max::Star, elements: &[
             ], invariants: &[
             ], profiles: &[
@@ -68,6 +68,17 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    references: &[
+        ("DiagnosticReport.basedOn", super::intern::S75),
+        ("DiagnosticReport.subject", super::intern::S129),
+        ("DiagnosticReport.encounter", &["http://hl7.org/fhir/StructureDefinition/Encounter"]),
+        ("DiagnosticReport.performer", super::intern::S130),
+        ("DiagnosticReport.resultsInterpreter", super::intern::S77),
+        ("DiagnosticReport.specimen", &["http://hl7.org/fhir/uv/ips/StructureDefinition/Specimen-uv-ips"]),
+        ("DiagnosticReport.result", &["http://hl7.org/fhir/StructureDefinition/Observation"]),
+        ("DiagnosticReport.imagingStudy", &["http://hl7.org/fhir/StructureDefinition/ImagingStudy"]),
+        ("DiagnosticReport.media.link", &["http://hl7.org/fhir/StructureDefinition/Media"]),
+    ],
     deferred: &[
     ],
 };
@@ -83,7 +94,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "effective[x]",
             ty: "choice",
-            choices: super::intern::S17,
+            choices: super::intern::S46,
             min: 1,
             max: Max::Bounded(1),
             must_support: true,

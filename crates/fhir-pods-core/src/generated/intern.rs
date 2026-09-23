@@ -2,8 +2,20 @@
 //! String lists shared across the compiled profiles.
 
 pub static S0: &[&str] = &["dateTime", "Age", "Period", "Range"];
-pub static S1: &[&str] = &["onsetDateTime", "onsetAge", "onsetPeriod", "onsetRange"];
+pub static S1: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+];
 pub static S2: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+];
+pub static S3: &[&str] = &["onsetDateTime", "onsetAge", "onsetPeriod", "onsetRange"];
+pub static S4: &[&str] = &[
     "Quantity",
     "CodeableConcept",
     "string",
@@ -16,10 +28,69 @@ pub static S2: &[&str] = &[
     "dateTime",
     "Period",
 ];
-pub static S3: &[&str] = &["abatementDateTime", "abatementAge", "abatementPeriod", "abatementRange"];
-pub static S4: &[&str] = &["dateTime", "Period", "Timing", "instant"];
-pub static S5: &[&str] = &["effectiveDateTime", "effectivePeriod", "effectiveTiming", "effectiveInstant"];
+pub static S5: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/CarePlan",
+    "http://hl7.org/fhir/StructureDefinition/DeviceRequest",
+    "http://hl7.org/fhir/StructureDefinition/ImmunizationRecommendation",
+    "http://hl7.org/fhir/StructureDefinition/MedicationRequest",
+    "http://hl7.org/fhir/StructureDefinition/NutritionOrder",
+    "http://hl7.org/fhir/StructureDefinition/ServiceRequest",
+];
 pub static S6: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/MedicationAdministration",
+    "http://hl7.org/fhir/StructureDefinition/MedicationDispense",
+    "http://hl7.org/fhir/StructureDefinition/MedicationStatement",
+    "http://hl7.org/fhir/StructureDefinition/Procedure",
+    "http://hl7.org/fhir/StructureDefinition/Immunization",
+    "http://hl7.org/fhir/StructureDefinition/ImagingStudy",
+];
+pub static S7: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+    "http://hl7.org/fhir/StructureDefinition/CareTeam",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+];
+pub static S8: &[&str] =
+    &["http://hl7.org/fhir/StructureDefinition/Device", "http://hl7.org/fhir/StructureDefinition/DeviceMetric"];
+pub static S9: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse",
+    "http://hl7.org/fhir/StructureDefinition/MolecularSequence",
+    "http://hl7.org/fhir/StructureDefinition/vitalsigns",
+];
+pub static S10: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/DocumentReference",
+    "http://hl7.org/fhir/StructureDefinition/ImagingStudy",
+    "http://hl7.org/fhir/StructureDefinition/Media",
+    "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse",
+    "http://hl7.org/fhir/StructureDefinition/MolecularSequence",
+    "http://hl7.org/fhir/StructureDefinition/vitalsigns",
+];
+pub static S11: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/ClinicalImpression",
+    "http://hl7.org/fhir/StructureDefinition/DiagnosticReport",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+];
+pub static S12: &[&str] = &["abatementDateTime", "abatementAge", "abatementPeriod", "abatementRange"];
+pub static S13: &[&str] = &["dateTime", "Period", "Timing", "instant"];
+pub static S14: &[&str] = &[
+    "http://hl7.org.au/fhir/core/StructureDefinition/au-core-practitioner",
+    "http://hl7.org.au/fhir/core/StructureDefinition/au-core-practitionerrole",
+    "http://hl7.org.au/fhir/core/StructureDefinition/au-core-organization",
+    "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+    "http://hl7.org.au/fhir/core/StructureDefinition/au-core-relatedperson",
+];
+pub static S15: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/DocumentReference",
+    "http://hl7.org/fhir/StructureDefinition/ImagingStudy",
+    "http://hl7.org/fhir/StructureDefinition/Media",
+    "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+    "http://hl7.org/fhir/StructureDefinition/MolecularSequence",
+];
+pub static S16: &[&str] = &["effectiveDateTime", "effectivePeriod", "effectiveTiming", "effectiveInstant"];
+pub static S17: &[&str] = &[
     "valueQuantity",
     "valueCodeableConcept",
     "valueString",
@@ -32,23 +103,143 @@ pub static S6: &[&str] = &[
     "valueDateTime",
     "valuePeriod",
 ];
-pub static S7: &[&str] = &["dateTime", "string"];
-pub static S8: &[&str] = &["positiveInt", "string"];
-pub static S9: &[&str] = &["occurrenceDateTime", "occurrenceString"];
-pub static S10: &[&str] = &["CodeableConcept", "Reference"];
-pub static S11: &[&str] = &["boolean", "CodeableConcept"];
-pub static S12: &[&str] = &["Range", "Quantity"];
-pub static S13: &[&str] = &["Ratio", "Range", "Quantity"];
-pub static S14: &[&str] = &["boolean", "Reference"];
-pub static S15: &[&str] = &["medicationCodeableConcept", "medicationReference"];
-pub static S16: &[&str] = &["dateTime", "Period"];
-pub static S17: &[&str] = &["effectiveDateTime", "effectivePeriod"];
-pub static S18: &[&str] = &["boolean", "dateTime"];
-pub static S19: &[&str] = &["boolean", "integer"];
-pub static S20: &[&str] = &["dateTime", "Period", "string", "Age", "Range"];
+pub static S18: &[&str] = &[
+    "http://hl7.org.au/fhir/core/StructureDefinition/au-core-diagnosticresult",
+    "http://hl7.org.au/fhir/StructureDefinition/au-imagingresult",
+    "http://hl7.org.au/fhir/core/StructureDefinition/au-core-diagnosticresult-path",
+];
+pub static S19: &[&str] = &[
+    "http://hl7.org.au/fhir/core/StructureDefinition/au-core-practitioner",
+    "http://hl7.org.au/fhir/core/StructureDefinition/au-core-practitionerrole",
+    "http://hl7.org.au/fhir/core/StructureDefinition/au-core-relatedperson",
+];
+pub static S20: &[&str] = &[
+    "http://hl7.org.au/fhir/core/StructureDefinition/au-core-condition",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+    "http://hl7.org.au/fhir/core/StructureDefinition/au-core-procedure",
+];
 pub static S21: &[&str] =
+    &["http://hl7.org/fhir/StructureDefinition/Condition", "http://hl7.org/fhir/StructureDefinition/Procedure"];
+pub static S22: &[&str] =
+    &["http://hl7.org/fhir/StructureDefinition/Location", "http://hl7.org/fhir/StructureDefinition/Organization"];
+pub static S23: &[&str] = &["dateTime", "string"];
+pub static S24: &[&str] = &["positiveInt", "string"];
+pub static S25: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+];
+pub static S26: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Condition",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+    "http://hl7.org/fhir/StructureDefinition/DiagnosticReport",
+];
+pub static S27: &[&str] = &["occurrenceDateTime", "occurrenceString"];
+pub static S28: &[&str] = &["CodeableConcept", "Reference"];
+pub static S29: &[&str] =
+    &["http://hl7.org/fhir/StructureDefinition/Substance", "http://hl7.org/fhir/StructureDefinition/Medication"];
+pub static S30: &[&str] = &["boolean", "CodeableConcept"];
+pub static S31: &[&str] = &["Range", "Quantity"];
+pub static S32: &[&str] = &["Ratio", "Range", "Quantity"];
+pub static S33: &[&str] = &["boolean", "Reference"];
+pub static S34: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+];
+pub static S35: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+    "http://hl7.org/fhir/StructureDefinition/CareTeam",
+];
+pub static S36: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+];
+pub static S37: &[&str] = &[
+    "http://hl7.org.au/fhir/core/StructureDefinition/au-core-condition",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+];
+pub static S38: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/CarePlan",
+    "http://hl7.org/fhir/StructureDefinition/MedicationRequest",
+    "http://hl7.org/fhir/StructureDefinition/ServiceRequest",
+    "http://hl7.org/fhir/StructureDefinition/ImmunizationRecommendation",
+];
+pub static S39: &[&str] =
+    &["http://hl7.org/fhir/StructureDefinition/Coverage", "http://hl7.org/fhir/StructureDefinition/ClaimResponse"];
+pub static S40: &[&str] = &["medicationCodeableConcept", "medicationReference"];
+pub static S41: &[&str] = &["dateTime", "Period"];
+pub static S42: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/MedicationRequest",
+    "http://hl7.org/fhir/StructureDefinition/CarePlan",
+    "http://hl7.org/fhir/StructureDefinition/ServiceRequest",
+];
+pub static S43: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/MedicationAdministration",
+    "http://hl7.org/fhir/StructureDefinition/MedicationDispense",
+    "http://hl7.org/fhir/StructureDefinition/MedicationStatement",
+    "http://hl7.org/fhir/StructureDefinition/Procedure",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+];
+pub static S44: &[&str] =
+    &["http://hl7.org/fhir/StructureDefinition/Encounter", "http://hl7.org/fhir/StructureDefinition/EpisodeOfCare"];
+pub static S45: &[&str] = &[
+    "http://hl7.org.au/fhir/core/StructureDefinition/au-core-condition",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+    "http://hl7.org.au/fhir/StructureDefinition/au-diagnosticreport",
+];
+pub static S46: &[&str] = &["effectiveDateTime", "effectivePeriod"];
+pub static S47: &[&str] = &["boolean", "dateTime"];
+pub static S48: &[&str] = &["boolean", "integer"];
+pub static S49: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+];
+pub static S50: &[&str] =
+    &["http://hl7.org/fhir/StructureDefinition/Patient", "http://hl7.org/fhir/StructureDefinition/RelatedPerson"];
+pub static S51: &[&str] = &["dateTime", "Period", "string", "Age", "Range"];
+pub static S52: &[&str] =
+    &["http://hl7.org/fhir/StructureDefinition/CarePlan", "http://hl7.org/fhir/StructureDefinition/ServiceRequest"];
+pub static S53: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Procedure",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+    "http://hl7.org/fhir/StructureDefinition/MedicationAdministration",
+];
+pub static S54: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+];
+pub static S55: &[&str] = &[
+    "http://hl7.org.au/fhir/core/StructureDefinition/au-core-condition",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+    "http://hl7.org.au/fhir/core/StructureDefinition/au-core-procedure",
+    "http://hl7.org/fhir/StructureDefinition/DocumentReference",
+];
+pub static S56: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/DiagnosticReport",
+    "http://hl7.org/fhir/StructureDefinition/DocumentReference",
+    "http://hl7.org/fhir/StructureDefinition/Composition",
+];
+pub static S57: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Device",
+    "http://hl7.org/fhir/StructureDefinition/Medication",
+    "http://hl7.org/fhir/StructureDefinition/Substance",
+];
+pub static S58: &[&str] =
     &["performedDateTime", "performedPeriod", "performedString", "performedAge", "performedRange"];
-pub static S22: &[&str] = &[
+pub static S59: &[&str] = &[
     "base64Binary",
     "boolean",
     "canonical",
@@ -99,14 +290,125 @@ pub static S22: &[&str] = &[
     "Dosage",
     "Meta",
 ];
-pub static S23: &[&str] = &["valueCodeableConcept", "valueReference"];
-pub static S24: &[&str] = &["dateTime", "Age", "Period", "Range", "string"];
-pub static S25: &[&str] = &["Timing", "Period", "string"];
-pub static S26: &[&str] = &["onsetDateTime", "onsetAge", "onsetPeriod", "onsetRange", "onsetString"];
-pub static S27: &[&str] =
+pub static S60: &[&str] = &["valueCodeableConcept", "valueReference"];
+pub static S61: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+    "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse",
+    "http://hl7.org/fhir/StructureDefinition/MolecularSequence",
+];
+pub static S62: &[&str] = &["dateTime", "Age", "Period", "Range", "string"];
+pub static S63: &[&str] = &["Timing", "Period", "string"];
+pub static S64: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+    "http://hl7.org/fhir/StructureDefinition/CareTeam",
+];
+pub static S65: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Appointment",
+    "http://hl7.org/fhir/StructureDefinition/CommunicationRequest",
+    "http://hl7.org/fhir/StructureDefinition/DeviceRequest",
+    "http://hl7.org/fhir/StructureDefinition/MedicationRequest",
+    "http://hl7.org/fhir/StructureDefinition/NutritionOrder",
+    "http://hl7.org/fhir/StructureDefinition/Task",
+    "http://hl7.org/fhir/StructureDefinition/ServiceRequest",
+    "http://hl7.org/fhir/StructureDefinition/VisionPrescription",
+    "http://hl7.org/fhir/StructureDefinition/RequestGroup",
+];
+pub static S66: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Condition",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+    "http://hl7.org/fhir/StructureDefinition/DiagnosticReport",
+    "http://hl7.org/fhir/StructureDefinition/DocumentReference",
+];
+pub static S67: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/CareTeam",
+    "http://hl7.org/fhir/StructureDefinition/HealthcareService",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+];
+pub static S68: &[&str] =
+    &["http://hl7.org/fhir/StructureDefinition/Medication", "http://hl7.org/fhir/StructureDefinition/Substance"];
+pub static S69: &[&str] = &[
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitioner",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitionerrole",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-careteam",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-relatedperson",
+];
+pub static S70: &[&str] = &["onsetDateTime", "onsetAge", "onsetPeriod", "onsetRange", "onsetString"];
+pub static S71: &[&str] =
     &["abatementDateTime", "abatementAge", "abatementPeriod", "abatementRange", "abatementString"];
-pub static S28: &[&str] = &["Quantity", "Money"];
-pub static S29: &[&str] = &[
+pub static S72: &[&str] = &["Quantity", "Money"];
+pub static S73: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+];
+pub static S74: &[&str] = &[
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-relatedperson",
+];
+pub static S75: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/CarePlan",
+    "http://hl7.org/fhir/StructureDefinition/ImmunizationRecommendation",
+    "http://hl7.org/fhir/StructureDefinition/MedicationRequest",
+    "http://hl7.org/fhir/StructureDefinition/NutritionOrder",
+    "http://hl7.org/fhir/StructureDefinition/ServiceRequest",
+];
+pub static S76: &[&str] = &[
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitioner",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-careteam",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitionerrole",
+];
+pub static S77: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+    "http://hl7.org/fhir/StructureDefinition/CareTeam",
+];
+pub static S78: &[&str] = &[
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitioner",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitionerrole",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-careteam",
+];
+pub static S79: &[&str] = &[
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-lab",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-clinical-result",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+];
+pub static S80: &[&str] = &[
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitioner",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitionerrole",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-relatedperson",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+];
+pub static S81: &[&str] = &[
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitioner",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitionerrole",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-relatedperson",
+];
+pub static S82: &[&str] = &[
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-encounter-diagnosis",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-procedure",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+    "http://hl7.org/fhir/StructureDefinition/ImmunizationRecommendation",
+];
+pub static S83: &[&str] = &[
     "base64Binary",
     "boolean",
     "canonical",
@@ -158,14 +460,87 @@ pub static S29: &[&str] = &[
     "Dosage",
     "Meta",
 ];
-pub static S30: &[&str] = &["date", "CodeableConcept"];
-pub static S31: &[&str] = &["Quantity", "Range", "CodeableConcept", "string", "boolean", "integer", "Ratio"];
-pub static S32: &[&str] = &["date", "Duration"];
-pub static S33: &[&str] = &["startDate", "startCodeableConcept"];
-pub static S34: &[&str] = &["Quantity", "Range"];
-pub static S35: &[&str] = &["reportedBoolean", "reportedReference"];
-pub static S36: &[&str] = &["Period", "dateTime"];
-pub static S37: &[&str] = &[
+pub static S84: &[&str] = &["date", "CodeableConcept"];
+pub static S85: &[&str] = &["Quantity", "Range", "CodeableConcept", "string", "boolean", "integer", "Ratio"];
+pub static S86: &[&str] = &["date", "Duration"];
+pub static S87: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+];
+pub static S88: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Condition",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+    "http://hl7.org/fhir/StructureDefinition/MedicationStatement",
+    "http://hl7.org/fhir/StructureDefinition/NutritionOrder",
+    "http://hl7.org/fhir/StructureDefinition/ServiceRequest",
+    "http://hl7.org/fhir/StructureDefinition/RiskAssessment",
+];
+pub static S89: &[&str] = &["startDate", "startCodeableConcept"];
+pub static S90: &[&str] = &["Quantity", "Range"];
+pub static S91: &[&str] = &[
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitioner",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitionerrole",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-relatedperson",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+];
+pub static S92: &[&str] =
+    &["http://hl7.org/fhir/StructureDefinition/Patient", "http://hl7.org/fhir/StructureDefinition/Practitioner"];
+pub static S93: &[&str] = &[
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitioner",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitionerrole",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-relatedperson",
+];
+pub static S94: &[&str] =
+    &["http://hl7.org/fhir/StructureDefinition/Condition", "http://hl7.org/fhir/StructureDefinition/Observation"];
+pub static S95: &[&str] = &["reportedBoolean", "reportedReference"];
+pub static S96: &[&str] = &[
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitioner",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-careteam",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-relatedperson",
+];
+pub static S97: &[&str] = &[
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-screening-assessment",
+    "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse",
+    "http://hl7.org/fhir/StructureDefinition/MolecularSequence",
+];
+pub static S98: &[&str] = &[
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-screening-assessment",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-questionnaireresponse",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-documentreference",
+    "http://hl7.org/fhir/StructureDefinition/ImagingStudy",
+    "http://hl7.org/fhir/StructureDefinition/Media",
+    "http://hl7.org/fhir/StructureDefinition/MolecularSequence",
+];
+pub static S99: &[&str] = &[
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-careplan",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-servicerequest",
+];
+pub static S100: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Condition",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+    "http://hl7.org/fhir/StructureDefinition/Procedure",
+    "http://hl7.org/fhir/StructureDefinition/DiagnosticReport",
+    "http://hl7.org/fhir/StructureDefinition/DocumentReference",
+];
+pub static S101: &[&str] = &["Period", "dateTime"];
+pub static S102: &[&str] = &[
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitioner",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitionerrole",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-relatedperson",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+];
+pub static S103: &[&str] = &[
     "boolean",
     "date",
     "dateTime",
@@ -179,10 +554,51 @@ pub static S37: &[&str] = &[
     "Attachment",
     "Reference",
 ];
-pub static S38: &[&str] = &["Period", "dateTime", "Timing"];
-pub static S39: &[&str] = &["Quantity", "Ratio", "Range"];
-pub static S40: &[&str] = &["occurrencePeriod", "occurrenceDateTime", "occurrenceTiming"];
-pub static S41: &[&str] = &[
+pub static S104: &[&str] =
+    &["http://hl7.org/fhir/StructureDefinition/Observation", "http://hl7.org/fhir/StructureDefinition/Procedure"];
+pub static S105: &[&str] = &[
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitioner",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-relatedperson",
+];
+pub static S106: &[&str] = &["Period", "dateTime", "Timing"];
+pub static S107: &[&str] = &["Quantity", "Ratio", "Range"];
+pub static S108: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/CarePlan",
+    "http://hl7.org/fhir/StructureDefinition/ServiceRequest",
+    "http://hl7.org/fhir/StructureDefinition/MedicationRequest",
+];
+pub static S109: &[&str] = &[
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitioner",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-relatedperson",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+];
+pub static S110: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+    "http://hl7.org/fhir/StructureDefinition/CareTeam",
+    "http://hl7.org/fhir/StructureDefinition/HealthcareService",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+];
+pub static S111: &[&str] = &["occurrencePeriod", "occurrenceDateTime", "occurrenceTiming"];
+pub static S112: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-documentreference",
+    "http://hl7.org/fhir/us/core/StructureDefinition/us-core-questionnaireresponse",
+    "http://hl7.org/fhir/StructureDefinition/ImagingStudy",
+    "http://hl7.org/fhir/StructureDefinition/Media",
+    "http://hl7.org/fhir/StructureDefinition/MolecularSequence",
+];
+pub static S113: &[&str] = &[
     "CodeableConcept",
     "Quantity",
     "string",
@@ -195,7 +611,7 @@ pub static S41: &[&str] = &[
     "dateTime",
     "Period",
 ];
-pub static S42: &[&str] = &[
+pub static S114: &[&str] = &[
     "valueCodeableConcept",
     "valueQuantity",
     "valueString",
@@ -208,18 +624,150 @@ pub static S42: &[&str] = &[
     "valueDateTime",
     "valuePeriod",
 ];
-pub static S43: &[&str] = &["CodeableConcept", "Duration"];
-pub static S44: &[&str] = &["Identifier", "Reference"];
-pub static S45: &[&str] = &[
+pub static S115: &[&str] = &["CodeableConcept", "Duration"];
+pub static S116: &[&str] = &[
+    "http://hl7.org/fhir/uv/ipa/StructureDefinition/ipa-practitioner",
+    "http://hl7.org/fhir/uv/ipa/StructureDefinition/ipa-practitionerrole",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+    "http://hl7.org/fhir/uv/ipa/StructureDefinition/ipa-patient",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+];
+pub static S117: &[&str] = &[
+    "http://hl7.org/fhir/uv/ipa/StructureDefinition/ipa-patient",
+    "http://hl7.org/fhir/uv/ipa/StructureDefinition/ipa-practitioner",
+    "http://hl7.org/fhir/uv/ipa/StructureDefinition/ipa-practitionerrole",
+];
+pub static S118: &[&str] = &[
+    "http://hl7.org/fhir/uv/ipa/StructureDefinition/ipa-practitioner",
+    "http://hl7.org/fhir/uv/ipa/StructureDefinition/ipa-practitionerrole",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+    "http://hl7.org/fhir/uv/ipa/StructureDefinition/ipa-patient",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+];
+pub static S119: &[&str] = &[
+    "http://hl7.org/fhir/uv/ipa/StructureDefinition/ipa-practitioner",
+    "http://hl7.org/fhir/uv/ipa/StructureDefinition/ipa-practitionerrole",
+    "http://hl7.org/fhir/uv/ipa/StructureDefinition/ipa-patient",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+];
+pub static S120: &[&str] = &["Identifier", "Reference"];
+pub static S121: &[&str] = &[
     "http://hl7.org/fhir/uv/ips/StructureDefinition/MedicationStatement-uv-ips",
     "http://hl7.org/fhir/uv/ips/StructureDefinition/MedicationRequest-uv-ips",
 ];
-pub static S46: &[&str] = &["timingPeriod", "timingDateTime"];
-pub static S47: &[&str] = &[
+pub static S122: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+];
+pub static S123: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+];
+pub static S124: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Composition",
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/Composition-uv-ips",
+];
+pub static S125: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/ServiceRequest",
+    "http://hl7.org/fhir/StructureDefinition/Procedure",
+    "http://hl7.org/fhir/StructureDefinition/Claim",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+    "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse",
+    "http://hl7.org/fhir/StructureDefinition/DocumentReference",
+];
+pub static S126: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Condition",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+    "http://hl7.org/fhir/StructureDefinition/DiagnosticReport",
+    "http://hl7.org/fhir/StructureDefinition/DocumentReference",
+    "http://hl7.org/fhir/StructureDefinition/Media",
+];
+pub static S127: &[&str] = &["timingPeriod", "timingDateTime"];
+pub static S128: &[&str] = &[
     "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-results-laboratory-pathology-uv-ips",
     "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-results-radiology-uv-ips",
 ];
-pub static S48: &[&str] = &[
+pub static S129: &[&str] =
+    &["http://hl7.org/fhir/uv/ips/StructureDefinition/Patient-uv-ips", "http://hl7.org/fhir/StructureDefinition/Group"];
+pub static S130: &[&str] = &[
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/Practitioner-uv-ips",
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/PractitionerRole-uv-ips",
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/Organization-uv-ips",
+    "http://hl7.org/fhir/StructureDefinition/CareTeam",
+];
+pub static S131: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/Location",
+    "http://hl7.org/fhir/StructureDefinition/Group",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PlanDefinition",
+    "http://hl7.org/fhir/StructureDefinition/Medication",
+    "http://hl7.org/fhir/StructureDefinition/Procedure",
+];
+pub static S132: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Device",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+];
+pub static S133: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/CarePlan",
+    "http://hl7.org/fhir/StructureDefinition/ServiceRequest",
+    "http://hl7.org/fhir/StructureDefinition/Appointment",
+    "http://hl7.org/fhir/StructureDefinition/AppointmentResponse",
+    "http://hl7.org/fhir/StructureDefinition/Task",
+];
+pub static S134: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Condition",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+    "http://hl7.org/fhir/StructureDefinition/Media",
+    "http://hl7.org/fhir/StructureDefinition/DiagnosticReport",
+    "http://hl7.org/fhir/StructureDefinition/DocumentReference",
+];
+pub static S135: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+    "http://hl7.org/fhir/StructureDefinition/CareTeam",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+];
+pub static S136: &[&str] = &[
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/Patient-uv-ips",
+    "http://hl7.org/fhir/StructureDefinition/Group",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+    "http://hl7.org/fhir/StructureDefinition/Location",
+];
+pub static S137: &[&str] = &[
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/Practitioner-uv-ips",
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/PractitionerRole-uv-ips",
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/Organization-uv-ips",
+    "http://hl7.org/fhir/StructureDefinition/CareTeam",
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/Patient-uv-ips",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+];
+pub static S138: &[&str] = &[
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/Patient-uv-ips",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/Device-observer-uv-ips",
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/Practitioner-uv-ips",
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/PractitionerRole-uv-ips",
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/Organization-uv-ips",
+];
+pub static S139: &[&str] = &[
     "http://hl7.org/fhir/StructureDefinition/Observation",
     "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-pregnancy-edd-uv-ips",
     "http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-pregnancy-outcome-uv-ips",
@@ -237,23 +785,258 @@ pub static S48: &[&str] = &[
     "http://hl7.org.au/fhir/core/StructureDefinition/au-core-resprate",
     "http://hl7.org.au/fhir/core/StructureDefinition/au-core-waistcircum",
 ];
-pub static S49: &[&str] = &[
+pub static S140: &[&str] = &[
     "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-medicationstatement",
     "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-medicationrequest",
 ];
-pub static S50: &[&str] = &["string", "base64Binary"];
-pub static S51: &[&str] = &["dateTime", "Period", "Timing"];
-pub static S52: &[&str] = &["Ratio", "Quantity"];
-pub static S53: &[&str] = &["valueDateTime", "valueAge", "valuePeriod", "valueRange", "valueString"];
-pub static S54: &[&str] = &["Reference", "markdown"];
-pub static S55: &[&str] = &["Reference", "canonical", "uri"];
-pub static S56: &[&str] = &["valueReference", "valueCanonical", "valueUri"];
-pub static S57: &[&str] = &["string", "Coding"];
-pub static S58: &[&str] = &["valueString", "valueCoding"];
-pub static S59: &[&str] = &["valueDateTime", "valuePeriod"];
-pub static S60: &[&str] = &["uri", "CodeableConcept"];
-pub static S61: &[&str] = &["valueUri", "valueCodeableConcept"];
-pub static S62: &[&str] = &[
+pub static S141: &[&str] = &[
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-practitioner",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-practitionerrole",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-patient",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-relatedperson",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-organization",
+];
+pub static S142: &[&str] = &[
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-patient",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-relatedperson",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-practitioner",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-practitionerrole",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-organization",
+];
+pub static S143: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Composition",
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/Composition-uv-ips",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-composition",
+];
+pub static S144: &[&str] = &[
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-practitioner",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-practitionerrole",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-organization",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-patient",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-relatedperson",
+];
+pub static S145: &[&str] = &[
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-practitioner",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-practitionerrole",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-relatedperson",
+];
+pub static S146: &[&str] = &[
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-condition",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-procedure",
+];
+pub static S147: &[&str] = &[
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-condition",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+];
+pub static S148: &[&str] = &[
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-condition",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/DiagnosticReport-uv-ips",
+];
+pub static S149: &[&str] = &[
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-organization",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-practitioner",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-practitionerrole",
+];
+pub static S150: &[&str] = &[
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-patient",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-relatedperson",
+    "http://hl7.org/fhir/uv/ips/StructureDefinition/Device-observer-uv-ips",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-practitioner",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-practitionerrole",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-organization",
+];
+pub static S151: &[&str] = &[
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-condition",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+    "http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-procedure",
+    "http://hl7.org/fhir/StructureDefinition/DocumentReference",
+];
+pub static S152: &[&str] = &["string", "base64Binary"];
+pub static S153: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+];
+pub static S154: &[&str] =
+    &["http://hl7.org/fhir/StructureDefinition/Patient", "http://hl7.org/fhir/StructureDefinition/Group"];
+pub static S155: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+];
+pub static S156: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/CarePlan",
+    "http://hl7.org/fhir/StructureDefinition/ImmunizationRecommendation",
+    "http://hl7.org/fhir/StructureDefinition/MedicationRequest",
+    "http://hl7.org/fhir/StructureDefinition/NutritionOrder",
+    "http://hl7.org/fhir/StructureDefinition/ServiceRequest",
+    "http://hl7.org.au/fhir/StructureDefinition/au-servicerequest",
+];
+pub static S157: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/Group",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+    "http://hl7.org/fhir/StructureDefinition/Location",
+];
+pub static S158: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+    "http://hl7.org.au/fhir/StructureDefinition/au-diagnosticresult",
+    "http://hl7.org.au/fhir/StructureDefinition/au-imagingresult",
+    "http://hl7.org.au/fhir/StructureDefinition/au-pathologyresult",
+];
+pub static S159: &[&str] = &["dateTime", "Period", "Timing"];
+pub static S160: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/Group",
+    "http://hl7.org/fhir/StructureDefinition/Location",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+];
+pub static S161: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+];
+pub static S162: &[&str] = &[
+    "http://hl7.org.au/fhir/StructureDefinition/au-diagnosticresult",
+    "http://hl7.org.au/fhir/StructureDefinition/au-imagingresult",
+    "http://hl7.org.au/fhir/StructureDefinition/au-pathologyresult",
+];
+pub static S163: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+];
+pub static S164: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Condition",
+    "http://hl7.org/fhir/StructureDefinition/Procedure",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+    "http://hl7.org/fhir/StructureDefinition/ImmunizationRecommendation",
+];
+pub static S165: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/ServiceRequest",
+    "http://hl7.org.au/fhir/StructureDefinition/au-servicerequest",
+    "http://hl7.org/fhir/StructureDefinition/CarePlan",
+];
+pub static S166: &[&str] = &[
+    "http://hl7.org.au/fhir/StructureDefinition/au-diagnosticresult",
+    "http://hl7.org.au/fhir/StructureDefinition/au-imagingresult",
+];
+pub static S167: &[&str] = &["Ratio", "Quantity"];
+pub static S168: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/MedicationAdministration",
+    "http://hl7.org/fhir/StructureDefinition/Procedure",
+];
+pub static S169: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+];
+pub static S170: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+];
+pub static S171: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+];
+pub static S172: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/MedicationStatement",
+    "http://hl7.org/fhir/StructureDefinition/MedicationRequest",
+    "http://hl7.org/fhir/StructureDefinition/MedicationDispense",
+    "http://hl7.org/fhir/StructureDefinition/MedicationAdministration",
+    "http://hl7.org/fhir/StructureDefinition/Immunization",
+    "http://hl7.org.au/fhir/StructureDefinition/au-norelevantfinding",
+];
+pub static S173: &[&str] = &[
+    "http://hl7.org.au/fhir/StructureDefinition/au-diagnosticresult",
+    "http://hl7.org.au/fhir/StructureDefinition/au-pathologyresult",
+];
+pub static S174: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/Group",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+    "http://hl7.org/fhir/StructureDefinition/Substance",
+    "http://hl7.org/fhir/StructureDefinition/Location",
+];
+pub static S175: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+];
+pub static S176: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+    "http://hl7.org/fhir/StructureDefinition/Location",
+    "http://hl7.org/fhir/StructureDefinition/HealthcareService",
+    "http://hl7.org/fhir/StructureDefinition/CareTeam",
+    "http://hl7.org/fhir/StructureDefinition/Endpoint",
+];
+pub static S177: &[&str] = &["valueDateTime", "valueAge", "valuePeriod", "valueRange", "valueString"];
+pub static S178: &[&str] = &["Reference", "markdown"];
+pub static S179: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+];
+pub static S180: &[&str] = &["Reference", "canonical", "uri"];
+pub static S181: &[&str] = &["valueReference", "valueCanonical", "valueUri"];
+pub static S182: &[&str] = &["string", "Coding"];
+pub static S183: &[&str] = &["valueString", "valueCoding"];
+pub static S184: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+    "http://hl7.org/fhir/StructureDefinition/CareTeam",
+];
+pub static S185: &[&str] = &["valueDateTime", "valuePeriod"];
+pub static S186: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Condition",
+    "http://hl7.org/fhir/StructureDefinition/Procedure",
+    "http://hl7.org/fhir/StructureDefinition/MedicationAdministration",
+    "http://hl7.org/fhir/StructureDefinition/Immunization",
+    "http://hl7.org/fhir/StructureDefinition/MedicationStatement",
+];
+pub static S187: &[&str] = &["uri", "CodeableConcept"];
+pub static S188: &[&str] = &["valueUri", "valueCodeableConcept"];
+pub static S189: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+];
+pub static S190: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Group",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+];
+pub static S191: &[&str] = &[
     "string",
     "boolean",
     "integer",
@@ -267,23 +1050,41 @@ pub static S62: &[&str] = &[
     "Quantity",
     "Ratio",
 ];
-pub static S63: &[&str] = &["Duration", "Range"];
-pub static S64: &[&str] = &["valueDuration", "valueRange"];
-pub static S65: &[&str] = &["canonical", "uri"];
-pub static S66: &[&str] = &["valueCanonical", "valueUri"];
-pub static S67: &[&str] = &["boolean", "string", "integer", "Quantity", "Ratio", "Range"];
-pub static S68: &[&str] = &["dateTime", "instant", "Period"];
-pub static S69: &[&str] = &["valueDateTime", "valueInstant", "valuePeriod"];
-pub static S70: &[&str] = &["string", "Reference"];
-pub static S71: &[&str] = &["valueString", "valueReference"];
-pub static S72: &[&str] = &["CodeableConcept", "canonical"];
-pub static S73: &[&str] = &["valueCodeableConcept", "valueCanonical"];
-pub static S74: &[&str] = &["valueBoolean", "valueCodeableConcept"];
-pub static S75: &[&str] = &["uri", "canonical"];
-pub static S76: &[&str] = &["valueUri", "valueCanonical"];
-pub static S77: &[&str] = &["date", "Age", "boolean"];
-pub static S78: &[&str] = &["valueDate", "valueAge", "valueBoolean"];
-pub static S79: &[&str] = &[
+pub static S192: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Person",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+];
+pub static S193: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/CareTeam",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+    "http://hl7.org/fhir/StructureDefinition/Group",
+    "http://hl7.org/fhir/StructureDefinition/HealthcareService",
+    "http://hl7.org/fhir/StructureDefinition/Location",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+];
+pub static S194: &[&str] = &["Duration", "Range"];
+pub static S195: &[&str] = &["valueDuration", "valueRange"];
+pub static S196: &[&str] = &["canonical", "uri"];
+pub static S197: &[&str] = &["valueCanonical", "valueUri"];
+pub static S198: &[&str] = &["boolean", "string", "integer", "Quantity", "Ratio", "Range"];
+pub static S199: &[&str] = &["dateTime", "instant", "Period"];
+pub static S200: &[&str] = &["valueDateTime", "valueInstant", "valuePeriod"];
+pub static S201: &[&str] = &["string", "Reference"];
+pub static S202: &[&str] = &["valueString", "valueReference"];
+pub static S203: &[&str] = &["CodeableConcept", "canonical"];
+pub static S204: &[&str] = &["valueCodeableConcept", "valueCanonical"];
+pub static S205: &[&str] = &["valueBoolean", "valueCodeableConcept"];
+pub static S206: &[&str] = &["uri", "canonical"];
+pub static S207: &[&str] = &["valueUri", "valueCanonical"];
+pub static S208: &[&str] = &["date", "Age", "boolean"];
+pub static S209: &[&str] = &["valueDate", "valueAge", "valueBoolean"];
+pub static S210: &[&str] = &[
     "valueBase64Binary",
     "valueBoolean",
     "valueCanonical",
@@ -335,36 +1136,295 @@ pub static S79: &[&str] = &[
     "valueDosage",
     "valueMeta",
 ];
-pub static S80: &[&str] = &["integer", "Quantity"];
-pub static S81: &[&str] = &["valueInteger", "valueQuantity"];
-pub static S82: &[&str] = &["date", "dateTime", "time", "decimal", "integer", "Quantity"];
-pub static S83: &[&str] = &["valueDate", "valueDateTime", "valueTime", "valueDecimal", "valueInteger", "valueQuantity"];
-pub static S84: &[&str] =
+pub static S211: &[&str] = &["integer", "Quantity"];
+pub static S212: &[&str] = &["valueInteger", "valueQuantity"];
+pub static S213: &[&str] = &["date", "dateTime", "time", "decimal", "integer", "Quantity"];
+pub static S214: &[&str] =
+    &["valueDate", "valueDateTime", "valueTime", "valueDecimal", "valueInteger", "valueQuantity"];
+pub static S215: &[&str] =
     &["boolean", "dateTime", "decimal", "integer", "string", "CodeableConcept", "Quantity", "Ratio"];
-pub static S85: &[&str] = &["string", "uri"];
-pub static S86: &[&str] = &["string", "url"];
-pub static S87: &[&str] = &["valueString", "valueUrl"];
-pub static S88: &[&str] = &["integer", "date", "time", "string", "Coding", "Reference"];
-pub static S89: &[&str] = &["valueInteger", "valueDate", "valueTime", "valueString", "valueCoding", "valueReference"];
-pub static S90: &[&str] = &["Period", "Duration"];
-pub static S91: &[&str] = &["valuePeriod", "valueDuration"];
-pub static S92: &[&str] = &["boolean", "CodeableConcept", "Quantity", "Range", "Expression"];
-pub static S93: &[&str] = &["valueBoolean", "valueCodeableConcept", "valueQuantity", "valueRange", "valueExpression"];
-pub static S94: &[&str] = &["string", "markdown"];
-pub static S95: &[&str] = &["valueString", "valueMarkdown"];
-pub static S96: &[&str] = &["string", "code", "integer", "boolean", "decimal", "url", "canonical"];
-pub static S97: &[&str] =
+pub static S216: &[&str] = &["string", "uri"];
+pub static S217: &[&str] = &["string", "url"];
+pub static S218: &[&str] = &["valueString", "valueUrl"];
+pub static S219: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/AllergyIntolerance",
+    "http://hl7.org/fhir/StructureDefinition/DiagnosticReport",
+    "http://hl7.org/fhir/StructureDefinition/FamilyMemberHistory",
+    "http://hl7.org/fhir/StructureDefinition/ImagingStudy",
+    "http://hl7.org/fhir/StructureDefinition/Immunization",
+    "http://hl7.org/fhir/StructureDefinition/ImmunizationRecommendation",
+    "http://hl7.org/fhir/StructureDefinition/MedicationAdministration",
+    "http://hl7.org/fhir/StructureDefinition/MedicationRequest",
+    "http://hl7.org/fhir/StructureDefinition/MedicationStatement",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+    "http://hl7.org/fhir/StructureDefinition/Procedure",
+];
+pub static S220: &[&str] = &["integer", "date", "time", "string", "Coding", "Reference"];
+pub static S221: &[&str] = &["valueInteger", "valueDate", "valueTime", "valueString", "valueCoding", "valueReference"];
+pub static S222: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Device",
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+];
+pub static S223: &[&str] = &["Period", "Duration"];
+pub static S224: &[&str] = &["valuePeriod", "valueDuration"];
+pub static S225: &[&str] = &["boolean", "CodeableConcept", "Quantity", "Range", "Expression"];
+pub static S226: &[&str] = &["valueBoolean", "valueCodeableConcept", "valueQuantity", "valueRange", "valueExpression"];
+pub static S227: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Device",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+];
+pub static S228: &[&str] = &["string", "markdown"];
+pub static S229: &[&str] = &["valueString", "valueMarkdown"];
+pub static S230: &[&str] = &["string", "code", "integer", "boolean", "decimal", "url", "canonical"];
+pub static S231: &[&str] =
     &["valueString", "valueCode", "valueInteger", "valueBoolean", "valueDecimal", "valueUrl", "valueCanonical"];
-pub static S98: &[&str] = &["canonical", "Reference", "uri"];
-pub static S99: &[&str] = &["valueCanonical", "valueReference", "valueUri"];
-pub static S100: &[&str] = &["string", "Timing"];
-pub static S101: &[&str] = &["valueString", "valueTiming"];
-pub static S102: &[&str] = &["Age", "Range", "string"];
-pub static S103: &[&str] = &["Period", "date", "string"];
-pub static S104: &[&str] = &["Age", "Range", "Period", "string"];
-pub static S105: &[&str] = &["boolean", "Age", "Range", "date", "string"];
-pub static S106: &[&str] = &["Timing", "Period", "dateTime"];
-pub static S107: &[&str] = &["timingTiming", "timingPeriod", "timingDateTime"];
-pub static S108: &[&str] = &["deceasedBoolean", "deceasedDateTime"];
-pub static S109: &[&str] = &["multipleBirthBoolean", "multipleBirthInteger"];
-pub static S110: &[&str] = &["occurredPeriod", "occurredDateTime"];
+pub static S232: &[&str] = &["canonical", "Reference", "uri"];
+pub static S233: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/ActivityDefinition",
+    "http://hl7.org/fhir/StructureDefinition/Measure",
+    "http://hl7.org/fhir/StructureDefinition/ObservationDefinition",
+    "http://hl7.org/fhir/StructureDefinition/PlanDefinition",
+    "http://hl7.org/fhir/StructureDefinition/Questionnaire",
+];
+pub static S234: &[&str] = &["valueCanonical", "valueReference", "valueUri"];
+pub static S235: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Condition",
+    "http://hl7.org/fhir/StructureDefinition/DiagnosticReport",
+    "http://hl7.org/fhir/StructureDefinition/DocumentReference",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+];
+pub static S236: &[&str] = &["string", "Timing"];
+pub static S237: &[&str] = &["valueString", "valueTiming"];
+pub static S238: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+    "http://hl7.org/fhir/StructureDefinition/HealthcareService",
+    "http://hl7.org/fhir/StructureDefinition/Location",
+];
+pub static S239: &[&str] = &["Age", "Range", "string"];
+pub static S240: &[&str] = &["Period", "date", "string"];
+pub static S241: &[&str] = &["Age", "Range", "Period", "string"];
+pub static S242: &[&str] = &["boolean", "Age", "Range", "date", "string"];
+pub static S243: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Condition",
+    "http://hl7.org/fhir/StructureDefinition/Observation",
+    "http://hl7.org/fhir/StructureDefinition/AllergyIntolerance",
+    "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse",
+    "http://hl7.org/fhir/StructureDefinition/DiagnosticReport",
+    "http://hl7.org/fhir/StructureDefinition/DocumentReference",
+];
+pub static S244: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitioner",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitionerrole",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-patient",
+];
+pub static S245: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-patient",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitioner",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitionerrole",
+];
+pub static S246: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitioner",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitionerrole",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-patient",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+];
+pub static S247: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitioner",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-organization",
+];
+pub static S248: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-patient",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitioner",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-device",
+];
+pub static S249: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitioner",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitionerrole",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-organization",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-device",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-patient",
+];
+pub static S250: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitioner",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitionerrole",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-organization",
+];
+pub static S251: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitioner",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitionerrole",
+];
+pub static S252: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-condition",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-procedure",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-observation",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-immunizationrecommendation",
+];
+pub static S253: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-condition",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-procedure",
+];
+pub static S254: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-location",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-organization",
+];
+pub static S255: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-condition",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-observation",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-diagnosticreport",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-diagnosticreportnote",
+];
+pub static S256: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-immunization",
+    "http://hl7.org/fhir/StructureDefinition/ImmunizationEvaluation",
+];
+pub static S257: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-medicationadministration",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-procedure",
+];
+pub static S258: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-encounter",
+    "http://hl7.org/fhir/StructureDefinition/EpisodeOfCare",
+];
+pub static S259: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitioner",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitionerrole",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-patient",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-device",
+];
+pub static S260: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-patient",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitioner",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitionerrole",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-organization",
+];
+pub static S261: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitioner",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitionerrole",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-organization",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-patient",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-device",
+];
+pub static S262: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitioner",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitionerrole",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-organization",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-patient",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-device",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+    "http://hl7.org/fhir/StructureDefinition/CareTeam",
+];
+pub static S263: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-condition",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-observation",
+];
+pub static S264: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/CarePlan",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-medicationrequest",
+    "http://hl7.org/fhir/StructureDefinition/ServiceRequest",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-immunizationrecommendation",
+];
+pub static S265: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-medicationrequest",
+    "http://hl7.org/fhir/StructureDefinition/CarePlan",
+    "http://hl7.org/fhir/StructureDefinition/ServiceRequest",
+];
+pub static S266: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-medicationadministration",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-medicationdispense",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-medicationstatement",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-procedure",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-observation",
+];
+pub static S267: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-medicationrequest",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-medicationdispense",
+    "http://hl7.org/fhir/StructureDefinition/Claim",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-observation",
+    "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse",
+];
+pub static S268: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-patient",
+    "http://hl7.org/fhir/StructureDefinition/Group",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+    "http://hl7.org/fhir/StructureDefinition/Location",
+];
+pub static S269: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitioner",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitionerrole",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-organization",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-patient",
+];
+pub static S270: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-procedure",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-observation",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-medicationadministration",
+];
+pub static S271: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-patient",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitioner",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitionerrole",
+];
+pub static S272: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-condition",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-observation",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-procedure",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-diagnosticreport",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-diagnosticreportnote",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-documentreference",
+];
+pub static S273: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-device",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-medication",
+    "http://hl7.org/fhir/StructureDefinition/Substance",
+];
+pub static S274: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-servicerequest",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-medicationrequest",
+];
+pub static S275: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-patient",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-location",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-device",
+];
+pub static S276: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitioner",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitionerrole",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-organization",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-patient",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-device",
+];
+pub static S277: &[&str] = &[
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-condition",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-observation",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-diagnosticreport",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-diagnosticreportnote",
+    "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-documentreference",
+];
+pub static S278: &[&str] = &["Timing", "Period", "dateTime"];
+pub static S279: &[&str] = &["timingTiming", "timingPeriod", "timingDateTime"];
+pub static S280: &[&str] = &["deceasedBoolean", "deceasedDateTime"];
+pub static S281: &[&str] = &["multipleBirthBoolean", "multipleBirthInteger"];
+pub static S282: &[&str] = &[
+    "http://hl7.org/fhir/StructureDefinition/Practitioner",
+    "http://hl7.org/fhir/StructureDefinition/PractitionerRole",
+    "http://hl7.org/fhir/StructureDefinition/RelatedPerson",
+    "http://hl7.org/fhir/StructureDefinition/Patient",
+    "http://hl7.org/fhir/StructureDefinition/Device",
+    "http://hl7.org/fhir/StructureDefinition/Organization",
+];
+pub static S283: &[&str] = &["occurredPeriod", "occurredDateTime"];

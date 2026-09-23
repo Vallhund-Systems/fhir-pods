@@ -43,7 +43,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             max: Max::Bounded(1),
             fixed: None,
             required_binding: None,
-            types: super::intern::S80,
+            types: super::intern::S211,
             patterns: &[],
         },
     ],
@@ -52,6 +52,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     lowering: &LOWERING,
     must_support: &[],
     contexts: &[("element", "Questionnaire.item"), ("element", "ElementDefinition")],
+    references: &[],
     deferred: &[],
 };
 
@@ -62,7 +63,7 @@ pub static LOWERING: Lowering = Lowering {
     slots: &[Slot {
         path: "value[x]",
         ty: "choice",
-        choices: super::intern::S81,
+        choices: super::intern::S212,
         min: 1,
         max: Max::Bounded(1),
         must_support: false,

@@ -65,6 +65,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "NamingSystem"),
         ("element", "Group"),
     ],
+    references: &[],
     deferred: &[],
 };
 

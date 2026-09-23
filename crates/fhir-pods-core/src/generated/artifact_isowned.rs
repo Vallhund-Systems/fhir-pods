@@ -50,6 +50,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "DomainResource.extension"),
         ("fhirpath", "type.exists() and type = 'composed-of'"),
     ],
+    references: &[],
     deferred: &[],
 };
 

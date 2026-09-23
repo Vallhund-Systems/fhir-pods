@@ -24,7 +24,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Provenance.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Provenance.location", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Provenance.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Provenance.occurred[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S36, patterns: &[] },
+        ElementConstraint { path: "Provenance.occurred[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S101, patterns: &[] },
         ElementConstraint { path: "Provenance.recorded", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Provenance.target", min: 1, max: Max::Star, fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Provenance.target.display", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -79,6 +79,11 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Provenance.target.reference",
     ],
     contexts: &[
+    ],
+    references: &[
+        ("Provenance.location", &["http://hl7.org/fhir/StructureDefinition/Location"]),
+        ("Provenance.agent.who", super::intern::S102),
+        ("Provenance.agent.onBehalfOf", &["http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization"]),
     ],
     deferred: &[
     ],

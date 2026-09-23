@@ -58,6 +58,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "ValueSet.expansion.contains.display"),
         ("element", "ValueSet.expansion.contains.designation"),
     ],
+    references: &[],
     deferred: &[],
 };
 

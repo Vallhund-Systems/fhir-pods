@@ -130,7 +130,12 @@ fn primitive_with_only_extension_sibling_counts_as_present() {
 #[test]
 fn nested_binding_on_name_use() {
     let r = probe_str(&PATIENT_OK.replace("\"official\"", "\"bogus\""));
-    assert!(r.contains("Patient.name.use"), "{r}");
+    // HumanName.use's required binding is the datatype's own: checked by the
+    // shape walk at the indexed element, as validator_cli locates it
+    assert!(
+        r.contains("\"path\":\"Patient.name[0].use\"") && r.contains("('bogus') was not found in the value set"),
+        "{r}"
+    );
 }
 
 #[test]

@@ -16,10 +16,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Observation.component.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Observation.component.dataAbsentReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Observation.component.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Observation.component.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S2, patterns: &[] },
+        ElementConstraint { path: "Observation.component.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S4, patterns: &[] },
         ElementConstraint { path: "Observation.dataAbsentReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Observation.device", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Observation.effective[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S16, patterns: &[] },
+        ElementConstraint { path: "Observation.effective[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S41, patterns: &[] },
         ElementConstraint { path: "Observation.encounter", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Observation.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Observation.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -43,7 +43,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Observation.subject.reference", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Observation.subject.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Observation.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Observation.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S2, patterns: &[] },
+        ElementConstraint { path: "Observation.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S4, patterns: &[] },
     ],
     slicings: &[
         Slicing { path: "Observation.category", closed: false, slices: &[
@@ -84,7 +84,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ProfileInvariant { path: "Observation", key: "obs-6", severity: InvariantSeverity::Error, human: "dataAbsentReason SHALL only be present if Observation.value[x] is not present", expression: "dataAbsentReason.empty() or value.empty()", types: &["Observation"] },
         ProfileInvariant { path: "Observation", key: "obs-7", severity: InvariantSeverity::Error, human: "If Observation.code is the same as an Observation.component.code then the value element associated with the code SHALL NOT be present", expression: "value.empty() or component.code.where(coding.intersect(%resource.code.coding).exists()).empty()", types: &["Observation"] },
         ProfileInvariant { path: "Observation", key: "hasMemberOrComponent", severity: InvariantSeverity::Error, human: "component and hasMember are mutually exclusive", expression: "hasMember.empty() or component.empty()", types: &["Observation"] },
-        ProfileInvariant { path: "Observation.effective[x]", key: "ips-1", severity: InvariantSeverity::Error, human: "Datetime must be at least to day.", expression: "$this.ofType(dateTime).empty() or ($this as dateTime).toString().length() >= 8", types: super::intern::S16 },
+        ProfileInvariant { path: "Observation.effective[x]", key: "ips-1", severity: InvariantSeverity::Error, human: "Datetime must be at least to day.", expression: "$this.ofType(dateTime).empty() or ($this as dateTime).toString().length() >= 8", types: super::intern::S41 },
         ProfileInvariant { path: "Observation.referenceRange", key: "obs-3", severity: InvariantSeverity::Error, human: "Must have at least a low or a high or text", expression: "low.exists() or high.exists() or text.exists()", types: &["BackboneElement"] },
     ],
     lowering: &LOWERING,
@@ -97,6 +97,17 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Observation.subject.reference",
     ],
     contexts: &[
+    ],
+    references: &[
+        ("Observation.basedOn", super::intern::S5),
+        ("Observation.partOf", &["http://hl7.org/fhir/uv/ips/StructureDefinition/ImagingStudy-uv-ips"]),
+        ("Observation.subject", &["http://hl7.org/fhir/uv/ips/StructureDefinition/Patient-uv-ips"]),
+        ("Observation.encounter", &["http://hl7.org/fhir/StructureDefinition/Encounter"]),
+        ("Observation.performer", super::intern::S137),
+        ("Observation.specimen", &["http://hl7.org/fhir/StructureDefinition/Specimen"]),
+        ("Observation.device", &["http://hl7.org/fhir/uv/ips/StructureDefinition/Device-observer-uv-ips"]),
+        ("Observation.hasMember", &["http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-results-radiology-uv-ips"]),
+        ("Observation.derivedFrom", super::intern::S15),
     ],
     deferred: &[
     ],
@@ -116,7 +127,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "effective[x]",
             ty: "choice",
-            choices: super::intern::S17,
+            choices: super::intern::S46,
             min: 1,
             max: Max::Bounded(1),
             must_support: true,

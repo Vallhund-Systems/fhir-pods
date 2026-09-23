@@ -66,6 +66,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "PaymentNotice"),
         ("element", "PaymentReconciliation"),
     ],
+    references: &[],
     deferred: &[],
 };
 

@@ -225,7 +225,7 @@ does not infer a jurisdiction or supply a complete regional compliance regime.
 
 | Surface | Delivery |
 | --- | --- |
-| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.14.2 artifact is 2,717,480 bytes (654,630 bytes gzip-9). [Guide](pods/wasm/README.md) |
+| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.15.0 artifact is 2,893,944 bytes (732,970 bytes gzip-9 — the base bindings’ 143 more value sets, 8,002 known-definition hashes). [Guide](pods/wasm/README.md) |
 | **Expo** | Native iOS XCFramework and Android jniLibs behind the Expo Modules API. [Guide](pods/expo/README.md) |
 | **Rust / C** | `fhir_pods_core` directly or the shared [ABI 12 header](crates/fhir-pods-ffi/include/fhir_pods.h) |
 | **CLI** | Local JSON/ER7 input, structured output, and exit codes for scripting. [Guide](crates/fhir-pods-cli/README.md) |
@@ -256,9 +256,9 @@ compliance.
 
 | Lane | Latest recorded result |
 | --- | --- |
-| Release corpus | **1,750/1,750** verdicts agree at v0.13.0 (UK Core and NZ Base examples, six regions' export outputs) |
-| Published R4 examples | **4,811/5,290** compared verdicts agree; **479** reviewed lenient differences; **2** explicit oracle exclusions out of 5,292 selected inputs; no stricter verdicts |
-| Published validator base tests | **57/84** agree with stored Java outcomes; **14/20** with stored Firely outcomes; differences are reviewed individually |
+| Release corpus | **1,766/1,766** verdicts agree at v0.15.0 (UK Core and NZ Base examples, six regions' export outputs, the base's binding fixtures); `conformance/reasons.py` puts every error-level issue side by side — three triaged residues on 1,766 files |
+| Published R4 examples | **4,819/5,290** compared verdicts agree; **471** reviewed lenient differences; **2** explicit oracle exclusions out of 5,292 selected inputs; no stricter verdicts |
+| Published validator base tests | **62/84** agree with stored Java outcomes; **14/20** with stored Firely outcomes; differences are reviewed individually |
 | Ad-hoc profile tests | **10 of 53** cases compare: **9/10** agree with Java and **7/7** with Firely where available; other cases have compiler, snapshot, or manifest exclusions |
 
 The broader lanes enforce reviewed baselines: new or changed differences and

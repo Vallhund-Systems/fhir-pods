@@ -17,7 +17,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "QuestionnaireResponse.identifier", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "QuestionnaireResponse.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "QuestionnaireResponse.item.answer.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "QuestionnaireResponse.item.answer.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S37, patterns: &[] },
+        ElementConstraint { path: "QuestionnaireResponse.item.answer.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S103, patterns: &[] },
         ElementConstraint { path: "QuestionnaireResponse.item.definition", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "QuestionnaireResponse.item.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "QuestionnaireResponse.item.linkId", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -125,6 +125,14 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "QuestionnaireResponse.subject",
     ],
     contexts: &[
+    ],
+    references: &[
+        ("QuestionnaireResponse.basedOn", super::intern::S52),
+        ("QuestionnaireResponse.partOf", super::intern::S104),
+        ("QuestionnaireResponse.subject", &["http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"]),
+        ("QuestionnaireResponse.encounter", &["http://hl7.org/fhir/StructureDefinition/Encounter"]),
+        ("QuestionnaireResponse.author", super::intern::S105),
+        ("QuestionnaireResponse.source", super::intern::S87),
     ],
     deferred: &[
     ],

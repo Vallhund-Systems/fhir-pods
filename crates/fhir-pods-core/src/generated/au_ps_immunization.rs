@@ -27,7 +27,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Immunization.lotNumber", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Immunization.manufacturer", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Immunization.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Immunization.occurrence[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S7, patterns: &[] },
+        ElementConstraint { path: "Immunization.occurrence[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S23, patterns: &[] },
         ElementConstraint { path: "Immunization.patient", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Immunization.patient.display", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Immunization.patient.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -39,10 +39,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Immunization.performer.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Immunization.primarySource", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Immunization.protocolApplied.authority", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Immunization.protocolApplied.doseNumber[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S8, patterns: &[] },
+        ElementConstraint { path: "Immunization.protocolApplied.doseNumber[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S24, patterns: &[] },
         ElementConstraint { path: "Immunization.protocolApplied.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Immunization.protocolApplied.series", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Immunization.protocolApplied.seriesDoses[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S8, patterns: &[] },
+        ElementConstraint { path: "Immunization.protocolApplied.seriesDoses[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S24, patterns: &[] },
         ElementConstraint { path: "Immunization.reaction.date", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Immunization.reaction.detail", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Immunization.reaction.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -130,6 +130,16 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    references: &[
+        ("Immunization.patient", &["http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-patient"]),
+        ("Immunization.encounter", &["http://hl7.org/fhir/StructureDefinition/Encounter"]),
+        ("Immunization.location", &["http://hl7.org/fhir/StructureDefinition/Location"]),
+        ("Immunization.manufacturer", &["http://hl7.org/fhir/StructureDefinition/Organization"]),
+        ("Immunization.performer.actor", super::intern::S25),
+        ("Immunization.reasonReference", super::intern::S26),
+        ("Immunization.reaction.detail", &["http://hl7.org/fhir/StructureDefinition/Observation"]),
+        ("Immunization.protocolApplied.authority", &["http://hl7.org/fhir/StructureDefinition/Organization"]),
+    ],
     deferred: &[
     ],
 };
@@ -164,7 +174,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "occurrence[x]",
             ty: "choice",
-            choices: super::intern::S9,
+            choices: super::intern::S27,
             min: 1,
             max: Max::Bounded(1),
             must_support: true,

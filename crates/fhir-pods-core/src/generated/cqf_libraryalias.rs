@@ -48,6 +48,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "Measure.library"),
         ("extension", "http://hl7.org/fhir/StructureDefinition/cqf-library"),
     ],
+    references: &[],
     deferred: &[],
 };
 

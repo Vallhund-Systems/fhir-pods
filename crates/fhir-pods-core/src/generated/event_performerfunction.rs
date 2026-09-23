@@ -56,6 +56,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "DiagnosticReport.performer"),
         ("element", "DocumentReference.author"),
     ],
+    references: &[],
     deferred: &[],
 };
 

@@ -19,8 +19,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Location.address.postalCode", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Location.address.state", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Location.address.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Location.address.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/address-type|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
-        ElementConstraint { path: "Location.address.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/address-use|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
+        ElementConstraint { path: "Location.address.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Location.address.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Location.availabilityExceptions", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Location.description", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Location.hoursOfOperation.allDay", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -68,6 +68,11 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Location.telecom",
     ],
     contexts: &[
+    ],
+    references: &[
+        ("Location.managingOrganization", &["http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization"]),
+        ("Location.partOf", &["http://hl7.org/fhir/StructureDefinition/Location"]),
+        ("Location.endpoint", &["http://hl7.org/fhir/StructureDefinition/Endpoint"]),
     ],
     deferred: &[
     ],

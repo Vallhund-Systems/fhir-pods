@@ -51,8 +51,11 @@ fn a_bundled_binding_is_an_error_when_the_code_is_outside_the_set() {
     let patient =
         PATIENT_OK.replace("\"gender\"", "\"telecom\":[{\"system\":\"telepathy\",\"value\":\"1\"}],\"gender\"");
     let r = wire::report(&validate_bytes(patient.as_bytes()));
+    // a datatype's own required binding (ContactPoint.system), checked by the
+    // shape walk on every ContactPoint wherever it sits, profile or none —
+    // worded and located as validator_cli words it
     assert!(
-        r.contains("\"path\":\"Patient.telecom.system\",\"message\":\"'telepathy' is not in the bound value set\""),
+        r.contains("\"path\":\"Patient.telecom[0].system\",\"message\":\"The value provided ('telepathy') was not found in the value set 'http://hl7.org/fhir/ValueSet/contact-point-system', and a code is required from this value set\""),
         "{r}"
     );
     let ok = PATIENT_OK.replace("\"gender\"", "\"telecom\":[{\"system\":\"phone\",\"value\":\"1\"}],\"gender\"");

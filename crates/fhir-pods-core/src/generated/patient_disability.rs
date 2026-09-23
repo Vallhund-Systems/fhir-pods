@@ -57,6 +57,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "Practitioner"),
         ("element", "Person"),
     ],
+    references: &[],
     deferred: &[],
 };
 

@@ -68,6 +68,8 @@ pub static REGISTRY: &[&CompiledProfile] = &{
     profiles
 };
 
+/// The definitions the packages hold under HL7's own URL spaces (generated).
+mod known_urls;
 /// The element-type table generated from the base FHIR package
 /// (`tools/gen_typemap.py`): `Type.element` → its FHIR type(s).
 mod typemap;
@@ -157,10 +159,13 @@ fn validate_bytes_impl(
     };
     // The base spec's shape rules, profile or no profile: what every element
     // is, its JSON kind, whether it repeats, what a datatype requires.
-    let (gaps, nested, extensions) = parsed.structure_full();
+    let (gaps, warnings, nested, extensions) = parsed.structure_full(tx);
     for (path, kind, message) in gaps {
         let severity = if kind == IssueType::NotSupported { Severity::Warning } else { Severity::Error };
         report.push(severity, kind, &path, message);
+    }
+    for (path, kind, message) in warnings {
+        report.push(Severity::Warning, kind, &path, message);
     }
     let bundle = (rt == "Bundle").then_some(&doc);
     if let Some(b) = bundle {
@@ -247,6 +252,8 @@ fn validate_resource<D: Document>(
             issues.extend(engine::bundle_invariants(doc, cache, bundle).issues);
         } else if !matches!(rt, "Binary" | "Parameters") {
             issues.extend(engine::domain_invariants(doc, rt, cache, bundle).issues);
+            // and the resource type's own (org-1, pat-1, cmp-1 …)
+            issues.extend(engine::resource_invariants(doc, rt, cache, bundle).issues);
         }
     }
     for profile in &profiles {
@@ -519,23 +526,29 @@ impl Default for Validator {
 
 impl Validator {
     pub fn new() -> Self {
-        let mut keys: Vec<(usize, &'static str)> = Vec::new();
-        for (_, _, _, expr) in typemap::DOMAIN_INVARIANTS {
-            keys.push((expr.as_ptr() as usize, expr));
+        // keyed by the expression's address: one parse per distinct static
+        // string, rewritten as the reference validator rewrites it (by its
+        // invariant key where that matters — `path::parse_invariant`)
+        let mut keys: Vec<(usize, &'static str, &'static str)> = Vec::new();
+        for (key, _, _, expr) in typemap::DOMAIN_INVARIANTS {
+            keys.push((expr.as_ptr() as usize, key, expr));
         }
-        for (_, _, _, _, expr) in typemap::BUNDLE_INVARIANTS {
-            keys.push((expr.as_ptr() as usize, expr));
+        for (_, key, _, _, expr) in typemap::BUNDLE_INVARIANTS {
+            keys.push((expr.as_ptr() as usize, key, expr));
+        }
+        for (_, _, key, _, _, expr, _) in typemap::RESOURCE_INVARIANTS {
+            keys.push((expr.as_ptr() as usize, key, expr));
         }
         for p in crate::REGISTRY {
             let slice_invariants = p.slicings.iter().flat_map(|s| s.slices.iter()).flat_map(|sl| sl.invariants.iter());
             for inv in p.invariants.iter().chain(slice_invariants) {
-                keys.push((inv.expression.as_ptr() as usize, inv.expression));
+                keys.push((inv.expression.as_ptr() as usize, inv.key, inv.expression));
             }
         }
         keys.sort_unstable_by_key(|k| k.0);
         keys.dedup_by_key(|k| k.0);
         Self {
-            invariants: keys.into_iter().map(|(k, e)| (k, path::parse_constraint(e).ok())).collect(),
+            invariants: keys.into_iter().map(|(k, key, e)| (k, path::parse_invariant(key, e).ok())).collect(),
             defaults: Vec::new(),
         }
     }

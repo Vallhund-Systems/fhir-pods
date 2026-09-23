@@ -21,7 +21,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Medication.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Medication.ingredient.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Medication.ingredient.isActive", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Medication.ingredient.item[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S10, patterns: &[] },
+        ElementConstraint { path: "Medication.ingredient.item[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S28, patterns: &[] },
         ElementConstraint { path: "Medication.ingredient.strength", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Medication.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Medication.manufacturer", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -43,6 +43,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Medication.code",
     ],
     contexts: &[
+    ],
+    references: &[
+        ("Medication.manufacturer", &["http://hl7.org/fhir/StructureDefinition/Organization"]),
+        ("Medication.ingredient.item[x]", super::intern::S29),
     ],
     deferred: &[
     ],

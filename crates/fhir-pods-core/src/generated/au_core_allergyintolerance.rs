@@ -61,6 +61,12 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    references: &[
+        ("AllergyIntolerance.patient", &["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]),
+        ("AllergyIntolerance.encounter", &["http://hl7.org/fhir/StructureDefinition/Encounter"]),
+        ("AllergyIntolerance.recorder", super::intern::S1),
+        ("AllergyIntolerance.asserter", super::intern::S2),
+    ],
     deferred: &[
     ],
 };
@@ -91,7 +97,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "onset[x]",
             ty: "choice",
-            choices: super::intern::S1,
+            choices: super::intern::S3,
             min: 0,
             max: Max::Bounded(1),
             must_support: true,

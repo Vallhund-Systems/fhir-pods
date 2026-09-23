@@ -47,6 +47,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "MeasureReport.group.population"),
         ("element", "MeasureReport.group.stratifier"),
     ],
+    references: &[],
     deferred: &[],
 };
 

@@ -149,10 +149,22 @@ fn unplaced_segments_fail_even_with_a_valid_bundle_and_invalid_bundles_stay_insp
     assert_eq!(
         errors,
         vec![
+            // MSH-5 "GHH LAB, INC." lands in a url per the v2 maps: not a valid url (0.15.0 checks whitespace)
+            ("value", "Bundle.entry.resource.destination.endpoint is not a valid url"),
             ("required", "Provenance.agent is required (min 1, found 0)"),
             ("required", "Provenance.target is required (min 1, found 0)"),
+            // PID-3's "SS" identifier maps to a system with a trailing dot: nothing in
+            // HL7's own URL space is defined there (0.15.0, as validator_cli grades it)
+            ("value", "No definition could be found for URL value 'http://hl7.org/fhir/sid/us-ssn.'"),
+            // PID-13/14, NK1-5 and the contact's phone: a ContactPoint value with no
+            // system — cpt-2 on every ContactPoint, profile or none (0.15.0)
+            ("invariant", "cpt-2: A system is required if a value is provided."),
+            ("invariant", "cpt-2: A system is required if a value is provided."),
+            ("invariant", "cpt-2: A system is required if a value is provided."),
+            ("invariant", "cpt-2: A system is required if a value is provided."),
             ("required", "Coverage.status is required (min 1, found 0)"),
-        ]
+        ],
+        "these are exactly validator_cli 6.10.4's errors on this fixture (conformance/reasons.py)"
     );
     let patient = resources(&adt, "Patient")[0];
     let contact = &array(patient.member("contact").unwrap())[0];

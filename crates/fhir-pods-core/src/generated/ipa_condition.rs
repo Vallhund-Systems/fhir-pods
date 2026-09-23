@@ -10,7 +10,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     name: "IPA-Condition",
     resource_type: "Condition",
     elements: &[
-        ElementConstraint { path: "Condition.abatement[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S24, patterns: &[] },
+        ElementConstraint { path: "Condition.abatement[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S62, patterns: &[] },
         ElementConstraint { path: "Condition.asserter", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Condition.clinicalStatus", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/condition-clinical|4.0.1", kind: BindingKind::CodeableConcept }), types: &[], patterns: &[] },
         ElementConstraint { path: "Condition.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -20,7 +20,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Condition.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Condition.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Condition.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Condition.onset[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S24, patterns: &[] },
+        ElementConstraint { path: "Condition.onset[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S62, patterns: &[] },
         ElementConstraint { path: "Condition.recordedDate", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Condition.recorder", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Condition.severity", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -54,6 +54,13 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Condition.verificationStatus",
     ],
     contexts: &[
+    ],
+    references: &[
+        ("Condition.subject", &["http://hl7.org/fhir/uv/ipa/StructureDefinition/ipa-patient"]),
+        ("Condition.encounter", &["http://hl7.org/fhir/StructureDefinition/Encounter"]),
+        ("Condition.recorder", super::intern::S1),
+        ("Condition.asserter", super::intern::S1),
+        ("Condition.stage.assessment", super::intern::S11),
     ],
     deferred: &[
     ],

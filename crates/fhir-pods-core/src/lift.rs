@@ -490,6 +490,11 @@ pub fn lift_with(
             extras.push(alloc::format!("{element}[{i}]"));
         }
     }
+    // an item named whole (`identifier[0]`) is not also named by its parts
+    // (`identifier.value`): the parts the walk found belong to it
+    let whole: Vec<String> =
+        extras.iter().filter_map(|e| e.rsplit_once('[').map(|(el, _)| alloc::format!("{el}."))).collect();
+    extras.retain(|e| !whole.iter().any(|w| e.starts_with(w.as_str())));
     extras.sort();
     extras.dedup();
 
@@ -547,7 +552,15 @@ fn walk_extras(
         if exact_or_below {
             continue;
         }
-        let ancestor = covered.iter().any(|c| c.starts_with(&alloc::format!("{path}.")));
+        // a member is the record's, whole, unless something under it is
+        // covered — and a fixed extension url under it (`gender.extension:x.url`,
+        // `name.extension:y.url`) covers only that extension, not the
+        // member's own value: a `gender`, a `name`, a `birthDate` the profile
+        // merely decorates are the record's
+        let prefix = alloc::format!("{path}.");
+        let ancestor = covered.iter().any(|c| {
+            c.strip_prefix(&prefix).is_some_and(|rest| rest != "extension" && !rest.starts_with("extension."))
+        });
         if !ancestor {
             out.push(path);
             continue;

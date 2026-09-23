@@ -70,6 +70,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "TestScript"),
         ("element", "ValueSet"),
     ],
+    references: &[],
     deferred: &[],
 };
 

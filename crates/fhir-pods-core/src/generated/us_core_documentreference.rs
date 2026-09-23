@@ -14,7 +14,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "DocumentReference.category", min: 1, max: Max::Star, fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "DocumentReference.content", min: 1, max: Max::Star, fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "DocumentReference.content.attachment", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "DocumentReference.content.attachment.contentType", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/mimetypes|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
+        ElementConstraint { path: "DocumentReference.content.attachment.contentType", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "DocumentReference.content.attachment.creation", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "DocumentReference.content.attachment.data", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "DocumentReference.content.attachment.hash", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -89,6 +89,15 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "DocumentReference.type",
     ],
     contexts: &[
+    ],
+    references: &[
+        ("DocumentReference.subject", &["http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"]),
+        ("DocumentReference.author", super::intern::S80),
+        ("DocumentReference.authenticator", super::intern::S25),
+        ("DocumentReference.custodian", &["http://hl7.org/fhir/StructureDefinition/Organization"]),
+        ("DocumentReference.relatesTo.target", &["http://hl7.org/fhir/StructureDefinition/DocumentReference"]),
+        ("DocumentReference.context.encounter", &["http://hl7.org/fhir/us/core/StructureDefinition/us-core-encounter"]),
+        ("DocumentReference.context.sourcePatientInfo", &["http://hl7.org/fhir/StructureDefinition/Patient"]),
     ],
     deferred: &[
     ],

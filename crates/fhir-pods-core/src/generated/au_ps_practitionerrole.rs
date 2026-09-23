@@ -34,8 +34,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "PractitionerRole.telecom.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "PractitionerRole.telecom.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "PractitionerRole.telecom.rank", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "PractitionerRole.telecom.system", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/contact-point-system|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
-        ElementConstraint { path: "PractitionerRole.telecom.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/contact-point-use|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
+        ElementConstraint { path: "PractitionerRole.telecom.system", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "PractitionerRole.telecom.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "PractitionerRole.telecom.value", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "PractitionerRole.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
     ],
@@ -88,6 +88,13 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "PractitionerRole.telecom.value",
     ],
     contexts: &[
+    ],
+    references: &[
+        ("PractitionerRole.practitioner", &["http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-practitioner"]),
+        ("PractitionerRole.organization", &["http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-organization"]),
+        ("PractitionerRole.location", &["http://hl7.org/fhir/StructureDefinition/Location"]),
+        ("PractitionerRole.healthcareService", &["http://hl7.org/fhir/StructureDefinition/HealthcareService"]),
+        ("PractitionerRole.endpoint", &["http://hl7.org/fhir/StructureDefinition/Endpoint"]),
     ],
     deferred: &[
     ],

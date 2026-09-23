@@ -56,6 +56,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "ValueSet.compose.include"),
         ("element", "ValueSet.compose.exclude"),
     ],
+    references: &[],
     deferred: &[],
 };
 

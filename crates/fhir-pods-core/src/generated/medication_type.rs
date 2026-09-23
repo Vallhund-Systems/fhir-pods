@@ -57,6 +57,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "CodeSystem.concept"),
         ("element", "CodeSystem.concept.concept"),
     ],
+    references: &[],
     deferred: &[],
 };
 

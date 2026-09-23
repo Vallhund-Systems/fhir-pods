@@ -76,6 +76,13 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    references: &[
+        ("Device.definition", &["http://hl7.org/fhir/StructureDefinition/DeviceDefinition"]),
+        ("Device.patient", &["http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"]),
+        ("Device.owner", &["http://hl7.org/fhir/StructureDefinition/Organization"]),
+        ("Device.location", &["http://hl7.org/fhir/StructureDefinition/Location"]),
+        ("Device.parent", &["http://hl7.org/fhir/StructureDefinition/Device"]),
+    ],
     deferred: &[
     ],
 };

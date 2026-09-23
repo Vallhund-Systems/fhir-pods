@@ -62,6 +62,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "VisionPrescription"),
         ("element", "Task"),
     ],
+    references: &[("Extension.value[x]", &["http://hl7.org/fhir/StructureDefinition/Communication"])],
     deferred: &[],
 };
 

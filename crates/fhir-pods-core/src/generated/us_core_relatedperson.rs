@@ -45,6 +45,9 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    references: &[
+        ("RelatedPerson.patient", &["http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"]),
+    ],
     deferred: &[
     ],
 };

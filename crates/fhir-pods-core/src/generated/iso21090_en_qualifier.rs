@@ -60,6 +60,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "HumanName.prefix"),
         ("element", "HumanName.suffix"),
     ],
+    references: &[],
     deferred: &[],
 };
 

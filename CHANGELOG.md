@@ -1,7 +1,57 @@
 # Changelog
 
-## Unreleased
+## 0.15.0 — 2026-09-22
 
+**Every error, both ways.** A verdict lane proves two validators agree on
+valid/invalid; it cannot see an error only one of them raises on a file
+both reject. `conformance/reasons.py` reads the oracle's full output beside
+ours and lists, per file, each error-level issue one side raises at an
+element where the other raises none (paths to one spelling, messages
+matched by family, a parent/child locus only when the messages agree);
+it gates on `reasons-triage.json`, which names the accepted residue path
+by path and goes stale loudly. On the corpus that lane found, and this
+release fixes:
+
+- **The base definitions, profile or none.** Every datatype's own
+  invariants are evaluated on every object of the type wherever it sits
+  (`cpt-2` on a ContactPoint in a Patient, an extension, a datatype in a
+  datatype; `per-1`, `qty-3`, `rng-2`, `rat-1`, `att-1`, `tim-*` …), and
+  every `required` binding the base places on a coded element — 366 of
+  them, `Patient.gender`, `Observation.status`, `ContactPoint.system`,
+  `Quantity.comparator`, `Narrative.status`, `Timing.repeat.periodUnit` —
+  is checked by the shape walk, with the reference validator's wording;
+  a code present only through its `_carrier` still owes one ("No code
+  provided, and a code is required from the value set"). A Patient with
+  `gender: "banana"` was valid before this release. The value-set table
+  grew from 146 to 289 sets to hold what the base binds; a profile
+  snapshot that merely restates a datatype's invariant or binding is no
+  longer compiled twice. Sixteen fixtures pin the family.
+- **A `uri` / `url` in HL7's own space must name a definition.** Under
+  `http://hl7.org/fhir`, `http://terminology.hl7.org/` or
+  `http://fhir.org/guides`, a value the packages do not define is an
+  error (`http://hl7.org/fhir/sid/us-ssn.`), as validator_cli grades it
+  — an unknown URL anywhere else is taken on trust. The 7,983 canonicals
+  and NamingSystem ids ship as sorted 32-bit hashes (`known_urls.rs`,
+  generated).
+- **Reference targets, as the oracle judges them.** A Reference element's
+  `targetProfile`s are enforced on a target that can be reached: a bundle
+  entry by conformance ("Unable to find a profile match for … among
+  choices"), a `#contained` resource by type only. A bundle entry's
+  allowed-profile match (`Bundle.entry.resource` typed with profiles)
+  applies the resource's own declared profiles too — one it fails sinks
+  every candidate ("The entry resource did not match any of the allowed
+  profiles"). `ref-1` resolves against the ids of the nearest resource
+  that is not itself contained (`%rootResource`), never a nested
+  contained's. `dom-3` is reported per orphaned contained resource.
+- **Every resource's own invariants** (`org-1`, `pat-1`, `obs-6` …, 170)
+  on an unprofiled resource; `uri` / `url` / `oid` / `uuid` / `canonical`
+  reject whitespace; a required-gap and a carrier's extension are located
+  where the reference validator locates them
+  (`name[0].family.extension[0]`); two keys for one choice are one
+  finding, not also a count.
+- **Lift covers a decorated member whole**: `gender`, `name`, `birthDate`
+  carrying an extension are the record's, so the NZ export no longer
+  writes an empty Patient; `carry_back` creates the target array it needs.
 - Export preserves unextracted Quantity qualifiers, extensions and fixed
   primitive carriers where its output shape permits, naming the rest in
   `extras`. Copying a primitive and its carrier no longer duplicates a key.
@@ -13,6 +63,29 @@
 - C and browser checks cover ABI 12 operations, discovery, export and
   terminology callbacks, including reentrancy. Lowering fixtures include
   Ratio and inventory only profiles accepted by the resource lookup.
+
+- **Invariants rewritten as validator_cli rewrites them.** R4 published a
+  handful of constraint expressions wrong as written, and the reference
+  validator fixes them before evaluating (`FHIRPathExpressionFixer`):
+  `ras-2` (a choice cast empty when the element is absent), `con-3`,
+  `tim-9`, `que-12`, `pd-1`'s bare `telecom or endpoint`, every canonical
+  resource's `*-0` name regex (anchored, and only when a name exists),
+  `opd-3`, `eld-19` / `eld-20`. `path::parse_invariant(key, expression)`
+  applies the same table, so an unprofiled RiskAssessment with no
+  probability is valid here as it is there.
+- The URL check exempts what the oracle exempts: a canonical resource's
+  own `url`, a bundle entry's `fullUrl` and request `url`, a coding's
+  `system`, an attachment's `url`, an endpoint's address, a mapping's uri
+  … (its `isExemptPathForUrlChecking`), knows the FHIRPath system types
+  and mapping spaces it knows, and drops a `#fragment` before looking.
+
+Residue, each with its reason in `reasons-triage.json`: a wrong display
+name (displays are not bundled), a profile declared for another resource
+type (one error here, element by element there), a second choice key the
+oracle discards unread. Verdicts: gate 1,766/1,766 (16 new fixtures); base
+examples 4,819/5,290, 0 stricter (eight reviewed leniencies now agree —
+dropped from `base-triage.json`); test-case lane Java 62/84 (57 before),
+Firely 14/20, 20 lenient (25 before), 0 stricter; 239 tests.
 
 ## 0.14.2 — 2026-09-22
 

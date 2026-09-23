@@ -76,6 +76,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "TerminologyCapabilities"),
         ("element", "ValueSet"),
     ],
+    references: &[],
     deferred: &[],
 };
 

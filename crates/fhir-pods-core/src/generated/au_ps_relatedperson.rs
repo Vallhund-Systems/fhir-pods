@@ -24,7 +24,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "RelatedPerson.name.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "RelatedPerson.name.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "RelatedPerson.name.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "RelatedPerson.name.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/name-use|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
+        ElementConstraint { path: "RelatedPerson.name.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "RelatedPerson.patient", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "RelatedPerson.patient.display", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "RelatedPerson.patient.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -88,6 +88,9 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "RelatedPerson.telecom",
     ],
     contexts: &[
+    ],
+    references: &[
+        ("RelatedPerson.patient", &["http://hl7.org.au/fhir/ps/StructureDefinition/au-ps-patient"]),
     ],
     deferred: &[
     ],

@@ -205,6 +205,29 @@ HAND_WRITTEN = [
         "class": {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "AMB"},
         "contained": [{"resourceType": "Patient", "id": "p"}],
     }),
+    # the base's required bindings, profile or no profile: a resource's own
+    # (Patient.gender, Observation.status), a datatype's wherever it sits
+    # (ContactPoint.system, Quantity.comparator, Narrative.status, a Timing's
+    # repeat unit), and one present only through its carrier — a code is
+    # still owed, even for a data-absent reason. Most have a valid twin so the
+    # binding, not the shape, decides.
+    ("unprofiled-gender-outside-set", None, False, {"resourceType": "Patient", "gender": "banana"}),
+    ("unprofiled-gender-in-set", None, True, {"resourceType": "Patient", "gender": "other"}),
+    ("unprofiled-observation-status-outside-set", None, False, mutate(UNPROFILED_OBSERVATION, lambda d: d.__setitem__("status", "done"))),
+    ("unprofiled-telecom-system-outside-set", None, False, {"resourceType": "Patient", "telecom": [{"system": "carrier-pigeon", "value": "coop 4"}]}),
+    ("unprofiled-telecom-system-in-set", None, True, {"resourceType": "Patient", "telecom": [{"system": "other", "value": "coop 4"}]}),
+    ("unprofiled-quantity-comparator-outside-set", None, False, {"resourceType": "Observation", "status": "final", "code": {"text": "x"}, "valueQuantity": {"value": 5, "comparator": "~", "unit": "mg"}}),
+    ("unprofiled-quantity-comparator-in-set", None, True, {"resourceType": "Observation", "status": "final", "code": {"text": "x"}, "valueQuantity": {"value": 5, "comparator": ">=", "unit": "mg"}}),
+    ("unprofiled-narrative-status-outside-set", None, False, {"resourceType": "Patient", "text": {"status": "draft", "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">x</div>"}}),
+    ("unprofiled-timing-unit-outside-set", None, False, {"resourceType": "MedicationRequest", "status": "active", "intent": "order", "medicationCodeableConcept": {"text": "x"}, "subject": {"reference": "Patient/p1"}, "dosageInstruction": [{"timing": {"repeat": {"frequency": 1, "period": 2, "periodUnit": "fortnight"}}}]}),
+    ("unprofiled-timing-unit-in-set", None, True, {"resourceType": "MedicationRequest", "status": "active", "intent": "order", "medicationCodeableConcept": {"text": "x"}, "subject": {"reference": "Patient/p1"}, "dosageInstruction": [{"timing": {"repeat": {"frequency": 1, "period": 2, "periodUnit": "wk"}}}]}),
+    ("unprofiled-contenttype-carrier-only", None, False, {"resourceType": "DocumentReference", "status": "current", "content": [{"attachment": {"url": "https://example.org/doc.pdf", "_contentType": {"extension": [{"url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason", "valueCode": "masked"}]}}}]}),
+    # a code present only through its carrier still owes the code its required binding asks for
+    ("unprofiled-gender-carrier-only", None, False, {"resourceType": "Patient", "_gender": {"extension": [{"url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason", "valueCode": "masked"}]}}),
+    ("unprofiled-address-use-outside-set", None, False, {"resourceType": "Patient", "address": [{"use": "vacation", "city": "Springfield"}]}),
+    ("unprofiled-identifier-use-outside-set", None, False, {"resourceType": "Patient", "identifier": [{"use": "primary", "value": "1"}]}),
+    ("unprofiled-extensible-outside-set", None, True, {"resourceType": "Patient", "maritalStatus": {"coding": [{"system": "http://example.org/ms", "code": "wed"}]}}),
+    ("unprofiled-coding-outside-required-set", None, False, {"resourceType": "Encounter", "status": "finished", "class": {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "AMB"}, "hospitalization": {"admitSource": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/admit-source", "code": "hosp-trans"}]}}, "participant": [{"type": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType", "code": "ADM"}]}]}], "location": [{"location": {"reference": "Location/l1"}, "status": "parked"}]}),
     # the base's required elements inside a backbone, and an extension held to its own profile by url
     # Bundle identity and the base Bundle invariants, profile or no profile (F026)
     ("bundle-url-id-mismatch", None, False, {"resourceType": "Bundle", "type": "collection", "entry": [{"fullUrl": "https://example.org/fhir/Patient/other", "resource": {"resourceType": "Patient", "id": "p1", "gender": "male"}}]}),

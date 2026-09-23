@@ -1,0 +1,14 @@
+{
+  "us-lab-wrong-category.json": {
+    "missed": ["Observation.category.coding.display"],
+    "reason": "terminology displays are not checked (documented leniency, docs/scope.md): the oracle holds every code system's display strings and grades a wrong display an error; the pod does not bundle displays (509 KB for the 1,212 systems it holds whole) and never emits SNOMED terms, so a coding's display is not judged. The verdict agrees: the file is invalid for both on its category slice."
+  },
+  "patient-declares-observation-profile.json": {
+    "missed": ["Patient.gender"],
+    "reason": "a declared profile for another resource type: the oracle applies au-core-heartrate to the Patient element by element (Observation.status missing, Patient.gender not allowed, vs-2 …); the pod refuses the profile in one error at meta.profile ('applies to Observation, not to a Patient'). One finding, two spellings; the verdict agrees."
+  },
+  "time-with-zone.json": {
+    "extra": ["Observation.valueTime"],
+    "reason": "two keys for one choice (valueString, valueTime): the oracle drops the second unread ('Unrecognized property') and never judges its format; the pod reports the duplication the same way and also that the time carries a zone. The verdict agrees; the extra error is a true statement about the value."
+  }
+}

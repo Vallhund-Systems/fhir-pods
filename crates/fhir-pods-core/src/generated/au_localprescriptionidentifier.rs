@@ -105,10 +105,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             min: 0,
             max: Max::Bounded(1),
             fixed: None,
-            required_binding: Some(Binding {
-                value_set: "http://hl7.org/fhir/ValueSet/identifier-use|4.0.1",
-                kind: BindingKind::Code,
-            }),
+            required_binding: None,
             types: &[],
             patterns: &[],
         },
@@ -127,6 +124,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     lowering: &LOWERING,
     must_support: &[],
     contexts: &[],
+    references: &[("Identifier.assigner", &["http://hl7.org/fhir/StructureDefinition/Organization"])],
     deferred: &[],
 };
 

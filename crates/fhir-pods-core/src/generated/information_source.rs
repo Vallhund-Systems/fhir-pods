@@ -52,6 +52,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     lowering: &LOWERING,
     must_support: &[],
     contexts: &[("element", "Patient.name"), ("element", "Patient.birthDate"), ("element", "Patient.deceased")],
+    references: &[],
     deferred: &[],
 };
 

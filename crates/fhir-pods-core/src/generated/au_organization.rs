@@ -40,6 +40,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    references: &[
+        ("Organization.partOf", &["http://hl7.org/fhir/StructureDefinition/Organization"]),
+        ("Organization.endpoint", &["http://hl7.org/fhir/StructureDefinition/Endpoint"]),
+    ],
     deferred: &[
     ],
 };

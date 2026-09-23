@@ -58,6 +58,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "SupplyDelivery"),
         ("element", "DeviceUseStatement"),
     ],
+    references: &[],
     deferred: &[],
 };
 

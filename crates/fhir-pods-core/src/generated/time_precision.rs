@@ -55,6 +55,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     lowering: &LOWERING,
     must_support: &[],
     contexts: &[("element", "instant"), ("element", "dateTime"), ("element", "time")],
+    references: &[],
     deferred: &[],
 };
 

@@ -111,6 +111,9 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    references: &[
+        ("Practitioner.qualification.issuer", &["http://hl7.org/fhir/StructureDefinition/Organization"]),
+    ],
     deferred: &[
     ],
 };

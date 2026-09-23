@@ -43,7 +43,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             max: Max::Bounded(0),
             fixed: None,
             required_binding: None,
-            types: super::intern::S29,
+            types: super::intern::S83,
             patterns: &[],
         },
     ],
@@ -525,7 +525,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                         max: Max::Bounded(1),
                         fixed: None,
                         required_binding: None,
-                        types: super::intern::S65,
+                        types: super::intern::S196,
                         patterns: &[],
                     },
                 ],
@@ -544,6 +544,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "StructureDefinition"),
         ("element", "ElementDefinition.type"),
     ],
+    references: &[],
     deferred: &[],
 };
 
@@ -650,7 +651,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "extension:process.value[x]",
             ty: "choice",
-            choices: super::intern::S66,
+            choices: super::intern::S197,
             min: 1,
             max: Max::Bounded(1),
             must_support: false,

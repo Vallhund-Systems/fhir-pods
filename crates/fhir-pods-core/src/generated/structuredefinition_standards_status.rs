@@ -67,6 +67,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "OperationDefinition.parameter.targetProfile"),
         ("element", "ImplementationGuide.definition.page"),
     ],
+    references: &[],
     deferred: &[],
 };
 

@@ -75,25 +75,32 @@ impl<'a> Parsed<'a> {
     /// element path it sits at (`Bundle.entry[2].resource`), each as a
     /// document of its own so its declared profiles can be validated.
     pub fn structure(&self) -> (Vec<Gap>, Vec<(alloc::string::String, TreeDoc<'_, 'a>)>) {
-        let (gaps, nested, _) = self.structure_full();
+        let (gaps, _, nested, _) = self.structure_full(&crate::terminology::Bundled);
         (gaps, nested)
     }
 
-    /// [`structure`](Self::structure), plus every extension instance whose
-    /// `url` names a compiled extension profile, at its label, with that
-    /// profile — each is validated against it, wherever it sits.
+    /// [`structure`](Self::structure), plus the findings that are warnings
+    /// (a datatype invariant the base spec grades so), plus every extension
+    /// instance whose `url` names a compiled extension profile, at its
+    /// label, with that profile — each is validated against it, wherever it
+    /// sits.
     #[allow(clippy::type_complexity)]
     pub fn structure_full(
         &self,
+        tx: &dyn crate::terminology::TerminologyProvider,
     ) -> (
+        Vec<Gap>,
         Vec<Gap>,
         Vec<(alloc::string::String, TreeDoc<'_, 'a>)>,
         Vec<(alloc::string::String, TreeDoc<'_, 'a>, &'static crate::compiled::CompiledProfile)>,
     ) {
-        let Some(rt) = resource_ctx(&self.value) else { return (Vec::new(), Vec::new(), Vec::new()) };
+        let Some(rt) = resource_ctx(&self.value) else { return (Vec::new(), Vec::new(), Vec::new(), Vec::new()) };
         let mut w = Walk {
             root: rt,
+            tx,
             gaps: Vec::new(),
+            warnings: Vec::new(),
+            invariants: Vec::new(),
             nested: Vec::new(),
             extensions: Vec::new(),
             ctxs: Vec::new(),
@@ -111,7 +118,7 @@ impl<'a> Parsed<'a> {
             .collect();
         let extensions =
             w.extensions.into_iter().map(|(label, v, p)| (label, TreeDoc::at(v, Some("Extension")), p)).collect();
-        (w.gaps, nested, extensions)
+        (w.gaps, w.warnings, nested, extensions)
     }
 
     /// A top-level member by key (the JSON type tag lives here).
@@ -188,6 +195,7 @@ fn primitive_value_ok(ty: &str, v: &Value<'_>) -> bool {
         // a canonical is absolute (a scheme) unless it is a fragment reference
         ("canonical", Value::Str(s)) => {
             !s.is_empty()
+                && !s.chars().any(char::is_whitespace)
                 && (s.starts_with('#')
                     || s.split('|').next().is_some_and(|u| {
                         let scheme = u.find(':').map(|i| &u[..i]).unwrap_or("");
@@ -196,6 +204,9 @@ fn primitive_value_ok(ty: &str, v: &Value<'_>) -> bool {
                             && scheme.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'+' | b'.' | b'-'))
                     }))
         }
+        // a uri / url / oid / uuid carries no whitespace (the reference
+        // validator: "URI values cannot have whitespace") and is not empty
+        ("uri" | "url" | "oid" | "uuid", Value::Str(s)) => !s.is_empty() && !s.chars().any(char::is_whitespace),
         // `[A-Za-z0-9\-\.]{1,64}` — a resource's or element's id
         ("id", Value::Str(s)) => {
             !s.is_empty() && s.len() <= 64 && s.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.'))
@@ -340,9 +351,17 @@ fn declares_compiled_profile(kvs: &[(alloc::borrow::Cow<'_, str>, Value<'_>)]) -
 /// the indexed element path it sits at), and the path segments so far —
 /// `(key, index)` for a repeating element — rendered only when a nested
 /// resource is found, so the walk itself never formats a path per element.
-struct Walk<'v, 'a> {
+struct Walk<'v, 'a, 't> {
     root: &'static str,
+    /// Who answers the base's required bindings (the host's provider, else
+    /// the bundled sets).
+    tx: &'t dyn crate::terminology::TerminologyProvider,
     gaps: Vec<Gap>,
+    /// Findings graded warning by the base spec (eld-20 …).
+    warnings: Vec<Gap>,
+    /// `typemap::DATATYPE_INVARIANTS`, parsed on first use in this walk
+    /// (`None` = not yet; `Some(Err)` = outside the supported FHIRPath core).
+    invariants: Vec<Option<Result<crate::path::Expr, ()>>>,
     nested: Vec<(alloc::string::String, &'v Value<'a>)>,
     /// Extension instances whose `url` names a compiled extension profile,
     /// with the label they sit at: validated against it by the caller.
@@ -355,8 +374,11 @@ struct Walk<'v, 'a> {
     /// an extension one of them reaches through a slice is theirs to check.
     profiles: Vec<Vec<&'static crate::compiled::CompiledProfile>>,
     /// The ids of the contained resources of each resource being walked,
-    /// innermost last: what a local reference (`#id`) must name (ref-1).
-    contained: Vec<Vec<alloc::string::String>>,
+    /// innermost last, with whether that resource is itself contained: what
+    /// a local reference (`#id`) must name (ref-1) is the contained of the
+    /// nearest resource that is not — `%rootResource`'s, as the invariant
+    /// reads — never of a resource nested inside a contained one.
+    contained: Vec<(bool, Vec<alloc::string::String>)>,
     /// Every object on the way down (root first): its typing context (a
     /// resource type, a datatype, a backbone path, `Element` for a
     /// primitive's carrier) and the JSON key it was reached by — what an
@@ -382,7 +404,7 @@ fn profile_reaches(slicings: &[crate::compiled::Slicing], url: &str) -> bool {
     })
 }
 
-impl<'v, 'a> Walk<'v, 'a> {
+impl<'v, 'a, 't> Walk<'v, 'a, 't> {
     fn label(&self, root: &str) -> alloc::string::String {
         let mut s = alloc::string::String::from(root);
         for (key, index) in &self.segs {
@@ -398,7 +420,113 @@ impl<'v, 'a> Walk<'v, 'a> {
     }
 }
 
-fn structure_in<'v, 'a>(v: &'v Value<'a>, ctx: &'static str, path: &str, w: &mut Walk<'v, 'a>) {
+/// A `uri` / `url` value under `http://hl7.org/fhir`, `http://terminology.hl7.org/`
+/// or `http://fhir.org/guides` that is no definition the packages hold —
+/// `http://hl7.org/fhir/sid/us-ssn.` — as the reference validator judges it.
+/// An extension's `url` is judged as an extension definition instead, and
+/// `Meta.source` is only ever a hint there.
+fn unknown_in_known_space<'v, 'a>(ty: &str, x: &'v Value<'a>, ctx: &str, bare: &str) -> Option<&'v str> {
+    if !matches!(ty, "uri" | "url") || url_check_exempt(ctx, bare) {
+        return None;
+    }
+    match x {
+        Value::Str(url) if crate::known_urls::in_known_space(url) && !crate::known_urls::known_definition(url) => {
+            Some(url.as_ref())
+        }
+        _ => None,
+    }
+}
+
+/// The base's required binding on the element `key` of an object in typing
+/// context `ctx`, if any — and whether it is the walk's to check here: a
+/// datatype's binding always (no snapshot restates `ContactPoint.system`
+/// unless it expanded the type, and those are compiled out); a resource's
+/// own only where no compiled profile applies, since a profile's snapshot
+/// restates every one of them.
+fn base_binding(ctx: &str, key: &str, w: &Walk<'_, '_, '_>) -> Option<&'static crate::compiled::Binding> {
+    let (_, _, b) = crate::typemap::BASE_BINDINGS.iter().find(|(c, k, _)| *c == ctx && *k == key)?;
+    let owner = ctx.split('.').next().unwrap_or(ctx);
+    let datatype = crate::typemap::RESOURCES.binary_search(&owner).is_err();
+    (datatype || w.profiled.last() == Some(&false)).then_some(b)
+}
+
+/// One membership answer, reported as the reference validator words it.
+fn report_base_binding(
+    m: crate::terminology::Membership,
+    b: &crate::compiled::Binding,
+    what: &str,
+    label: alloc::string::String,
+    w: &mut Walk<'_, '_, '_>,
+) {
+    use crate::validate::IssueType::{CodeInvalid, NotSupported};
+    match m {
+        crate::terminology::Membership::Member => {}
+        crate::terminology::Membership::NotMember => w.gaps.push((
+            label,
+            CodeInvalid,
+            alloc::format!(
+                "The value provided ('{what}') was not found in the value set '{}', and a code is required from this value set",
+                b.value_set
+            ),
+        )),
+        crate::terminology::Membership::Unknown => w.warnings.push((
+            label,
+            NotSupported,
+            alloc::format!("no bundled terminology for {}; '{what}' not checked", b.value_set),
+        )),
+    }
+}
+
+/// A `Coding` / `CodeableConcept` object under a base required binding
+/// (`Condition.clinicalStatus`): its codings decide membership; a concept
+/// with no coding is not judged (the reference validator only warns there).
+fn base_binding_object<'v, 'a>(v: &'v Value<'a>, ctx: &'static str, w: &mut Walk<'v, 'a, '_>) {
+    use crate::compiled::BindingKind;
+    if !matches!(ctx, "Coding" | "CodeableConcept") || w.ctxs.len() < 2 {
+        return;
+    }
+    let (parent_ctx, key) = (w.ctxs[w.ctxs.len() - 2].0, w.ctxs[w.ctxs.len() - 1].1);
+    let Some(b) = base_binding(parent_ctx, key, w) else { return };
+    if !matches!((&b.kind, ctx), (BindingKind::Coding, "Coding") | (BindingKind::CodeableConcept, "CodeableConcept")) {
+        return;
+    }
+    let doc = TreeDoc::at(v, Some(ctx));
+    let (m, seen) = crate::engine::membership_of(b, &doc, w.tx);
+    if seen {
+        let label = w.label(w.root);
+        report_base_binding(m, b, "the codings", label, w);
+    }
+}
+
+/// The elements the reference validator does not put through its
+/// definition-resolution check (6.10.4, `isExemptPathForUrlChecking` and
+/// `isCanonicalURLElement`, plus the elements its own bundle, extension,
+/// terminology and `Meta.source` checks judge instead): an extension's
+/// `url`, a canonical resource's own `url`, a bundle entry's `fullUrl` and
+/// request `url`, a coding's `system`, an attachment's `url`, an endpoint's
+/// address, a mapping's uri, a message source's endpoint, …
+fn url_check_exempt(ctx: &str, bare: &str) -> bool {
+    matches!(
+        (ctx, bare),
+        ("Extension", "url")
+            | ("Meta", "source")
+            | ("Coding", "system")
+            | ("Bundle.entry", "fullUrl")
+            | ("Bundle.entry.request", "url")
+            | ("Attachment", "url")
+            | ("Endpoint", "address")
+            | ("CapabilityStatement.implementation", "url")
+            | ("StructureDefinition", "type")
+            | ("ImplementationGuide.dependsOn", "uri")
+            | ("StructureDefinition.mapping", "uri")
+            | ("MessageHeader.source", "endpoint")
+            | ("Requirements.statement", "satisfiedBy")
+    ) || (ctx == "ImplementationGuide.definition.page" && (bare.starts_with("source") || bare.starts_with("name")))
+        || (ctx == "ElementDefinition" && (bare.starts_with("fixed") || bare.starts_with("pattern")))
+        || (bare == "url" && CANONICAL_RESOURCES.binary_search(&ctx).is_ok())
+}
+
+fn structure_in<'v, 'a>(v: &'v Value<'a>, ctx: &'static str, path: &str, w: &mut Walk<'v, 'a, '_>) {
     structure_at(v, ctx, path, "", false, true, w)
 }
 
@@ -413,19 +541,78 @@ fn structure_at<'v, 'a>(
     key: &'v str,
     contained: bool,
     needs_content: bool,
-    w: &mut Walk<'v, 'a>,
+    w: &mut Walk<'v, 'a, '_>,
 ) {
     w.ctxs.push((ctx, key));
     w.nodes.push(v);
+    datatype_invariants(v, ctx, w);
+    base_binding_object(v, ctx, w);
     structure_object(v, ctx, path, contained, needs_content, w);
     w.nodes.pop();
     w.ctxs.pop();
 }
 
+/// A datatype's own invariants (cpt-2, per-1, qty-3, rng-2, tim-* …) on
+/// this object, whatever it is reached through — a resource's element, an
+/// extension's value, a datatype inside a datatype. The reference validator
+/// judges every element by its type; a profile's snapshot restating one
+/// (UK Core expands `Patient.telecom`) is not compiled a second time.
+fn datatype_invariants<'v, 'a>(v: &'v Value<'a>, ctx: &'static str, w: &mut Walk<'v, 'a, '_>) {
+    use crate::typemap::DATATYPE_INVARIANTS;
+    use crate::validate::IssueType::{Invariant, NotSupported};
+    if !matches!(v, Value::Object(_)) || !DATATYPE_INVARIANTS.iter().any(|(c, ..)| *c == ctx) {
+        return;
+    }
+    if w.invariants.is_empty() {
+        w.invariants.resize_with(DATATYPE_INVARIANTS.len(), || None);
+    }
+    let owner = w.nodes.len() - 1;
+    let resource = (0..=owner).rev().find(|&i| resource_ctx(w.nodes[i]).is_some());
+    let root = resource.map(|i| TreeDoc::at(w.nodes[i], Some(w.ctxs[i].0)));
+    let bundle = (0..=owner).rev().find(|&i| w.ctxs[i].0 == "Bundle").map(|i| TreeDoc::at(w.nodes[i], Some("Bundle")));
+    let this_type = if ctx.contains('.') { "Element" } else { ctx };
+    let here = TreeDoc::at(v, Some(ctx));
+    let label = w.label(w.root);
+    for (n, (c, key, is_error, human, expression)) in DATATYPE_INVARIANTS.iter().enumerate() {
+        if *c != ctx {
+            continue;
+        }
+        if w.invariants[n].is_none() {
+            w.invariants[n] = Some(crate::path::parse_invariant(key, expression).map_err(|_| ()));
+        }
+        let label = label.clone();
+        match w.invariants[n].as_ref().and_then(|r| r.as_ref().ok()) {
+            None => w.warnings.push((
+                label,
+                NotSupported,
+                alloc::format!("{key} not evaluated: outside the supported FHIRPath core"),
+            )),
+            Some(expr) => {
+                match crate::path::check_constraint_in(expr, &here, Some(this_type), root.as_ref(), bundle.as_ref()) {
+                    crate::path::Verdict::Pass => {}
+                    crate::path::Verdict::Fail => {
+                        let finding = (label, Invariant, alloc::format!("{key}: {human}"));
+                        if *is_error {
+                            w.gaps.push(finding)
+                        } else {
+                            w.warnings.push(finding)
+                        }
+                    }
+                    crate::path::Verdict::Unsupported => w.warnings.push((
+                        label,
+                        NotSupported,
+                        alloc::format!("{key} not evaluated: outside the supported FHIRPath core"),
+                    )),
+                }
+            }
+        }
+    }
+}
+
 /// The element paths an extension's owner answers to: the owner's type, the
 /// path from its resource (`Patient.telecom.value`) and from its datatype
 /// (`ContactPoint.value`), with the base types everything is.
-fn owner_names(w: &Walk<'_, '_>) -> Vec<alloc::string::String> {
+fn owner_names(w: &Walk<'_, '_, '_>) -> Vec<alloc::string::String> {
     use alloc::string::{String, ToString};
     let n = w.ctxs.len();
     let mut names: Vec<String> = alloc::vec![String::from("*"), String::from("Element")];
@@ -556,7 +743,7 @@ const CANONICAL_RESOURCES: &[&str] = &[
 fn context_allows(
     p: &crate::compiled::CompiledProfile,
     names: &[alloc::string::String],
-    w: &Walk<'_, '_>,
+    w: &Walk<'_, '_, '_>,
 ) -> Result<bool, crate::path::Unsupported> {
     let Some(owner) = w.nodes.len().checked_sub(2) else { return Ok(false) };
     let resource = (0..=owner).rev().find(|&i| resource_ctx(w.nodes[i]).is_some());
@@ -625,7 +812,7 @@ fn structure_object<'v, 'a>(
     path: &str,
     contained: bool,
     needs_content: bool,
-    w: &mut Walk<'v, 'a>,
+    w: &mut Walk<'v, 'a, '_>,
 ) {
     use crate::validate::IssueType::{Invariant, Required, Structure, Value as ValueIssue};
     let Value::Object(kvs) = v else { return };
@@ -638,9 +825,18 @@ fn structure_object<'v, 'a>(
         }),
         None => kvs.iter().any(|(k, _)| k.as_ref() == name || k.strip_prefix('_') == Some(name)),
     };
+    // the missing element's own path (the outcome locates it at its parent,
+    // as the reference validator does)
+    let at = |child: &str| {
+        if path.is_empty() {
+            alloc::string::String::from(child)
+        } else {
+            alloc::format!("{path}.{child}")
+        }
+    };
     for child in crate::typing::required_children(ctx) {
         if !has(child) {
-            w.gaps.push((path.into(), Required, alloc::format!("{ctx}.{child} is required (min 1, found 0)")));
+            w.gaps.push((at(child), Required, alloc::format!("{ctx}.{child} is required (min 1, found 0)")));
         }
     }
     // a resource with no compiled profile declared is held to what the base
@@ -663,18 +859,18 @@ fn structure_object<'v, 'a>(
                 .collect(),
             _ => Vec::new(),
         };
-        w.contained.push(ids);
+        w.contained.push((contained, ids));
         if w.profiled.last() == Some(&false) {
             for child in crate::typing::required_resource_children(ctx) {
                 if !has(child) {
-                    w.gaps.push((path.into(), Required, alloc::format!("{ctx}.{child} is required (min 1, found 0)")));
+                    w.gaps.push((at(child), Required, alloc::format!("{ctx}.{child} is required (min 1, found 0)")));
                 }
             }
         }
     } else if ctx.contains('.') && w.profiled.last() == Some(&false) {
         for child in crate::typing::required_backbone_children(ctx) {
             if !has(child) {
-                w.gaps.push((path.into(), Required, alloc::format!("{ctx}.{child} is required (min 1, found 0)")));
+                w.gaps.push((at(child), Required, alloc::format!("{ctx}.{child} is required (min 1, found 0)")));
             }
         }
     }
@@ -690,7 +886,8 @@ fn structure_object<'v, 'a>(
     if ctx == "Reference" {
         if let Some((_, Value::Str(r))) = kvs.iter().find(|(k, _)| k.as_ref() == "reference") {
             if let Some(local) = r.strip_prefix('#') {
-                if !local.is_empty() && !w.contained.iter().any(|ids| ids.iter().any(|id| id == local)) {
+                let root_ids = w.contained.iter().rev().find(|(inside, _)| !inside).map(|(_, ids)| ids.as_slice());
+                if !local.is_empty() && !root_ids.is_some_and(|ids| ids.iter().any(|id| id == local)) {
                     w.gaps.push((
                         alloc::format!("{path}.reference"),
                         Invariant,
@@ -883,6 +1080,23 @@ fn structure_object<'v, 'a>(
                     Some(v) => !matches!(v, Value::Null),
                     None => false,
                 };
+                // a code present through its carrier alone (a data-absent
+                // reason) still owes the code its required binding asks for
+                if !paired && ch.ty == "code" && matches!(x, Value::Object(m) if !m.is_empty()) {
+                    if let Some(b) = base_binding(ctx, bare, w) {
+                        w.segs.push((bare, repeats.then_some(i)));
+                        let label = w.label(w.root);
+                        w.segs.pop();
+                        w.gaps.push((
+                            label,
+                            crate::validate::IssueType::CodeInvalid,
+                            alloc::format!(
+                                "No code provided, and a code is required from the value set {}",
+                                b.value_set
+                            ),
+                        ));
+                    }
+                }
                 match x {
                     Value::Object(m) if m.is_empty() => w.gaps.push((
                         child_path.clone(),
@@ -897,7 +1111,11 @@ fn structure_object<'v, 'a>(
                                 alloc::format!("{child_path}: Resource.id cannot carry extensions"),
                             ));
                         }
-                        structure_at(x, "Element", &child_path, key, contained, !paired, w)
+                        // the carrier's content is the primitive's: labelled
+                        // under it (`name[0].family.extension[0]`)
+                        w.segs.push((bare, repeats.then_some(i)));
+                        structure_at(x, "Element", &child_path, key, contained, !paired, w);
+                        w.segs.pop();
                     }
                     Value::Null if repeats && paired => {}
                     other => w.gaps.push((
@@ -963,6 +1181,21 @@ fn structure_object<'v, 'a>(
                         child_path.clone(),
                         ValueIssue,
                         alloc::format!("{child_path} is not a valid {}", ch.ty),
+                    ));
+                } else if let (Value::Str(code), "code", Some(b)) = (x, ch.ty, base_binding(ctx, bare, w)) {
+                    // the base's required binding on a code: what the
+                    // reference validator holds every resource to
+                    let m = w.tx.validate_code(b.value_set, "", code);
+                    let label = w.label(w.root);
+                    report_base_binding(m, b, code, label, w);
+                } else if let Some(url) = unknown_in_known_space(ch.ty, x, ctx, bare) {
+                    // a uri in HL7's own spaces that names no definition the
+                    // packages hold: a typo, not a local system (the reference
+                    // validator takes an unknown URL anywhere else on trust)
+                    w.gaps.push((
+                        child_path.clone(),
+                        ValueIssue,
+                        alloc::format!("No definition could be found for URL value '{url}'"),
                     ));
                 }
             } else {
@@ -1206,6 +1439,7 @@ mod context_tests {
             invariants: &[],
             must_support: &[],
             contexts,
+            references: &[],
             deferred: &[],
             lowering: &crate::generated::cqf_libraryalias::LOWERING,
         }
@@ -1220,7 +1454,10 @@ mod context_tests {
         let extension = parsed.doc().child_instances("extension")[0];
         let w = Walk {
             root: "Patient",
+            tx: &crate::terminology::Bundled,
             gaps: Vec::new(),
+            warnings: Vec::new(),
+            invariants: Vec::new(),
             nested: Vec::new(),
             extensions: Vec::new(),
             segs: Vec::new(),
@@ -1250,7 +1487,10 @@ mod context_tests {
         let child = part.child_instances("extension")[0];
         let w = Walk {
             root: "Patient",
+            tx: &crate::terminology::Bundled,
             gaps: Vec::new(),
+            warnings: Vec::new(),
+            invariants: Vec::new(),
             nested: Vec::new(),
             extensions: Vec::new(),
             segs: Vec::new(),

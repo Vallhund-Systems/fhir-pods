@@ -27,3 +27,4 @@ dist/
 conformance/fhir-test-cases/
 conformance/corpus-testcases/
 crates/fhir-pods-core/src/generated_testcases/
+conformance/corpus-reasons/

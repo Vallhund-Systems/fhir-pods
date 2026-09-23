@@ -52,6 +52,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     lowering: &LOWERING,
     must_support: &[],
     contexts: &[("element", "NutritionOrder"), ("element", "CarePlan")],
+    references: &[("Extension.value[x]", super::intern::S39)],
     deferred: &[],
 };
 

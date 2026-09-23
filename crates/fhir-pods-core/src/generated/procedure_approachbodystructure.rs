@@ -58,6 +58,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "DeviceUseStatement"),
         ("element", "Specimen.collection"),
     ],
+    references: &[("Extension.value[x]", &["http://hl7.org/fhir/StructureDefinition/BodyStructure"])],
     deferred: &[],
 };
 

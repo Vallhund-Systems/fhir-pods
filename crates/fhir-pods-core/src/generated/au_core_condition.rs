@@ -61,6 +61,13 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    references: &[
+        ("Condition.subject", &["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]),
+        ("Condition.encounter", &["http://hl7.org/fhir/StructureDefinition/Encounter"]),
+        ("Condition.recorder", super::intern::S1),
+        ("Condition.asserter", super::intern::S1),
+        ("Condition.stage.assessment", super::intern::S11),
+    ],
     deferred: &[
     ],
 };
@@ -100,7 +107,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "onset[x]",
             ty: "choice",
-            choices: super::intern::S1,
+            choices: super::intern::S3,
             min: 0,
             max: Max::Bounded(1),
             must_support: true,
@@ -108,7 +115,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "abatement[x]",
             ty: "choice",
-            choices: super::intern::S3,
+            choices: super::intern::S12,
             min: 0,
             max: Max::Bounded(1),
             must_support: true,

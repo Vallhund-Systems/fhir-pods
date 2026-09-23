@@ -26,6 +26,8 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     contexts: &[
         ("element", "Resource"),
     ],
+    references: &[
+    ],
     deferred: &[
     ],
 };

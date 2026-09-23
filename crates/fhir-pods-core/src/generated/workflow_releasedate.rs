@@ -76,6 +76,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "SupplyRequest"),
         ("element", "Task"),
     ],
+    references: &[],
     deferred: &[],
 };
 

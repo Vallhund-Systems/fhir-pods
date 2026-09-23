@@ -19,12 +19,12 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Goal.lifecycleStatus", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/goal-status", kind: BindingKind::Code }), types: &[], patterns: &[] },
         ElementConstraint { path: "Goal.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Goal.priority", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Goal.start[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S30, patterns: &[] },
+        ElementConstraint { path: "Goal.start[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S84, patterns: &[] },
         ElementConstraint { path: "Goal.statusDate", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Goal.statusReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Goal.subject", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Goal.target.detail[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S31, patterns: &[] },
-        ElementConstraint { path: "Goal.target.due[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S32, patterns: &[] },
+        ElementConstraint { path: "Goal.target.detail[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S85, patterns: &[] },
+        ElementConstraint { path: "Goal.target.due[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S86, patterns: &[] },
         ElementConstraint { path: "Goal.target.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Goal.target.measure", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Goal.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -50,6 +50,12 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    references: &[
+        ("Goal.subject", &["http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"]),
+        ("Goal.expressedBy", super::intern::S87),
+        ("Goal.addresses", super::intern::S88),
+        ("Goal.outcomeReference", &["http://hl7.org/fhir/StructureDefinition/Observation"]),
+    ],
     deferred: &[
     ],
 };
@@ -72,7 +78,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "start[x]",
             ty: "choice",
-            choices: super::intern::S33,
+            choices: super::intern::S89,
             min: 0,
             max: Max::Bounded(1),
             must_support: true,

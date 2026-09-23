@@ -89,6 +89,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "SearchParameter.chain"),
         ("extension", "http://hl7.org/fhir/StructureDefinition/capabilitystatement-search-parameter-combination"),
     ],
+    references: &[],
     deferred: &[],
 };
 

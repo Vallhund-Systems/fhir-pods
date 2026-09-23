@@ -66,6 +66,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ("element", "SpecimenDefinition"),
         ("element", "Substance"),
     ],
+    references: &[],
     deferred: &[],
 };
 

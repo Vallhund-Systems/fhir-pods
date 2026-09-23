@@ -47,6 +47,14 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    references: &[
+        ("CareTeam.subject", &["http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"]),
+        ("CareTeam.encounter", &["http://hl7.org/fhir/StructureDefinition/Encounter"]),
+        ("CareTeam.participant.member", super::intern::S69),
+        ("CareTeam.participant.onBehalfOf", &["http://hl7.org/fhir/StructureDefinition/Organization"]),
+        ("CareTeam.reasonReference", &["http://hl7.org/fhir/StructureDefinition/Condition"]),
+        ("CareTeam.managingOrganization", &["http://hl7.org/fhir/StructureDefinition/Organization"]),
+    ],
     deferred: &[
     ],
 };

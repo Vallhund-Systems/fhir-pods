@@ -23,7 +23,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Procedure.location", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Procedure.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Procedure.outcome", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Procedure.performed[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S20, patterns: &[] },
+        ElementConstraint { path: "Procedure.performed[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S51, patterns: &[] },
         ElementConstraint { path: "Procedure.performer.actor", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Procedure.performer.function", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Procedure.performer.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -66,6 +66,22 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    references: &[
+        ("Procedure.basedOn", super::intern::S52),
+        ("Procedure.partOf", super::intern::S53),
+        ("Procedure.subject", &["http://hl7.org/fhir/uv/ips/StructureDefinition/Patient-uv-ips"]),
+        ("Procedure.encounter", &["http://hl7.org/fhir/StructureDefinition/Encounter"]),
+        ("Procedure.recorder", super::intern::S2),
+        ("Procedure.asserter", super::intern::S2),
+        ("Procedure.performer.actor", super::intern::S138),
+        ("Procedure.performer.onBehalfOf", &["http://hl7.org/fhir/uv/ips/StructureDefinition/Organization-uv-ips"]),
+        ("Procedure.location", &["http://hl7.org/fhir/StructureDefinition/Location"]),
+        ("Procedure.reasonReference", super::intern::S100),
+        ("Procedure.report", super::intern::S56),
+        ("Procedure.complicationDetail", &["http://hl7.org/fhir/StructureDefinition/Condition"]),
+        ("Procedure.focalDevice.manipulated", &["http://hl7.org/fhir/StructureDefinition/Device"]),
+        ("Procedure.usedReference", super::intern::S57),
+    ],
     deferred: &[
     ],
 };
@@ -81,7 +97,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "performed[x]",
             ty: "choice",
-            choices: super::intern::S21,
+            choices: super::intern::S58,
             min: 1,
             max: Max::Bounded(1),
             must_support: true,

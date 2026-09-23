@@ -10,7 +10,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     name: "US Core ServiceRequest Profile",
     resource_type: "ServiceRequest",
     elements: &[
-        ElementConstraint { path: "ServiceRequest.asNeeded[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S11, patterns: &[] },
+        ElementConstraint { path: "ServiceRequest.asNeeded[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S30, patterns: &[] },
         ElementConstraint { path: "ServiceRequest.authoredOn", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "ServiceRequest.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "ServiceRequest.doNotPerform", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -20,11 +20,11 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "ServiceRequest.intent", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/request-intent|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
         ElementConstraint { path: "ServiceRequest.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "ServiceRequest.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "ServiceRequest.occurrence[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S38, patterns: &[] },
+        ElementConstraint { path: "ServiceRequest.occurrence[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S106, patterns: &[] },
         ElementConstraint { path: "ServiceRequest.patientInstruction", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "ServiceRequest.performerType", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "ServiceRequest.priority", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/request-priority|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
-        ElementConstraint { path: "ServiceRequest.quantity[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S39, patterns: &[] },
+        ElementConstraint { path: "ServiceRequest.quantity[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S107, patterns: &[] },
         ElementConstraint { path: "ServiceRequest.requester", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "ServiceRequest.requisition", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "ServiceRequest.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/request-status|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
@@ -64,6 +64,19 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    references: &[
+        ("ServiceRequest.basedOn", super::intern::S108),
+        ("ServiceRequest.replaces", &["http://hl7.org/fhir/StructureDefinition/ServiceRequest"]),
+        ("ServiceRequest.subject", &["http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"]),
+        ("ServiceRequest.encounter", &["http://hl7.org/fhir/StructureDefinition/Encounter"]),
+        ("ServiceRequest.requester", super::intern::S109),
+        ("ServiceRequest.performer", super::intern::S110),
+        ("ServiceRequest.locationReference", &["http://hl7.org/fhir/StructureDefinition/Location"]),
+        ("ServiceRequest.reasonReference", super::intern::S66),
+        ("ServiceRequest.insurance", super::intern::S39),
+        ("ServiceRequest.specimen", &["http://hl7.org/fhir/StructureDefinition/Specimen"]),
+        ("ServiceRequest.relevantHistory", &["http://hl7.org/fhir/StructureDefinition/Provenance"]),
+    ],
     deferred: &[
     ],
 };
@@ -89,7 +102,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "occurrence[x]",
             ty: "choice",
-            choices: super::intern::S40,
+            choices: super::intern::S111,
             min: 0,
             max: Max::Bounded(1),
             must_support: true,

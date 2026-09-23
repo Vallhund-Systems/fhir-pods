@@ -71,6 +71,12 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    references: &[
+        ("HealthcareService.providedBy", &["http://hl7.org/fhir/StructureDefinition/Organization"]),
+        ("HealthcareService.location", &["http://hl7.org/fhir/StructureDefinition/Location"]),
+        ("HealthcareService.coverageArea", &["http://hl7.org/fhir/StructureDefinition/Location"]),
+        ("HealthcareService.endpoint", &["http://hl7.org/fhir/StructureDefinition/Endpoint"]),
+    ],
     deferred: &[
     ],
 };

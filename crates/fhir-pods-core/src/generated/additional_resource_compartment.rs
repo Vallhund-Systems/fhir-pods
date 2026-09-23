@@ -43,7 +43,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             max: Max::Bounded(0),
             fixed: None,
             required_binding: None,
-            types: super::intern::S29,
+            types: super::intern::S83,
             patterns: &[],
         },
     ],
@@ -297,6 +297,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     lowering: &LOWERING,
     must_support: &[],
     contexts: &[("element", "StructureDefinition")],
+    references: &[],
     deferred: &[],
 };
 

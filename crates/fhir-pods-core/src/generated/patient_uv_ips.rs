@@ -21,7 +21,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Patient.contact.name", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Patient.contact.organization", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Patient.contact.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.deceased[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S18, patterns: &[] },
+        ElementConstraint { path: "Patient.deceased[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S47, patterns: &[] },
         ElementConstraint { path: "Patient.gender", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/administrative-gender|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
         ElementConstraint { path: "Patient.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Patient.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -32,13 +32,13 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Patient.managingOrganization", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Patient.maritalStatus", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Patient.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.multipleBirth[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S19, patterns: &[] },
+        ElementConstraint { path: "Patient.multipleBirth[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S48, patterns: &[] },
         ElementConstraint { path: "Patient.name", min: 1, max: Max::Star, fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Patient.name.family", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Patient.name.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Patient.name.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Patient.name.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.name.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/name-use|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
+        ElementConstraint { path: "Patient.name.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Patient.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
     ],
     slicings: &[
@@ -83,6 +83,12 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         "Patient.telecom",
     ],
     contexts: &[
+    ],
+    references: &[
+        ("Patient.contact.organization", &["http://hl7.org/fhir/StructureDefinition/Organization"]),
+        ("Patient.generalPractitioner", super::intern::S49),
+        ("Patient.managingOrganization", &["http://hl7.org/fhir/StructureDefinition/Organization"]),
+        ("Patient.link.other", super::intern::S50),
     ],
     deferred: &[
     ],

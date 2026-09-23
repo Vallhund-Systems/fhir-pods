@@ -13,12 +13,12 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "MedicationStatement.category", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "MedicationStatement.context", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "MedicationStatement.dateAsserted", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "MedicationStatement.effective[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S16, patterns: &[] },
+        ElementConstraint { path: "MedicationStatement.effective[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S41, patterns: &[] },
         ElementConstraint { path: "MedicationStatement.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "MedicationStatement.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "MedicationStatement.informationSource", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "MedicationStatement.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "MedicationStatement.medication[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S10, patterns: &[] },
+        ElementConstraint { path: "MedicationStatement.medication[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S28, patterns: &[] },
         ElementConstraint { path: "MedicationStatement.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "MedicationStatement.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/medication-statement-status|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
         ElementConstraint { path: "MedicationStatement.subject", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -80,6 +80,15 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     ],
     contexts: &[
     ],
+    references: &[
+        ("MedicationStatement.basedOn", super::intern::S42),
+        ("MedicationStatement.partOf", super::intern::S43),
+        ("MedicationStatement.medication[x]", &["http://hl7.org/fhir/StructureDefinition/Medication"]),
+        ("MedicationStatement.subject", super::intern::S154),
+        ("MedicationStatement.context", super::intern::S44),
+        ("MedicationStatement.informationSource", super::intern::S34),
+        ("MedicationStatement.reasonReference", super::intern::S26),
+    ],
     deferred: &[
     ],
 };
@@ -104,7 +113,7 @@ pub static LOWERING: Lowering = Lowering {
         Slot {
             path: "medication[x]",
             ty: "choice",
-            choices: super::intern::S15,
+            choices: super::intern::S40,
             min: 1,
             max: Max::Bounded(1),
             must_support: false,

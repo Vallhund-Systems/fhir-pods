@@ -27,7 +27,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "AuditEvent.entity.description", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "AuditEvent.entity.detail.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "AuditEvent.entity.detail.type", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "AuditEvent.entity.detail.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S50, patterns: &[] },
+        ElementConstraint { path: "AuditEvent.entity.detail.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S152, patterns: &[] },
         ElementConstraint { path: "AuditEvent.entity.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "AuditEvent.entity.lifecycle", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "AuditEvent.entity.name", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -75,7 +75,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 ElementConstraint { path: "$this.who.identifier.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
                 ElementConstraint { path: "$this.who.identifier.system", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
                 ElementConstraint { path: "$this.who.identifier.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.who.identifier.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/identifier-use|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.who.identifier.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
                 ElementConstraint { path: "$this.who.identifier.value", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
                 ElementConstraint { path: "$this.who.reference", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
                 ElementConstraint { path: "$this.who.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -107,7 +107,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                 ElementConstraint { path: "$this.who.identifier.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
                 ElementConstraint { path: "$this.who.identifier.system", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
                 ElementConstraint { path: "$this.who.identifier.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.who.identifier.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/identifier-use|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.who.identifier.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
                 ElementConstraint { path: "$this.who.identifier.value", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
                 ElementConstraint { path: "$this.who.reference", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
                 ElementConstraint { path: "$this.who.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -129,6 +129,11 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     must_support: &[
     ],
     contexts: &[
+    ],
+    references: &[
+        ("AuditEvent.agent.who", super::intern::S153),
+        ("AuditEvent.agent.location", &["http://hl7.org/fhir/StructureDefinition/Location"]),
+        ("AuditEvent.source.observer", super::intern::S153),
     ],
     deferred: &[
     ],

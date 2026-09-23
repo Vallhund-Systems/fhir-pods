@@ -16,7 +16,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
         ElementConstraint { path: "Substance.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Substance.ingredient.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Substance.ingredient.quantity", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Substance.ingredient.substance[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S10, patterns: &[] },
+        ElementConstraint { path: "Substance.ingredient.substance[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S28, patterns: &[] },
         ElementConstraint { path: "Substance.instance.expiry", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Substance.instance.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
         ElementConstraint { path: "Substance.instance.identifier", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
@@ -39,6 +39,9 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     must_support: &[
     ],
     contexts: &[
+    ],
+    references: &[
+        ("Substance.ingredient.substance[x]", &["http://hl7.org/fhir/StructureDefinition/Substance"]),
     ],
     deferred: &[
     ],
