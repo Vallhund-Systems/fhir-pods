@@ -437,6 +437,16 @@ export function loadTerminology(table: string): boolean {
 }
 
 /**
+ * Load a Questionnaire (JSON) for every QuestionnaireResponse validated after
+ * it that names it by canonical (`url`, or `url|version`); a contained
+ * Questionnaire or a bundle entry is found without loading. `false` when the
+ * JSON is not a Questionnaire; "" clears the store.
+ */
+export function loadQuestionnaire(json: string): boolean {
+  return FhirPodsExpoModule.questionnaireLoad(json) === 1;
+}
+
+/**
  * What to resolve for this resource to validate without terminology warnings:
  * the bindings neither the bundled sets nor the loaded table could decide.
  * Resolve them against a terminology server (`$validate-code`, or `$expand`

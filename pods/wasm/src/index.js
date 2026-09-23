@@ -3,7 +3,7 @@
 // WebAssembly does (browser, edge runtimes, Node, Bun, Deno).
 
 /** The ABI this wrapper speaks; a module reporting anything else is refused. */
-export const ABI_VERSION = 12;
+export const ABI_VERSION = 13;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -143,6 +143,10 @@ export async function instantiate(source, options = {}) {
     // before `options.terminology`, for every call that follows. Returns false
     // when the text could not be parsed (the previous table stays); "" clears.
     loadTerminology: (text) => callInt(ex.fhir_pods_terminology_load, text) === 1,
+    // A Questionnaire for every QuestionnaireResponse validated after it that
+    // names it by canonical (a contained one or a bundle entry needs no load).
+    // false when the JSON is not a Questionnaire; "" clears the store.
+    loadQuestionnaire: (json) => callInt(ex.fhir_pods_questionnaire_load, json) === 1,
     // What to resolve for a verdict free of terminology warnings.
     terminologyNeeds: (json) => JSON.parse(call(ex.fhir_pods_terminology_needs, json)).needs,
     validateText: (json) => call(validate, json),

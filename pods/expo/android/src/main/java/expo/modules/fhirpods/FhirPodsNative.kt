@@ -63,6 +63,9 @@ internal object FhirPodsNative {
   /** Load a compiled terminology table: 1 = loaded, 0 = unparseable (the old one stays). */
   external fun terminologyLoad(table: ByteArray): Int
 
+  /** Load a Questionnaire for the responses that name it: 1 = loaded, 0 = not a Questionnaire. */
+  external fun questionnaireLoad(json: ByteArray): Int
+
   /** {"needs":[...]} — the bindings neither the bundled sets nor the table could decide. */
   external fun terminologyNeeds(json: ByteArray): ByteArray
 }

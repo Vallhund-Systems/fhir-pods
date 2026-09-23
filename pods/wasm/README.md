@@ -10,7 +10,7 @@ JS  ──operation inputs──►  JS wrapper  ──C ABI──►  Rust comp
     ◄──output + findings──            ◄─────────         (wasm32)
 ```
 
-The wrapper uses `pod_alloc` / `pod_free` and the shared ABI 12 entrypoints.
+The wrapper uses `pod_alloc` / `pod_free` and the shared ABI 13 entrypoints.
 The module carries 1,147 compiled profiles from the pinned IGs and R4
 extension/base definitions, 126 bundled value sets, base code-system
 membership tables, FHIRPath, transformation and assembly engines, and HL7 v2

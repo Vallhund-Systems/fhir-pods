@@ -1,4 +1,4 @@
-// Bounded synthetic ABI 12 checks shared by Chrome and Node.
+// Bounded synthetic ABI 13 checks shared by Chrome and Node.
 import { ABI_VERSION, instantiate } from "../src/index.js";
 import { fixtures, patient, patientProfile, practitioner, heartRate } from "../bench/fixtures.mjs";
 
@@ -17,7 +17,7 @@ export async function checkOperations(bytes) {
   const pod = await instantiate(bytes);
   const checks = [];
   const check = (name, fn) => { try { fn(); checks.push({ name, pass: true }); } catch (e) { throw new Error(`${name}: ${e.message}`, { cause: e }); } };
-  check("ABI matches wrapper", () => assert(pod.abiVersion === ABI_VERSION && pod.abiVersion === 12, "ABI mismatch"));
+  check("ABI matches wrapper", () => assert(pod.abiVersion === ABI_VERSION && pod.abiVersion === 13, "ABI mismatch"));
   for (const fixture of fixtures) check(`validate ${fixture.name}`, () => assert(pod.validate(fixture.json).valid === fixture.valid, "Unexpected verdict"));
   check("OperationOutcome", () => assert(pod.operationOutcome("{").issue.some(i => i.severity === "fatal"), "Fatal parse finding missing"));
   check("discovery regions and profile kinds", () => {

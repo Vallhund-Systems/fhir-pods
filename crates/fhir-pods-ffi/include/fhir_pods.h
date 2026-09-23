@@ -9,8 +9,8 @@
 extern "C" {
 #endif
 
-/* ABI version; a host refuses a mismatched module. This header is ABI 12. */
-#define FHIR_PODS_ABI_VERSION 12u
+/* ABI version; a host refuses a mismatched module. This header is ABI 13. */
+#define FHIR_PODS_ABI_VERSION 13u
 uint32_t fhir_pods_abi_version(void);
 
 /* Allocate `len` bytes in the module for the host to fill. */
@@ -154,6 +154,14 @@ uint8_t *fhir_pods_profiles(void);
  * loaded, 0 when the text could not be parsed (the previous table stays);
  * empty input clears it. */
 int32_t fhir_pods_terminology_load(const uint8_t *ptr, size_t len);
+
+/* A Questionnaire (JSON) for every QuestionnaireResponse validated after it
+ * that names it by canonical (url, or url|version) — on this module, for its
+ * lifetime; a contained Questionnaire or a bundle entry is found without
+ * loading. Returns 1 when loaded (the same canonical loaded again replaces
+ * the first), 0 when the bytes are not a Questionnaire (the store is
+ * unchanged); empty input clears the store. */
+int32_t fhir_pods_questionnaire_load(const uint8_t *ptr, size_t len);
 
 /* What a host must resolve for this resource to validate without terminology
  * warnings — the bindings neither the bundled sets nor the loaded table could

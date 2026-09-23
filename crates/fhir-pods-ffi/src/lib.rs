@@ -34,6 +34,7 @@ use core::ffi::c_void;
 
 use std::sync::{OnceLock, RwLock};
 
+use fhir_pods_core::questionnaire::Questionnaire;
 use fhir_pods_core::terminology::{Bundled, Chain, Expansions, Membership, Recorder, TerminologyProvider};
 use fhir_pods_core::{must_support_gaps, wire, Validator};
 
@@ -48,11 +49,27 @@ fn validator() -> &'static Validator {
 
 /// Bump when the exported surface or the memory contract changes; the
 /// wrappers refuse a mismatched module.
-pub const ABI_VERSION: u32 = 12;
+pub const ABI_VERSION: u32 = 13;
 
 /// The compiled terminology table the host loaded (`fhir_pods_terminology_load`),
 /// consulted after the bundled sets and before any host callback.
 static TABLE: RwLock<Option<std::sync::Arc<Expansions>>> = RwLock::new(None);
+
+/// The Questionnaires the host loaded (`fhir_pods_questionnaire_load`): what
+/// a QuestionnaireResponse naming one by canonical is held to.
+static QUESTIONNAIRES: RwLock<Option<std::sync::Arc<Vec<Questionnaire>>>> = RwLock::new(None);
+
+/// A snapshot of the loaded Questionnaires, the lock released before any
+/// validation runs (a host callback may load one meanwhile).
+fn questionnaires() -> std::sync::Arc<Vec<Questionnaire>> {
+    QUESTIONNAIRES.read().unwrap_or_else(|e| e.into_inner()).clone().unwrap_or_default()
+}
+
+/// Validate with the loaded Questionnaires in reach.
+fn validate_loaded(input: &[u8], tx: &dyn TerminologyProvider) -> fhir_pods_core::Validation {
+    let qs = questionnaires();
+    validator().validate_in(input, tx, &qs)
+}
 
 /// Run `f` with the providers in order: bundled sets, the loaded table, the
 /// host's callback. The table is taken as a snapshot and the lock released
@@ -112,14 +129,14 @@ pub extern "C" fn fhir_pods_abi_version() -> u32 {
 /// issue in the report, not an error at the boundary.
 #[no_mangle]
 pub unsafe extern "C" fn fhir_pods_validate(ptr: *const u8, len: usize) -> *mut u8 {
-    with_providers(None, |tx| pack(wire::report(&validator().validate_with(input(ptr, len), tx)).as_bytes()))
+    with_providers(None, |tx| pack(wire::report(&validate_loaded(input(ptr, len), tx)).as_bytes()))
 }
 
 /// Validate a FHIR resource; returns a FHIR `OperationOutcome` resource — the
 /// `$validate` wire form. Same memory contract as [`fhir_pods_validate`].
 #[no_mangle]
 pub unsafe extern "C" fn fhir_pods_operation_outcome(ptr: *const u8, len: usize) -> *mut u8 {
-    with_providers(None, |tx| pack(validator().validate_with(input(ptr, len), tx).to_operation_outcome().as_bytes()))
+    with_providers(None, |tx| pack(validate_loaded(input(ptr, len), tx).to_operation_outcome().as_bytes()))
 }
 
 /// [`fhir_pods_validate`] with a host terminology callback (`cb` may be null).
@@ -130,7 +147,7 @@ pub unsafe extern "C" fn fhir_pods_validate_tx(
     cb: Option<TxCallback>,
     ctx: *mut c_void,
 ) -> *mut u8 {
-    with_tx(cb, ctx, |tx| pack(wire::report(&validator().validate_with(input(ptr, len), tx)).as_bytes()))
+    with_tx(cb, ctx, |tx| pack(wire::report(&validate_loaded(input(ptr, len), tx)).as_bytes()))
 }
 
 /// [`fhir_pods_operation_outcome`] with a host terminology callback.
@@ -141,7 +158,7 @@ pub unsafe extern "C" fn fhir_pods_operation_outcome_tx(
     cb: Option<TxCallback>,
     ctx: *mut c_void,
 ) -> *mut u8 {
-    with_tx(cb, ctx, |tx| pack(validator().validate_with(input(ptr, len), tx).to_operation_outcome().as_bytes()))
+    with_tx(cb, ctx, |tx| pack(validate_loaded(input(ptr, len), tx).to_operation_outcome().as_bytes()))
 }
 
 /// The selected profile's must-support elements the resource leaves empty
@@ -559,6 +576,28 @@ pub unsafe extern "C" fn fhir_pods_terminology_load(ptr: *const u8, len: usize) 
     }
 }
 
+/// Load a Questionnaire (JSON) for every QuestionnaireResponse validated
+/// after it that names it by canonical (`url`, or `url|version`) — on this
+/// module, for its lifetime; a contained Questionnaire or a bundle entry is
+/// found without loading. Returns 1 when loaded (a second load of the same
+/// canonical replaces the first), 0 when the bytes are not a Questionnaire
+/// (the store is unchanged). Empty input clears the store.
+#[no_mangle]
+pub unsafe extern "C" fn fhir_pods_questionnaire_load(ptr: *const u8, len: usize) -> i32 {
+    let bytes = input(ptr, len);
+    let mut slot = QUESTIONNAIRES.write().unwrap_or_else(|e| e.into_inner());
+    if bytes.is_empty() {
+        *slot = None;
+        return 1;
+    }
+    let Some(q) = Questionnaire::parse(bytes) else { return 0 };
+    let mut next: Vec<Questionnaire> =
+        slot.iter().flat_map(|v| v.iter()).filter(|k| !(k.url == q.url && k.version == q.version)).cloned().collect();
+    next.push(q);
+    *slot = Some(std::sync::Arc::new(next));
+    1
+}
+
 /// What a host must resolve for this resource to validate without
 /// terminology warnings — every binding the bundled sets and the loaded
 /// table could not decide: `{"needs":[{"valueSet","system","code"},…]}`.
@@ -738,15 +777,13 @@ mod wasm_host {
 
     #[no_mangle]
     pub unsafe extern "C" fn fhir_pods_validate_host_tx(ptr: *const u8, len: usize) -> *mut u8 {
-        with_providers(Some(&ImportTx), |tx| {
-            pack(wire::report(&validator().validate_with(input(ptr, len), tx)).as_bytes())
-        })
+        with_providers(Some(&ImportTx), |tx| pack(wire::report(&validate_loaded(input(ptr, len), tx)).as_bytes()))
     }
 
     #[no_mangle]
     pub unsafe extern "C" fn fhir_pods_operation_outcome_host_tx(ptr: *const u8, len: usize) -> *mut u8 {
         with_providers(Some(&ImportTx), |tx| {
-            pack(validator().validate_with(input(ptr, len), tx).to_operation_outcome().as_bytes())
+            pack(validate_loaded(input(ptr, len), tx).to_operation_outcome().as_bytes())
         })
     }
 
@@ -904,7 +941,7 @@ mod android {
     fn run<'l>(env: &mut JNIEnv<'l>, json: &JByteArray<'l>, provider: &JObject<'l>, outcome: bool) -> jbyteArray {
         let input = bytes_in(env, json);
         let doc = with_java(env, provider, |tx| {
-            let v = validator().validate_with(&input, tx);
+            let v = validate_loaded(&input, tx);
             if outcome {
                 v.to_operation_outcome()
             } else {
@@ -1046,6 +1083,16 @@ mod android {
     ) -> jint {
         let t = bytes_in(&mut env, &table);
         unsafe { fhir_pods_terminology_load(t.as_ptr(), t.len()) as jint }
+    }
+
+    #[no_mangle]
+    pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_questionnaireLoad<'l>(
+        mut env: JNIEnv<'l>,
+        _this: JObject<'l>,
+        json: JByteArray<'l>,
+    ) -> jint {
+        let q = bytes_in(&mut env, &json);
+        unsafe { fhir_pods_questionnaire_load(q.as_ptr(), q.len()) as jint }
     }
 
     #[no_mangle]

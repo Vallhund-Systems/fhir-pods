@@ -1,0 +1,80 @@
+{
+  "answerconstraint-badcode-qr": {
+    "ours": "valid",
+    "java": "invalid",
+    "missed": [
+      "QuestionnaireResponse.item.answer.value[x].code"
+    ],
+    "extra": [],
+    "reason": "terminology without a server (licensed SNOMED CT): the stored Java outcome was produced with a terminology server that knows SNOMED and rejects '111111111000' as an unknown code; the pod never bundles SNOMED content and its provider answers Unknown \u2014 a warning, never a guess."
+  },
+  "nested-questionnaire-nested-valueset": {
+    "ours": "invalid",
+    "java": "invalid",
+    "missed": [
+      "QuestionnaireResponse.contained.extension"
+    ],
+    "extra": [
+      "QuestionnaireResponse.contained.compose.include.system"
+    ],
+    "reason": "definition resolution: the SDC package (hl7.fhir.uv.sdc) is not carried, so its questionnaireAdaptive extension is not found on our side (the oracle had the package) and its CodeSystem canonical under http://hl7.org/fhir/uv/sdc is, on our side, a URL in HL7's space that names no definition we hold. The verdict agrees (invalid) \u2014 the pod's finding is the mirror image of the oracle's."
+  },
+  "attachment-inconsistent-size-qr": {
+    "ours": "valid",
+    "java": "invalid",
+    "missed": [
+      "QuestionnaireResponse.item.answer.value[x]"
+    ],
+    "extra": [],
+    "reason": "attachment integrity (docs/scope.md): the stated `size` against the decoded `data` length is not checked; the questionnaire's own maxSize rule is (attachment-max-size-qr agrees)."
+  },
+  "choice-async-qr": {
+    "ours": "valid",
+    "java": "invalid",
+    "missed": [
+      "QuestionnaireResponse.item.answer.value[x].display",
+      "QuestionnaireResponse.item.answer"
+    ],
+    "extra": [],
+    "reason": "terminology without a server and display names: the stored outcome rejects the coding because its display ('Australia' for ISO 3166 BD) is wrong for the terminology server's copy of the code system; the pod holds neither the jurisdiction set (a filter over ISO 3166 / UN M49) nor display strings."
+  },
+  "choice-gender-coding-async-qr": {
+    "ours": "valid",
+    "java": "invalid",
+    "missed": [
+      "QuestionnaireResponse.item.answer.value[x].display",
+      "QuestionnaireResponse.item.answer"
+    ],
+    "extra": [],
+    "reason": "display names: the code 'string' is a member of item-type; the stored outcome rejects it for its wrong display ('Australia' for String). The pod does not check displays (docs/scope.md)."
+  },
+  "open-choice-gender-coding-async-qr": {
+    "ours": "valid",
+    "java": "invalid",
+    "missed": [
+      "QuestionnaireResponse.item.answer.value[x].display",
+      "QuestionnaireResponse.item.answer"
+    ],
+    "extra": [],
+    "reason": "display names: as choice-gender-coding-async-qr, on an open-choice item."
+  },
+  "quantity-units-not-in-value-set-qr": {
+    "ours": "valid",
+    "java": "invalid",
+    "missed": [
+      "QuestionnaireResponse.item.answer.value[x]",
+      "QuestionnaireResponse.item.answer.value[x]"
+    ],
+    "extra": [],
+    "reason": "terminology without a server: the unit value set (http://hl7.org/fhir/ValueSet/jurisdiction, a filter over external systems) is not bundled; the provider answers Unknown and the pod warns that the set could not be found rather than judging the unit."
+  },
+  "string-with-coding-async-qr": {
+    "ours": "valid",
+    "java": "invalid",
+    "missed": [
+      "QuestionnaireResponse.item.answer.value[x]"
+    ],
+    "extra": [],
+    "reason": "terminology without a server: the string answer is held to the jurisdiction value set, which is not bundled; Unknown \u2192 a warning, not an error."
+  }
+}

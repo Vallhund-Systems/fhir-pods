@@ -49,6 +49,7 @@ whether a particular import, export, or transformation is acceptable.
 | **Audit / provenance** | Build IHE BALP audit events for reads, queries, creates, updates, and deletes, with or without patient context; lower `Provenance` and failed-action `AuditEvent` records from base definitions | Resource and validation; the host supplies actors, time, subject, source, and correlation context |
 | **HL7 v2** | Convert ER7 messages using compiled `hl7.fhir.uv.v2mappings` maps | FHIR message Bundle, validation, skipped map rows with reasons, unplaced segments, and unmapped valued fields |
 | **Export** | Speak a jurisdiction: re-profile a record written against the base R4 definitions through the region's profiles (AU, US, UK, CA, NZ, or the IPS floor), assemble its patient summary, and record the read as a BALP event | Each resource through its region profile with `missing`, `extras`, and a note where none applied; the document; the audit event — every one validated |
+| **Questionnaires** | Hold a `QuestionnaireResponse` to its `Questionnaire` — a contained one, a bundle entry, or one the host loaded — as the reference validator holds it: every item defined and in place, required answers, `enableWhen`, one answer unless it repeats, the answer's type and bounds (`minValue` / `maxValue`, decimal places, lengths, regex, attachment mime type and size, quantity units), `answerOption` and `answerValueSet` membership | Findings on the response item, its answer or its value, worded as the reference validator words them; a questionnaire that cannot be found is said, not guessed |
 | **Terminology** | Resolve bindings through bundled sets, a host-loaded expansion table, or a synchronous provider; list unresolved requests for a host-managed lookup loop | Membership answers and outstanding terminology needs; lowering can obtain displays from the provider |
 
 Lift and lower share the same slot vocabulary. Inspect `missing` and `extras`
@@ -225,9 +226,9 @@ does not infer a jurisdiction or supply a complete regional compliance regime.
 
 | Surface | Delivery |
 | --- | --- |
-| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.15.0 artifact is 2,893,944 bytes (732,970 bytes gzip-9 — the base bindings’ 143 more value sets, 8,002 known-definition hashes). [Guide](pods/wasm/README.md) |
+| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.16.0 artifact is 2,945,757 bytes (751,326 bytes gzip-9). [Guide](pods/wasm/README.md) |
 | **Expo** | Native iOS XCFramework and Android jniLibs behind the Expo Modules API. [Guide](pods/expo/README.md) |
-| **Rust / C** | `fhir_pods_core` directly or the shared [ABI 12 header](crates/fhir-pods-ffi/include/fhir_pods.h) |
+| **Rust / C** | `fhir_pods_core` directly or the shared [ABI 13 header](crates/fhir-pods-ffi/include/fhir_pods.h) |
 | **CLI** | Local JSON/ER7 input, structured output, and exit codes for scripting. [Guide](crates/fhir-pods-cli/README.md) |
 
 The Rust core is `no_std` with `alloc`, zero dependencies, and no `unsafe`.
@@ -259,6 +260,7 @@ compliance.
 | Release corpus | **1,766/1,766** verdicts agree at v0.15.0 (UK Core and NZ Base examples, six regions' export outputs, the base's binding fixtures); `conformance/reasons.py` puts every error-level issue side by side — three triaged residues on 1,766 files |
 | Published R4 examples | **4,819/5,290** compared verdicts agree; **471** reviewed lenient differences; **2** explicit oracle exclusions out of 5,292 selected inputs; no stricter verdicts |
 | Published validator base tests | **62/84** agree with stored Java outcomes; **14/20** with stored Firely outcomes; differences are reviewed individually |
+| Questionnaire tests | **81 of 96** R4 JSON cases compare (the rest name an SDC package, a launch context or a validator policy option): **74/81** verdicts agree and **73/81** agree on every error-level issue; the 8 reviewed differences are terminology-server, display-name and attachment-integrity families (`conformance/questionnaire.py`) |
 | Ad-hoc profile tests | **10 of 53** cases compare: **9/10** agree with Java and **7/7** with Firely where available; other cases have compiler, snapshot, or manifest exclusions |
 
 The broader lanes enforce reviewed baselines: new or changed differences and

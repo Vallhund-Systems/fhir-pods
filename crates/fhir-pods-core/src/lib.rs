@@ -118,6 +118,17 @@ fn validate_bytes_impl(
     tx: &dyn terminology::TerminologyProvider,
     cache: Option<&Validator>,
 ) -> Validation {
+    validate_bytes_in(input, tx, cache, &[])
+}
+
+/// [`validate_bytes_impl`] with Questionnaires beyond the validator's own —
+/// what a host loaded into a shared store (the C ABI's).
+fn validate_bytes_in(
+    input: &[u8],
+    tx: &dyn terminology::TerminologyProvider,
+    cache: Option<&Validator>,
+    extra: &[questionnaire::Questionnaire],
+) -> Validation {
     // The scanner's contract, kept: a resource is a top-level object.
     let first = input.iter().position(|b| !matches!(b, b' ' | b'\t' | b'\n' | b'\r')).unwrap_or(input.len());
     if input.get(first) != Some(&b'{') {
@@ -173,6 +184,24 @@ fn validate_bytes_impl(
     }
     let defaults = cache.map(|v| v.defaults.as_slice()).unwrap_or(&[]);
     let profiles = validate_resource(rt, &doc, "", tx, cache, bundle, defaults, &mut report);
+    // a QuestionnaireResponse against its Questionnaire (a contained one, a
+    // bundle entry, or one loaded into the validator); a Questionnaire's own
+    // enableWhen wiring
+    let own = cache.map(|v| v.questionnaires.as_slice()).unwrap_or(&[]);
+    let joined: Vec<questionnaire::Questionnaire>;
+    let questionnaires: &[questionnaire::Questionnaire] = if extra.is_empty() {
+        own
+    } else {
+        joined = own.iter().chain(extra).cloned().collect();
+        &joined
+    };
+    let bundle_value = bundle.map(|b| b.value());
+    let by_kind = |rt: &str, value: &json::Value<'_>, label: &str, report: &mut Report| match rt {
+        "QuestionnaireResponse" => questionnaire::check(value, bundle_value, questionnaires, tx, label, report),
+        "Questionnaire" => questionnaire::check_questionnaire(value, label, report),
+        _ => {}
+    };
+    by_kind(rt, parsed.value(), rt, &mut report);
     // every resource nested in this one (Bundle entries, contained resources,
     // Parameters) is held to its own declared profiles, in this bundle's scope
     for (label, nested) in nested {
@@ -181,6 +210,7 @@ fn validate_bytes_impl(
             continue;
         };
         validate_resource(nrt, &nested, &label, tx, cache, bundle, &[], &mut report);
+        by_kind(nrt, nested.value(), &format!("{label}.{nrt}"), &mut report);
     }
     // every extension whose url names a compiled extension profile is held
     // to it, wherever it sits (a translation on a coding's display…)
@@ -499,6 +529,8 @@ pub mod lift;
 pub mod v2;
 
 pub mod document;
+/// A QuestionnaireResponse against its Questionnaire.
+pub mod questionnaire;
 
 pub mod compiled;
 
@@ -516,6 +548,10 @@ pub struct Validator {
     /// a jurisdiction's "this is what a Patient means here". Empty by default:
     /// the spec's behaviour, and the reference validator's.
     defaults: Vec<(&'static str, &'static CompiledProfile)>,
+    /// Questionnaires the host loaded: what a `QuestionnaireResponse` that
+    /// names one by canonical is held to (a contained one or a bundle entry
+    /// is found without loading).
+    questionnaires: Vec<questionnaire::Questionnaire>,
 }
 
 impl Default for Validator {
@@ -550,11 +586,29 @@ impl Validator {
         Self {
             invariants: keys.into_iter().map(|(k, key, e)| (k, path::parse_invariant(key, e).ok())).collect(),
             defaults: Vec::new(),
+            questionnaires: Vec::new(),
         }
     }
 
     /// Apply `url`'s profile to every `resource_type` resource that declares
     /// no profile of its own (e.g. AU Core Patient for a bare `Patient`).
+    /// Load a `Questionnaire` (JSON) for responses that name it by canonical
+    /// (`url`, or `url|version`). Returns whether the bytes were one; a
+    /// second load of the same canonical replaces the first.
+    pub fn load_questionnaire(&mut self, bytes: &[u8]) -> bool {
+        let Some(q) = questionnaire::Questionnaire::parse(bytes) else { return false };
+        self.questionnaires.retain(|k| !(k.url == q.url && k.version == q.version));
+        self.questionnaires.push(q);
+        true
+    }
+
+    /// [`load_questionnaire`](Self::load_questionnaire), builder-style; bytes
+    /// that are not a Questionnaire are ignored.
+    pub fn with_questionnaire(mut self, bytes: &[u8]) -> Self {
+        self.load_questionnaire(bytes);
+        self
+    }
+
     /// Unknown URLs are ignored: nothing is ever guessed.
     pub fn with_default_profile(mut self, url: &str) -> Self {
         if let Some(p) = crate::REGISTRY.iter().find(|p| p.url == url) {
@@ -581,6 +635,17 @@ impl Validator {
     /// [`validate_bytes_with`], with the invariants already parsed.
     pub fn validate_with(&self, input: &[u8], tx: &dyn terminology::TerminologyProvider) -> Validation {
         validate_bytes_impl(input, tx, Some(self))
+    }
+
+    /// [`validate_with`](Self::validate_with), with Questionnaires a
+    /// `QuestionnaireResponse` may name beyond the ones loaded here.
+    pub fn validate_in(
+        &self,
+        input: &[u8],
+        tx: &dyn terminology::TerminologyProvider,
+        questionnaires: &[questionnaire::Questionnaire],
+    ) -> Validation {
+        validate_bytes_in(input, tx, Some(self), questionnaires)
     }
 
     /// Build a conformant resource for the profile at `url` from its variable

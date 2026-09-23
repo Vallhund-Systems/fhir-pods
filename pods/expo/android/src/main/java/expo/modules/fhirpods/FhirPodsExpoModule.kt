@@ -80,6 +80,12 @@ class FhirPodsExpoModule : Module() {
       FhirPodsNative.terminologyLoad(table.toByteArray(Charsets.UTF_8))
     }
 
+    // A Questionnaire for every QuestionnaireResponse validated after it
+    // (1 = loaded, 0 = not a Questionnaire; "" clears).
+    Function("questionnaireLoad") { json: String ->
+      FhirPodsNative.questionnaireLoad(json.toByteArray(Charsets.UTF_8))
+    }
+
     // {"needs":[{"valueSet","system","code"},…]} — what a host must resolve.
     Function("terminologyNeeds") { json: String ->
       String(FhirPodsNative.terminologyNeeds(json.toByteArray(Charsets.UTF_8)), Charsets.UTF_8)

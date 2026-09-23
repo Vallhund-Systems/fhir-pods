@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.16.0 — 2026-09-22
+
+**QuestionnaireResponse against its Questionnaire** (ABI 13). A response
+naming a questionnaire — contained, a bundle entry, or one the host
+loaded (`Validator::with_questionnaire` / `load_questionnaire`, C
+`fhir_pods_questionnaire_load`, wasm and Expo `loadQuestionnaire`) — is
+held to it as validator_cli 6.10.4's `QuestionnaireValidator` holds it,
+its rules read from the bytecode and its words kept (`src/questionnaire.rs`,
+`docs/scope.md`): items defined, in place and in order; required answers
+(a warning while in-progress) and required groups; `enableWhen` with the
+answers found up the response tree; one answer unless the definition
+repeats, `minOccurs` / `maxOccurs`; the answer's type and bounds
+(`minValue` / `maxValue`, `maxDecimalPlaces`, `minLength` / `maxLength`,
+`regex`, attachment `mimeType` / `maxSize`, `referenceResource`, quantity
+units and the SDC min/max quantity); `answerOption` per type with
+`optionExclusive`; `answerValueSet` membership through a value set
+contained in the questionnaire or the terminology provider, under R5's
+`answerConstraint` (cross-version extension). A questionnaire that cannot
+be found is a warning, and nothing is judged. A `Questionnaire`'s own
+`enableWhen` wiring is checked. New lane `conformance/questionnaire.py`
+over fhir-test-cases' `questionnaire` module: 81 of 96 R4 JSON cases
+compare, 74/81 verdicts agree, 73/81 agree on every error-level issue,
+0 stricter; eight reviewed differences in `questionnaire-triage.json`
+(terminology server, display names, attachment integrity, an SDC package).
+Other lanes unchanged (gate 1,766/1,766 by the reasons lane; base
+4,819/5,290; test cases 62/84); 246 tests; wasm 2,945,757 bytes.
+
 ## 0.15.0 — 2026-09-22
 
 **Every error, both ways.** A verdict lane proves two validators agree on

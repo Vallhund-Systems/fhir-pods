@@ -85,6 +85,22 @@ int main(void) {
     printf("terminology: needs %s; after load: %s\n", needs, r_table);
     free(needs); free(r_table); free(needs_after);
 
+    /* A QuestionnaireResponse against a loaded Questionnaire (ABI 13). */
+    const char *q = "{\"resourceType\":\"Questionnaire\",\"url\":\"http://forms.example.net/Questionnaire/q1\",\"status\":\"active\","
+                    "\"item\":[{\"linkId\":\"name\",\"type\":\"string\",\"required\":true}]}";
+    const char *qr = "{\"resourceType\":\"QuestionnaireResponse\",\"questionnaire\":\"http://forms.example.net/Questionnaire/q1\","
+                     "\"status\":\"completed\",\"item\":[{\"linkId\":\"nope\",\"answer\":[{\"valueString\":\"x\"}]}]}";
+    char *r_unloaded = unpack(fhir_pods_validate((const uint8_t *)qr, strlen(qr)));
+    ok = ok && strstr(r_unloaded, "\"valid\":true") && strstr(r_unloaded, "could not be resolved");
+    ok = ok && fhir_pods_questionnaire_load((const uint8_t *)q, strlen(q)) == 1;
+    char *r_loaded = unpack(fhir_pods_validate((const uint8_t *)qr, strlen(qr)));
+    ok = ok && strstr(r_loaded, "\"valid\":false") && strstr(r_loaded, "LinkId 'nope' not found in questionnaire")
+            && strstr(r_loaded, "No response answer found for required item 'name'")
+            && fhir_pods_questionnaire_load((const uint8_t *)"{\"resourceType\":\"Patient\"}", 26) == 0
+            && fhir_pods_questionnaire_load(NULL, 0) == 1;
+    printf("questionnaire: unloaded %.60s...; loaded %.60s...\n", r_unloaded, r_loaded);
+    free(r_unloaded); free(r_loaded);
+
     /* Must-support: information, separate from validation. */
     const char *us = "{\"resourceType\":\"Patient\",\"meta\":{\"profile\":[\"http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient\"]},"
                      "\"identifier\":[{\"system\":\"http://h.example.org/mrn\",\"value\":\"1\"}],\"name\":[{\"family\":\"D\"}],\"gender\":\"male\"}";

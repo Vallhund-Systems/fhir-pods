@@ -409,6 +409,37 @@ surface through `mustSupportGaps`.
   carrier — unless an applied profile already reaches it through a slice.
   The base's required elements inside a resource's backbones
   (`QuestionnaireResponse.item.linkId`) apply when no profile does.
+- **A `QuestionnaireResponse` is held to its `Questionnaire`** (0.16.0,
+  `src/questionnaire.rs`) the way validator_cli's `QuestionnaireValidator`
+  holds it — its rules read from the bytecode, its words kept: every item's
+  `linkId` defined at the level it sits and in definition order; a required
+  question answered when enabled (a warning while the response is
+  in-progress), a required group with sub-items; nothing answered where
+  `enableWhen` disables (`exists`, `=`, `!=`, `<`, `>`, `<=`, `>=`, `any` /
+  `all`, the answers found up the response tree); one answer unless the
+  definition repeats, `minOccurs` / `maxOccurs`; the answer's type, and its
+  `minValue` / `maxValue`, `maxDecimalPlaces`, `minLength` / `maxLength`,
+  `regex` (+ `entryFormat`), attachment `mimeType` / `maxSize`,
+  `referenceResource`, quantity `unitOption` / `unitValueSet` and the SDC
+  min/max quantity; `answerOption` membership per type with
+  `optionExclusive`, `answerValueSet` membership through a value set
+  contained in the questionnaire (enumerations) or the terminology
+  provider, under R5's `answerConstraint` carried by its cross-version
+  extension. The questionnaire is found as a contained resource, a bundle
+  entry, or one the host loaded (`Validator::with_questionnaire`,
+  `fhir_pods_questionnaire_load`, `loadQuestionnaire`); one that cannot be
+  found is a warning (an `example.org` one, information) and nothing is
+  judged. A `Questionnaire`'s own `enableWhen` wiring is checked (a target
+  that exists, is not the question itself, not an inner one). The lane:
+  fhir-test-cases' `questionnaire` module, `conformance/questionnaire.py`
+  — 81 of the 96 R4 JSON cases (15 need an SDC package, a launch context,
+  a reference-policy option, or a supporting ValueSet), 74/81 verdicts
+  agree, 73/81 agree on every error-level issue, 0 stricter; the eight
+  reviewed differences (`questionnaire-triage.json`) are the stored
+  outcomes' terminology server (SNOMED, a filter-defined jurisdiction set),
+  display names, attachment size integrity, and an SDC extension. Not
+  taken: SDC `enableWhenExpression` / variables / launch contexts, the
+  derivation checks on a `Questionnaire`, `answerExpression`.
 - **A resource nested in another — a Bundle entry, a contained resource, a
   `Parameters` resource, however deep — is validated against the profiles
   it declares, in the outer bundle's scope,** its findings prefixed with the

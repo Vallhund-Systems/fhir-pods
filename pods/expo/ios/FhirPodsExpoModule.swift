@@ -93,6 +93,13 @@ public class FhirPodsExpoModule: Module {
       return Int(bytes.withUnsafeBufferPointer { buf in fhir_pods_terminology_load(buf.baseAddress, buf.count) })
     }
 
+    // A Questionnaire for every QuestionnaireResponse validated after it
+    // (1 = loaded, 0 = not a Questionnaire; "" clears).
+    Function("questionnaireLoad") { (json: String) -> Int in
+      let bytes = Array(json.utf8)
+      return Int(bytes.withUnsafeBufferPointer { buf in fhir_pods_questionnaire_load(buf.baseAddress, buf.count) })
+    }
+
     // {"needs":[{"valueSet","system","code"},…]} — what a host must resolve.
     Function("terminologyNeeds") { (json: String) -> String in
       call({ ptr, len, _, _ in fhir_pods_terminology_needs(ptr, len) }, json)
