@@ -102,9 +102,13 @@ pub fn code_system_uri(name: &str) -> Option<String> {
     if let Some((_, uri)) = known.iter().find(|(n, _)| *n == name) {
         return Some((*uri).into());
     }
+    // an HL7 table name (`HL70203`) is the THO code system for that table —
+    // when THO publishes one: a table it does not (0296, whose codes are
+    // BCP-47 tags) has no uri to name, and the code is carried without one
     let table = name.strip_prefix("HL7")?;
     if table.len() == 4 && table.bytes().all(|b| b.is_ascii_digit()) {
-        return Some(alloc::format!("http://terminology.hl7.org/CodeSystem/v2-{table}"));
+        let uri = alloc::format!("http://terminology.hl7.org/CodeSystem/v2-{table}");
+        return crate::known_urls::known_definition(&uri).then_some(uri);
     }
     None
 }
@@ -728,7 +732,9 @@ impl<'a> Converter<'a> {
         match pair {
             Some((_, to, system)) => {
                 if is_primitive(ty) {
-                    Some(Node::Str((*to).into()))
+                    // the table's word, typed as the target is (a boolean's
+                    // `true`, a number's digits — never a string of them)
+                    self.primitive(at, target, ty, to)
                 } else {
                     let coding = Node::Object(alloc::vec![
                         ("system".into(), Node::Str((*system).into())),
@@ -839,7 +845,18 @@ impl<'a> Converter<'a> {
             };
             let Some(node) = node else { continue };
             if row.target == "$value" {
-                return Some(node);
+                // the whole target for a primitive (`NM → decimal`); for a
+                // complex type (`NM → Quantity`, `NM.1 → $value`) the IG means
+                // the type's own `value` element
+                if is_primitive(ctx) || ctx == "Element" {
+                    return Some(node);
+                }
+                if let Err(why) = place(&mut body, &mut blocks, ctx, "value", node, true) {
+                    self.skip(at_row, row.target, why);
+                    continue;
+                }
+                any = true;
+                continue;
             }
             if let Err(why) = place(&mut body, &mut blocks, ctx, row.target, node, row.fixed.is_none()) {
                 self.skip(at_row, row.target, why);

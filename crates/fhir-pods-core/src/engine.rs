@@ -716,6 +716,177 @@ pub(crate) fn domain_invariants<D: Document>(
     r
 }
 
+/// The resource types the reference validator's RESTful-URL regex names
+/// (`BundleValidator.urlRegex`, 6.10.4) — an STU3-era list, kept as it is:
+/// `Condition` is spelled "Condition (aka Problem)" there and so never
+/// matches, and the R4-only types are absent. Verbatim, so the same fullUrls
+/// are judged.
+const RESTFUL_TYPES: &[&str] = &[
+    "Account",
+    "ActivityDefinition",
+    "AllergyIntolerance",
+    "AdverseEvent",
+    "Appointment",
+    "AppointmentResponse",
+    "AuditEvent",
+    "Basic",
+    "Binary",
+    "BodySite",
+    "Bundle",
+    "CapabilityStatement",
+    "CarePlan",
+    "CareTeam",
+    "ChargeItem",
+    "Claim",
+    "ClaimResponse",
+    "ClinicalImpression",
+    "CodeSystem",
+    "Communication",
+    "CommunicationRequest",
+    "CompartmentDefinition",
+    "Composition",
+    "ConceptMap",
+    "Condition (aka Problem)",
+    "Consent",
+    "Contract",
+    "Coverage",
+    "DataElement",
+    "DetectedIssue",
+    "Device",
+    "DeviceComponent",
+    "DeviceMetric",
+    "DeviceRequest",
+    "DeviceUseStatement",
+    "DiagnosticReport",
+    "DocumentManifest",
+    "DocumentReference",
+    "EligibilityRequest",
+    "EligibilityResponse",
+    "Encounter",
+    "Endpoint",
+    "EnrollmentRequest",
+    "EnrollmentResponse",
+    "EpisodeOfCare",
+    "ExpansionProfile",
+    "ExplanationOfBenefit",
+    "FamilyMemberHistory",
+    "Flag",
+    "Goal",
+    "GraphDefinition",
+    "Group",
+    "GuidanceResponse",
+    "HealthcareService",
+    "ImagingManifest",
+    "ImagingStudy",
+    "Immunization",
+    "ImmunizationRecommendation",
+    "ImplementationGuide",
+    "Library",
+    "Linkage",
+    "List",
+    "Location",
+    "Measure",
+    "MeasureReport",
+    "Media",
+    "Medication",
+    "MedicationAdministration",
+    "MedicationDispense",
+    "MedicationRequest",
+    "MedicationStatement",
+    "MessageDefinition",
+    "MessageHeader",
+    "NamingSystem",
+    "NutritionOrder",
+    "Observation",
+    "OperationDefinition",
+    "OperationOutcome",
+    "Organization",
+    "Parameters",
+    "Patient",
+    "PaymentNotice",
+    "PaymentReconciliation",
+    "Person",
+    "PlanDefinition",
+    "Practitioner",
+    "PractitionerRole",
+    "Procedure",
+    "ProcedureRequest",
+    "ProcessRequest",
+    "ProcessResponse",
+    "Provenance",
+    "Questionnaire",
+    "QuestionnaireResponse",
+    "ReferralRequest",
+    "RelatedPerson",
+    "RequestGroup",
+    "ResearchStudy",
+    "ResearchSubject",
+    "RiskAssessment",
+    "Schedule",
+    "SearchParameter",
+    "Sequence",
+    "ServiceDefinition",
+    "Slot",
+    "Specimen",
+    "StructureDefinition",
+    "StructureMap",
+    "Subscription",
+    "Substance",
+    "SupplyDelivery",
+    "SupplyRequest",
+    "Task",
+    "TestScript",
+    "TestReport",
+    "ValueSet",
+    "VisionPrescription",
+];
+
+/// `((http|https)://([A-Za-z0-9\.\:\%\$]*/)*)?(<type>)/[A-Za-z0-9\-\.]{1,64}(/_history/[A-Za-z0-9\-\.]{1,64})?`,
+/// the whole string — the reference validator's test for a fullUrl that
+/// looks like a RESTful server URL; the type and id it names.
+fn restful_shape(full: &str) -> Option<(&str, &str)> {
+    let id_char = |c: char| c.is_ascii_alphanumeric() || c == '-' || c == '.';
+    let rest = match full.split_once("://") {
+        Some((scheme, rest)) if scheme == "http" || scheme == "https" => {
+            // any number of host / path segments of the permitted characters
+            let mut rest = rest;
+            while let Some((seg, tail)) = rest.split_once('/') {
+                if !seg.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | ':' | '%' | '$')) {
+                    break;
+                }
+                // the segment before `Type/id` may itself be the type: try both readings
+                if let Some(found) = restful_tail(rest, id_char) {
+                    return Some(found);
+                }
+                rest = tail;
+            }
+            rest
+        }
+        Some(_) => return None,
+        None => full,
+    };
+    restful_tail(rest, id_char)
+}
+
+fn restful_tail(rest: &str, id_char: impl Fn(char) -> bool) -> Option<(&str, &str)> {
+    let (ty, after) = rest.split_once('/')?;
+    if !RESTFUL_TYPES.contains(&ty) {
+        return None;
+    }
+    let (id, history) = match after.split_once('/') {
+        Some((id, h)) => (id, Some(h)),
+        None => (after, None),
+    };
+    let ok_id = |s: &str| !s.is_empty() && s.len() <= 64 && s.chars().all(&id_char);
+    if !ok_id(id) {
+        return None;
+    }
+    match history {
+        None => Some((ty, id)),
+        Some(h) => h.strip_prefix("_history/").filter(|v| ok_id(v)).map(|_| (ty, id)),
+    }
+}
+
 /// Every `reference` under `node`, with the path it sits at.
 fn references_in<D: Document>(node: &D, path: &str, out: &mut Vec<(String, String)>) {
     for r in node.scalars("$this.reference") {
@@ -754,25 +925,29 @@ pub(crate) fn check_document<D: Document>(bundle: &D, r: &mut Report) {
             }
             continue;
         };
-        if !full
-            .split_once("://")
-            .is_some_and(|(scheme, _)| scheme.eq_ignore_ascii_case("http") || scheme.eq_ignore_ascii_case("https"))
-        {
-            continue;
-        }
+        // a fullUrl that looks like a RESTful server URL must end with the
+        // resource's own type and id — "looks like" being the reference
+        // validator's own regex (`BundleValidator.urlRegex`), mirrored
+        let Some((url_type, url_id)) = restful_shape(full) else { continue };
         let rt = entry.scalars("$this.resource.resourceType").first().copied();
         let id = entry.scalars("$this.resource.id").first().copied();
-        if let (Some(rt), Some(id)) = (rt, id) {
-            let mut segs = full.trim_end_matches('/').rsplit('/');
-            let (last, before) = (segs.next(), segs.next());
-            if last != Some(id) || before != Some(rt) {
-                r.push(
-                    Severity::Error,
-                    IssueType::Invariant,
-                    &format!("Bundle.entry[{i}].fullUrl"),
-                    format!("fullUrl '{full}' does not end in the resource's type and id ({rt}/{id})"),
-                );
-            }
+        let Some(rt) = rt else { continue };
+        match id {
+            None => r.push(
+                Severity::Error,
+                IssueType::Invariant,
+                &format!("Bundle.entry[{i}].fullUrl"),
+                format!("The fullUrl '{full}' looks like a RESTful server URL, but the resource has no id"),
+            ),
+            Some(id) if url_type != rt || url_id != id => r.push(
+                Severity::Error,
+                IssueType::Invariant,
+                &format!("Bundle.entry[{i}].fullUrl"),
+                format!(
+                    "The fullUrl '{full}' looks like a RESTful server URL, so it must end with the correct type and id (/{rt}/{id})"
+                ),
+            ),
+            _ => {}
         }
     }
     if bundle.scalars("$this.type") != ["document"] {

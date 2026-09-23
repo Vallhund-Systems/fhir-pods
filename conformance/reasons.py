@@ -128,6 +128,7 @@ def family(text):
         (r"could not be found so is not allowed here", "extension definition not resolvable"),
         (r"No definition could be found for URL", "definition not resolvable"),
         (r"Wrong Display Name", "display name"),
+        (r"Invalid displayLanguage", "display language"),
         (r"ref-1|Unable to resolve resource with reference '#", "local reference"),
         (r"did not match any of the allowed profiles|Unable to find a profile match|conforms to none of|is not one of the resource types", "profile match"),
         (r"allows for the types .* but found type|allows the types .*; found", "extension value type"),
@@ -153,7 +154,7 @@ def family(text):
 
 # findings the two validators locate differently by nature: matched by
 # family within the file, not by path
-LOCUS_FREE = {"profile match"}
+LOCUS_FREE = {"profile match", "display language"}
 
 
 def main():

@@ -681,7 +681,24 @@ impl<'e, D> Env<'e, D> {
 /// `None` when it is not there — never fetched.
 pub fn resolve_reference<D: Document>(reference: &str, resource: Option<&D>, bundle: Option<&D>) -> Option<D> {
     if let Some(local) = reference.strip_prefix('#') {
-        return resource?.child_instances("contained").into_iter().find(|c| c.scalars("$this.id") == [local]);
+        let resource = resource?;
+        if let Some(found) =
+            resource.child_instances("contained").into_iter().find(|c| c.scalars("$this.id") == [local])
+        {
+            return Some(found);
+        }
+        // a constraint on a Bundle reaching into an entry's own contained
+        // resources: the reference sits in that entry, whose contained the
+        // `#id` names (the first entry holding one, when several do)
+        if resource.scalars("$this.resourceType") == ["Bundle"] {
+            return resource
+                .child_instances("entry")
+                .into_iter()
+                .filter_map(|e| e.child_instances("resource").into_iter().next())
+                .flat_map(|r| r.child_instances("contained"))
+                .find(|c| c.scalars("$this.id") == [local]);
+        }
+        return None;
     }
     let bundle = bundle?;
     let (identity, version) = match reference.rsplit_once("/_history/") {

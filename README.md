@@ -226,7 +226,7 @@ does not infer a jurisdiction or supply a complete regional compliance regime.
 
 | Surface | Delivery |
 | --- | --- |
-| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.16.0 artifact is 2,945,757 bytes (751,326 bytes gzip-9). [Guide](pods/wasm/README.md) |
+| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.17.0 artifact is 2,952,017 bytes (753,520 bytes gzip-9). [Guide](pods/wasm/README.md) |
 | **Expo** | Native iOS XCFramework and Android jniLibs behind the Expo Modules API. [Guide](pods/expo/README.md) |
 | **Rust / C** | `fhir_pods_core` directly or the shared [ABI 13 header](crates/fhir-pods-ffi/include/fhir_pods.h) |
 | **CLI** | Local JSON/ER7 input, structured output, and exit codes for scripting. [Guide](crates/fhir-pods-cli/README.md) |
@@ -258,9 +258,11 @@ compliance.
 | Lane | Latest recorded result |
 | --- | --- |
 | Release corpus | **1,766/1,766** verdicts agree at v0.15.0 (UK Core and NZ Base examples, six regions' export outputs, the base's binding fixtures); `conformance/reasons.py` puts every error-level issue side by side — three triaged residues on 1,766 files |
-| Published R4 examples | **4,819/5,290** compared verdicts agree; **471** reviewed lenient differences; **2** explicit oracle exclusions out of 5,292 selected inputs; no stricter verdicts |
-| Published validator base tests | **62/84** agree with stored Java outcomes; **14/20** with stored Firely outcomes; differences are reviewed individually |
+| Published R4 examples | **5,130/5,290** compared verdicts agree; **160** reviewed lenient differences; **2** explicit oracle exclusions out of 5,292 selected inputs; no stricter verdicts |
+| Published validator base tests | **63/84** agree with stored Java outcomes; **13/20** with stored Firely outcomes; differences are reviewed individually |
 | Questionnaire tests | **81 of 96** R4 JSON cases compare (the rest name an SDC package, a launch context or a validator policy option): **74/81** verdicts agree and **73/81** agree on every error-level issue; the 8 reviewed differences are terminology-server, display-name and attachment-integrity families (`conformance/questionnaire.py`) |
+| Supporting-resource tests | **11 of 160** cases compare (the rest are the questionnaire lane's, or need a package, an IG, a validator option, a filter): **9/11** agree, 0 stricter (`conformance/supporting.py`) |
+| HL7 v2 sample messages | **77 of 139** public synthetic messages convert (62 name structures the maps do not cover); every bundle before validator_cli: **77/77** verdicts agree, **74/77** on every error, 0 stricter — and all 77 are invalid on both sides, for reasons the lane lists (`conformance/v2samples.py`) |
 | Ad-hoc profile tests | **10 of 53** cases compare: **9/10** agree with Java and **7/7** with Firely where available; other cases have compiler, snapshot, or manifest exclusions |
 
 The broader lanes enforce reviewed baselines: new or changed differences and

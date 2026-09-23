@@ -1,0 +1,29 @@
+{
+  "OML-O21-02.hl7": {
+    "ours": "invalid",
+    "oracle": "invalid",
+    "missed": [
+      "Bundle.entry.resource.extension[url='http.org/fhir/5.0/StructureDefinition/extension-Observation.valueAttachment']"
+    ],
+    "extra": [],
+    "reason": "a cross-version extension the IG names by a choice key (`extension-Observation.valueAttachment`): the oracle rejects the URL because R5's element id is `Observation.value[x]`; the pod does not carry other versions' element ids and takes a well-formed xver URL on trust (docs/scope.md)."
+  },
+  "OML-O21-03.hl7": {
+    "ours": "invalid",
+    "oracle": "invalid",
+    "missed": [
+      "Bundle.entry.resource.extension[url='http.org/fhir/5.0/StructureDefinition/extension-Observation.valueAttachment']"
+    ],
+    "extra": [],
+    "reason": "a cross-version extension the IG names by a choice key (`extension-Observation.valueAttachment`): the oracle rejects the URL because R5's element id is `Observation.value[x]`; the pod does not carry other versions' element ids and takes a well-formed xver URL on trust (docs/scope.md)."
+  },
+  "ORU-R01-01.hl7": {
+    "ours": "invalid",
+    "oracle": "invalid",
+    "missed": [
+      "Bundle.entry.resource.extension[url='http.org/fhir/5.0/StructureDefinition/extension-Observation.valueAttachment']"
+    ],
+    "extra": [],
+    "reason": "a cross-version extension the IG names by a choice key (`extension-Observation.valueAttachment`): the oracle rejects the URL because R5's element id is `Observation.value[x]`; the pod does not carry other versions' element ids and takes a well-formed xver URL on trust (docs/scope.md)."
+  }
+}

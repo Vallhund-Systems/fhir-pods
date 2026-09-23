@@ -215,9 +215,8 @@ fn an_adt_a01_becomes_an_admission_with_what_the_message_carries_and_names_what_
             "Bundle.entry.resource.destination.endpoint is not a valid url",
             "Provenance.agent is required (min 1, found 0)",
             "Provenance.target is required (min 1, found 0)",
-            // PID-3's "SS" identifier system carries a trailing dot: nothing in HL7's
-            // own URL space is defined there
-            "No definition could be found for URL value 'http://hl7.org/fhir/sid/us-ssn.'",
+            // PID-3's "SS" identifier system: the IG's literal carried a trailing dot,
+            // corrected as spelling by the generator (0.17.0)
             // PID-13/14, NK1-5 and the contact's phone carry a value with no system:
             // cpt-2 on every ContactPoint, profile or none
             "cpt-2: A system is required if a value is provided.",

@@ -592,7 +592,9 @@ def main():
         if m0:
             SEGMENT_NAMES.add(m0.group(1).upper())
     ids = set(cms)
-    stats = {"rows": 0, "compiled": 0, "skipped": {}, "context moves": 0, "value keys respelt": 0, "concatenations": 0, "component bindings": 0}
+    stats = {"rows": 0, "compiled": 0, "skipped": {}, "context moves": 0, "value keys respelt": 0, "concatenations": 0, "component bindings": 0,
+             "backbone datatype maps attached": 0, "targets read from the row's comment": 0,
+             "extension urls read from the row's comment": 0, "literals corrected": 0}
 
     def skip(why):
         stats["skipped"][why.split(":")[0]] = stats["skipped"].get(why.split(":")[0], 0) + 1
@@ -719,6 +721,35 @@ def main():
             elif kind == "segment":
                 if sref is None:
                     reason = f"source form: {src}"
+            # a backbone named as the whole target — `MSH-3 → source[1]`
+            # (an HD) — takes the IG's datatype map for that backbone
+            # (`HD → messageheader-source`), which the package's TypeInfo
+            # does not name; and a primitive said to land on a backbone
+            # (`MSH-24 → source`, a string) lands on the child the row's own
+            # comment names ("better information for the
+            # MessageHeader.source.endpoint") — the IG's stated intent, not
+            # ours
+            ty0 = (tinfo.get("type") or "").split("(")[0]
+            if owner and reason is None and display and not display.startswith(("$", "extension")):
+                gone, landed, _ = resolve_element(owner, display)
+                backbone = gone is None and landed is not None and "." in landed
+                if backbone and not ty0:
+                    v2ty = (sinfo.get("type") or "").split("(")[0].lower()
+                    key = landed.replace(".", "-").lower()
+                    if any(n.startswith(f"datatype-{v2ty}-") and n.endswith(f"-to-{key}") for n in cms):
+                        tinfo = {**tinfo, "type": key}
+                        stats["backbone datatype maps attached"] += 1
+                elif backbone and ty0 and ty0[:1].islower():
+                    # the child the comment names ("… for the MessageHeader.source.endpoint"),
+                    # by its name — the IG's MSH-25 comment says `source` where it means
+                    # `destination`, so the backbone is taken from the row, the child from the text
+                    m2 = re.search(r"\b" + re.escape(owner) + r"\.[a-z][A-Za-z]*\.([a-z][A-Za-z]+)", t.get("comment") or "")
+                    if m2 and resolve_element(owner, f"{display}.{m2.group(1)}")[0] is None:
+                        display = f"{display}.{m2.group(1)}"
+                        _, child_ty, _ = resolve_element(owner, display)
+                        if child_ty and "." not in child_ty:
+                            tinfo = {**tinfo, "type": child_ty}
+                        stats["targets read from the row's comment"] += 1
             tgt = parse_target(display)
             if tgt is None and reason is None:
                 reason = f"target form: {display}"
@@ -729,12 +760,45 @@ def main():
                 if gone is not None:
                     reason = f"no such element: {gone} (target {display})"
             assign = tinfo.get("assignment")
+            # an extension's `url` is a literal, never the source's value: some
+            # rows carry it in the comment instead of the assignment
+            # (`"http://hl7.org/fhir/StructureDefinition/observation-analysis-date-time"`);
+            # a `url` with no literal anywhere is not written
+            if reason is None and re.search(r"(^|\.)url$", display) and assign is None:
+                m3 = re.fullmatch(r'\s*"(https?://[^"\s]+)"\s*', t.get("comment") or "")
+                if m3:
+                    assign = f'"{m3.group(1)}"'
+                    stats["extension urls read from the row's comment"] += 1
+                else:
+                    reason = "an extension url with no literal to write"
             fixed = None
             concat = None
             if assign is not None and reason is None:
                 a = assign.strip()
                 if a.startswith('"') and a.endswith('"') and len(a) >= 2 and a.count('"') == 2:
                     fixed = a[1:-1]
+                    # the IG's own misspellings of a URL, corrected as spelling:
+                    # a trailing full stop on a sid, a cross-version extension
+                    # named by its element alone (`extension-subscriberId`, where
+                    # the form is `extension-<Resource>.<element>`)
+                    if fixed.startswith("http://hl7.org/fhir/sid/") and fixed.endswith("."):
+                        fixed = fixed[:-1]
+                        stats["literals corrected"] += 1
+                    # a cross-version extension spelt `v5.0` or `https://`: the form is
+                    # `http://hl7.org/fhir/<version>/StructureDefinition/extension-…`
+                    xv = re.fullmatch(r"https?://hl7\.org/fhir/v?(\d\.\d)/StructureDefinition/extension-(.+)", fixed)
+                    if xv and fixed != f"http://hl7.org/fhir/{xv.group(1)}/StructureDefinition/extension-{xv.group(2)}":
+                        fixed = f"http://hl7.org/fhir/{xv.group(1)}/StructureDefinition/extension-{xv.group(2)}"
+                        stats["literals corrected"] += 1
+                    # the core extension `condition-assertedDate`, written as
+                    # `http://www.hl7.org/fhir/extension-condition-asserteddate`
+                    if fixed == "http://www.hl7.org/fhir/extension-condition-asserteddate":
+                        fixed = "http://hl7.org/fhir/StructureDefinition/condition-assertedDate"
+                        stats["literals corrected"] += 1
+                    xver = re.fullmatch(r"(https?://hl7\.org/fhir/\d\.\d/StructureDefinition/extension-)([A-Za-z0-9]+)", fixed)
+                    if xver and owner and owner[:1].isupper():
+                        fixed = f"{xver.group(1)}{owner}.{xver.group(2)}"
+                        stats["literals corrected"] += 1
                 else:
                     concat = parse_concat(a)
                     if concat is None:

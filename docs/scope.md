@@ -409,6 +409,22 @@ surface through `mustSupportGaps`.
   carrier — unless an applied profile already reaches it through a slice.
   The base's required elements inside a resource's backbones
   (`QuestionnaireResponse.item.linkId`) apply when no profile does.
+- **What a Bundle entry's `fullUrl` owes** (0.17.0): one that "looks like
+  a RESTful server URL" must end with the resource's own type and id —
+  and "looks like" is validator_cli's own regex (`BundleValidator.urlRegex`),
+  mirrored as it is: an STU3-era type list in which `Condition` is spelt
+  "Condition (aka Problem)", so a Condition fullUrl is never judged, and
+  host segments admit only `[A-Za-z0-9.:%$]`. Nothing else about the
+  fullUrl is judged (F026's stricter rule is gone).
+- **Names that must be names** (0.17.0): `Identifier.system` is an absolute
+  URI (a scheme of lowercase token characters, as `Utilities.isAbsoluteUrl`
+  has it); a top-level `Extension.url` is absolute; a resource's `language`
+  is a BCP-47 tag; an extension under HL7's own URL space that no package
+  defines is refused ("could not be found so is not allowed here"), a
+  well-formed cross-version extension (`http://hl7.org/fhir/5.0/
+  StructureDefinition/extension-Type.element`) taken on trust since the pod
+  carries no other version's element ids; a `Coding.system` under
+  `terminology.hl7.org` that THO does not define is an error.
 - **A `QuestionnaireResponse` is held to its `Questionnaire`** (0.16.0,
   `src/questionnaire.rs`) the way validator_cli's `QuestionnaireValidator`
   holds it — its rules read from the bytecode, its words kept: every item's

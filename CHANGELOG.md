@@ -1,5 +1,62 @@
 # Changelog
 
+## 0.17.0 — 2026-09-23
+
+**Two more corpora, and what they found.**
+
+- **Supporting-resource lane** (`conformance/supporting.py`): fhir-test-cases'
+  R4 JSON cases that come with `supporting` definitions. A supporting
+  StructureDefinition goes through the ad-hoc profile lane's own machinery
+  (Java snapshot, isolated compile, feature build — reused, not edited); a
+  supporting ValueSet / CodeSystem that enumerates is compiled into a
+  terminology table the probe loads (`probe --terminology`). 11 of 160
+  compare (the rest are the questionnaire lane's, need a package, an IG, a
+  validator option, a filter, or a snapshot Java cannot make); 9/11 agree,
+  0 stricter; two reviewed (`supporting-triage.json`).
+- **HL7 v2 sample lane** (`conformance/v2samples.py`,
+  `examples/v2_samples.rs`): Microsoft FHIR-Converter's 139 synthetic v2
+  messages (MIT, pinned, fetched into a gitignored cache) through the
+  converter — 77 convert, 62 name structures the maps do not cover — and
+  every bundle before validator_cli. Verdicts 77/77, every error-level
+  issue 74/77, 0 stricter; three reviewed (a cross-version extension URL
+  the oracle rejects by element id). All 77 bundles are invalid on both
+  sides, and the lane says why (an ADT's Provenance with no target, XTN
+  telecoms with no system, sample codes outside their sets) — reported,
+  not hidden.
+- **Converter defects the samples exposed, fixed:** `NM → Quantity` wrote
+  the number bare (`$value` on a complex type is its `value`);
+  `deceasedBoolean` from table 0136 came out as the string "false";
+  `MessageHeader.source` was missing whenever MSH-24 was valued (the IG's
+  `MSH-3 → source[1]` names no datatype map — the backbone's own
+  `HD → messageheader-source` is attached now — and `MSH-24 → source`,
+  a string into a backbone, lands on the child the row's own comment
+  names); an extension `url` with the literal in the row's comment, not
+  its assignment, was written with the source's value (a date); an HL7
+  table THO does not publish (0296) got a made-up THO uri; the IG's
+  literal misspellings (`us-ssn.`, `v5.0`, `https://` on cross-version
+  extensions, `extension-subscriberId` without its resource,
+  `www.hl7.org/fhir/extension-condition-asserteddate`) are corrected as
+  spelling by the generator, each counted.
+- **Verifier rules the oracle showed us:** `Identifier.system` must be an
+  absolute URI; a top-level `Extension.url` must be absolute; an extension
+  named under HL7's space that no package defines is refused (a
+  well-formed cross-version one is taken on trust); a `Coding.system`
+  under `terminology.hl7.org` that THO does not define is an error; a
+  resource `language` is a BCP-47 tag; a Bundle entry's fullUrl "looks
+  RESTful" by validator_cli's own regex (`BundleValidator.urlRegex`,
+  mirrored — its type list is STU3-era and spells `Condition` as
+  "Condition (aka Problem)", so a Condition fullUrl is never judged, here
+  as there); `resolve()` of a `#contained` reference in a Bundle-level
+  constraint finds the entry's contained resource.
+- **A FHIRPath engine bug:** `countMax` was read as a choice of `count`,
+  so `count.exists()` was true — `tim-8` never fired. A choice key is the
+  stem plus a FHIR type name, nothing else.
+
+Verdicts: base examples **5,130/5,290**, 0 stricter (311 reviewed
+leniencies closed by the new rules and dropped from `base-triage.json`);
+release corpus 1,766/1,766 by the reasons lane (3 triaged); test cases
+Java 63/84; questionnaire 74/81; 246 tests.
+
 ## 0.16.0 — 2026-09-22
 
 **QuestionnaireResponse against its Questionnaire** (ABI 13). A response

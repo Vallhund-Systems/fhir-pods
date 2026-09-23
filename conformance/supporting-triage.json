@@ -1,0 +1,25 @@
+{
+  "ext-derived": {
+    "ours": "valid",
+    "java": "invalid",
+    "missed": [
+      "Extension.url"
+    ],
+    "extra": [],
+    "reason": "an extension profile derived from another extension: the derived definition inherits the base's fixed `url`, so an instance using the derived url fails the base's fixed value on the oracle; the pod compiles the derived extension by its own url and holds the instance to that definition. Verdict differs (lenient); a defect of the test's definition as much as a gap."
+  },
+  "opdef-params": {
+    "ours": "valid",
+    "java": "invalid",
+    "missed": [
+      "OperationDefinition.inputProfile.parameter",
+      "OperationDefinition.inputProfile.parameter",
+      "OperationDefinition.inputProfile.parameter",
+      "OperationDefinition.outputProfile.parameter",
+      "OperationDefinition.outputProfile.parameter",
+      "OperationDefinition.outputProfile.parameter"
+    ],
+    "extra": [],
+    "reason": "definition-level checks (docs/scope.md, definition resolution): an OperationDefinition's parameters against its inputProfile / outputProfile Parameters profiles are not compared by the pod."
+  }
+}

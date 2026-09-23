@@ -27,7 +27,14 @@ fn t043_non_http_bundle_identities_are_not_rest_resource_urls() {
     let valid = probe_str(bundle);
     assert!(valid.contains("\"valid\":true"), "{valid}");
     let wrong = probe_str(&bundle.replace("uin:uuid:example", "https://example.org/Patient/other"));
-    assert!(wrong.contains("does not end in the resource's type and id (Patient/p)"), "{wrong}");
+    assert!(
+        wrong.contains("looks like a RESTful server URL, so it must end with the correct type and id (/Patient/p)"),
+        "{wrong}"
+    );
+    // a URL that does not look RESTful (no `Type/id` tail) is not judged — the
+    // reference validator's own regex decides what looks RESTful
+    let plain = probe_str(&bundle.replace("uin:uuid:example", "https://example.org/some-entry"));
+    assert!(plain.contains("\"valid\":true"), "{plain}");
 }
 
 #[test]
@@ -446,7 +453,10 @@ fn f026_an_unprofiled_bundle_owes_its_identity_and_the_base_bundle_rules() {
     let ok = bundle("collection", "", &[entry("https://x.example.org/fhir/Patient/p1", "p1", "")]);
     assert!(probe_str(&ok).contains("\"valid\":true"), "{}", probe_str(&ok));
     let r = probe_str(&bundle("collection", "", &[entry("https://x.example.org/fhir/Patient/other", "p1", "")]));
-    assert!(r.contains("does not end in the resource's type and id (Patient/p1)"), "{r}");
+    assert!(
+        r.contains("looks like a RESTful server URL, so it must end with the correct type and id (/Patient/p1)"),
+        "{r}"
+    );
     let r = probe_str(&bundle("collection", "", &[entry("https://x.example.org/fhir/Observation/p1", "p1", "")]));
     assert!(r.contains("\"valid\":false"), "{r}");
     // a urn is its own identity

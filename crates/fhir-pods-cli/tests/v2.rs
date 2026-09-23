@@ -153,9 +153,8 @@ fn unplaced_segments_fail_even_with_a_valid_bundle_and_invalid_bundles_stay_insp
             ("value", "Bundle.entry.resource.destination.endpoint is not a valid url"),
             ("required", "Provenance.agent is required (min 1, found 0)"),
             ("required", "Provenance.target is required (min 1, found 0)"),
-            // PID-3's "SS" identifier maps to a system with a trailing dot: nothing in
-            // HL7's own URL space is defined there (0.15.0, as validator_cli grades it)
-            ("value", "No definition could be found for URL value 'http://hl7.org/fhir/sid/us-ssn.'"),
+            // PID-3's "SS" identifier system: the IG's literal carried a trailing dot,
+            // corrected as spelling by the generator (0.17.0) — no URL error now
             // PID-13/14, NK1-5 and the contact's phone: a ContactPoint value with no
             // system — cpt-2 on every ContactPoint, profile or none (0.15.0)
             ("invariant", "cpt-2: A system is required if a value is provided."),

@@ -133,6 +133,31 @@ impl<'a> Parsed<'a> {
 /// One structural finding: element path, issue type, message.
 pub type Gap = (alloc::string::String, crate::validate::IssueType, alloc::string::String);
 
+/// R4's primitive types: what a choice key's suffix may name besides a
+/// complex type (`valueDateTime`, `deceasedBoolean`).
+const PRIMITIVE_TYPES: &[&str] = &[
+    "base64Binary",
+    "boolean",
+    "canonical",
+    "code",
+    "date",
+    "dateTime",
+    "decimal",
+    "id",
+    "instant",
+    "integer",
+    "markdown",
+    "oid",
+    "positiveInt",
+    "string",
+    "time",
+    "unsignedInt",
+    "uri",
+    "url",
+    "uuid",
+    "xhtml",
+];
+
 fn is_primitive(ty: &str) -> bool {
     ty.chars().next().is_some_and(|c| c.is_ascii_lowercase())
 }
@@ -526,6 +551,38 @@ fn url_check_exempt(ctx: &str, bare: &str) -> bool {
         || (bare == "url" && CANONICAL_RESOURCES.binary_search(&ctx).is_ok())
 }
 
+/// An absolute URL as the reference validator sees one (`Utilities.isAbsoluteUrl`):
+/// a scheme of lowercase token characters before a colon — `http`, `https`,
+/// `urn`, `file`, `mailto`, … — and no whitespace.
+fn absolute_url(s: &str) -> bool {
+    let Some((scheme, _)) = s.split_once(':') else { return false };
+    !scheme.is_empty()
+        && scheme.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || matches!(c, '+' | '-' | '.'))
+        && scheme.chars().next().is_some_and(|c| c.is_ascii_lowercase())
+        && !s.chars().any(char::is_whitespace)
+}
+
+/// `http://hl7.org/fhir/<version>/StructureDefinition/extension-<Type>.<element>`:
+/// an element of another FHIR version carried as an extension.
+fn xver_extension(url: &str) -> bool {
+    url.strip_prefix("http://hl7.org/fhir/").and_then(|rest| rest.split_once('/')).is_some_and(|(version, tail)| {
+        version.len() >= 3
+            && version.chars().all(|c| c.is_ascii_digit() || c == '.')
+            && tail.starts_with("StructureDefinition/extension-")
+    })
+}
+
+/// A BCP-47 language tag as the reference validator accepts one: a primary
+/// subtag of two to eight lowercase letters, then subtags of one to eight
+/// alphanumerics, `-`-separated.
+fn language_tag(s: &str) -> bool {
+    let mut parts = s.split('-');
+    let Some(primary) = parts.next() else { return false };
+    (2..=8).contains(&primary.len())
+        && primary.chars().all(|c| c.is_ascii_lowercase())
+        && parts.all(|p| (1..=8).contains(&p.len()) && p.chars().all(|c| c.is_ascii_alphanumeric()))
+}
+
 fn structure_in<'v, 'a>(v: &'v Value<'a>, ctx: &'static str, path: &str, w: &mut Walk<'v, 'a, '_>) {
     structure_at(v, ctx, path, "", false, true, w)
 }
@@ -913,6 +970,20 @@ fn structure_object<'v, 'a>(
                     alloc::format!("Unknown code '{code}' in the CodeSystem 'urn:ietf:rfc:3986'"),
                 ));
             }
+            // a code system named under THO's own space that THO does not
+            // define (`v2-0296`, a table whose codes are BCP-47 tags): the
+            // reference validator holds a coding to a definition there
+            if ctx == "Coding"
+                && bare.starts_with("http://terminology.hl7.org/")
+                && !crate::known_urls::known_definition(bare)
+                && crate::code_systems_table::CODE_SYSTEMS.binary_search_by(|(u, _, _)| (*u).cmp(bare)).is_err()
+            {
+                w.gaps.push((
+                    alloc::format!("{path}.system"),
+                    ValueIssue,
+                    alloc::format!("No definition could be found for URL value '{bare}'"),
+                ));
+            }
             if let Ok(i) = crate::code_systems_table::CODE_SYSTEMS.binary_search_by(|(u, _, _)| (*u).cmp(bare)) {
                 let (_, case_sensitive, codes) = crate::code_systems_table::CODE_SYSTEMS[i];
                 // the table is line-delimited: a code carrying a line break
@@ -997,6 +1068,61 @@ fn structure_object<'v, 'a>(
                     let label = w.label(w.root);
                     w.extensions.push((label, v, p));
                 }
+            } else if w.ctxs.len() >= 2
+                && w.ctxs[w.ctxs.len() - 2].0 != "Extension"
+                && crate::known_urls::in_known_space(base)
+                && !crate::known_urls::known_definition(base)
+                && !xver_extension(base)
+            {
+                // an extension named under HL7's own space that no package
+                // defines: the reference validator refuses it (an extension
+                // anywhere else is taken on trust; a cross-version extension
+                // names an element of another FHIR version the pod does not
+                // carry, and is not judged)
+                w.gaps.push((
+                    path.into(),
+                    Structure,
+                    alloc::format!("The extension {base} could not be found so is not allowed here"),
+                ));
+            }
+        }
+    }
+    // a resource's language is a BCP-47 tag: a lowercase primary subtag
+    if is_resource {
+        if let Some((_, Value::Str(lang))) = kvs.iter().find(|(k, _)| k.as_ref() == "language") {
+            if !language_tag(lang) {
+                w.gaps.push((
+                    alloc::format!("{path}.language"),
+                    ValueIssue,
+                    alloc::format!("Invalid displayLanguage: '{lang}'"),
+                ));
+            }
+        }
+    }
+    // an identifier's system is an absolute URI: a namespace, not a name
+    if ctx == "Identifier" {
+        if let Some((_, Value::Str(system))) = kvs.iter().find(|(k, _)| k.as_ref() == "system") {
+            if !absolute_url(system) {
+                w.gaps.push((
+                    path.into(),
+                    ValueIssue,
+                    alloc::string::String::from(
+                        "Identifier.system must be an absolute reference, not a local reference",
+                    ),
+                ));
+            }
+        }
+    }
+    // an extension's url is absolute — except a sub-extension's, which names
+    // it within its parent
+    if ctx == "Extension" && w.ctxs.len() >= 2 && w.ctxs[w.ctxs.len() - 2].0 != "Extension" {
+        if let Some((_, Value::Str(url))) = kvs.iter().find(|(k, _)| k.as_ref() == "url") {
+            if !absolute_url(url) {
+                w.gaps.push((
+                    path.into(),
+                    ValueIssue,
+                    alloc::string::String::from("Extension.url must be an absolute URL"),
+                ));
             }
         }
     }
@@ -1410,9 +1536,17 @@ impl<'v, 'a> Document for TreeDoc<'v, 'a> {
         let mut keys = Vec::new();
         for (key, _) in kvs {
             let key = key.strip_prefix('_').unwrap_or(key);
-            if key.strip_prefix(stem).is_some_and(|rest| rest.starts_with(|c: char| c.is_ascii_uppercase()))
-                && !keys.contains(&key)
-            {
+            // a choice key is the stem plus a FHIR type name (`valueQuantity`,
+            // `deceasedBoolean`) — `countMax` is not a choice of `count`
+            let is_choice = key.strip_prefix(stem).is_some_and(|rest| {
+                rest.starts_with(|c: char| c.is_ascii_uppercase())
+                    && (crate::typing::known_type(rest).is_some() || {
+                        let mut lower = alloc::string::String::from(rest);
+                        lower[..1].make_ascii_lowercase();
+                        PRIMITIVE_TYPES.contains(&lower.as_str())
+                    })
+            });
+            if is_choice && !keys.contains(&key) {
                 keys.push(key);
             }
         }

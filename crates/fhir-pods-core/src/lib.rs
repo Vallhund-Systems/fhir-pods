@@ -69,7 +69,7 @@ pub static REGISTRY: &[&CompiledProfile] = &{
 };
 
 /// The definitions the packages hold under HL7's own URL spaces (generated).
-mod known_urls;
+pub(crate) mod known_urls;
 /// The element-type table generated from the base FHIR package
 /// (`tools/gen_typemap.py`): `Type.element` → its FHIR type(s).
 mod typemap;
