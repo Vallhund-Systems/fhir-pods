@@ -1,6 +1,6 @@
 [package]
 name = "fhir-pods-ffi"
-version = "0.14.1"
+version = "0.14.2"
 edition = "2021"
 license = "MIT"
 description = "Shared C ABI for the fhir-pods compliance runtime, compiled for WebAssembly and native applications."

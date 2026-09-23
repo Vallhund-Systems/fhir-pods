@@ -969,3 +969,39 @@ fn identifier_type_bindings_resolved_targets_and_typed_entries_discriminate() {
         wire::report(&r)
     );
 }
+
+/// 0.14.2: slices nest to any depth — AU Core's `medicationClass` extension
+/// slice sits inside the AMT / PBS coding slice inside the medication type
+/// slice, and its rules reach an instance three levels down.
+#[test]
+fn a_slice_three_levels_deep_is_enforced() {
+    use fhir_pods_core::{wire, Validator};
+    let v = Validator::new();
+    let mr = |ext: &str| {
+        format!(
+            r#"{{"resourceType":"MedicationRequest","meta":{{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-medicationrequest"]}},
+        "status":"active","intent":"order","medicationCodeableConcept":{{"coding":[{{"system":"http://pbs.gov.au/code/item","code":"10001J",
+            "extension":[{ext}]}}],"text":"Amoxicillin"}},
+        "subject":{{"reference":"Patient/1"}},"authoredOn":"2026-09-20","requester":{{"reference":"Practitioner/1"}}}}"#
+        )
+    };
+    let one = r#"{"url":"http://hl7.org.au/fhir/StructureDefinition/medication-type","valueCoding":{"system":"http://terminology.hl7.org.au/CodeSystem/medication-type","code":"BPD"}}"#;
+    let r = v.validate(mr(one).as_bytes());
+    assert!(r.is_valid(), "{}", wire::report(&r));
+    assert!(
+        !r.report.issues.iter().any(|i| i.message.contains("was not checked")),
+        "nothing deferred: {}",
+        wire::report(&r)
+    );
+    // the slice is 0..1: two medication-type extensions on the PBS coding exceed it
+    let two = format!("{one},{one}");
+    let r = v.validate(mr(&two).as_bytes());
+    assert!(
+        r.report
+            .issues
+            .iter()
+            .any(|i| i.path.contains("coding:pbs.extension:medicationClass") && i.message.contains("exceeds max 1")),
+        "{}",
+        wire::report(&r)
+    );
+}

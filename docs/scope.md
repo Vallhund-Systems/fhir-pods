@@ -278,7 +278,7 @@ IPS's LOINC sets resolve when loaded.
 
 ## Deferred slices are said, not silent
 
-29 slices across the registry have discriminators the compiler cannot
+21 slices across the registry have discriminators the compiler cannot
 resolve, and every one is a defect of its guide as published: a `value`
 discriminator on a code the profile neither fixes nor binds as required
 (AU's `category:specificDiscipline` / `anatomicRegionOfInterest`; CA
@@ -286,9 +286,8 @@ Baseline's `NonDrugAllergen`, `LabOrder` and `@default` slices; CA's
 Immunization `Generic`/`Tradename` — the reference validator errors on
 those too), a discriminator on `binding.valueSet` (CA Condition), a
 sub-extension whose `url` the published definition never fixes
-(QuantityConfidenceInterval), BALP's SAML `otherId` slices on
-`value.ofType(Identifier).type`, and AU's `medicationClass` extension
-slices nested three levels deep. (0.14.0 compiled slices whose
+(QuantityConfidenceInterval), and BALP's SAML `otherId` slices on
+`value.ofType(Identifier).type`. (0.14.0 compiled slices whose
 discriminator points at a `required` binding as `Member` discriminators —
 decided by membership through the bundled sets, a whole-system set or the
 host's provider, undecided never an error; 0.14.1 added the binding
@@ -297,7 +296,9 @@ bound ancestor of a part-path discriminator, `resolve()` to a base
 vital-sign profile the registry carries (AU's `supportingInformation:
 bodyHeight/bodyWeight`, IPS's `DiagnosticReport.result`), and Bundle
 entries whose `resource` is typed as the resource itself (the AU PS and
-IPS `entry:consent/device/careteam/…`): 52 of the 81 once deferred.)
+IPS `entry:consent/device/careteam/…`); 0.14.2 made slicings nest to any
+depth (AU's `medicationClass` extension inside the AMT/PBS coding slice
+inside the medication type slice): 60 of the 81 once deferred.)
 Each remaining one is compiled as `deferred` (element, slice,
 why) and not enforced. Since 0.13.1 a resource
 that reaches the sliced element gets an **information** issue

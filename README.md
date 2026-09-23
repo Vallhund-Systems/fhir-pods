@@ -225,7 +225,7 @@ does not infer a jurisdiction or supply a complete regional compliance regime.
 
 | Surface | Delivery |
 | --- | --- |
-| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.14.1 artifact is 2,718,072 bytes (654,739 bytes gzip-9). [Guide](pods/wasm/README.md) |
+| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.14.2 artifact is 2,717,480 bytes (654,630 bytes gzip-9). [Guide](pods/wasm/README.md) |
 | **Expo** | Native iOS XCFramework and Android jniLibs behind the Expo Modules API. [Guide](pods/expo/README.md) |
 | **Rust / C** | `fhir_pods_core` directly or the shared [ABI 12 header](crates/fhir-pods-ffi/include/fhir_pods.h) |
 | **CLI** | Local JSON/ER7 input, structured output, and exit codes for scripting. [Guide](crates/fhir-pods-cli/README.md) |
@@ -263,7 +263,7 @@ compliance.
 
 The broader lanes enforce reviewed baselines: new or changed differences and
 unusable evidence fail. Exclusions are never counted as agreement. The latest
-release records **238 Rust workspace tests** and **18 Python harness
+release records **239 Rust workspace tests** and **18 Python harness
 checks**; the [changelog](CHANGELOG.md) separates released artifacts from
 unreleased corrections. [Conformance commands](conformance/README.md) and
 [detailed scope](docs/scope.md) describe reproduction and the remaining gaps.

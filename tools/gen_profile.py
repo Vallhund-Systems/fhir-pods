@@ -615,104 +615,57 @@ class Compiled:
     deferred: list                 # [(reason, element id)]
 
 
+def slice_walk(eid):
+    """`A.b:x.c:y.d` → (`A.b`, [("x", "c"), ("y", "d")]): the sliced element,
+    then for each nesting level the slice name and the path that continues
+    under it — the last continuation is a sub-element of the innermost
+    slice (or empty when the element IS that slice)."""
+    head, *pieces = eid.split(":")
+    levels = []
+    for piece in pieces:
+        name, _, rest = piece.partition(".")
+        levels.append((name, rest))
+    return head, levels
+
+
 def collect(sd):
     """One pass over the snapshot: element rules, and every slicing with its
     slices' cardinality, type, profile, sub-rules, nested-slice fixeds and
-    object patterns — everything discriminator resolution needs."""
+    object patterns — everything discriminator resolution needs. Slices nest
+    to any depth (`medication[x]:cc.coding:amt.extension:class`)."""
     elements, slicings, deferred = {}, {}, []
-    for e in (sd.get("snapshot") or {}).get("element", []):
-        path, eid = e.get("path", ""), e.get("id", "")
-        if "." not in path:
-            continue
-        if "slicing" in e:
-            if ":" in eid and eid.count(":") == 1 and "." in eid.split(":", 1)[1]:
-                # a slicing declared inside a slice (`section:sectionProblems.entry`)
-                head, tail = eid.split(":", 1)
-                outer_name, rel = tail.split(".", 1)
-                nsg = slicings.setdefault(head, SlicingSpec()).slices.setdefault(outer_name, SliceSpec()).slicings.setdefault(rel, SlicingSpec())
-                nsg.closed = e["slicing"].get("rules") == "closed"
-                nsg.disc = [(d.get("type"), d.get("path")) for d in e["slicing"].get("discriminator", [])]
-            elif ":" not in eid:
-                sg = slicings.setdefault(path, SlicingSpec())
-                sg.closed = e["slicing"].get("rules") == "closed"
-                sg.disc = [(d.get("type"), d.get("path")) for d in e["slicing"].get("discriminator", [])]
-        if ":" not in eid:
-            # a plain element: a pattern / fixed object is what every instance must carry
-            rule = Rule.of(e)
-            obj = object_fixed(e)
-            if obj is not None:
-                rule.patterns = tuple((a, tuple(p)) for a, p in groups_of(obj))
-            if rule.enforceable():
-                elements.setdefault(path, Rule()).merge(rule)
-            elif e.get("mustSupport") or (e.get("binding") or {}).get("strength") in ("required", "extensible"):
-                deferred.append(("mustSupport / non-required binding only", eid))
-            continue
 
-        head, tail = eid.split(":", 1)
+    def descend(head, levels):
+        """The SliceSpec the last level names, and the SlicingSpec it sits in,
+        recording nothing but the structure; `None` when a level's
+        continuation is not a sliced element on the way down."""
         sg = slicings.setdefault(head, SlicingSpec())
-        if ":" in tail:
-            # A slice inside a slice (`section:sectionProblems.entry:problem`):
-            # compiled one level down. Deeper nesting is deferred. Either way a
-            # nested slice's scalar fixed values are what an OUTER slice's
-            # `value` discriminator resolves to (BP: component:SystolicBP is
-            # discriminated by code.coding.code, whose value lives in
-            # component:SystolicBP.code.coding:SBPCode.code).
-            outer_name, rest = tail.split(".", 1)
-            sl = sg.slices.setdefault(outer_name, SliceSpec())
-            fixed = scalar_fixed(e)
-            if fixed is not None and path.startswith(head + "."):
-                sl.deep.setdefault(path[len(head) + 1:], []).append(fixed)
-            nested_path, nested_tail = rest.split(":", 1)
-            if ":" in nested_tail:
-                deferred.append(("nested slicing (three levels)", eid))
-                continue
-            nsg = sl.slicings.setdefault(nested_path, SlicingSpec())
-            types = e.get("type", [])
-            if "." not in nested_tail:
-                nsl = nsg.slices.setdefault(nested_tail, SliceSpec())
-                rule = Rule.of(e)
-                nsl.min, nsl.max = rule.min, rule.max
-                nsl.type = types[0].get("code") if types else None
-                nsl.profile = (types[0].get("profile") or [None])[0] if types else None
-                nsl.target_profiles = [p.split("|")[0] for t in types for p in t.get("targetProfile", [])]
-                if rule.binding:
-                    nsl.subs.setdefault("", Rule()).binding = rule.binding
-                nsl.invariants += slice_invariants(e, "")
-            else:
-                nname, nrel = nested_tail.split(".", 1)
-                nsl = nsg.slices.setdefault(nname, SliceSpec())
-                rule = Rule.of(e)
-                if rule.enforceable():
-                    nsl.subs.setdefault(nrel, Rule()).merge(rule)
-                nsl.invariants += slice_invariants(e, nrel)
-            continue
-        if "." not in tail:
-            # the slice element itself
-            types = e.get("type", [])
-            sl = sg.slices.setdefault(tail, SliceSpec())
-            rule = Rule.of(e)
-            sl.min, sl.max = rule.min, rule.max
-            sl.type = types[0].get("code") if types else None
-            sl.profile = (types[0].get("profile") or [None])[0] if types else None
-            sl.target_profiles = [p.split("|")[0] for t in types for p in t.get("targetProfile", [])]
-            obj = object_fixed(e)
-            if obj is not None:
-                sl.objpat[""] = obj      # what a `pattern $this` discriminator resolves to
-                sl.subs.setdefault("", Rule()).patterns = tuple((a, tuple(p)) for a, p in groups_of(obj))
-            # a required binding on the slice itself: what a `value` /
-            # `pattern $this` discriminator resolves to when nothing is fixed
-            # (AU Core's AMT / PBS codings, US Core's category slices)
-            if rule.binding:
-                sl.subs.setdefault("", Rule()).binding = rule.binding
-            sl.invariants += slice_invariants(e, "")
-            continue
-        # a slice sub-element
-        name, _ = tail.split(".", 1)
-        sl = sg.slices.setdefault(name, SliceSpec())
-        if not path.startswith(head + "."):
-            deferred.append(("sub-element outside its slice", eid))
-            continue
-        rel = path[len(head) + 1:]
+        sl = None
+        for i, (name, rest) in enumerate(levels):
+            sl = sg.slices.setdefault(name, SliceSpec())
+            if i + 1 < len(levels):
+                sg = sl.slicings.setdefault(rest, SlicingSpec())
+        return sg, sl
+
+    def slice_element(sl, e):
+        types = e.get("type", [])
+        rule = Rule.of(e)
+        sl.min, sl.max = rule.min, rule.max
+        sl.type = types[0].get("code") if types else None
+        sl.profile = (types[0].get("profile") or [None])[0] if types else None
+        sl.target_profiles = [p.split("|")[0] for t in types for p in t.get("targetProfile", [])]
+        obj = object_fixed(e)
+        if obj is not None:
+            sl.objpat[""] = obj      # what a `pattern $this` discriminator resolves to
+            sl.subs.setdefault("", Rule()).patterns = tuple((a, tuple(p)) for a, p in groups_of(obj))
+        # a required binding on the slice itself: what a `value` /
+        # `pattern $this` discriminator resolves to when nothing is fixed
+        # (AU Core's AMT / PBS codings, US Core's category slices)
+        if rule.binding:
+            sl.subs.setdefault("", Rule()).binding = rule.binding
+        sl.invariants += slice_invariants(e, "")
+
+    def sub_element(sl, e, rel, eid):
         sl.invariants += slice_invariants(e, rel)
         profs = [p.split("|")[0] for t in e.get("type", []) for p in t.get("profile", [])]
         if profs:
@@ -730,6 +683,62 @@ def collect(sd):
             sl.subs.setdefault(rel, Rule()).merge(rule)
         elif e.get("mustSupport"):
             deferred.append(("mustSupport only", eid))
+
+    for e in (sd.get("snapshot") or {}).get("element", []):
+        path, eid = e.get("path", ""), e.get("id", "")
+        if "." not in path:
+            continue
+        if "slicing" in e:
+            if ":" in eid:
+                # a slicing declared inside a slice (`section:sectionProblems.entry`,
+                # or deeper): the last level's continuation is the sliced element
+                head, levels = slice_walk(eid)
+                name, rest = levels[-1]
+                _, sl = descend(head, levels)
+                if rest:
+                    nsg = sl.slicings.setdefault(rest, SlicingSpec())
+                    nsg.closed = e["slicing"].get("rules") == "closed"
+                    nsg.disc = [(d.get("type"), d.get("path")) for d in e["slicing"].get("discriminator", [])]
+            else:
+                sg = slicings.setdefault(path, SlicingSpec())
+                sg.closed = e["slicing"].get("rules") == "closed"
+                sg.disc = [(d.get("type"), d.get("path")) for d in e["slicing"].get("discriminator", [])]
+        if ":" not in eid:
+            # a plain element: a pattern / fixed object is what every instance must carry
+            rule = Rule.of(e)
+            obj = object_fixed(e)
+            if obj is not None:
+                rule.patterns = tuple((a, tuple(p)) for a, p in groups_of(obj))
+            if rule.enforceable():
+                elements.setdefault(path, Rule()).merge(rule)
+            elif e.get("mustSupport") or (e.get("binding") or {}).get("strength") in ("required", "extensible"):
+                deferred.append(("mustSupport / non-required binding only", eid))
+            continue
+
+        head, levels = slice_walk(eid)
+        if not (path.startswith(head + ".") or (path == head and not levels[-1][1])):
+            deferred.append(("sub-element outside its slice", eid))
+            continue
+        # a scalar fixed anywhere under a slice is what an OUTER slice's
+        # `value` discriminator may resolve to (BP: component:SystolicBP is
+        # discriminated by code.coding.code, whose value lives in
+        # component:SystolicBP.code.coding:SBPCode.code) — recorded for every
+        # enclosing slice, relative to its sliced element
+        fixed = scalar_fixed(e)
+        if fixed is not None and len(levels) > 1:
+            sg = slicings.setdefault(head, SlicingSpec())
+            sliced = head
+            for i, (name, rest) in enumerate(levels[:-1]):
+                outer = sg.slices.setdefault(name, SliceSpec())
+                outer.deep.setdefault(path[len(sliced) + 1:], []).append(fixed)
+                sliced = sliced + "." + rest
+                sg = outer.slicings.setdefault(rest, SlicingSpec())
+        sg, sl = descend(head, levels)
+        name, rest = levels[-1]
+        if not rest:
+            slice_element(sl, e)
+        else:
+            sub_element(sl, e, rest, eid)
     return elements, slicings, deferred
 
 
@@ -995,11 +1004,7 @@ def deferred_slices(deferred):
             element, name = eid.rsplit(":", 1)
             why = reason[len("undiscriminable slice "):].strip("()")
             out.append((element, name, f"its discriminator ({why}) is outside the compiler's support"))
-        elif reason.startswith("nested slicing"):
-            # `Composition.section:x.entry:y.z:w` — the innermost slicing
-            element, name = eid.rsplit(":", 1)
-            name = name.split(".")[0]
-            out.append((element, name, "a slicing nested three levels deep is not compiled"))
+
     seen, uniq = set(), []
     for d in out:
         if d not in seen:

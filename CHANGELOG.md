@@ -14,6 +14,21 @@
   terminology callbacks, including reentrancy. Lowering fixtures include
   Ratio and inventory only profiles accepted by the resource lookup.
 
+## 0.14.2 — 2026-09-22
+
+**Slicings nest to any depth** (29 → 21 deferred). The compiler's slice
+collector walks an element id level by level
+(`medication[x]:medicationCodeableConcept.coding:amt.extension:medicationClass.url`)
+instead of stopping at two, recording each level's slice, its sub-rules,
+its nested slicings and — for every enclosing slice — the scalar fixed
+values an outer `value` discriminator resolves to. AU Core's and AU PS's
+`medicationClass` extension slices on the AMT / PBS medication codings are
+enforced: their value type, binding and 0..1 cardinality reach an instance
+three levels down. The 21 slices still deferred are, every one, a defect of
+the published guide (`docs/scope.md`). No other profile changed. Verdicts:
+gate 1,750/1,750; base examples 4,811/5,290, 0 stricter; test-case lane
+unchanged; 239 tests.
+
 ## 0.14.1 — 2026-09-22
 
 **More discriminator shapes compiled** (51 → 29 deferred): the `required`
