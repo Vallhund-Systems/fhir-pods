@@ -419,12 +419,17 @@ surface through `mustSupportGaps`.
 - **Names that must be names** (0.17.0): `Identifier.system` is an absolute
   URI (a scheme of lowercase token characters, as `Utilities.isAbsoluteUrl`
   has it); a top-level `Extension.url` is absolute; a resource's `language`
-  is a BCP-47 tag; an extension under HL7's own URL space that no package
-  defines is refused ("could not be found so is not allowed here"), a
+  is a BCP-47 tag; an extension that no package defines is refused wherever
+  it is named ("could not be found so is not allowed here" — the reference
+  validator's `allowUnknownExtension` lets only `example.org`, `acme`,
+  `nema.org` and the tools extensions pass, and so does the pod), a
   well-formed cross-version extension (`http://hl7.org/fhir/5.0/
   StructureDefinition/extension-Type.element`) taken on trust since the pod
   carries no other version's element ids; a `Coding.system` under
-  `terminology.hl7.org` that THO does not define is an error.
+  `terminology.hl7.org` that THO does not define is an error. A reference
+  target that must conform to a profile conforms only when the resource is
+  also sound on its own (the oracle's whole verdict on the target); a target
+  that need only be a base type is judged by type alone.
 - **A `QuestionnaireResponse` is held to its `Questionnaire`** (0.16.0,
   `src/questionnaire.rs`) the way validator_cli's `QuestionnaireValidator`
   holds it — its rules read from the bytecode, its words kept: every item's
@@ -546,6 +551,24 @@ surface through `mustSupportGaps`.
 A skipped check can only make us *more lenient* than the reference validator,
 never stricter: the corpus proves no lenience shows up on real examples, but a
 constraint we skip is a constraint we skip.
+
+## Scale: a Synthea cohort (`conformance/synthea.py`)
+
+Synthea (Apache-2.0) generates, at run time and from a pinned release jar,
+a seeded cohort of synthetic patients — each a transaction Bundle of
+hundreds of US Core 6.1 resources — plus the hospital and practitioner
+bundles. Every bundle goes before the pod and validator_cli and is compared
+on the verdict and on every error-level issue, with the pod's time per
+bundle recorded. Nothing generated is committed; nothing in it is a real
+person. What it found (0.18.0): the reference validator refuses any
+extension it cannot resolve (Synthea's own `synthetichealth.github.io`
+ones), so every cohort bundle is invalid for both — and a reference target's
+conformance includes the target's own soundness, so every reference to
+that Patient fails its profile on both sides. And where the time went:
+resolving each reference by a walk over the whole bundle, and validating
+the same Patient once per reference to it — a per-validation memo (entries
+indexed once, conformance remembered per target and profile) took the
+largest bundle from 13.7 s to 1.5 s.
 
 ## Reproducing
 

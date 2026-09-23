@@ -57,7 +57,83 @@ pub(crate) fn validate_at<D: Document>(
 /// it: (expression, path) pairs already done. A resource held to AU Core's
 /// heart rate, the base heart rate and the base vital signs would otherwise
 /// evaluate `dom-3`'s descendants walk three times.
-pub(crate) type Evaluated = core::cell::RefCell<Vec<(&'static str, &'static str)>>;
+pub(crate) struct Evaluated<'m, D> {
+    done: core::cell::RefCell<Vec<(&'static str, &'static str)>>,
+    /// What one validation of a whole document remembers across its resources.
+    memo: Option<&'m Memo<D>>,
+}
+
+impl<'m, D> Evaluated<'m, D> {
+    pub(crate) fn new(memo: Option<&'m Memo<D>>) -> Self {
+        Evaluated { done: core::cell::RefCell::new(Vec::new()), memo }
+    }
+}
+
+/// What one validation of a document remembers across its resources: the
+/// bundle's entries indexed by identity (a reference is resolved by lookup,
+/// not by a walk over every entry), and each target's conformance to each
+/// profile it was held to (a Patient referenced by a thousand Observations
+/// is validated once). A memo lives for one validation; nothing outlives it.
+/// A bundle entry as the memo indexes it: fullUrl, resource type, id,
+/// versionId, and the resource.
+type Entry<D> = (String, String, String, String, D);
+
+pub(crate) struct Memo<D> {
+    /// The bundle's entries, once built.
+    entries: core::cell::RefCell<Option<Vec<Entry<D>>>>,
+    /// (target identity, profile address, valid?)
+    conformance: core::cell::RefCell<Vec<(usize, usize, bool)>>,
+}
+
+impl<D> Memo<D> {
+    pub(crate) fn new() -> Self {
+        Memo { entries: core::cell::RefCell::new(None), conformance: core::cell::RefCell::new(Vec::new()) }
+    }
+}
+
+impl<D: Document> Memo<D> {
+    fn entries<'a>(&'a self, bundle: &D) -> core::cell::Ref<'a, Vec<Entry<D>>> {
+        if self.entries.borrow().is_none() {
+            let mut out = Vec::new();
+            for entry in bundle.child_instances("entry") {
+                let full = entry.scalars("$this.fullUrl").first().map(|s| String::from(*s)).unwrap_or_default();
+                let Some(res) = entry.child_instances("resource").into_iter().next() else { continue };
+                let rt = res.scalars("$this.resourceType").first().map(|s| String::from(*s)).unwrap_or_default();
+                let id = res.scalars("$this.id").first().map(|s| String::from(*s)).unwrap_or_default();
+                let version = res.scalars("$this.meta.versionId").first().map(|s| String::from(*s)).unwrap_or_default();
+                out.push((full, rt, id, version, res));
+            }
+            *self.entries.borrow_mut() = Some(out);
+        }
+        core::cell::Ref::map(self.entries.borrow(), |e| e.as_ref().expect("built above"))
+    }
+
+    /// [`path::resolve_reference`] by index: the same answer, without the walk.
+    fn resolve(&self, reference: &str, bundle: &D) -> Option<D> {
+        let (identity, version) = match reference.rsplit_once("/_history/") {
+            Some((identity, version)) if !version.is_empty() && !version.contains('/') => (identity, Some(version)),
+            Some(_) => return None,
+            None => (reference, None),
+        };
+        let relative = identity.split_once('/').filter(|(ty, id)| !ty.is_empty() && !id.contains('/'));
+        let entries = self.entries(bundle);
+        for (full, rt, id, v, res) in entries.iter() {
+            if version.is_some_and(|want| v != want) {
+                continue;
+            }
+            if full == identity {
+                return Some(res.clone());
+            }
+            if let Some((ty, rid)) = relative {
+                let ends = full.strip_suffix(rid).and_then(|s| s.strip_suffix('/')).is_some_and(|s| s.ends_with(ty));
+                if ends || (rt == ty && id == rid) {
+                    return Some(res.clone());
+                }
+            }
+        }
+        None
+    }
+}
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn validate_at_with<D: Document>(
@@ -68,7 +144,7 @@ pub(crate) fn validate_at_with<D: Document>(
     depth: usize,
     cache: Option<&crate::Validator>,
     bundle: Option<&D>,
-    evaluated: Option<&Evaluated>,
+    evaluated: Option<&Evaluated<'_, D>>,
 ) -> Report {
     let mut r = Report::default();
     for el in profile.elements {
@@ -127,9 +203,12 @@ fn check_reference_targets<D: Document>(
         .filter_map(|url| {
             let compiled: Option<&'static CompiledProfile> = crate::REGISTRY.iter().find(|p| p.url == *url).copied();
             if let Some(ty) = url.strip_prefix(BASE) {
+                // a base resource type as the target: the type is the whole
+                // test (the base definition is compiled for lowering, but a
+                // target is never held to it beyond being that type)
                 return match ty {
                     "Resource" | "DomainResource" => None,
-                    t => Some(compiled.map(|p| (p.resource_type, Some(p))).unwrap_or((t, None))),
+                    t => Some(compiled.map(|p| (p.resource_type, None)).unwrap_or((t, None))),
                 };
             }
             compiled.map(|p| (p.resource_type, Some(p)))
@@ -170,7 +249,10 @@ fn check_reference_targets<D: Document>(
         if of_type.iter().any(|(_, p)| p.is_none()) || reference.starts_with('#') {
             continue;
         }
-        let conforms = of_type.iter().any(|(_, p)| p.is_some_and(|p| scope.conformance(p, &target).is_valid()));
+        // a target conforms when the profile's own constraints hold and the
+        // resource is sound on its own (the reference validator's whole
+        // verdict on the target, not the profile's alone)
+        let conforms = of_type.iter().any(|(_, p)| p.is_some_and(|p| scope.conforms(p, &target)));
         if !conforms {
             r.push(
                 Severity::Error,
@@ -195,19 +277,49 @@ struct Scope<'s, D> {
     depth: usize,
     cache: Option<&'s crate::Validator>,
     /// Invariants already evaluated on this resource by another profile.
-    evaluated: Option<&'s Evaluated>,
+    evaluated: Option<&'s Evaluated<'s, D>>,
 }
 
 impl<D: Document> Scope<'_, D> {
+    fn memo(&self) -> Option<&Memo<D>> {
+        self.evaluated.and_then(|e| e.memo)
+    }
+
     /// Validate `target` as a resource of its own (its own `%resource`)
     /// against a registry profile, inside the same bundle.
     fn conformance(&self, profile: &CompiledProfile, target: &D) -> Report {
-        validate_at(profile, target, target, self.tx, self.depth + 1, self.cache, self.bundle)
+        let fresh = Evaluated::new(self.memo());
+        validate_at_with(profile, target, target, self.tx, self.depth + 1, self.cache, self.bundle, Some(&fresh))
+    }
+
+    /// Does `target` conform to `profile` — its constraints and the
+    /// resource's own shape — remembered per target for the validation.
+    fn conforms(&self, profile: &CompiledProfile, target: &D) -> bool {
+        let key = (target.identity(), profile as *const CompiledProfile as usize);
+        if key.0 != 0 {
+            if let Some(memo) = self.memo() {
+                if let Some((_, _, ok)) = memo.conformance.borrow().iter().find(|(t, p, _)| (*t, *p) == key) {
+                    return *ok;
+                }
+            }
+        }
+        let ok = self.conformance(profile, target).is_valid() && target.shape_ok(self.tx);
+        if key.0 != 0 {
+            if let Some(memo) = self.memo() {
+                memo.conformance.borrow_mut().push((key.0, key.1, ok));
+            }
+        }
+        ok
     }
 
     /// What the Reference `inst` points at, inside the document.
     fn resolved(&self, inst: &D) -> Option<D> {
         let reference = inst.scalars("$this.reference").into_iter().next()?;
+        if !reference.starts_with('#') {
+            if let (Some(memo), Some(bundle)) = (self.memo(), self.bundle) {
+                return memo.resolve(reference, bundle);
+            }
+        }
         path::resolve_reference(reference, Some(self.root), self.bundle)
     }
 }
@@ -250,7 +362,7 @@ fn contained_orphans<D: Document>(label: &str, doc: &D, scope: &Scope<'_, D>, r:
 fn check_invariant<D: Document>(inv: &ProfileInvariant, label: &str, doc: &D, scope: &Scope<'_, D>, r: &mut Report) {
     if inv.key == "dom-3" {
         if let Some(done) = scope.evaluated {
-            let mut done = done.borrow_mut();
+            let mut done = done.done.borrow_mut();
             if done.iter().any(|(e, p)| *e == inv.expression && *p == inv.path) {
                 return;
             }
@@ -259,7 +371,7 @@ fn check_invariant<D: Document>(inv: &ProfileInvariant, label: &str, doc: &D, sc
         return contained_orphans(label, doc, scope, r);
     }
     if let Some(done) = scope.evaluated {
-        let mut done = done.borrow_mut();
+        let mut done = done.done.borrow_mut();
         if done.iter().any(|(e, p)| *e == inv.expression && *p == inv.path) {
             return;
         }
@@ -1165,7 +1277,8 @@ fn check_slicing<D: Document>(slicing: &Slicing, doc: &D, scope: &Scope<'_, D>, 
                                 None => true,
                             }
                         });
-                        let any_valid = reports.iter().any(|(_, rep)| rep.is_valid());
+                        let any_valid = reports.iter().any(|(_, rep)| rep.is_valid()) && target.shape_ok(scope.tx);
+                        let _ = &any_valid;
                         match reports.as_slice() {
                             [(profile, rep)] if !rep.is_valid() => forward(rep.clone(), profile, &label, r),
                             [_] => {}

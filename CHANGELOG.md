@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.18.0 — 2026-09-23
+
+**A Synthea cohort, at scale** (`conformance/synthea.py`). Synthea v4.0.0
+(pinned jar, sha256-checked, fetched into a gitignored cache) generates a
+seeded cohort — every patient a transaction Bundle of hundreds of US Core
+6.1 resources, plus the hospital and practitioner bundles — and every
+bundle goes before the pod and validator_cli, compared on the verdict and
+on every error-level issue, the pod's time per bundle recorded. Nothing is
+committed; nothing is a real person. Verdicts and every error agree on the
+whole cohort (10 patients: 14 bundles, 27.3 MB, 9,482 entries; 14/14
+verdicts, 14/14 on every error-level issue; the pod 3.96 s in all, 6.9
+MB/s, the largest bundle 9.7 MB in 1.48 s). A 50-patient cohort (58
+bundles, 231 MB) is beyond the oracle, not the pod: validator_cli in one
+process passed 10 GB resident after an hour without finishing and was
+stopped — a larger cohort wants the oracle run in batches, which the lane
+does not yet do. Two rules it taught:
+
+- **Any extension no package defines is refused**, wherever it is named —
+  the reference validator's `allowUnknownExtension` lets only `example.org`,
+  `acme`, `nema.org` and the tools extensions through, and now so does the
+  pod (0.17.0 refused only HL7's own space). Synthea's
+  `synthetichealth.github.io` extensions make every cohort bundle invalid
+  for both validators, and the lane says so.
+- **A reference target conforms to a profile only when the resource is
+  also sound on its own** — the oracle's whole verdict on the target, not
+  the profile's constraints alone; a target that need only be a base type
+  is judged by type alone (the base definitions are compiled for lowering,
+  never held against a target).
+
+And where the time went: a reference was resolved by a walk over every
+entry, and the same Patient validated once per reference to it. A
+per-validation memo (`engine::Memo` — entries indexed once, each target's
+conformance to each profile remembered) took the largest bundle (9.7 MB,
+3,000 entries) from 13.7 s to 1.5 s, the ten-patient cohort from 22 s to
+4 s (6.9 MB/s). Base examples 5,130/5,290, 0 stricter; all other lanes as
+0.17.0; 246 tests.
+
 ## 0.17.0 — 2026-09-23
 
 **Two more corpora, and what they found.**

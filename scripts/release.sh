@@ -43,4 +43,11 @@ cp "$ROOT/crates/fhir-pods-ffi/include/fhir_pods.h" "$DIST/"
 
 echo "==> $DIST"
 ls -la "$DIST" | sed 's/^/    /'
+
+# The cross-target builds exist only to be packed: once packed they are
+# ~12 GB of dead weight per release, and cargo never collects them. The host
+# profiles (debug, release) stay — the next test run reuses them.
+echo "==> sweeping the packed cross-target builds"
+rm -rf "$ROOT"/target/{wasm32-unknown-unknown,aarch64-apple-ios,aarch64-apple-ios-sim,aarch64-linux-android,x86_64-linux-android,thumbv7em-none-eabi,doc}
+echo "    target/ is now $(du -sh "$ROOT/target" | cut -f1) — 'cargo clean' when the debug profile has grown past a few GB"
 echo "==> tag with: git tag -a v$VERSION -m 'fhir-pods $VERSION'"

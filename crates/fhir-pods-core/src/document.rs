@@ -40,6 +40,19 @@ pub trait Document: Sized + Clone {
     fn choice_children(&self, stem: &str) -> Vec<Self>;
     /// The concrete keys present for a choice element (`valueQuantity`, …).
     fn choice_keys(&self, stem: &str) -> Vec<&str>;
+    /// Does this resource pass the base spec's shape rules on its own (no
+    /// unknown element, no unresolvable extension, every datatype's rules)?
+    /// What "conforms to a profile" includes for the reference validator,
+    /// beyond the profile's own constraints. `true` where unknown.
+    fn shape_ok(&self, tx: &dyn crate::terminology::TerminologyProvider) -> bool {
+        let _ = tx;
+        true
+    }
+    /// A stable identity for this node within one validation (its address),
+    /// `0` where the document has none — what a memo keys on.
+    fn identity(&self) -> usize {
+        0
+    }
 }
 
 /// Owner of a parsed resource; hands out `TreeDoc` views.
@@ -562,6 +575,18 @@ fn absolute_url(s: &str) -> bool {
         && !s.chars().any(char::is_whitespace)
 }
 
+/// An extension URL the reference validator lets pass unresolved
+/// (`allowUnknownExtension`): example and DICOM domains, the tools
+/// extensions, run with example URLs allowed as the corpus runs it.
+fn example_url(url: &str) -> bool {
+    url.contains("example.org")
+        || url.contains("acme.com")
+        || url.contains("acme.org")
+        || url.contains("nema.org")
+        || url.starts_with("http://hl7.org/fhir/tools/StructureDefinition/")
+        || url == "http://hl7.org/fhir/StructureDefinition/structuredefinition-expression"
+}
+
 /// `http://hl7.org/fhir/<version>/StructureDefinition/extension-<Type>.<element>`:
 /// an element of another FHIR version carried as an extension.
 fn xver_extension(url: &str) -> bool {
@@ -1070,15 +1095,16 @@ fn structure_object<'v, 'a>(
                 }
             } else if w.ctxs.len() >= 2
                 && w.ctxs[w.ctxs.len() - 2].0 != "Extension"
-                && crate::known_urls::in_known_space(base)
+                && absolute_url(base)
                 && !crate::known_urls::known_definition(base)
                 && !xver_extension(base)
+                && !example_url(base)
             {
-                // an extension named under HL7's own space that no package
-                // defines: the reference validator refuses it (an extension
-                // anywhere else is taken on trust; a cross-version extension
-                // names an element of another FHIR version the pod does not
-                // carry, and is not judged)
+                // an extension no package defines: the reference validator
+                // refuses it wherever it is named (an `example.org` one
+                // excepted, as it is run; a cross-version extension names an
+                // element of another FHIR version the pod does not carry, and
+                // is not judged)
                 w.gaps.push((
                     path.into(),
                     Structure,
@@ -1410,6 +1436,30 @@ impl<'v, 'a> TreeDoc<'v, 'a> {
 }
 
 impl<'v, 'a> Document for TreeDoc<'v, 'a> {
+    fn identity(&self) -> usize {
+        self.root as *const Value<'a> as usize
+    }
+    fn shape_ok(&self, tx: &dyn crate::terminology::TerminologyProvider) -> bool {
+        let Some(rt) = resource_ctx(self.root) else { return true };
+        let mut w = Walk {
+            root: rt,
+            tx,
+            gaps: Vec::new(),
+            warnings: Vec::new(),
+            invariants: Vec::new(),
+            nested: Vec::new(),
+            extensions: Vec::new(),
+            ctxs: Vec::new(),
+            nodes: Vec::new(),
+            segs: Vec::new(),
+            profiled: Vec::new(),
+            profiles: Vec::new(),
+            contained: Vec::new(),
+        };
+        structure_in(self.root, rt, rt, &mut w);
+        !w.gaps.iter().any(|(_, kind, _)| *kind != crate::validate::IssueType::NotSupported)
+    }
+
     fn child_counts(&self, path: &str) -> Vec<usize> {
         let Some((parent, last)) = path.rsplit_once('.') else {
             return Vec::new();

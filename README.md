@@ -226,7 +226,7 @@ does not infer a jurisdiction or supply a complete regional compliance regime.
 
 | Surface | Delivery |
 | --- | --- |
-| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.17.0 artifact is 2,952,017 bytes (753,520 bytes gzip-9). [Guide](pods/wasm/README.md) |
+| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.18.0 artifact is 2,955,998 bytes (754,691 bytes gzip-9). [Guide](pods/wasm/README.md) |
 | **Expo** | Native iOS XCFramework and Android jniLibs behind the Expo Modules API. [Guide](pods/expo/README.md) |
 | **Rust / C** | `fhir_pods_core` directly or the shared [ABI 13 header](crates/fhir-pods-ffi/include/fhir_pods.h) |
 | **CLI** | Local JSON/ER7 input, structured output, and exit codes for scripting. [Guide](crates/fhir-pods-cli/README.md) |
@@ -263,6 +263,7 @@ compliance.
 | Questionnaire tests | **81 of 96** R4 JSON cases compare (the rest name an SDC package, a launch context or a validator policy option): **74/81** verdicts agree and **73/81** agree on every error-level issue; the 8 reviewed differences are terminology-server, display-name and attachment-integrity families (`conformance/questionnaire.py`) |
 | Supporting-resource tests | **11 of 160** cases compare (the rest are the questionnaire lane's, or need a package, an IG, a validator option, a filter): **9/11** agree, 0 stricter (`conformance/supporting.py`) |
 | HL7 v2 sample messages | **77 of 139** public synthetic messages convert (62 name structures the maps do not cover); every bundle before validator_cli: **77/77** verdicts agree, **74/77** on every error, 0 stricter — and all 77 are invalid on both sides, for reasons the lane lists (`conformance/v2samples.py`) |
+| Synthea cohort | **14/14** bundles (10 seeded patients + hospital + practitioner, 27.3 MB, 9,482 US Core entries) agree on the verdict and on every error-level issue; the pod validates the whole cohort in 3.96 s (6.9 MB/s; largest bundle 9.7 MB in 1.48 s). Larger cohorts wait on batching the oracle (`conformance/synthea.py`) |
 | Ad-hoc profile tests | **10 of 53** cases compare: **9/10** agree with Java and **7/7** with Firely where available; other cases have compiler, snapshot, or manifest exclusions |
 
 The broader lanes enforce reviewed baselines: new or changed differences and

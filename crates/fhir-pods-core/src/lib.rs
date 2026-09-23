@@ -183,7 +183,10 @@ fn validate_bytes_in(
         engine::check_document(b, &mut report);
     }
     let defaults = cache.map(|v| v.defaults.as_slice()).unwrap_or(&[]);
-    let profiles = validate_resource(rt, &doc, "", tx, cache, bundle, defaults, &mut report);
+    // one memo for the whole document: entries indexed once, each target's
+    // conformance to each profile remembered
+    let memo = engine::Memo::new();
+    let profiles = validate_resource(rt, &doc, "", tx, cache, bundle, defaults, &memo, &mut report);
     // a QuestionnaireResponse against its Questionnaire (a contained one, a
     // bundle entry, or one loaded into the validator); a Questionnaire's own
     // enableWhen wiring
@@ -209,13 +212,13 @@ fn validate_bytes_in(
         let Some(nrt) = typing::known_type(nrt).filter(|t| typemap::RESOURCES.binary_search(t).is_ok()) else {
             continue;
         };
-        validate_resource(nrt, &nested, &label, tx, cache, bundle, &[], &mut report);
+        validate_resource(nrt, &nested, &label, tx, cache, bundle, &[], &memo, &mut report);
         by_kind(nrt, nested.value(), &format!("{label}.{nrt}"), &mut report);
     }
     // every extension whose url names a compiled extension profile is held
     // to it, wherever it sits (a translation on a coding's display…)
     for (label, ext, profile) in extensions {
-        let evaluated = engine::Evaluated::default();
+        let evaluated = engine::Evaluated::new(Some(&memo));
         for mut issue in engine::validate_at_with(profile, &ext, &ext, tx, 0, cache, bundle, Some(&evaluated)).issues {
             issue.path = format!("{label}.{}", issue.path);
             if !report.issues.contains(&issue) {
@@ -251,6 +254,7 @@ fn validate_resource<D: Document>(
     cache: Option<&Validator>,
     bundle: Option<&D>,
     defaults: &[(&'static str, &'static CompiledProfile)],
+    memo: &engine::Memo<D>,
     report: &mut Report,
 ) -> Vec<&'static CompiledProfile> {
     let at = |path: &str| if label.is_empty() { String::from(path) } else { format!("{label}.{path}") };
@@ -273,7 +277,7 @@ fn validate_resource<D: Document>(
         }
     }
     let profiles = select_profiles(rt, doc, defaults);
-    let evaluated = engine::Evaluated::default();
+    let evaluated = engine::Evaluated::new(Some(memo));
     let mut issues = Vec::new();
     if profiles.is_empty() {
         // the base's own rules for a domain resource: dom-3 (contained
