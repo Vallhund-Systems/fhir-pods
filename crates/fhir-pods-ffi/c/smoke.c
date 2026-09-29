@@ -96,10 +96,18 @@ int main(void) {
     char *r_loaded = unpack(fhir_pods_validate((const uint8_t *)qr, strlen(qr)));
     ok = ok && strstr(r_loaded, "\"valid\":false") && strstr(r_loaded, "LinkId 'nope' not found in questionnaire")
             && strstr(r_loaded, "No response answer found for required item 'name'")
-            && fhir_pods_questionnaire_load((const uint8_t *)"{\"resourceType\":\"Patient\"}", 26) == 0
-            && fhir_pods_questionnaire_load(NULL, 0) == 1;
-    printf("questionnaire: unloaded %.60s...; loaded %.60s...\n", r_unloaded, r_loaded);
-    free(r_unloaded); free(r_loaded);
+            && fhir_pods_questionnaire_load((const uint8_t *)"{\"resourceType\":\"Patient\"}", 26) == 0;
+    /* The loaded form holds a response on every path, lowering included (0.19.1). */
+    const char *qr_url = "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse";
+    const char *qr_in = "{\"questionnaire\":\"http://forms.example.net/Questionnaire/q1\",\"status\":\"completed\","
+                        "\"item\":[{\"linkId\":\"name\",\"answer\":[{\"valueInteger\":7}]}]}";
+    char *qr_low = unpack(fhir_pods_lower((const uint8_t *)qr_url, strlen(qr_url), (const uint8_t *)qr_in, strlen(qr_in)));
+    ok = ok && strstr(qr_low, "\"valid\":false") && strstr(qr_low, "Answer value must be of the type string not integer");
+    ok = ok && fhir_pods_questionnaire_load(NULL, 0) == 1;
+    char *qr_cleared = unpack(fhir_pods_lower((const uint8_t *)qr_url, strlen(qr_url), (const uint8_t *)qr_in, strlen(qr_in)));
+    ok = ok && strstr(qr_cleared, "\"valid\":true") && strstr(qr_cleared, "could not be resolved");
+    printf("questionnaire: unloaded %.60s...; loaded %.60s...; lowered %.60s...\n", r_unloaded, r_loaded, qr_low);
+    free(r_unloaded); free(r_loaded); free(qr_low); free(qr_cleared);
 
     /* Must-support: information, separate from validation. */
     const char *us = "{\"resourceType\":\"Patient\",\"meta\":{\"profile\":[\"http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient\"]},"

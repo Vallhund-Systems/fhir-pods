@@ -542,7 +542,10 @@ pub mod compiled;
 /// `Validator` API name. Parses the registry's invariant expressions once for
 /// reuse by validation, lift/lower, de-identification, documents, audit, and v2.
 /// The free [`validate_bytes`] / [`validate_bytes_with`] functions parse
-/// invariant expressions on each call.
+/// invariant expressions on each call. `Clone` copies the parsed
+/// expressions (a host that holds one behind a lock clones it to load a
+/// Questionnaire into a fresh, consistent one).
+#[derive(Clone)]
 pub struct Validator {
     /// Parsed ASTs keyed by the expression's `'static` address — the registry
     /// shares expression strings, so this is small and the lookup is a binary
@@ -611,6 +614,12 @@ impl Validator {
     pub fn with_questionnaire(mut self, bytes: &[u8]) -> Self {
         self.load_questionnaire(bytes);
         self
+    }
+
+    /// Forget every loaded Questionnaire (a contained one or a bundle entry
+    /// is still found).
+    pub fn clear_questionnaires(&mut self) {
+        self.questionnaires.clear();
     }
 
     /// Unknown URLs are ignored: nothing is ever guessed.

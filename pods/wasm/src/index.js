@@ -143,8 +143,9 @@ export async function instantiate(source, options = {}) {
     // before `options.terminology`, for every call that follows. Returns false
     // when the text could not be parsed (the previous table stays); "" clears.
     loadTerminology: (text) => callInt(ex.fhir_pods_terminology_load, text) === 1,
-    // A Questionnaire for every QuestionnaireResponse validated after it that
-    // names it by canonical (a contained one or a bundle entry needs no load).
+    // A Questionnaire for every QuestionnaireResponse that names it by
+    // canonical in any call after it — validate, lower, lift, export,
+    // document alike (a contained one or a bundle entry needs no load).
     // false when the JSON is not a Questionnaire; "" clears the store.
     loadQuestionnaire: (json) => callInt(ex.fhir_pods_questionnaire_load, json) === 1,
     // What to resolve for a verdict free of terminology warnings.

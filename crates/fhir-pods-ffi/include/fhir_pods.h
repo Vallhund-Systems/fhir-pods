@@ -155,8 +155,9 @@ uint8_t *fhir_pods_profiles(void);
  * empty input clears it. */
 int32_t fhir_pods_terminology_load(const uint8_t *ptr, size_t len);
 
-/* A Questionnaire (JSON) for every QuestionnaireResponse validated after it
- * that names it by canonical (url, or url|version) — on this module, for its
+/* A Questionnaire (JSON) for every QuestionnaireResponse that names it by
+ * canonical (url, or url|version) in any call after it — validated, lowered,
+ * lifted, exported, composed into a document — on this module, for its
  * lifetime; a contained Questionnaire or a bundle entry is found without
  * loading. Returns 1 when loaded (the same canonical loaded again replaces
  * the first), 0 when the bytes are not a Questionnaire (the store is

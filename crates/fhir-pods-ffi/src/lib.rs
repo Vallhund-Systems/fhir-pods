@@ -32,19 +32,25 @@
 
 use core::ffi::c_void;
 
-use std::sync::{OnceLock, RwLock};
+use std::sync::RwLock;
 
-use fhir_pods_core::questionnaire::Questionnaire;
 use fhir_pods_core::terminology::{Bundled, Chain, Expansions, Membership, Recorder, TerminologyProvider};
 use fhir_pods_core::{must_support_gaps, wire, Validator};
 
-/// One validator per process: the registry's invariants are parsed once, on
-/// first use (about half a millisecond), and every call after that is free
-/// of parsing. `Validator` is immutable after construction, so sharing it is
-/// sound; `OnceLock` also serialises the one-time build on native targets.
-fn validator() -> &'static Validator {
-    static VALIDATOR: OnceLock<Validator> = OnceLock::new();
-    VALIDATOR.get_or_init(Validator::new)
+/// One validator per process, built on first use (the registry's invariants
+/// parsed once, about half a millisecond) and replaced whole whenever the
+/// host loads a Questionnaire (`fhir_pods_questionnaire_load`): what a call
+/// takes is a snapshot every operation of that call sees — validation,
+/// lowering, lifting, export, documents, v2 — so a response is held to a
+/// loaded form on every path, not only through `fhir_pods_validate`.
+static VALIDATOR: RwLock<Option<std::sync::Arc<Validator>>> = RwLock::new(None);
+
+fn validator() -> std::sync::Arc<Validator> {
+    if let Some(v) = VALIDATOR.read().unwrap_or_else(|e| e.into_inner()).clone() {
+        return v;
+    }
+    let mut slot = VALIDATOR.write().unwrap_or_else(|e| e.into_inner());
+    slot.get_or_insert_with(|| std::sync::Arc::new(Validator::new())).clone()
 }
 
 /// Bump when the exported surface or the memory contract changes; the
@@ -55,20 +61,9 @@ pub const ABI_VERSION: u32 = 13;
 /// consulted after the bundled sets and before any host callback.
 static TABLE: RwLock<Option<std::sync::Arc<Expansions>>> = RwLock::new(None);
 
-/// The Questionnaires the host loaded (`fhir_pods_questionnaire_load`): what
-/// a QuestionnaireResponse naming one by canonical is held to.
-static QUESTIONNAIRES: RwLock<Option<std::sync::Arc<Vec<Questionnaire>>>> = RwLock::new(None);
-
-/// A snapshot of the loaded Questionnaires, the lock released before any
-/// validation runs (a host callback may load one meanwhile).
-fn questionnaires() -> std::sync::Arc<Vec<Questionnaire>> {
-    QUESTIONNAIRES.read().unwrap_or_else(|e| e.into_inner()).clone().unwrap_or_default()
-}
-
-/// Validate with the loaded Questionnaires in reach.
+/// Validate with the loaded Questionnaires in reach (the snapshot's own).
 fn validate_loaded(input: &[u8], tx: &dyn TerminologyProvider) -> fhir_pods_core::Validation {
-    let qs = questionnaires();
-    validator().validate_in(input, tx, &qs)
+    validator().validate_with(input, tx)
 }
 
 /// Run `f` with the providers in order: bundled sets, the loaded table, the
@@ -585,15 +580,18 @@ pub unsafe extern "C" fn fhir_pods_terminology_load(ptr: *const u8, len: usize) 
 #[no_mangle]
 pub unsafe extern "C" fn fhir_pods_questionnaire_load(ptr: *const u8, len: usize) -> i32 {
     let bytes = input(ptr, len);
-    let mut slot = QUESTIONNAIRES.write().unwrap_or_else(|e| e.into_inner());
+    // the whole replacement under the write lock, so two loads cannot lose
+    // one another; calls in flight keep the snapshot they took
+    let mut slot = VALIDATOR.write().unwrap_or_else(|e| e.into_inner());
+    let mut next = match slot.as_deref() {
+        Some(v) => v.clone(),
+        None => Validator::new(),
+    };
     if bytes.is_empty() {
-        *slot = None;
-        return 1;
+        next.clear_questionnaires();
+    } else if !next.load_questionnaire(bytes) {
+        return 0;
     }
-    let Some(q) = Questionnaire::parse(bytes) else { return 0 };
-    let mut next: Vec<Questionnaire> =
-        slot.iter().flat_map(|v| v.iter()).filter(|k| !(k.url == q.url && k.version == q.version)).cloned().collect();
-    next.push(q);
     *slot = Some(std::sync::Arc::new(next));
     1
 }
@@ -1328,6 +1326,62 @@ mod tests {
             assert_eq!(calls, 1, "the loaded table answers now; the host is not asked");
             assert!(!second.contains("date-accuracy-indicator") && second.contains("\"valid\":true"), "{second}");
             fhir_pods_terminology_load(std::ptr::null(), 0);
+        }
+    }
+
+    /// A loaded Questionnaire reaches every operation of the ABI — not only
+    /// `fhir_pods_validate`: a response lowered into the base profile, and
+    /// lifted from it, is held to the form the host loaded; clearing and
+    /// reloading move the verdict with them.
+    #[test]
+    fn a_loaded_questionnaire_holds_lower_and_lift_as_it_holds_validate() {
+        unsafe {
+            const Q: &str = "http://hl7.org/fhir/StructureDefinition/Questionnaire";
+            const QR: &str = "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse";
+            let form_inputs = r#"{"url":"http://forms.example.net/Questionnaire/intake","version":"1","status":"active","item":[{"linkId":"age","type":"integer","required":true}]}"#;
+            let form = unpack(fhir_pods_lower(Q.as_ptr(), Q.len(), form_inputs.as_ptr(), form_inputs.len()));
+            let form = form.split(",\"validation\":").next().unwrap().trim_start_matches("{\"resource\":");
+            let response = |answer: &str| {
+                format!(
+                    r#"{{"questionnaire":"http://forms.example.net/Questionnaire/intake|1","status":"completed","subject":"Patient/1","item":[{{"linkId":"age"{answer}}}]}}"#
+                )
+            };
+            let lower = |inputs: &str| unpack(fhir_pods_lower(QR.as_ptr(), QR.len(), inputs.as_ptr(), inputs.len()));
+            let resource_of = |lowered: &str| -> String {
+                lowered.split(",\"validation\":").next().unwrap().trim_start_matches("{\"resource\":").to_string()
+            };
+            let lift = |resource: &str| unpack(fhir_pods_lift(QR.as_ptr(), QR.len(), resource.as_ptr(), resource.len()));
+            // before the form is loaded: valid, the unresolved form said
+            let before = lower(&response(r#","answer":[{"valueString":"forty-two"}]"#));
+            assert!(before.contains("\"valid\":true") && before.contains("could not be resolved"), "{before}");
+            assert_eq!(fhir_pods_questionnaire_load(form.as_ptr(), form.len()), 1);
+            // wrong type, missing required, and the valid control — through lower, lift and validate alike
+            for (answer, finding) in [
+                (r#","answer":[{"valueString":"forty-two"}]"#, Some("Answer value must be of the type integer not string")),
+                ("", Some("No response answer found for required item 'age'")),
+                (r#","answer":[{"valueInteger":42}]"#, None),
+            ] {
+                let lowered = lower(&response(answer));
+                let resource = resource_of(&lowered);
+                let lifted = lift(&resource);
+                let validated = call(fhir_pods_validate, &resource);
+                for (op, out) in [("lower", &lowered), ("lift", &lifted), ("validate", &validated)] {
+                    match finding {
+                        Some(f) => assert!(out.contains("\"valid\":false") && out.contains(f), "{op}: {out}"),
+                        None => assert!(out.contains("\"valid\":true") && !out.contains("could not be resolved"), "{op}: {out}"),
+                    }
+                }
+            }
+            // the form replaced by a version the response does not name: unresolved again
+            let v2 = form.replace("\"version\":\"1\"", "\"version\":\"2\"");
+            assert_eq!(fhir_pods_questionnaire_load(v2.as_ptr(), v2.len()), 1);
+            let v2_only = lower(&response(""));
+            assert!(v2_only.contains("\"valid\":false"), "version 1 still loaded beside 2: {v2_only}");
+            assert_eq!(fhir_pods_questionnaire_load(std::ptr::null(), 0), 1);
+            let cleared = lower(&response(""));
+            assert!(cleared.contains("\"valid\":true") && cleared.contains("could not be resolved"), "{cleared}");
+            // garbage is refused and the store is unchanged
+            assert_eq!(fhir_pods_questionnaire_load(b"{\"resourceType\":\"Patient\"}".as_ptr(), 26), 0);
         }
     }
 

@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.19.1 — 2026-09-29
+
+**A loaded Questionnaire now holds a response on every path of the C ABI,
+not only `fhir_pods_validate`.** A host's report against the 0.19.0 wasm
+wrapper: `loadQuestionnaire()` returned true, `validate()` held the
+response to the form, but `lower()` and `lift()` said the very canonical
+just loaded could not be resolved — a string answer to a required integer
+question, or no answer at all, came out `valid: true` through lowering
+and lifting. The cause was in `crates/fhir-pods-ffi`: the loaded forms
+lived in a store beside the process's one immutable `Validator`, and only
+the validate entry points passed that store in; lower, lift, export,
+document and v2 called the validator bare. Now the ABI holds one
+replaceable validator snapshot that carries the loaded forms: a load
+clones the current validator (its parsed invariants included — `Validator`
+is `Clone`, and `clear_questionnaires` joins the core API) and replaces it
+whole under the write lock, so every operation of a call sees one
+consistent store, an exact `url|version` is selected, a version not loaded
+is unresolved, clearing and reloading move the verdict, and a wasm
+instance's store is its own. ABI 13 unchanged. Regression evidence at
+every layer the report asked for: an FFI test over the C entry points
+(`a_loaded_questionnaire_holds_lower_and_lift_as_it_holds_validate` —
+wrong type, missing required answer, the valid control, through lower,
+lift and validate alike; version replacement; clear; refused garbage),
+the C smoke (`smoke.c`: a lowered response held to the loaded form, then
+cleared), and the wasm smoke test (the reporter's own repro, plus a second
+instance). The core's verdicts are untouched (the only core change is
+`Clone` and `clear_questionnaires`), so the lanes stand as 0.19.0; 250
+tests.
+
 ## 0.19.0 — 2026-09-29
 
 **A form and its answers are lowerable.** The base `Questionnaire` and
