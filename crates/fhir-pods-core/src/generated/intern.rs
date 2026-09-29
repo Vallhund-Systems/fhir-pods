@@ -1428,3 +1428,19 @@ pub static S282: &[&str] = &[
     "http://hl7.org/fhir/StructureDefinition/Organization",
 ];
 pub static S283: &[&str] = &["occurredPeriod", "occurredDateTime"];
+pub static S284: &[&str] =
+    &["boolean", "decimal", "integer", "date", "dateTime", "time", "string", "Coding", "Quantity", "Reference"];
+pub static S285: &[&str] = &[
+    "boolean",
+    "decimal",
+    "integer",
+    "date",
+    "dateTime",
+    "time",
+    "string",
+    "uri",
+    "Attachment",
+    "Coding",
+    "Quantity",
+    "Reference",
+];

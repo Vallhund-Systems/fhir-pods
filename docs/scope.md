@@ -460,7 +460,21 @@ surface through `mustSupportGaps`.
   outcomes' terminology server (SNOMED, a filter-defined jurisdiction set),
   display names, attachment size integrity, and an SDC extension. Not
   taken: SDC `enableWhenExpression` / variables / launch contexts, the
-  derivation checks on a `Questionnaire`, `answerExpression`.
+  derivation checks on a `Questionnaire`, `answerExpression`. Both base
+  definitions are compiled as lowerable profiles (0.19.0): a host lowers a
+  `Questionnaire` from its slots and a `QuestionnaireResponse` from its
+  (`questionnaire`, `status`, `subject`, `authored`, `item` given whole —
+  the items are the recursive backbone the base spec defines by
+  `contentReference`, so nested groups ride inside the one slot), lifts
+  either back to the same inputs, and the lowered response is held to its
+  questionnaire on the way out like any other. The declared base profile
+  asks exactly what the bare base check asks: a profile's snapshot
+  enumerates a `contentReference` backbone once, at the depth the base
+  defines it, so beneath the deeper copies (an item's item, a section's
+  section) the walk keeps the base's required elements and bindings
+  whether or not a profile applies. Not taken, profile or none: the
+  `Questionnaire.item` invariants (que-1 … que-13, qrs-1) are evaluated on
+  the first level of items only.
 - **A resource nested in another — a Bundle entry, a contained resource, a
   `Parameters` resource, however deep — is validated against the profiles
   it declares, in the outer bundle's scope,** its findings prefixed with the

@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.19.0 — 2026-09-29
+
+**A form and its answers are lowerable.** The base `Questionnaire` and
+`QuestionnaireResponse` definitions join `BASE_RESOURCES`
+(`tools/gen_all.py`) and are compiled as lowerable profiles — the gap
+0.16.0 left: the pod held a response to its questionnaire but gave a host
+no slots to build either from. `slots(…/QuestionnaireResponse)` now lists
+`questionnaire`, `status`, `subject`, `encounter`, `authored`, `author`,
+`source`, `item` (given whole: the items are the recursive backbone the
+base spec defines by `contentReference`, so nested groups ride inside the
+one slot, and come back whole from `lift`); `slots(…/Questionnaire)` the
+form's metadata and its `item`. A lowered response is held to its
+questionnaire on the way out like any other (`with_questionnaire`, a
+contained one, a bundle entry) — a skipped required question is the
+form's finding, not lowering's. And a rule the change itself exposed
+(found in review before it shipped): a profile's snapshot enumerates a
+`contentReference` backbone once, at the depth the base defines it, so a
+resource declaring a compiled profile lost the base's required elements
+and bindings beneath the deeper copies — a lowered response whose nested
+item had no `linkId` came out valid. The walk now keeps the base's checks
+beneath a content reference whether or not a profile applies
+(`through_content_reference`), for every such backbone (an item's item, a
+section's section), and the declared base profile asks exactly what the
+bare check asks — a test holds the two error lists equal. Registry 1,147
+→ 1,149; ABI 13 unchanged. Three tests (lower; lift both back to the same
+inputs; the equality). Every lane as 0.18.0 — release corpus 1,766/1,766, no untriaged
+error difference, base examples 5,130/5,290 with 0 stricter, questionnaire
+74/81 verdicts and 73/81 on every error; 249 tests.
+
 ## 0.18.0 — 2026-09-23
 
 **A Synthea cohort, at scale** (`conformance/synthea.py`). Synthea v4.0.0

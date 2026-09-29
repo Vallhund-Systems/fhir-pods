@@ -26,6 +26,33 @@ fn a_lowered_resource_lifts_back_to_its_inputs_and_lowers_again_to_the_same_reso
 }
 
 #[test]
+fn a_questionnaire_response_lifts_to_its_slots_and_lowers_back_to_itself() {
+    const QR: &str = "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse";
+    let v = Validator::new();
+    let inputs = r#"{"questionnaire":"http://example.org/Questionnaire/intake|1","status":"completed","subject":"Patient/1","authored":"2026-09-29T09:00:00+13:00","item":[{"linkId":"name","answer":[{"valueString":"Alex"}]},{"linkId":"history","item":[{"linkId":"history.when","answer":[{"valueDate":"2010-04-01"}]}]}]}"#;
+    let lowered = v.lower(QR, inputs.as_bytes()).unwrap();
+    // no questionnaire loaded: the response is valid, with the unresolved form said (information)
+    assert!(lowered.validation.is_valid(), "{}", wire::report(&lowered.validation));
+    assert!(wire::report(&lowered.validation).contains("could not be resolved"), "{}", wire::report(&lowered.validation));
+    let lifted = v.lift(QR, lowered.resource.as_bytes()).unwrap();
+    assert!(lifted.missing.is_empty() && lifted.extras.is_empty(), "{:?} {:?}", lifted.missing, lifted.extras);
+    let i = &lifted.inputs;
+    assert!(i.contains(r#""questionnaire":"http://example.org/Questionnaire/intake|1""#), "{i}");
+    assert!(i.contains(r#""item":[{"linkId":"name","answer":[{"valueString":"Alex"}]},{"linkId":"history","item":[{"linkId":"history.when","answer":[{"valueDate":"2010-04-01"}]}]}]"#), "the items come back whole, nested ones included: {i}");
+    let again = v.lower(QR, lifted.inputs.as_bytes()).unwrap();
+    assert_eq!(again.resource, lowered.resource);
+    // the form the same way, three items deep
+    const Q: &str = "http://hl7.org/fhir/StructureDefinition/Questionnaire";
+    let form = r#"{"url":"http://example.org/Questionnaire/intake","status":"active","item":[{"linkId":"g","type":"group","item":[{"linkId":"g.h","type":"group","item":[{"linkId":"g.h.q","type":"string"}]}]}]}"#;
+    let lowered = v.lower(Q, form.as_bytes()).unwrap();
+    assert!(lowered.validation.is_valid(), "{}", wire::report(&lowered.validation));
+    let lifted = v.lift(Q, lowered.resource.as_bytes()).unwrap();
+    assert!(lifted.missing.is_empty() && lifted.extras.is_empty(), "{:?} {:?}", lifted.missing, lifted.extras);
+    assert!(lifted.inputs.contains(r#"{"linkId":"g.h.q","type":"string"}"#), "{}", lifted.inputs);
+    assert_eq!(v.lower(Q, lifted.inputs.as_bytes()).unwrap().resource, lowered.resource);
+}
+
+#[test]
 fn what_no_slot_covers_is_named_and_a_missing_required_slot_is_too() {
     let v = Validator::new();
     let lowered = v.lower(HR, INPUTS.as_bytes()).unwrap();

@@ -37,6 +37,9 @@ BASE_RESOURCES = {
     "AuditEvent", "Provenance",
     "Patient", "Observation", "Condition", "AllergyIntolerance", "MedicationStatement", "MedicationRequest",
     "Medication", "Immunization", "Procedure", "Device", "DeviceUseStatement", "Practitioner", "Organization",
+    # since 0.19.0: a form and its answers, so a host lowers a
+    # QuestionnaireResponse it is then held to (0.16.0) — and the form itself
+    "Questionnaire", "QuestionnaireResponse",
 }
 
 

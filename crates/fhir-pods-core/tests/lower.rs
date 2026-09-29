@@ -149,6 +149,90 @@ fn every_registry_profile_exposes_its_slots() {
     }
 }
 
+const Q: &str = "http://hl7.org/fhir/StructureDefinition/Questionnaire";
+const QR: &str = "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse";
+
+#[test]
+fn a_questionnaire_and_its_response_lower_from_the_base_definitions() {
+    // the form: items are one slot the host gives whole (a recursive
+    // backbone — the nested group is the same `item` the base spec defines
+    // by contentReference)
+    let form = lower(
+        Q,
+        r#"{"url":"http://example.org/Questionnaire/intake","version":"1","status":"active","title":"Intake",
+            "item":[{"linkId":"name","type":"string","required":true},
+                    {"linkId":"history","type":"group","item":[{"linkId":"history.when","type":"date"}]}]}"#,
+    );
+    assert!(form.validation.is_valid(), "{}", wire::report(&form.validation));
+    let r = &form.resource;
+    assert!(r.starts_with(r#"{"resourceType":"Questionnaire","meta":{"profile":["http://hl7.org/fhir/StructureDefinition/Questionnaire"]}"#), "{r}");
+    assert!(r.contains(r#""item":[{"linkId":"history.when","type":"date"}]"#), "the nested item is kept whole: {r}");
+    // the answers: lowered from their slots, then held to the form the way
+    // any response is (0.16.0) — the base profile declared on it changes nothing
+    let v = Validator::new().with_questionnaire(form.resource.as_bytes());
+    let answers = v
+        .lower(
+            QR,
+            r#"{"questionnaire":"http://example.org/Questionnaire/intake|1","status":"completed","subject":"Patient/1",
+                "authored":"2026-09-29T09:00:00+13:00",
+                "item":[{"linkId":"name","answer":[{"valueString":"Alex"}]},
+                        {"linkId":"history","item":[{"linkId":"history.when","answer":[{"valueDate":"2010-04-01"}]}]}]}"#
+                .as_bytes(),
+        )
+        .unwrap();
+    assert!(answers.validation.is_valid(), "{}", wire::report(&answers.validation));
+    assert!(answers.resource.contains(r#""questionnaire":"http://example.org/Questionnaire/intake|1""#), "{}", answers.resource);
+    // a response that skips the form's required question is invalid on the
+    // way out, by the form's rule, not lowering's
+    let short = v
+        .lower(QR, r#"{"questionnaire":"http://example.org/Questionnaire/intake|1","status":"completed","item":[{"linkId":"history","item":[{"linkId":"history.when","answer":[{"valueDate":"2010-04-01"}]}]}]}"#.as_bytes())
+        .unwrap();
+    assert!(!short.validation.is_valid());
+    let report = wire::report(&short.validation);
+    assert!(report.contains("No response answer found for required item 'name'"), "{report}");
+    // and the wrong kind for a slot is lowering's own finding
+    let bad = lower(QR, r#"{"status":"completed","authored":"yesterday","item":"name=Alex"}"#);
+    let report = wire::report(&bad.validation);
+    assert!(report.contains("'authored' expects a dateTime") && report.contains("'item' expects a BackboneElement"), "{report}");
+}
+
+/// The base profile a lowered resource declares must ask exactly what the
+/// bare base check asks — including beneath the recursive `item` the base
+/// defines by `contentReference`, which a profile's snapshot enumerates once.
+#[test]
+fn a_declared_base_profile_still_checks_what_the_base_requires_beneath_a_content_reference() {
+    let errors = |v: &fhir_pods_core::Validation| -> Vec<String> {
+        v.report
+            .issues
+            .iter()
+            .filter(|i| i.severity == fhir_pods_core::validate::Severity::Error)
+            .map(|i| format!("{} | {}", i.path, i.message))
+            .collect()
+    };
+    let v = Validator::new();
+    // a nested item with no linkId, and one whose type is not an item-type
+    for (url, bare) in [
+        (
+            QR,
+            r#"{"resourceType":"QuestionnaireResponse","status":"completed","item":[{"linkId":"g","item":[{"answer":[{"valueString":"x"}]}]}]}"#,
+        ),
+        (
+            Q,
+            r#"{"resourceType":"Questionnaire","status":"active","item":[{"linkId":"g","type":"group","item":[{"type":"bogus-type"}]}]}"#,
+        ),
+    ] {
+        let without = v.validate(bare.as_bytes());
+        assert!(!without.is_valid(), "{}", wire::report(&without));
+        let declared = bare.replacen(r#""status""#, &format!(r#""meta":{{"profile":["{url}"]}},"status""#, ), 1);
+        let with = v.validate(declared.as_bytes());
+        assert_eq!(errors(&with), errors(&without), "declaring {url} changed the findings");
+        // and lowering, which always declares, says the same
+        let inputs = bare.replacen(r#""resourceType":"QuestionnaireResponse","#, "", 1).replacen(r#""resourceType":"Questionnaire","#, "", 1);
+        let lowered = v.lower(url, inputs.as_bytes()).unwrap();
+        assert_eq!(errors(&lowered.validation), errors(&without), "lowering into {url} changed the findings");
+    }
+}
+
 #[test]
 fn an_extension_profile_is_not_a_resource_to_lower() {
     // compiled so its placement and content are checked, never lowered into as a resource

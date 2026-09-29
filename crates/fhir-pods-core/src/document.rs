@@ -485,7 +485,22 @@ fn base_binding(ctx: &str, key: &str, w: &Walk<'_, '_, '_>) -> Option<&'static c
     let (_, _, b) = crate::typemap::BASE_BINDINGS.iter().find(|(c, k, _)| *c == ctx && *k == key)?;
     let owner = ctx.split('.').next().unwrap_or(ctx);
     let datatype = crate::typemap::RESOURCES.binary_search(&owner).is_err();
-    (datatype || w.profiled.last() == Some(&false)).then_some(b)
+    (datatype || w.profiled.last() == Some(&false) || through_content_reference(w)).then_some(b)
+}
+
+/// Is the object being walked reached through a `contentReference` — a
+/// `Questionnaire.item` inside an item, a `Composition.section` inside a
+/// section — anywhere since the resource being walked? A profile's snapshot
+/// enumerates such a backbone once, at the depth the base defines it, and
+/// the compiled profile checks it there; what the base requires beneath the
+/// deeper copies is the walk's to check, profile or none.
+fn through_content_reference(w: &Walk<'_, '_, '_>) -> bool {
+    let resource = w.ctxs.iter().rposition(|(c, _)| crate::typemap::RESOURCES.binary_search(c).is_ok()).unwrap_or(0);
+    w.ctxs[resource..].windows(2).any(|pair| {
+        let ((parent, _), (ctx, key)) = (pair[0], pair[1]);
+        // a backbone whose context is not `parent.key`: the walk followed a reference
+        ctx.contains('.') && ctx.strip_prefix(parent).and_then(|rest| rest.strip_prefix('.')) != Some(key)
+    })
 }
 
 /// One membership answer, reported as the reference validator words it.
@@ -949,7 +964,7 @@ fn structure_object<'v, 'a>(
                 }
             }
         }
-    } else if ctx.contains('.') && w.profiled.last() == Some(&false) {
+    } else if ctx.contains('.') && (w.profiled.last() == Some(&false) || through_content_reference(w)) {
         for child in crate::typing::required_backbone_children(ctx) {
             if !has(child) {
                 w.gaps.push((at(child), Required, alloc::format!("{ctx}.{child} is required (min 1, found 0)")));

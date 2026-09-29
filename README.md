@@ -197,7 +197,7 @@ fhir-pods v2 message.hl7 --timezone +10:00
 
 ## Compiled coverage
 
-The current registry contains **1,147 profile definitions**, including **833
+The current registry contains **1,149 profile definitions**, including **833
 extension definitions**, generated from pinned packages: **AU Core 2.0.0**,
 **US Core 6.1.0**, **IPA 1.1.0**, **IPS 2.0.1**, **AU Patient Summary 1.0.0**,
 **IHE BALP 1.1.4**, **AU Base 6.0.0**, **HL7 extensions for R4 5.3.0**,
@@ -205,9 +205,10 @@ extension definitions**, generated from pinned packages: **AU Core 2.0.0**,
 plus the base R4 vital-sign profiles and the base `AuditEvent`, `Provenance`,
 `Patient`, `Observation`, `Condition`, `AllergyIntolerance`,
 `MedicationStatement`, `MedicationRequest`, `Medication`, `Immunization`,
-`Procedure`, `Device`, `DeviceUseStatement`, `Practitioner` and `Organization`
-definitions as lowerable profiles (the region-neutral vocabulary `export`
-re-profiles from).
+`Procedure`, `Device`, `DeviceUseStatement`, `Practitioner`, `Organization`,
+`Questionnaire` and `QuestionnaireResponse` definitions as lowerable profiles
+(the region-neutral vocabulary `export` re-profiles from; a form and its
+answers, the answers held to the form on the way out).
 The type table covers every R4 resource and datatype.
 
 Terminology includes **146 value sets** and code membership tables for
@@ -226,7 +227,7 @@ does not infer a jurisdiction or supply a complete regional compliance regime.
 
 | Surface | Delivery |
 | --- | --- |
-| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.18.0 artifact is 2,955,998 bytes (754,691 bytes gzip-9). [Guide](pods/wasm/README.md) |
+| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.19.0 artifact is 2,964,032 bytes (756,286 bytes gzip-9). [Guide](pods/wasm/README.md) |
 | **Expo** | Native iOS XCFramework and Android jniLibs behind the Expo Modules API. [Guide](pods/expo/README.md) |
 | **Rust / C** | `fhir_pods_core` directly or the shared [ABI 13 header](crates/fhir-pods-ffi/include/fhir_pods.h) |
 | **CLI** | Local JSON/ER7 input, structured output, and exit codes for scripting. [Guide](crates/fhir-pods-cli/README.md) |
