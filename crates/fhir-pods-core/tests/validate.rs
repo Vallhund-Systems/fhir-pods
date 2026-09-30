@@ -1020,3 +1020,42 @@ fn a_slice_three_levels_deep_is_enforced() {
         wire::report(&r)
     );
 }
+
+
+/// A `CodeableConcept` under a required binding with no coding at all — text
+/// only, or a data-absent-reason extension — is an error, as validator_cli
+/// 6.10.4 reports it ("No code provided, and a code is required from the
+/// value set"), bare and under a profile alike. Found by a host exporting
+/// allergies of unknown clinical status.
+#[test]
+fn a_required_bound_concept_with_no_coding_is_an_error_bare_and_profiled() {
+    use fhir_pods_core::validate::Severity;
+    let errors = |json: &str| -> Vec<String> {
+        fhir_pods_core::validate_bytes(json.as_bytes())
+            .report
+            .issues
+            .iter()
+            .filter(|i| i.severity == Severity::Error)
+            .map(|i| format!("{} | {}", i.path, i.message))
+            .collect()
+    };
+    let allergy = |meta: &str, status: &str| {
+        format!(
+            r#"{{"resourceType":"AllergyIntolerance","id":"a1",{meta}"text":{{"status":"generated","div":"<div xmlns=\"http://www.w3.org/1999/xhtml\">Peanut.</div>"}},{status}"code":{{"coding":[{{"system":"http://snomed.info/sct","code":"91935009"}}]}},"patient":{{"reference":"Patient/p1"}}}}"#
+        )
+    };
+    const AU: &str = r#""meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-allergyintolerance"]},"#;
+    const DAR: &str = r#""clinicalStatus":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/data-absent-reason","valueCode":"unknown"}]},"#;
+    const TEXT: &str = r#""clinicalStatus":{"text":"unknown"},"#;
+    const CODED: &str = r#""clinicalStatus":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical","code":"active"}]},"#;
+    for meta in ["", AU] {
+        for status in [DAR, TEXT] {
+            let e = errors(&allergy(meta, status));
+            assert!(
+                e.iter().any(|x| x.starts_with("AllergyIntolerance.clinicalStatus | No code provided, and a code is required from the value set http://hl7.org/fhir/ValueSet/allergyintolerance-clinical")),
+                "meta={meta:?} status={status:?}: {e:?}"
+            );
+        }
+        assert!(errors(&allergy(meta, CODED)).is_empty(), "meta={meta:?}: {:?}", errors(&allergy(meta, CODED)));
+    }
+}

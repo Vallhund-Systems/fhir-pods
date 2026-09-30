@@ -543,11 +543,33 @@ fn base_binding_object<'v, 'a>(v: &'v Value<'a>, ctx: &'static str, w: &mut Walk
     if !matches!((&b.kind, ctx), (BindingKind::Coding, "Coding") | (BindingKind::CodeableConcept, "CodeableConcept")) {
         return;
     }
+    // a concept with no coding at all is not a member of anything: the
+    // reference validator errors here for a required binding — whether the
+    // concept carries text, an extension (a data-absent-reason) or nothing
+    // (6.10.4, probed on `AllergyIntolerance.clinicalStatus`, bare and under
+    // a profile). A coding without a code is still not judged.
+    if ctx == "CodeableConcept" && !has_coding(v) {
+        let label = w.label(w.root);
+        w.gaps.push((
+            label,
+            crate::validate::IssueType::CodeInvalid,
+            alloc::format!("No code provided, and a code is required from the value set {}", b.value_set),
+        ));
+        return;
+    }
     let doc = TreeDoc::at(v, Some(ctx));
     let (m, seen) = crate::engine::membership_of(b, &doc, w.tx);
     if seen {
         let label = w.label(w.root);
         report_base_binding(m, b, "the codings", label, w);
+    }
+}
+
+/// Does a `CodeableConcept` object carry at least one coding?
+fn has_coding(v: &Value<'_>) -> bool {
+    match v {
+        Value::Object(kvs) => kvs.iter().any(|(k, x)| k.as_ref() == "coding" && matches!(x, Value::Array(xs) if !xs.is_empty())),
+        _ => false,
     }
 }
 

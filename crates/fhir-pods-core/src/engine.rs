@@ -564,11 +564,23 @@ fn check_element<D: Document>(
         }
         BindingKind::CodeableConcept => {
             for inst in doc.instances(el.path) {
-                // A member if any coding is; unknown if none can be decided;
-                // a text-only concept is not checked (the reference validator
-                // only warns there).
+                // A member if any coding is; unknown if none can be decided.
+                // No coding at all — text only, a data-absent-reason, nothing
+                // — is an error for a required binding, as the reference
+                // validator reports it (6.10.4); a coding with no code is
+                // not judged.
+                let codings = inst.instances("$this.coding");
+                if codings.is_empty() && is_codeable_concept(el) {
+                    r.push(
+                        Severity::Error,
+                        IssueType::CodeInvalid,
+                        label,
+                        format!("No code provided, and a code is required from the value set {vs}"),
+                    );
+                    continue;
+                }
                 let mut verdict = None;
-                for c in inst.instances("$this.coding") {
+                for c in codings {
                     if let Some((system, code)) = coding_of(&c) {
                         match tx.validate_code(vs, system, code) {
                             Membership::Member => {
@@ -586,6 +598,30 @@ fn check_element<D: Document>(
             }
         }
     }
+}
+
+/// Is the element a `CodeableConcept` — by the profile's own type list, or
+/// the base element table where the profile leaves it open? A `Quantity`
+/// bound to UCUM (`bp`'s `component.value[x]`) carries the same binding
+/// kind but no codings, and is judged by its own system and code, never by
+/// their absence; a choice the profile leaves open is not decided here.
+fn is_codeable_concept(el: &ElementConstraint) -> bool {
+    if !el.types.is_empty() {
+        return el.types == ["CodeableConcept"];
+    }
+    let mut segs = el.path.split('.');
+    let Some(mut ctx) = segs.next() else { return false };
+    let mut ty = None;
+    for seg in segs {
+        let name = seg.split(':').next().unwrap_or(seg);
+        if name.ends_with("[x]") {
+            return false;
+        }
+        let Some(ch) = crate::typing::child(ctx, name) else { return false };
+        ctx = ch.ctx;
+        ty = Some(ch.ty);
+    }
+    ty == Some("CodeableConcept")
 }
 
 /// Is the coded value at `path` a member of the set? `Code`: the scalar;

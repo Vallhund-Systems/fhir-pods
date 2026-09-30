@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.19.2 — 2026-09-30
+
+**A required-bound `CodeableConcept` with no coding is an error.** A host
+exporting allergies of unknown clinical status — `clinicalStatus` carrying
+only a data-absent-reason extension — found the pod said valid where
+validator_cli and a second validator said invalid. Probed against the
+pinned oracle (6.10.4, `-tx n/a`), bare and under AU Core: a concept with
+no coding at all — text only, an extension, nothing — is *No code
+provided, and a code is required from the value set* on a required
+binding; a coded one is fine. The pod had assumed, in both the base walk
+and the profile engine, that the reference validator only warns there;
+it never had, and no published example carries such a concept, so no
+lane could say so. Both paths now report the oracle's error. The profile
+engine judges it only where the element *is* a `CodeableConcept` (the
+profile's own type, or the base table's): a `Quantity` bound to UCUM
+(`bp`'s `component.value[x]`) carries the same binding kind and no
+codings, and is judged by its system and code, never by their absence —
+the first cut got that wrong and the export tests and base lane caught
+it before it left the tree. A coding without a code is still not judged.
+Regression test: DAR / text / coded × bare / AU Core. Every lane as
+0.19.1 — release corpus 1,766/1,766, no untriaged error difference, base
+examples 5,130/5,290 with 0 stricter, questionnaire 74/81 and 73/81 (no
+published example has such a concept, so no lane moved); 251 tests. ABI
+13 unchanged.
+
 ## 0.19.1 — 2026-09-29
 
 **A loaded Questionnaire now holds a response on every path of the C ABI,
