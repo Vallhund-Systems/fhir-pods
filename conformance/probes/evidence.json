@@ -1,7 +1,7 @@
 {
-  "recorded_at": "2026-09-17T00:06:11.301317+00:00",
-  "source_revision": "0db63bcf72351751dbfc0a2027c4e116d9ed21e8",
-  "source_dirty": true,
+  "recorded_at": "2026-10-04T03:43:30.052168+00:00",
+  "source_revision": "dd4fd5220c9b909c81f0adebc8de4c88e5347168",
+  "source_dirty": false,
   "oracle_version": "6.10.4",
   "oracle_sha256": "1106b9d58f9e363e47bea7c4fc065841e5fc91fe9d062775c3bfdd212bd653cc",
   "oracle_options": [
@@ -17,8 +17,8 @@
   "oracle_exit_code": 0,
   "note": "Terminology service disabled; the oracle may still resolve unknown profile URLs. Verdict parity only; issues retained for inspection.",
   "counts": {
-    "total": 26,
-    "agree": 26,
+    "total": 35,
+    "agree": 35,
     "differ": 0
   },
   "probes": [
@@ -42,7 +42,14 @@
       "local": {
         "resourceType": "Patient",
         "valid": true,
-        "issues": []
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
       },
       "agrees": true
     },
@@ -900,7 +907,7 @@
             "severity": "error",
             "code": "structure",
             "path": "Patient.deceased[x]",
-            "message": "Patient.deceased[x] exceeds max 1 (found 2)"
+            "message": "Patient.deceased[x] allows one choice; found deceasedBoolean, deceasedDateTime"
           },
           {
             "severity": "warning",
@@ -962,7 +969,7 @@
         {
           "severity": "warning",
           "code": "structure",
-          "text": "Profile reference 'https://example.org/StructureDefinition/missing-profile' has not been checked because it could not be found, and fetching it resulted in the error org.hl7.fhir.r4.utils.client.EFhirClientException: Error from https://example.org: Example Domainbody{background:#eee;width:60vw;margin:15vh auto;font-family:system-ui,sans-serif}h1{font-size:1.5em}div{opacity:0.8}a:link,a:visited{color:#348}Example Domain This domain is for use in documentation examples without needing permission. Avoid use in operations. Learn more",
+          "text": "Profile reference 'https://example.org/StructureDefinition/missing-profile' has not been checked because it could not be found, and fetching it resulted in the error org.hl7.fhir.r4.utils.client.EFhirClientException: Error from https://example.org: Unparseable HTML Source (unexpected non-end of element null::script at line 1 column 549)",
           "paths": [
             "Patient.meta.profile[0]"
           ]
@@ -977,6 +984,12 @@
             "code": "not-supported",
             "path": "meta.profile",
             "message": "declared profile 'https://example.org/StructureDefinition/missing-profile' is not compiled here, so it was not checked"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
           }
         ]
       },
@@ -1022,8 +1035,14 @@
           {
             "severity": "error",
             "code": "required",
-            "path": "Patient.extension",
+            "path": "Patient.extension.url",
             "message": "Extension.url is required (min 1, found 0)"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
           }
         ]
       },
@@ -1063,6 +1082,12 @@
             "code": "invariant",
             "path": "Patient.extension",
             "message": "ext-1: Patient.extension must have either extensions or a value, not both"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
           }
         ]
       },
@@ -1142,6 +1167,42 @@
             "code": "invariant",
             "path": "Patient.contained",
             "message": "dom-2: Patient.contained is contained and must not itself contain resources"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "path": "Patient.contained.partOf.reference",
+            "message": "ref-1: reference '#inner' names no contained resource of Patient"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient.contained[0].Organization",
+            "message": "dom-6: A resource should have narrative for robust management"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "path": "Patient.contained[0].Organization",
+            "message": "org-1: The organization SHALL at least have a name or an identifier, and possibly more than one"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient.contained[0].Organization.contained[0].Organization",
+            "message": "dom-6: A resource should have narrative for robust management"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "path": "Patient.contained[0].Organization.contained[0].Organization",
+            "message": "org-1: The organization SHALL at least have a name or an identifier, and possibly more than one"
           }
         ]
       },
@@ -1167,7 +1228,14 @@
       "local": {
         "resourceType": "Patient",
         "valid": true,
-        "issues": []
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
       },
       "agrees": true
     },
@@ -1189,7 +1257,14 @@
       "local": {
         "resourceType": "Patient",
         "valid": true,
-        "issues": []
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
       },
       "agrees": true
     },
@@ -1227,6 +1302,12 @@
             "code": "value",
             "path": "Patient.birthDate",
             "message": "Patient.birthDate: a date is a JSON string, found null"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
           }
         ]
       },
@@ -1250,7 +1331,406 @@
       "local": {
         "resourceType": "Patient",
         "valid": true,
-        "issues": []
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "required-concept-coded.json",
+      "profile": null,
+      "expect": true,
+      "reason": "Control: Condition.clinicalStatus supplies a code from its required value set.",
+      "sha256": "40e2b300df7258dd739ab3cf23e1e1673a76cb7cd395e9f269d4153bfbb85ab8",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Condition"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Condition",
+        "valid": true,
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Condition",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "required-concept-data-absent.json",
+      "profile": null,
+      "expect": false,
+      "reason": "A required-bound CodeableConcept still needs a coding when it carries only data-absent-reason.",
+      "sha256": "886f2092cb70bf3199737c0049354e4d285530b200c37c4503285a836b812a3b",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "text": "No code provided, and a code is required from the value set 'Condition Clinical Status Codes' (http://hl7.org/fhir/ValueSet/condition-clinical|4.0.1)",
+          "paths": [
+            "Condition.clinicalStatus"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Condition"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Condition",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "code-invalid",
+            "path": "Condition.clinicalStatus",
+            "message": "No code provided, and a code is required from the value set http://hl7.org/fhir/ValueSet/condition-clinical"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Condition",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "required-concept-text-only.json",
+      "profile": null,
+      "expect": false,
+      "reason": "Text alone does not satisfy a required CodeableConcept binding.",
+      "sha256": "e6782e074b90a112315fdfeb0d7470304dffadbcf1737f2dbf11e4e4f86c1877",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "text": "No code provided, and a code is required from the value set 'Condition Clinical Status Codes' (http://hl7.org/fhir/ValueSet/condition-clinical|4.0.1)",
+          "paths": [
+            "Condition.clinicalStatus"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Condition"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Condition",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "code-invalid",
+            "path": "Condition.clinicalStatus",
+            "message": "No code provided, and a code is required from the value set http://hl7.org/fhir/ValueSet/condition-clinical"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Condition",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "required-concept-coding-without-code.json",
+      "profile": null,
+      "expect": false,
+      "reason": "A Coding without code content does not satisfy its parent CodeableConcept's required binding.",
+      "sha256": "c5631b3b3519e6ca3b95255449c0def4813a6b849bdaba2f588c0e2f429e44ab",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "value",
+          "text": "No code provided for CodeSystem 'http://terminology.hl7.org/CodeSystem/condition-clinical' version '3.0.0'",
+          "paths": [
+            "Condition.clinicalStatus.coding[0].code"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "text": "None of the codings provided are in the value set 'Condition Clinical Status Codes' (http://hl7.org/fhir/ValueSet/condition-clinical|4.0.1), and a coding from this value set is required) (codes = http://terminology.hl7.org/CodeSystem/condition-clinical#null)",
+          "paths": [
+            "Condition.clinicalStatus"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Condition"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Condition",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "code-invalid",
+            "path": "Condition.clinicalStatus",
+            "message": "The value provided ('the codings') was not found in the value set 'http://hl7.org/fhir/ValueSet/condition-clinical', and a code is required from this value set"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Condition",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "required-concept-coding-without-code-profiled.json",
+      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-condition",
+      "expect": false,
+      "reason": "The parent CodeableConcept's required binding still applies when the resource declares a compiled profile.",
+      "sha256": "d57648f6ba2a0bbdee89fdb52c6192a742b9b3c40994dc59ba52d6d1b7258f2c",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "value",
+          "text": "No code provided for CodeSystem 'http://terminology.hl7.org/CodeSystem/condition-clinical' version '3.0.0'",
+          "paths": [
+            "Condition.clinicalStatus.coding[0].code"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "text": "None of the codings provided are in the value set 'Condition Clinical Status Codes' (http://hl7.org/fhir/ValueSet/condition-clinical|4.0.1), and a coding from this value set is required) (codes = http://terminology.hl7.org/CodeSystem/condition-clinical#null)",
+          "paths": [
+            "Condition.clinicalStatus"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "text": "No code provided, and a code should be provided from the value set 'Condition Category Codes' (http://hl7.org/fhir/ValueSet/condition-category|4.0.1)",
+          "paths": [
+            "Condition.category[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Condition"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "text": "ValueSet 'https://healthterminologies.gov.au/fhir/ValueSet/clinical-condition-1' not found",
+          "paths": [
+            "Condition.code"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Condition",
+        "profile": "AU Core Condition",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "code-invalid",
+            "path": "Condition.clinicalStatus",
+            "message": "'the codings' is not in the bound value set"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Condition",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "required-coding-coded.json",
+      "profile": null,
+      "expect": true,
+      "reason": "Control: Encounter.class supplies a code from its required value set.",
+      "sha256": "d58f4ebb9a496ce469c729e56ce2cf135ddb4c09ed0546478f713d8c121eb1d8",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Encounter"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Encounter",
+        "valid": true,
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Encounter",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "required-coding-without-code.json",
+      "profile": null,
+      "expect": true,
+      "reason": "validator_cli 6.10.4 accepts a standalone required-bound Coding with system but no code; this controls the narrower CodeableConcept rule.",
+      "sha256": "fb0780e5a5a8846eb7600cd368ae78fca99f31ba19d8d92c58dc4a60006b58b9",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Encounter"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Encounter",
+        "valid": true,
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Encounter",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "profiled-nested-section-mode-valid.json",
+      "profile": "http://hl7.org.au/fhir/StructureDefinition/au-composition",
+      "expect": true,
+      "reason": "Control: a nested Composition section under a declared profile carries a valid base list-mode code.",
+      "sha256": "a6d13dd12027701de11089eca186cce20406b7a71bca1d73f52218d5af4209c6",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Composition"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Composition",
+        "profile": "AU Base Composition",
+        "valid": true,
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Composition",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "profiled-nested-section-mode-invalid.json",
+      "profile": "http://hl7.org.au/fhir/StructureDefinition/au-composition",
+      "expect": false,
+      "reason": "Base required bindings still apply below contentReference recursion when a compiled profile is declared.",
+      "sha256": "3b85ba753160ac8e4bcab5f8e6166d50aa70b7bbefd462b7755b26c5a93b663c",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "not-found",
+          "text": "The System URI could not be determined for the code 'not-a-list-mode' in the ValueSet 'http://hl7.org/fhir/ValueSet/list-mode|4.0.1'",
+          "paths": [
+            "Composition.section[0].section[0].mode"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "text": "The value provided ('not-a-list-mode') was not found in the value set 'ListMode' (http://hl7.org/fhir/ValueSet/list-mode|4.0.1), and a code is required from this value set  (error message = The System URI could not be determined for the code 'not-a-list-mode' in the ValueSet 'http://hl7.org/fhir/ValueSet/list-mode|4.0.1'; The provided code '#not-a-list-mode' was not found in the value set 'http://hl7.org/fhir/ValueSet/list-mode|4.0.1')",
+          "paths": [
+            "Composition.section[0].section[0].mode"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Composition"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Composition",
+        "profile": "AU Base Composition",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "code-invalid",
+            "path": "Composition.section[0].section[0].mode",
+            "message": "The value provided ('not-a-list-mode') was not found in the value set 'http://hl7.org/fhir/ValueSet/list-mode', and a code is required from this value set"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "path": "Composition",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
       },
       "agrees": true
     }
