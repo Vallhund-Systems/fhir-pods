@@ -1,0 +1,12 @@
+{
+  "resourceType": "Condition",
+  "clinicalStatus": {
+    "text": "Active"
+  },
+  "code": {
+    "text": "Synthetic condition"
+  },
+  "subject": {
+    "reference": "Patient/synthetic"
+  }
+}

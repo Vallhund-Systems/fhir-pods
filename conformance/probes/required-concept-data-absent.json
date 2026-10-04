@@ -1,0 +1,17 @@
+{
+  "resourceType": "Condition",
+  "clinicalStatus": {
+    "extension": [
+      {
+        "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+        "valueCode": "unknown"
+      }
+    ]
+  },
+  "code": {
+    "text": "Synthetic condition"
+  },
+  "subject": {
+    "reference": "Patient/synthetic"
+  }
+}

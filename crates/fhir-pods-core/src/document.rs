@@ -531,8 +531,9 @@ fn report_base_binding(
 }
 
 /// A `Coding` / `CodeableConcept` object under a base required binding
-/// (`Condition.clinicalStatus`): its codings decide membership; a concept
-/// with no coding is not judged (the reference validator only warns there).
+/// (`Condition.clinicalStatus`): its codings decide membership. A concept
+/// without any usable code fails the required binding; a standalone Coding
+/// without a code remains unjudged, matching validator_cli 6.10.4.
 fn base_binding_object<'v, 'a>(v: &'v Value<'a>, ctx: &'static str, w: &mut Walk<'v, 'a, '_>) {
     use crate::compiled::BindingKind;
     if !matches!(ctx, "Coding" | "CodeableConcept") || w.ctxs.len() < 2 {
@@ -547,7 +548,7 @@ fn base_binding_object<'v, 'a>(v: &'v Value<'a>, ctx: &'static str, w: &mut Walk
     // reference validator errors here for a required binding — whether the
     // concept carries text, an extension (a data-absent-reason) or nothing
     // (6.10.4, probed on `AllergyIntolerance.clinicalStatus`, bare and under
-    // a profile). A coding without a code is still not judged.
+    // a profile).
     if ctx == "CodeableConcept" && !has_coding(v) {
         let label = w.label(w.root);
         w.gaps.push((
@@ -562,13 +563,21 @@ fn base_binding_object<'v, 'a>(v: &'v Value<'a>, ctx: &'static str, w: &mut Walk
     if seen {
         let label = w.label(w.root);
         report_base_binding(m, b, "the codings", label, w);
+    } else if ctx == "CodeableConcept" {
+        // Coding objects exist, but none carries a code. The Coding itself is
+        // permitted to be partial; the parent concept still has no member of
+        // its required value set.
+        let label = w.label(w.root);
+        report_base_binding(crate::terminology::Membership::NotMember, b, "the codings", label, w);
     }
 }
 
 /// Does a `CodeableConcept` object carry at least one coding?
 fn has_coding(v: &Value<'_>) -> bool {
     match v {
-        Value::Object(kvs) => kvs.iter().any(|(k, x)| k.as_ref() == "coding" && matches!(x, Value::Array(xs) if !xs.is_empty())),
+        Value::Object(kvs) => {
+            kvs.iter().any(|(k, x)| k.as_ref() == "coding" && matches!(x, Value::Array(xs) if !xs.is_empty()))
+        }
         _ => false,
     }
 }

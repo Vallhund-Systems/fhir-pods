@@ -1,0 +1,17 @@
+{
+  "resourceType": "Condition",
+  "clinicalStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "active"
+      }
+    ]
+  },
+  "code": {
+    "text": "Synthetic condition"
+  },
+  "subject": {
+    "reference": "Patient/synthetic"
+  }
+}

@@ -567,10 +567,12 @@ fn check_element<D: Document>(
                 // A member if any coding is; unknown if none can be decided.
                 // No coding at all — text only, a data-absent-reason, nothing
                 // — is an error for a required binding, as the reference
-                // validator reports it (6.10.4); a coding with no code is
-                // not judged.
+                // validator reports it (6.10.4). One or more Coding objects
+                // with no code also fail the parent concept's required
+                // binding; a standalone Coding with no code is not judged.
                 let codings = inst.instances("$this.coding");
-                if codings.is_empty() && is_codeable_concept(el) {
+                let codeable_concept = is_codeable_concept(el);
+                if codings.is_empty() && codeable_concept {
                     r.push(
                         Severity::Error,
                         IssueType::CodeInvalid,
@@ -594,6 +596,8 @@ fn check_element<D: Document>(
                 }
                 if let Some(v) = verdict {
                     report_membership(v, vs, "the codings", label, r);
+                } else if codeable_concept {
+                    report_membership(Membership::NotMember, vs, "the codings", label, r);
                 }
             }
         }

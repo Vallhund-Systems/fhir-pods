@@ -1,7 +1,8 @@
 # Adversarial validation probes
 
-These 26 synthetic fixtures cover valid controls, JSON shapes, primitive limits,
-extensions, contained resources, unknown profiles, and offline references.
+These 35 synthetic fixtures cover valid controls, JSON shapes, primitive limits,
+extensions, contained resources, unknown profiles, offline references, required
+coded content, and recursive content-reference validation.
 `manifest.json` records an expected verdict and reason for each fixture. The
 shared corpus builder automatically includes them as `probe-*` cases.
 
@@ -32,6 +33,9 @@ Two expectations are deliberately narrower than a reader might assume:
 - An unresolved declared profile produces a warning in this oracle configuration.
 - `Patient.managingOrganization` referencing a Patient is accepted when that
   reference cannot be resolved. This case does not prove target-type checking.
+- A standalone required-bound `Coding` with `system` but no `code` is accepted
+  by validator_cli 6.10.4. The same Coding inside a required-bound
+  `CodeableConcept` does not satisfy the parent binding.
 
 References: [R4 JSON representation](https://hl7.org/fhir/R4/json.html),
 [R4 datatypes](https://hl7.org/fhir/R4/datatypes.html),

@@ -154,5 +154,59 @@
     "profile": null,
     "expect": true,
     "reason": "R4 JSON permits null placeholders in aligned primitive value/extension arrays."
+  },
+  {
+    "file": "required-concept-coded.json",
+    "profile": null,
+    "expect": true,
+    "reason": "Control: Condition.clinicalStatus supplies a code from its required value set."
+  },
+  {
+    "file": "required-concept-data-absent.json",
+    "profile": null,
+    "expect": false,
+    "reason": "A required-bound CodeableConcept still needs a coding when it carries only data-absent-reason."
+  },
+  {
+    "file": "required-concept-text-only.json",
+    "profile": null,
+    "expect": false,
+    "reason": "Text alone does not satisfy a required CodeableConcept binding."
+  },
+  {
+    "file": "required-concept-coding-without-code.json",
+    "profile": null,
+    "expect": false,
+    "reason": "A Coding without code content does not satisfy its parent CodeableConcept's required binding."
+  },
+  {
+    "file": "required-concept-coding-without-code-profiled.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-condition",
+    "expect": false,
+    "reason": "The parent CodeableConcept's required binding still applies when the resource declares a compiled profile."
+  },
+  {
+    "file": "required-coding-coded.json",
+    "profile": null,
+    "expect": true,
+    "reason": "Control: Encounter.class supplies a code from its required value set."
+  },
+  {
+    "file": "required-coding-without-code.json",
+    "profile": null,
+    "expect": true,
+    "reason": "validator_cli 6.10.4 accepts a standalone required-bound Coding with system but no code; this controls the narrower CodeableConcept rule."
+  },
+  {
+    "file": "profiled-nested-section-mode-valid.json",
+    "profile": "http://hl7.org.au/fhir/StructureDefinition/au-composition",
+    "expect": true,
+    "reason": "Control: a nested Composition section under a declared profile carries a valid base list-mode code."
+  },
+  {
+    "file": "profiled-nested-section-mode-invalid.json",
+    "profile": "http://hl7.org.au/fhir/StructureDefinition/au-composition",
+    "expect": false,
+    "reason": "Base required bindings still apply below contentReference recursion when a compiled profile is declared."
   }
 ]

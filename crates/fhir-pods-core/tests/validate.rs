@@ -1021,12 +1021,10 @@ fn a_slice_three_levels_deep_is_enforced() {
     );
 }
 
-
-/// A `CodeableConcept` under a required binding with no coding at all — text
-/// only, or a data-absent-reason extension — is an error, as validator_cli
-/// 6.10.4 reports it ("No code provided, and a code is required from the
-/// value set"), bare and under a profile alike. Found by a host exporting
-/// allergies of unknown clinical status.
+/// A `CodeableConcept` under a required binding with no usable coding — text
+/// only, a data-absent-reason extension, or Coding objects without code — is
+/// an error, as validator_cli 6.10.4 reports it, bare and under a profile
+/// alike. A standalone required-bound Coding with only system remains valid.
 #[test]
 fn a_required_bound_concept_with_no_coding_is_an_error_bare_and_profiled() {
     use fhir_pods_core::validate::Severity;
@@ -1044,9 +1042,11 @@ fn a_required_bound_concept_with_no_coding_is_an_error_bare_and_profiled() {
             r#"{{"resourceType":"AllergyIntolerance","id":"a1",{meta}"text":{{"status":"generated","div":"<div xmlns=\"http://www.w3.org/1999/xhtml\">Peanut.</div>"}},{status}"code":{{"coding":[{{"system":"http://snomed.info/sct","code":"91935009"}}]}},"patient":{{"reference":"Patient/p1"}}}}"#
         )
     };
-    const AU: &str = r#""meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-allergyintolerance"]},"#;
+    const AU: &str =
+        r#""meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-allergyintolerance"]},"#;
     const DAR: &str = r#""clinicalStatus":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/data-absent-reason","valueCode":"unknown"}]},"#;
     const TEXT: &str = r#""clinicalStatus":{"text":"unknown"},"#;
+    const CODELESS: &str = r#""clinicalStatus":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical","display":"Active"}]},"#;
     const CODED: &str = r#""clinicalStatus":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical","code":"active"}]},"#;
     for meta in ["", AU] {
         for status in [DAR, TEXT] {
@@ -1056,6 +1056,17 @@ fn a_required_bound_concept_with_no_coding_is_an_error_bare_and_profiled() {
                 "meta={meta:?} status={status:?}: {e:?}"
             );
         }
+        let e = errors(&allergy(meta, CODELESS));
+        assert!(
+            e.iter().any(|x| {
+                x.starts_with("AllergyIntolerance.clinicalStatus | ")
+                    && x.contains("codings")
+                    && (x.contains("not found in the value set") || x.contains("not in the bound value set"))
+            }),
+            "meta={meta:?}: {e:?}"
+        );
         assert!(errors(&allergy(meta, CODED)).is_empty(), "meta={meta:?}: {:?}", errors(&allergy(meta, CODED)));
     }
+    let coding = r#"{"resourceType":"Encounter","status":"finished","class":{"system":"http://terminology.hl7.org/CodeSystem/v3-ActCode"}}"#;
+    assert!(errors(coding).is_empty(), "{:?}", errors(coding));
 }

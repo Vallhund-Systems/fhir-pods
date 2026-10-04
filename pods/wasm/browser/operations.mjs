@@ -37,6 +37,52 @@ export async function checkOperations(bytes) {
     assert(lower.validation.valid && lift.validation.valid && !lift.missing.length && !lift.conflicts.length, "Invalid round trip");
     same(pod.lower(patientProfile, lift.inputs).resource, lower.resource, "Resource changed");
   });
+  const questionnaireProfile = "http://hl7.org/fhir/StructureDefinition/Questionnaire";
+  const responseProfile = "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse";
+  const questionnaireUrl = "http://forms.example.net/Questionnaire/browser-intake";
+  const questionnaire = pod.lower(questionnaireProfile, {
+    url: questionnaireUrl, version: "1", status: "active",
+    item: [{ linkId: "age", type: "integer", required: true }],
+  }).resource;
+  const responseInputs = answer => ({
+    questionnaire: `${questionnaireUrl}|1`, status: "completed", subject: "Patient/1",
+    item: [{ linkId: "age", ...(answer ? { answer } : {}) }],
+  });
+  const responseVerdicts = answer => {
+    const lowered = pod.lower(responseProfile, responseInputs(answer));
+    return {
+      lower: lowered.validation,
+      lift: pod.lift(responseProfile, lowered.resource).validation,
+      validate: pod.validate(JSON.stringify(lowered.resource)),
+    };
+  };
+  const messages = verdict => verdict.issues.map(issue => issue.message).join("\n");
+  check("questionnaire store reaches lower, lift and validate", () => {
+    for (const verdict of Object.values(responseVerdicts([{ valueString: "forty-two" }]))) {
+      assert(verdict.valid && messages(verdict).includes("could not be resolved"), "Unloaded form was assumed");
+    }
+    assert(pod.loadQuestionnaire(JSON.stringify(questionnaire)), "Questionnaire load failed");
+    for (const [answer, finding] of [
+      [[{ valueString: "forty-two" }], "Answer value must be of the type integer not string"],
+      [undefined, "No response answer found for required item 'age'"],
+      [[{ valueInteger: 42 }], null],
+    ]) {
+      for (const verdict of Object.values(responseVerdicts(answer))) {
+        assert(verdict.valid === !finding, `Unexpected questionnaire verdict: ${messages(verdict)}`);
+        if (finding) assert(messages(verdict).includes(finding), `Missing questionnaire finding: ${finding}`);
+        assert(!messages(verdict).includes("could not be resolved"), "Loaded form was unresolved");
+      }
+    }
+  });
+  const isolatedPod = await instantiate(bytes);
+  check("questionnaire store is isolated and clearable", () => {
+    const isolated = isolatedPod.lower(responseProfile, responseInputs(undefined)).validation;
+    assert(isolated.valid && messages(isolated).includes("could not be resolved"), "Questionnaire leaked between instances");
+    assert(pod.loadQuestionnaire(""), "Questionnaire clear failed");
+    for (const verdict of Object.values(responseVerdicts(undefined))) {
+      assert(verdict.valid && messages(verdict).includes("could not be resolved"), "Cleared form still resolved");
+    }
+  });
   check("lift conflicts cross the ABI", () => {
     const conflict = structuredClone(heartRate); conflict.valueQuantity.code = "Hz";
     assert(pod.lift(HR, conflict).conflicts.some(c => c.path === "valueQuantity.code" && c.given === "Hz" && c.fixed === "/min"), "Conflict missing");
