@@ -260,6 +260,27 @@ gone". What the base resource or an applied profile requires is masked
 (`data-absent-reason: masked`) rather than dropped, required children
 included; an extension whose value went goes with it.
 
+## Questionnaires
+
+A `QuestionnaireResponse` can resolve a contained Questionnaire or one in the
+same Bundle without host state. For a separately stored form, load its JSON
+before validating, lowering or lifting the response:
+
+```ts
+import { loadQuestionnaire, validate } from "fhir-pods-expo";
+
+loadQuestionnaire(JSON.stringify(questionnaire)); // true
+const report = validate(JSON.stringify(response));
+loadQuestionnaire(""); // clear the loaded-form store
+```
+
+The response names the form by `Questionnaire.url`, optionally followed by
+`|version`. A non-Questionnaire returns `false` and leaves the existing store
+intact. Clearing returns `true`. The store belongs to the native runtime in
+the app process, so the host should load the forms needed for that process and
+clear them when its data boundary changes. An unresolved form is reported as
+such; its item rules are not guessed.
+
 ## Terminology
 
 The pod bundles every licence-free value set the registry binds (the FHIR and
@@ -309,18 +330,18 @@ The current package is **0.19.2, ABI 13**. The release build produces iOS
 XCFramework slices, Android libraries, and a packed Expo artifact. This
 package exposes the full operation family documented above.
 
-The latest simulator exercise used the **0.12.0 / ABI 12** artifact on
-2026-09-21 in a fresh Expo 57 / React Native 0.86 app: **17 checks passed on
-both an iPhone 17 simulator and a Pixel 8 Android 15 emulator with identical
-outputs** — abi, validate, operationOutcome, mustSupportGaps, slots (fixed
-neighbours and parts), lower (unit from the fixed code), lift, profiles,
-export for `au` and `us` (document and audit event valid; a contradiction
-and another patient's resource refused), document, audit, v2, deidentify,
-terminologyNeeds. Mean per-call times in a debug build were ~0.1 ms for
-validate and ~10 ms for a whole-record `au` export. The evidence (outputs,
-the scratch app's source, toolchain) is kept with the project's planning
-records, not here. 0.12.1 only corrects the podspec/gradle version string
-that exercise found; the binaries are unchanged.
+The latest simulator exercise rebuilt and packed the **0.19.2 / ABI 13**
+module from source `98757de` on 2026-10-06, then installed that tarball in a
+fresh Expo 57.0.27 / React Native 0.86.3 app. **24 checks passed on both an
+iPhone 17 / iOS 26.5 simulator and the `pixel8-dust` Android 15 emulator with
+identical functional results.** The suite covers the operation family above,
+all six discovered regions, lift conflicts, and the host-loaded Questionnaire
+lifecycle across validate, lower and lift: unresolved, load, wrong type,
+missing required answer, valid answer, rejected replacement with preservation,
+and clear. The packed artifact SHA-256 is
+`4d8a040e065fff0f131b93a8ecfd3a7d7b8d471208c8bbbbcc8c6bc043242085`.
+The scratch app, full outputs, toolchain and observational debug timings are
+kept with the project's planning records.
 
 ## Boundary
 
