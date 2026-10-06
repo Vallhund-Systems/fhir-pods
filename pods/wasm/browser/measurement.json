@@ -1,23 +1,23 @@
 {
-  "recordedAt": "2026-09-22T18:11:40.740Z",
-  "browser": "Chrome/153.0.8010.53",
-  "revision": "662e857027a6f3ff4356f20ee275ae7ea257c35e",
+  "recordedAt": "2026-10-06T21:24:03.104Z",
+  "browser": "Chrome/154.0.8037.98",
+  "revision": "42ccc500995dd355c74a0b88e6ca1dc69543de17",
   "dirtyPaths": [],
   "sourceHashes": {
     "browser/run.mjs": "5733ff74b7e547033daf792847a0517c8fbde2c7dec7722f1dbedc1e6c181bf6",
     "browser/smoke.mjs": "856990acfbce652b8f15c2b94c7924b96c023e4e24ecc97d983faa0848135798",
-    "browser/operations.mjs": "54041f57bc6bdbdc164399b41e882289e74334182a83f0617f253b42fe09c688",
-    "browser/index.html": "ea3073461c46d6b0bc2cf74cc61c4272367cfacda1f7cc76a8e8fe5084ad7676",
+    "browser/operations.mjs": "0735fba516fff5f042ae7405ba57d2d60d052675e970678525e6d2744a269edb",
+    "browser/index.html": "087de23d14e53465f722cb62d379f5c4249af55919449f4e0b47cf7ffa7a0eb5",
     "bench/fixtures.mjs": "9b3b95d1eec370024ab6401191b9c781571c4efe05d6e0c40e9fa083fe042e21",
-    "src/index.js": "98cc2e16085f09d6d0831b84fe3c57d96db71b9de5987c3a897c3454fe9b523f"
+    "src/index.js": "1ac20c1273ee2191b568d19a5f58aaae2b6fdd3ffd7c79f9e7e0eeaa7d104810"
   },
   "node": "v25.9.0",
   "platform": "darwin",
   "architecture": "arm64",
   "status": "passed",
-  "wasmBytes": 2448962,
-  "wasmSha256": "ebc02f6a56b9a223a7bb4b6ab8bb145573fbeb125bfe8406feb7487c082e21fb",
-  "abi": 12,
+  "wasmBytes": 2966028,
+  "wasmSha256": "2773ea5a9bcf74376a7163fd2fbde1641998df60f5b6aa2b14b99021c14b49dd",
+  "abi": 13,
   "checks": [
     {
       "name": "ABI matches wrapper",
@@ -57,6 +57,14 @@
     },
     {
       "name": "lower/lift preserve variable content",
+      "pass": true
+    },
+    {
+      "name": "questionnaire store reaches lower, lift and validate",
+      "pass": true
+    },
+    {
+      "name": "questionnaire store is isolated and clearable",
       "pass": true
     },
     {
@@ -136,6 +144,6 @@
       "pass": true
     }
   ],
-  "callbackCount": 14,
+  "callbackCount": 15,
   "reentrantCount": 1
 }
