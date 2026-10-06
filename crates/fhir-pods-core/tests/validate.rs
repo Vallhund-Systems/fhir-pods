@@ -1070,3 +1070,89 @@ fn a_required_bound_concept_with_no_coding_is_an_error_bare_and_profiled() {
     let coding = r#"{"resourceType":"Encounter","status":"finished","class":{"system":"http://terminology.hl7.org/CodeSystem/v3-ActCode"}}"#;
     assert!(errors(coding).is_empty(), "{:?}", errors(coding));
 }
+
+/// A backbone the base defines by `contentReference` — a section's section,
+/// an item's item — carries its invariants at every depth, as validator_cli
+/// 6.10.4 evaluates them: `cmp-1` fails on an empty inner section, bare and
+/// under a declared profile, reported at the depth it fails; a sectioned
+/// inner section with text is clean. Found by the reasons lane on a
+/// de-identified probe whose inner section lost its narrative.
+#[test]
+fn a_content_referenced_backbones_invariants_hold_at_every_depth() {
+    use fhir_pods_core::validate::Severity;
+    let errors = |json: &str| -> Vec<String> {
+        fhir_pods_core::validate_bytes(json.as_bytes())
+            .report
+            .issues
+            .iter()
+            .filter(|i| i.severity == Severity::Error)
+            .map(|i| format!("{} | {}", i.path, i.message))
+            .collect()
+    };
+    const AU: &str = r#""meta":{"profile":["http://hl7.org.au/fhir/StructureDefinition/au-composition"]},"#;
+    let composition = |meta: &str, inner: &str| {
+        format!(
+            r#"{{"resourceType":"Composition",{meta}"status":"final","type":{{"text":"Synthetic summary"}},"date":"2026-10-06T00:00:00Z","author":[{{"display":"Synthetic author"}}],"title":"Synthetic composition","section":[{{"title":"Outer","section":[{inner}]}}]}}"#
+        )
+    };
+    const EMPTY: &str = r#"{"title":"Inner","mode":"working"}"#;
+    const NESTED_EMPTY: &str = r#"{"title":"Inner","section":[{"title":"Innermost","mode":"working"}]}"#;
+    const TEXTED: &str = r#"{"title":"Inner","mode":"working","text":{"status":"generated","div":"<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Synthetic narrative</p></div>"}}"#;
+    for meta in ["", AU] {
+        let e = errors(&composition(meta, EMPTY));
+        assert!(e.iter().any(|x| x.starts_with("Composition.section.section | cmp-1")), "meta={meta:?}: {e:?}");
+        assert!(!e.iter().any(|x| x.starts_with("Composition.section | ")), "meta={meta:?}: {e:?}");
+        let e = errors(&composition(meta, NESTED_EMPTY));
+        assert!(e.iter().any(|x| x.starts_with("Composition.section.section.section | cmp-1")), "meta={meta:?}: {e:?}");
+        assert!(!e.iter().any(|x| x.starts_with("Composition.section.section | ")), "meta={meta:?}: {e:?}");
+        let e = errors(&composition(meta, TEXTED));
+        assert!(e.is_empty(), "meta={meta:?}: {e:?}");
+    }
+    // an invariant on a child of the referenced backbone (que-7 on
+    // `item.enableWhen`), and one whose copy lies elsewhere in the resource
+    // (obs-3 on `component.referenceRange` → `Observation.referenceRange`);
+    // each pair probed against validator_cli 6.10.4
+    let questionnaire = |answer: &str| {
+        format!(
+            r#"{{"resourceType":"Questionnaire","status":"active","item":[{{"linkId":"g","type":"group","item":[{{"linkId":"q","type":"boolean","enableWhen":[{{"question":"g","operator":"exists",{answer}}}]}}]}}]}}"#
+        )
+    };
+    let e = errors(&questionnaire(r#""answerString":"x""#));
+    assert!(e.iter().any(|x| x.starts_with("Questionnaire.item.item.enableWhen | que-7")), "{e:?}");
+    let e = errors(&questionnaire(r#""answerBoolean":true"#));
+    assert!(e.is_empty(), "{e:?}");
+    let e = errors(
+        r#"{"resourceType":"Questionnaire","status":"active","item":[{"linkId":"g","type":"group","item":[{"linkId":"g2","type":"group"}]}]}"#,
+    );
+    assert!(e.iter().any(|x| x.starts_with("Questionnaire.item.item | que-1")), "{e:?}");
+    let observation = |range: &str| {
+        format!(
+            r#"{{"resourceType":"Observation","status":"final","code":{{"text":"x"}},"component":[{{"code":{{"text":"y"}},"referenceRange":[{range}]}}]}}"#
+        )
+    };
+    let e = errors(&observation(r#"{"type":{"text":"normal"}}"#));
+    assert!(e.iter().any(|x| x.starts_with("Observation.component.referenceRange | obs-3")), "{e:?}");
+    let e = errors(&observation(r#"{"text":"normal range"}"#));
+    assert!(e.is_empty(), "{e:?}");
+    // a copy carries the backbone's invariants and its own — a test
+    // operation fails tst-7 and tst-8 together, a teardown's tst-7 and
+    // tst-9, never a sibling copy's (no tst-9 on a test); probed, 6.10.4
+    let testscript = |phase: &str, op: &str| {
+        format!(
+            r#"{{"resourceType":"TestScript","url":"http://example.org/ts","name":"T","status":"active",{phase}{{"action":[{{"operation":{{"type":{{"system":"http://terminology.hl7.org/CodeSystem/testscript-operation-codes","code":"read"}},"encodeRequestUrl":true{op}}}}}]}}{}}}"#,
+            if phase.starts_with(r#""test""#) { "]" } else { "" }
+        )
+    };
+    let keys = |e: &[String], at: &str| -> Vec<String> {
+        e.iter()
+            .filter_map(|x| x.strip_prefix(&format!("{at} | ")))
+            .map(|m| m.split(':').next().unwrap_or("").to_string())
+            .collect()
+    };
+    let e = errors(&testscript(r#""test":["#, ""));
+    assert_eq!(keys(&e, "TestScript.test.action.operation"), ["tst-7", "tst-8"], "{e:?}");
+    let e = errors(&testscript(r#""teardown":"#, ""));
+    assert_eq!(keys(&e, "TestScript.teardown.action.operation"), ["tst-7", "tst-9"], "{e:?}");
+    let e = errors(&testscript(r#""teardown":"#, r#","url":"/Patient/1""#));
+    assert!(e.is_empty(), "{e:?}");
+}

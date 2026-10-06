@@ -421,3 +421,21 @@ fn a_backbones_required_child_is_masked_not_dropped() {
     );
     assert!(d.validation.is_valid(), "{}", wire::report(&d.validation));
 }
+
+/// A required element that repeats and empties under the walk — a
+/// Composition's authors, each a display-only reference whose display is
+/// free text — is masked as an array of one stub, never a bare object: the
+/// copy stays R4 JSON the pod itself accepts. Found by the reasons lane on
+/// a de-identified probe.
+#[test]
+fn a_required_repeating_element_that_empties_is_masked_as_an_array() {
+    let composition = r#"{"resourceType":"Composition","status":"final","type":{"text":"Synthetic summary"},"date":"2026-10-06T00:00:00Z","author":[{"display":"Synthetic author"}],"title":"Synthetic composition"}"#;
+    let d = deid(composition, &Policy::safe_harbor(b"salt").today(2026));
+    assert!(!d.resource.contains("Synthetic author"), "{}", d.resource);
+    assert!(
+        d.resource.contains(r#""author":[{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/data-absent-reason","valueCode":"masked"}]}]"#),
+        "{}",
+        d.resource
+    );
+    assert!(d.validation.is_valid(), "{}", wire::report(&d.validation));
+}

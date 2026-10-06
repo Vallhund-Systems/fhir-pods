@@ -392,13 +392,15 @@ fn check_invariant<D: Document>(inv: &ProfileInvariant, label: &str, doc: &D, sc
         },
     };
     let mut skipped = false;
-    for (ctx, this_type) in invariant_contexts(inv, doc) {
+    for (ctx, this_type, at) in invariant_contexts(inv, doc) {
         match path::check_constraint_in(expr, &ctx, this_type, Some(scope.root), scope.bundle) {
             Verdict::Fail => {
                 let severity = match inv.severity {
                     InvariantSeverity::Error => Severity::Error,
                     InvariantSeverity::Warning => Severity::Warning,
                 };
+                // a deeper copy of the backbone is reported where it is
+                let label = at.as_deref().unwrap_or(label);
                 r.push(severity, IssueType::Invariant, label, format!("{}: {}", inv.key, inv.human));
             }
             Verdict::Unsupported => skipped = true,
@@ -423,7 +425,10 @@ fn not_evaluated(inv: &ProfileInvariant, label: &str, r: &mut Report) {
 /// choice element (`effective[x]`) is enumerated per concrete key
 /// (`effectiveDateTime`, `effectivePeriod`, …) so `$this is dateTime`
 /// answers per instance.
-fn invariant_contexts<'a, D: Document>(inv: &'a ProfileInvariant, doc: &D) -> Vec<(D, Option<&'a str>)> {
+fn invariant_contexts<'a, D: Document>(
+    inv: &'a ProfileInvariant,
+    doc: &D,
+) -> Vec<(D, Option<&'a str>, Option<String>)> {
     match inv.path.strip_suffix("[x]") {
         Some(base) if !inv.types.is_empty() => inv
             .types
@@ -432,11 +437,81 @@ fn invariant_contexts<'a, D: Document>(inv: &'a ProfileInvariant, doc: &D) -> Ve
                 let mut key = String::from(base);
                 key.push_str(&t[..1].to_ascii_uppercase());
                 key.push_str(&t[1..]);
-                doc.instances(&key).into_iter().map(move |d| (d, Some(*t)))
+                doc.instances(&key).into_iter().map(move |d| (d, Some(*t), None))
             })
             .collect(),
-        _ => doc.instances(inv.path).into_iter().map(|d| (d, inv.types.first().copied())).collect(),
+        _ => {
+            let ty = inv.types.first().copied();
+            let mut out = Vec::new();
+            for at in invariant_paths(inv.path, doc) {
+                let label = (at != inv.path).then(|| at.clone());
+                out.extend(doc.instances(&at).into_iter().map(|d| (d, ty, label.clone())));
+            }
+            out
+        }
     }
+}
+
+/// Every path an invariant defined at `path` applies to: the path itself,
+/// and the path again beneath each copy of a backbone it lies on or under
+/// that the base defines by `contentReference` — a section's section, an
+/// item's item, an answer's item, a component's referenceRange — however
+/// deep the document nests them. The reference validator evaluates an
+/// invariant on every copy; so does this. A copy counts only where the
+/// document has an instance of it, which bounds the walk by the document.
+fn invariant_paths<D: Document>(path: &str, doc: &D) -> Vec<String> {
+    let mut out = alloc::vec![String::from(path)];
+    let segs: Vec<&str> = path.split('.').collect();
+    let mut ctx = crate::typing::known_type(segs[0]);
+    for k in 1..=segs.len() {
+        if k > 1 {
+            ctx = ctx.and_then(|c| crate::typing::child(c, segs[k - 1]).map(|ch| ch.ctx));
+        }
+        let Some(backbone) = ctx else { break };
+        if !backbone.contains('.') {
+            continue;
+        }
+        let rest = segs[k..].join(".");
+        for copy in backbone_copies(backbone, &segs[..k].join("."), doc) {
+            let full = if rest.is_empty() { copy } else { format!("{copy}.{rest}") };
+            // a copy carries the backbone's invariants and its own: a test
+            // operation fails tst-7 (the setup operation's) and tst-8 (its
+            // own) together, as the reference validator reports it
+            if !out.contains(&full) {
+                out.push(full);
+            }
+        }
+    }
+    out
+}
+
+/// The paths at which the document holds a copy of `backbone` other than
+/// the one at `at`: beneath `at` where the reference lies under the
+/// backbone (a section's section, and that section's section …), or where
+/// the base put the reference when it lies elsewhere (a component's
+/// referenceRange) — the latter only from the backbone's own definition,
+/// never from one copy to its siblings. A copy counts only where an
+/// instance exists, which bounds the descent by the document.
+fn backbone_copies<D: Document>(backbone: &str, at: &str, doc: &D) -> Vec<String> {
+    let refs = crate::typing::content_references_to(backbone);
+    let mut copies: Vec<String> = alloc::vec![String::from(at)];
+    let mut i = 0;
+    while i < copies.len() {
+        let here = copies[i].clone();
+        i += 1;
+        for q in &refs {
+            let copy = match q.strip_prefix(backbone).and_then(|s| s.strip_prefix('.')) {
+                Some(beneath) => format!("{here}.{beneath}"),
+                None if at == backbone => q.clone(),
+                None => continue,
+            };
+            if !copies.contains(&copy) && !doc.instances(&copy).is_empty() {
+                copies.push(copy);
+            }
+        }
+    }
+    copies.remove(0);
+    copies
 }
 
 /// Cardinality (per parent instance), fixed value, and required binding for

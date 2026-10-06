@@ -1,5 +1,65 @@
 # Changelog
 
+## 0.19.3 — 2026-10-06
+
+**A content-referenced backbone's invariants hold at every depth; a
+required-bound concept whose codings carry no code is an error; a required
+repeating element that empties under de-identification stays an array.**
+Three findings from the review lane's missing-content probes, none of them
+visible to a published example.
+
+- *Invariants beneath `contentReference`.* A section's section, an item's
+  item, an answer's item, a component's referenceRange are the same
+  backbone again, and validator_cli evaluates its invariants there —
+  `cmp-1` on an empty inner section, `que-1 … que-13` and `qrs-1` on
+  nested items and their children (`que-7` on a nested `enableWhen`),
+  `obs-3` on a component's range. The pod had evaluated them where the
+  base defines the backbone only (and said so in scope). The engine now
+  follows the base table's content references to every copy the document
+  holds — beneath the backbone however deep, or elsewhere in the resource
+  — and reports a failure at the path it fails (`Composition.section.section`,
+  `Observation.component.referenceRange`), profile or none. A copy
+  carries the backbone's invariants *and* its own, as the oracle has it: a
+  `TestScript` test operation with no target fails `tst-7` (the setup
+  operation's) and `tst-8` together, a teardown's `tst-7` and `tst-9`,
+  never a sibling copy's. Regression tests: empty inner and innermost
+  sections, bare and under AU Base Composition; nested `que-1` and
+  `que-7`; `obs-3` on a component; the three `TestScript` phases; the
+  valid twins clean. Eleven probes against the oracle.
+- *`answer is Boolean`.* `que-7` (an `exists` condition's answer must be a
+  boolean) failed every `answerBoolean` — at any depth — because the
+  FHIRPath `is` took a bare `Boolean` as a System type no FHIR element is.
+  The reference engine takes it for a FHIR `boolean` (probed: `que-7`
+  passes an `answerBoolean` and fails an `answerString`), while `is
+  DateTime` on a `dateTime` stays false (re-probed through `us-core-1`,
+  which still never fires). The one name is now matched that way; a
+  questionnaire with a required `exists` answer validates as written.
+- *A `CodeableConcept` whose codings have no `code`.* 0.19.2 made a concept
+  with no coding at all an error; one whose Coding objects carry a system
+  and a display but no code slipped through. The oracle rejects the parent
+  concept ("None of the codings provided are in the value set") while
+  accepting a standalone required-bound `Coding` with only a system
+  (`Encounter.class`), so the rule is the concept's, not the Coding's. Both
+  the base walk and the profile engine now say so; the standalone Coding
+  stays unjudged. Oracle-backed probes, bare and under AU Core Condition,
+  are in the conformance lane (review-agent, F091).
+- *De-identification of a required element that repeats.* A
+  `Composition.author` list of display-only references loses every display
+  as free text, empties, and — being required — is masked. The mask was a
+  bare object where the element is an array, so the copy was not R4 JSON
+  and the pod itself rejected it. The emptied-element path now builds the
+  same stub the explicit mask does: an array of one where the source was an
+  array, with the profiles' required children masked inside. Regression
+  test: the de-identified Composition carries `author: [stub]` and
+  validates.
+
+Every lane as 0.19.2 — release corpus 1,776/1,776 (ten review probes
+joined it), no untriaged error difference, base examples 5,130/5,290 with
+0 stricter, questionnaire 74/81 and 73/81 — 253 tests. ABI 13 unchanged;
+the review lane's C abuse harness now covers `fhir_pods_questionnaire_load`
+(F092) and the Expo artifact was exercised on iOS 26.5 and Android 15
+(24/24 checks on each).
+
 ## 0.19.2 — 2026-09-30
 
 **A required-bound `CodeableConcept` with no coding is an error.** A host

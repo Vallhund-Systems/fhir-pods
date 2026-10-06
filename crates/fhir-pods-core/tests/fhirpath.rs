@@ -284,6 +284,9 @@ fn type_tests_honour_the_hierarchy() {
     // FHIRPath system types answer only when qualified — so `$this is
     // DateTime` on a dateTime is false (and US Core's us-core-1 never fires)
     assert_eq!(fp("id is String", d), Fail);
+    // … except `Boolean`, which the reference engine takes for a FHIR
+    // boolean (que-7 passes an `answerBoolean`; probed, 6.10.4)
+    assert_eq!(fp("active is Boolean", r#"{"resourceType":"Patient","active":true}"#), Pass);
     // a FHIR element is never a System type (the official suite's testType14:
     // `Patient.active.is(System.Boolean).not()`); a literal is one
     assert_eq!(fp("id is System.String", d), Fail);

@@ -472,9 +472,11 @@ surface through `mustSupportGaps`.
   enumerates a `contentReference` backbone once, at the depth the base
   defines it, so beneath the deeper copies (an item's item, a section's
   section) the walk keeps the base's required elements and bindings
-  whether or not a profile applies. Not taken, profile or none: the
-  `Questionnaire.item` invariants (que-1 … que-13, qrs-1) are evaluated on
-  the first level of items only.
+  whether or not a profile applies, and the invariants on a backbone or
+  beneath it (cmp-1 on a section, que-1 … que-13 and qrs-1 on an item and
+  its `enableWhen`, obs-3 on a component's `referenceRange`) are evaluated
+  on every copy the document holds, beneath the backbone or elsewhere in
+  the resource, and reported at the path they fail (0.19.3).
 - **A resource nested in another — a Bundle entry, a contained resource, a
   `Parameters` resource, however deep — is validated against the profiles
   it declares, in the outer bundle's scope,** its findings prefixed with the

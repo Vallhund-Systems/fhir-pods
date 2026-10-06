@@ -65,6 +65,24 @@ fn lookup(ctx: &str, key: &str) -> Option<Entry> {
     Some(Entry { codes: CODES[code as usize], repeats })
 }
 
+/// The base elements that `contentReference` backbone `path` — the same
+/// backbone again, elsewhere in the resource — as absolute paths:
+/// `Composition.section` → `["Composition.section.section"]`,
+/// `QuestionnaireResponse.item` → `[".item.answer.item", ".item.item"]`,
+/// `Observation.referenceRange` → `["Observation.component.referenceRange"]`.
+/// The backbone's own definition is not a reference to itself.
+pub fn content_references_to(path: &str) -> alloc::vec::Vec<alloc::string::String> {
+    let (ty, rest) = split_ctx(path);
+    let mut out = alloc::vec::Vec::new();
+    let Some(span) = range_of(ty) else { return out };
+    for (rel, code, _, _) in span {
+        if *rel != rest && CODES[*code as usize].strip_prefix('#') == Some(path) {
+            out.push(alloc::format!("{ty}.{rel}"));
+        }
+    }
+    out
+}
+
 /// Does element `key` under `ctx` repeat (base cardinality `max` ≠ 1)? An
 /// element the table doesn't know is taken as single.
 pub fn repeats(ctx: &str, key: &str) -> bool {

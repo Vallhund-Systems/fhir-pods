@@ -487,10 +487,13 @@ impl Walker<'_> {
                     }
                     self.keep(&mut value, child, &child_path);
                     // an element emptied by what was removed inside it goes too
+                    let was_array = matches!(value, Node::Array(_));
                     if prune_empty(&mut value) {
                         if self.is_required(&child_path, path, &key) {
+                            // masked exactly as if the rule had named it: the
+                            // same stub, in an array where the element repeats
                             self.note(&child_path, Action::Mask);
-                            out.push((key, masked_stub()));
+                            out.push((key, self.masked_value(ty, child.ctx, &child_path, was_array)));
                         } else {
                             self.note(&child_path, Action::Remove);
                             dropped.push(key);
@@ -505,23 +508,7 @@ impl Walker<'_> {
                 }
                 Action::Mask => {
                     self.note(&child_path, Action::Mask);
-                    let mut one = masked_stub_for(ty);
-                    // what the profiles require inside it is masked too
-                    if let Node::Object(stub) = &mut one {
-                        for name in self.required_children(&child_path) {
-                            if stub.iter().any(|(k, _)| *k == name || *k == alloc::format!("_{name}")) {
-                                continue;
-                            }
-                            match typing::child(child.ctx, &name) {
-                                Some(c) if is_primitive_type(c.ty) => {
-                                    stub.push((alloc::format!("_{name}"), masked_stub()))
-                                }
-                                Some(c) => stub.push((name.clone(), masked_stub_for(c.ty))),
-                                None => {}
-                            }
-                        }
-                    }
-                    let stub = if matches!(value, Node::Array(_)) { Node::Array(alloc::vec![one]) } else { one };
+                    let stub = self.masked_value(ty, child.ctx, &child_path, matches!(value, Node::Array(_)));
                     if is_primitive_type(ty) {
                         // a primitive is masked through its carrier: no value, the extension on `_key`
                         masked.push(key.clone());
@@ -631,6 +618,30 @@ impl Walker<'_> {
     fn over_89(&self, path: &str, year: i64) -> bool {
         // only a birth date measures an age
         path.ends_with(".birthDate") && self.policy.today_year.is_some_and(|t| t - year > 89)
+    }
+
+    /// What stands in for a required element of type `ty` that went — the
+    /// masked stub, with what the profiles require inside it masked too —
+    /// in an array where the element repeated.
+    fn masked_value(&self, ty: &str, ctx: &'static str, child_path: &str, was_array: bool) -> Node {
+        let mut one = masked_stub_for(ty);
+        if let Node::Object(stub) = &mut one {
+            for name in self.required_children(child_path) {
+                if stub.iter().any(|(k, _)| *k == name || *k == alloc::format!("_{name}")) {
+                    continue;
+                }
+                match typing::child(ctx, &name) {
+                    Some(c) if is_primitive_type(c.ty) => stub.push((alloc::format!("_{name}"), masked_stub())),
+                    Some(c) => stub.push((name.clone(), masked_stub_for(c.ty))),
+                    None => {}
+                }
+            }
+        }
+        if was_array {
+            Node::Array(alloc::vec![one])
+        } else {
+            one
+        }
     }
 
     /// Recurse into a kept element by its typing.

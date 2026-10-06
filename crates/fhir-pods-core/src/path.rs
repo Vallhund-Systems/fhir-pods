@@ -877,7 +877,13 @@ fn type_matches(actual: &str, spec: &str) -> bool {
 /// every datatype an `Element`). A `System.` name is the FHIRPath system
 /// type a primitive maps to. Names are case-sensitive: `$this is DateTime`
 /// on a FHIR `dateTime` is false, so US Core's `us-core-1` never fires —
-/// there, or here.
+/// there, or here (probed, 6.10.4: an `effectiveDateTime` of `2020` under
+/// US Core Lab passes). The bare name `Boolean`, though, the reference
+/// engine does take for a FHIR `boolean`: `answer is Boolean` holds on an
+/// `answerBoolean` (probed, 6.10.4: `que-7` passes it and fails an
+/// `answerString`), so a required `exists` answer validates as written.
+/// `String` / `Integer` / `Decimal` on their own primitives are unprobed
+/// (no base invariant exercises them) and stay as written: false.
 fn type_matches_ns(actual: &str, ns: Option<&str>, spec: &str) -> bool {
     // a literal (`1`, `true`, `'x'`) is a System value: `1 is Integer` and
     // `1 is System.Integer` hold, `1 is FHIR.integer` does not
@@ -888,6 +894,9 @@ fn type_matches_ns(actual: &str, ns: Option<&str>, spec: &str) -> bool {
     // a FHIR element is never a System type (`Patient.active is System.Boolean` is false)
     if ns == Some("System") {
         return false;
+    }
+    if ns.is_none() && spec == "Boolean" && actual == "boolean" {
+        return true;
     }
     let is = |t: &str| t == spec;
     if is(actual) {
