@@ -1,4 +1,4 @@
-/* Bounded ABI 12 functional/input checks. All pointers and lengths describe
+/* Bounded ABI 13 functional/input checks. All pointers and lengths describe
  * live allocations (or the shim's documented NULL-as-empty input).
  * Returned buffers are parsed independently by scripts/abuse-c.sh.
  * wasm-only _host_tx functions are exercised by the browser suite.
@@ -22,6 +22,10 @@ static const char tx_resource[] = "{\"resourceType\":\"Patient\",\"id\":\"synthe
 static const char table[] = "fhir-pods-terminology 1\n= https://healthterminologies.gov.au/fhir/ValueSet/date-accuracy-indicator-1\nhttps://healthterminologies.gov.au/fhir/CodeSystem/date-accuracy-indicator-1\tAAA\tSynthetic\n";
 static const char v2_message[] = "MSH|^~\\&|LAB|SITE|APP|SITE|20260922100000+1000||ORU^R01|SYNTHETIC|P|2.5\rPID|1||synthetic^^^LOCAL^MR||Example^Synthetic||19800101|U\rOBR|1|||8867-4^Synthetic^LN\rOBX|1|NM|8867-4^Synthetic^LN||72|/min^Synthetic^UCUM|||||F\r";
 static const char audit_inputs[] = "{\"recorded\":\"2026-09-22T00:00:00Z\",\"client\":{\"who\":\"Device/app\",\"network\":\"10.0.0.7\"},\"server\":{\"who\":\"Device/server\",\"network\":\"https://example.org/r4\"},\"source\":{\"observer\":\"Device/audit\"},\"data\":\"Patient/synthetic\"}";
+static const char questionnaire_profile[] = "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse";
+static const char questionnaire[] = "{\"resourceType\":\"Questionnaire\",\"url\":\"http://forms.example.net/Questionnaire/abi-intake\",\"version\":\"1\",\"status\":\"active\",\"item\":[{\"linkId\":\"age\",\"type\":\"integer\",\"required\":true}]}";
+static const char questionnaire_response[] = "{\"resourceType\":\"QuestionnaireResponse\",\"questionnaire\":\"http://forms.example.net/Questionnaire/abi-intake|1\",\"status\":\"completed\",\"item\":[{\"linkId\":\"age\",\"answer\":[{\"valueString\":\"forty-two\"}]}]}";
+static const char questionnaire_inputs[] = "{\"questionnaire\":\"http://forms.example.net/Questionnaire/abi-intake|1\",\"status\":\"completed\",\"item\":[{\"linkId\":\"age\",\"answer\":[{\"valueString\":\"forty-two\"}]}]}";
 static size_t documents, callback_calls, reentrant_calls;
 static int32_t callback_answer = -1;
 
@@ -104,6 +108,9 @@ static void exercise(const char *label, const uint8_t *p, size_t n, int invalid_
     RESULT(fhir_pods_export, "\"error\":", p, n, BYTES("{}"));
     RESULT(fhir_pods_export, "\"error\":", BYTES("au"), p, n);
     RESULT(fhir_pods_export_tx, "\"error\":", BYTES("au"), p, n, callback, NULL);
+    int32_t questionnaire_loaded = fhir_pods_questionnaire_load(p, n);
+    CHECK(questionnaire_loaded == 0 || questionnaire_loaded == 1);
+    scalar("fhir_pods_questionnaire_load", questionnaire_loaded);
     int32_t loaded = fhir_pods_terminology_load(p, n);
     CHECK(loaded == 0 || loaded == 1);
     scalar("fhir_pods_terminology_load", loaded);
@@ -168,6 +175,25 @@ int main(void) {
     RESULT(fhir_pods_lower_tx, "\"resource\":", BYTES(profile), BYTES(inputs), callback, NULL);
     RESULT(fhir_pods_audit_tx, "\"resource\":", BYTES("read"), BYTES(audit_inputs), callback, NULL);
     RESULT(fhir_pods_v2_tx, "\"bundle\":", BYTES(v2_message), BYTES("{}"), callback, NULL);
+
+    /* A loaded form reaches all ABI operations that validate a response. A
+     * rejected replacement leaves the loaded form intact; empty input clears
+     * it. The FFI smoke has the same semantics, while this harness adds the
+     * allocator/result-buffer and hostile-input boundary. */
+    CHECK(fhir_pods_questionnaire_load(NULL, 0) == 1);
+    scalar("fhir_pods_questionnaire_load", 1);
+    RESULT(fhir_pods_validate, "could not be resolved", BYTES(questionnaire_response));
+    CHECK(fhir_pods_questionnaire_load(BYTES(questionnaire)) == 1);
+    scalar("fhir_pods_questionnaire_load", 1);
+    RESULT(fhir_pods_validate, "Answer value must be of the type integer not string", BYTES(questionnaire_response));
+    RESULT(fhir_pods_lower, "Answer value must be of the type integer not string", BYTES(questionnaire_profile), BYTES(questionnaire_inputs));
+    RESULT(fhir_pods_lift, "Answer value must be of the type integer not string", BYTES(questionnaire_profile), BYTES(questionnaire_response));
+    CHECK(fhir_pods_questionnaire_load(BYTES(patient)) == 0);
+    scalar("fhir_pods_questionnaire_load", 0);
+    RESULT(fhir_pods_validate, "Answer value must be of the type integer not string", BYTES(questionnaire_response));
+    CHECK(fhir_pods_questionnaire_load(NULL, 0) == 1);
+    scalar("fhir_pods_questionnaire_load", 1);
+    RESULT(fhir_pods_validate, "could not be resolved", BYTES(questionnaire_response));
 
     /* The callback loads terminology and validates recursively. A stale read
      * lock would deadlock; the runner has a bounded process timeout. */

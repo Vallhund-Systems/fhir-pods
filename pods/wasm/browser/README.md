@@ -1,9 +1,10 @@
 # Browser smoke test
 
-Exercises the JavaScript wrapper in Chrome with 29 synthetic ABI 12 checks:
+Exercises the JavaScript wrapper in Chrome with 31 synthetic ABI 13 checks:
 validation/outcomes, discovery/slots, lift/lower and fixed conflicts,
 de-identification, documents, audit, v2, export preservation and patient
-references, terminology table replacement/clear, and provider callbacks.
+references, terminology table replacement/clear, loaded-Questionnaire
+lower/lift/validate and instance isolation, and provider callbacks.
 Reentrant callbacks load a table and validate within the active operation.
 The same operation checks run under Node in `test/operations.test.mjs`.
 
@@ -34,6 +35,7 @@ python3 -m http.server 8080 --bind 127.0.0.1 --directory pods/wasm
 Open `http://127.0.0.1:8080/browser/index.html`. The page runs on load and the
 button repeats it. `window.fhirPodsSmoke` exposes the result to browser tooling.
 This is a smoke check of these operations; it does not establish compatibility
-with browsers that have not been run. `measurement.json` records the 2026-09-22 run after v0.12.1, including the
-exact source revision, source hashes, artifact SHA-256 and browser version.
-That commit is unreleased; these are not measurements of the v0.12.1 tag.
+with browsers that have not been run. `measurement.json` records the latest
+clean ABI 13 run, including the exact source revision, source hashes, artifact
+SHA-256 and browser version. It describes that commit and artifact, independent
+of release tags.
