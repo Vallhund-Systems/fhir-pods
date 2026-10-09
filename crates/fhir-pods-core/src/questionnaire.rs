@@ -497,11 +497,13 @@ impl<'q, 'v, 'a, 't> Checker<'q, 'v, 'a, 't> {
             match defs.iter().position(|d| d.link_id == link_id) {
                 None => match Item::find(&self.q.items, link_id) {
                     // defined, but not at this level
+                    // both reported at the item that holds the stray, as the
+                    // reference validator places them
                     Some(def) => {
                         r.push(
                             Severity::Error,
                             IssueType::Structure,
-                            &at,
+                            label,
                             format!("Structural Error: item with linkid {link_id} is in the wrong place"),
                         );
                         self.item(def, Some((i, item)), label, r);
@@ -509,7 +511,7 @@ impl<'q, 'v, 'a, 't> Checker<'q, 'v, 'a, 't> {
                     None => r.push(
                         Severity::Error,
                         IssueType::Structure,
-                        &at,
+                        label,
                         format!("LinkId '{link_id}' not found in questionnaire"),
                     ),
                 },
@@ -561,10 +563,11 @@ impl<'q, 'v, 'a, 't> Checker<'q, 'v, 'a, 't> {
             return;
         }
         if found.len() > 1 && !def.repeats {
+            // at the item that holds the duplicates, as the reference validator places it
             r.push(
                 Severity::Error,
                 IssueType::BusinessRule,
-                &format!("{label}.item[{}]", found[1].0),
+                label,
                 format!("Only one response item with the linkId {} allowed - found {} items", def.link_id, found.len()),
             );
         }
@@ -1054,7 +1057,23 @@ impl<'q, 'v, 'a, 't> Checker<'q, 'v, 'a, 't> {
             }
         } else if let Some(vs) = &def.answer_value_set {
             // any coding at all is allowed under optionsOrType
-            if code.is_empty() || system.is_empty() || def.constraint() == "optionsOrType" {
+            if def.constraint() == "optionsOrType" {
+                return;
+            }
+            // a coding with no system (or no code) names nothing the set
+            // could hold: the reference validator's terminology error
+            if code.is_empty() || system.is_empty() {
+                let (c, s) = (if code.is_empty() { "null" } else { code }, if system.is_empty() { "null" } else { system });
+                let (_, name) = self.membership(vs, system, code);
+                r.push(
+                    Severity::Error,
+                    IssueType::CodeInvalid,
+                    at,
+                    format!(
+                        "The code '{c}' in the system '{s}' is not in the options value set ({name}) specified by the questionnaire. Terminology Error: Coding has no {}. A code with no system has no defined meaning, and it cannot be validated",
+                        if system.is_empty() { "system" } else { "code" }
+                    ),
+                );
                 return;
             }
             let (m, name) = self.membership(vs, system, code);

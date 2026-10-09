@@ -1156,3 +1156,234 @@ fn a_content_referenced_backbones_invariants_hold_at_every_depth() {
     let e = errors(&testscript(r#""teardown":"#, r#","url":"/Patient/1""#));
     assert!(e.is_empty(), "{e:?}");
 }
+
+/// A profile's required binding to a set the pod cannot decide offline (an
+/// IPS status subset) does not hide the base's: `status` of `mutated` under
+/// the IPS laboratory profile is an error, as validator_cli 6.10.4 reports
+/// it against the base set; `final` is not. Found by the mutation lane.
+#[test]
+fn a_profiles_undecidable_set_falls_back_to_the_base_binding() {
+    use fhir_pods_core::validate::Severity;
+    let at = |json: &str, path: &str| -> Vec<String> {
+        fhir_pods_core::validate_bytes(json.as_bytes())
+            .report
+            .issues
+            .iter()
+            .filter(|i| i.severity == Severity::Error && i.path == path)
+            .map(|i| i.message.clone())
+            .collect()
+    };
+    let observation = |status: &str| {
+        format!(
+            r#"{{"resourceType":"Observation","meta":{{"profile":["http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-results-laboratory-pathology-uv-ips"]}},"status":"{status}","category":[{{"coding":[{{"system":"http://terminology.hl7.org/CodeSystem/observation-category","code":"laboratory"}}]}}],"code":{{"coding":[{{"system":"http://loinc.org","code":"718-7"}}]}},"subject":{{"reference":"Patient/p"}},"effectiveDateTime":"2026-01-01","valueQuantity":{{"value":13,"unit":"g/dL","system":"http://unitsofmeasure.org","code":"g/dL"}}}}"#
+        )
+    };
+    let e = at(&observation("mutated"), "Observation.status");
+    assert!(e.iter().any(|m| m.contains("not in the bound value set")), "{e:?}");
+    assert!(at(&observation("final"), "Observation.status").is_empty());
+}
+
+/// A coding with no code under a required binding the pod cannot decide
+/// offline (US Core's LOINC-built document types) is not judged — the
+/// reference validator says nothing there — while a concept with no coding
+/// at all is still "No code provided". Found by the mutation lane.
+#[test]
+fn a_code_less_coding_is_judged_only_where_the_set_can_be_decided() {
+    use fhir_pods_core::validate::Severity;
+    let at = |json: &str, path: &str| -> Vec<String> {
+        fhir_pods_core::validate_bytes(json.as_bytes())
+            .report
+            .issues
+            .iter()
+            .filter(|i| i.severity == Severity::Error && i.path == path)
+            .map(|i| i.message.clone())
+            .collect()
+    };
+    let doc = |ty: &str| {
+        format!(
+            r#"{{"resourceType":"DocumentReference","meta":{{"profile":["http://hl7.org/fhir/us/core/StructureDefinition/us-core-documentreference"]}},"status":"current","type":{ty},"category":[{{"coding":[{{"system":"http://hl7.org/fhir/us/core/CodeSystem/us-core-documentreference-category","code":"clinical-note"}}]}}],"subject":{{"reference":"Patient/p"}},"content":[{{"attachment":{{"contentType":"text/plain","data":"eA=="}}}}]}}"#
+        )
+    };
+    assert!(at(&doc(r#"{"coding":[{"system":"http://loinc.org","display":"Discharge summary"}]}"#), "DocumentReference.type").is_empty());
+    let e = at(&doc(r#"{"text":"Discharge summary"}"#), "DocumentReference.type");
+    assert!(e.iter().any(|m| m.starts_with("No code provided")), "{e:?}");
+}
+
+/// `Reference.type` is held to the element's targets — the base's with no
+/// profile, the profile's under one — by bare type name, as validator_cli
+/// 6.10.4 holds it: a canonical there is wrong too. Found by the mutation
+/// lane.
+#[test]
+fn a_references_declared_type_is_held_to_the_elements_targets() {
+    use fhir_pods_core::validate::Severity;
+    let errors = |json: &str| -> Vec<String> {
+        fhir_pods_core::validate_bytes(json.as_bytes())
+            .report
+            .issues
+            .iter()
+            .filter(|i| i.severity == Severity::Error)
+            .map(|i| format!("{} | {}", i.path, i.message))
+            .collect()
+    };
+    let immunization = |ty: &str| {
+        format!(
+            r#"{{"resourceType":"Immunization","status":"completed","vaccineCode":{{"text":"x"}},"patient":{{"reference":"Patient/1","type":"{ty}"}},"occurrenceDateTime":"2026-01-01"}}"#
+        )
+    };
+    for bad in ["Organization", "Mutated", "http://hl7.org/fhir/StructureDefinition/Patient"] {
+        let e = errors(&immunization(bad));
+        assert!(
+            e.iter().any(|x| x.starts_with("Immunization.patient | Invalid Resource target type") && x.contains("(Patient)")),
+            "{bad}: {e:?}"
+        );
+    }
+    assert!(errors(&immunization("Patient")).is_empty(), "{:?}", errors(&immunization("Patient")));
+    let e = errors(r#"{"resourceType":"Patient","managingOrganization":{"reference":"Organization/1","type":"Mutated"}}"#);
+    assert!(e.iter().any(|x| x.starts_with("Patient.managingOrganization | Invalid Resource target type")), "{e:?}");
+}
+
+/// The reference validator implies a vital-sign profile from its own code
+/// table, not the profile's magic code alone: `3141-9` is a body weight,
+/// held to `bodyweight` (whose magic `29463-7` it then lacks); `8335-2` is
+/// not. Each code probed against 6.10.4. Found by the mutation lane.
+#[test]
+fn a_vital_sign_profile_is_implied_by_the_reference_validators_code_table() {
+    use fhir_pods_core::validate::Severity;
+    let errors = |json: &str| -> Vec<String> {
+        fhir_pods_core::validate_bytes(json.as_bytes())
+            .report
+            .issues
+            .iter()
+            .filter(|i| i.severity == Severity::Error)
+            .map(|i| format!("{} | {}", i.path, i.message))
+            .collect()
+    };
+    let vitals = |code: &str| {
+        format!(
+            r#"{{"resourceType":"Observation","status":"final","category":[{{"coding":[{{"system":"http://terminology.hl7.org/CodeSystem/observation-category","code":"vital-signs"}}]}}],"code":{{"coding":[{{"system":"http://loinc.org","code":"{code}"}}]}},"subject":{{"reference":"Patient/1"}},"effectiveDateTime":"2026-01-01","valueQuantity":{{"value":70,"unit":"kg","system":"http://unitsofmeasure.org","code":"kg"}}}}"#
+        )
+    };
+    let e = errors(&vitals("3141-9"));
+    assert!(e.iter().any(|x| x.starts_with("Observation.code")), "{e:?}");
+    assert!(errors(&vitals("8335-2")).is_empty(), "{:?}", errors(&vitals("8335-2")));
+    assert!(errors(&vitals("29463-7")).is_empty(), "{:?}", errors(&vitals("29463-7")));
+}
+
+/// A required binding beneath a choice (`Extension.value[x].type`, IHE
+/// BALP's other-id) is judged by the instance's shape where the table cannot
+/// type the path: a type with codings but no code, or text alone, is the
+/// error the reference validator reports. Found by the mutation lane.
+#[test]
+fn a_binding_beneath_a_choice_is_judged_by_the_instances_shape() {
+    use fhir_pods_core::validate::Severity;
+    let errors = |json: &str| -> Vec<String> {
+        fhir_pods_core::validate_bytes(json.as_bytes())
+            .report
+            .issues
+            .iter()
+            .filter(|i| i.severity == Severity::Error)
+            .map(|i| format!("{} | {}", i.path, i.message))
+            .collect()
+    };
+    let audit = |ty: &str| {
+        format!(
+            r#"{{"resourceType":"AuditEvent","type":{{"system":"http://terminology.hl7.org/CodeSystem/audit-event-type","code":"rest"}},"recorded":"2026-01-01T00:00:00Z","agent":[{{"extension":[{{"url":"https://profiles.ihe.net/ITI/BALP/StructureDefinition/ihe-otherId","valueIdentifier":{{"type":{ty},"value":"JohnDoe"}}}}],"requestor":true}}],"source":{{"observer":{{"display":"x"}}}}}}"#
+        )
+    };
+    let coded = r#"{"coding":[{"system":"https://profiles.ihe.net/ITI/BALP/CodeSystem/OtherIdentifierTypes","code":"SAML-subject-id"}]}"#;
+    assert!(errors(&audit(coded)).is_empty(), "{:?}", errors(&audit(coded)));
+    let e = errors(&audit(r#"{"coding":[{"system":"https://profiles.ihe.net/ITI/BALP/CodeSystem/OtherIdentifierTypes","display":"x"}]}"#));
+    assert!(e.iter().any(|x| x.contains("agent") && x.contains("not in the bound value set")), "{e:?}");
+    let e = errors(&audit(r#"{"text":"x"}"#));
+    assert!(e.iter().any(|x| x.contains("agent") && x.contains("No code provided")), "{e:?}");
+}
+
+/// A relative reference is `Type/id`: `1` alone is the reference validator's
+/// "Relative URLs must be of the format [ResourceName]/[id]"; a type it does
+/// not define (`NotAType/1`) passes the format and resolves nowhere — in a
+/// document it is not held to the bundle either. Found by the mutation lane.
+#[test]
+fn a_relative_reference_has_the_type_slash_id_shape() {
+    use fhir_pods_core::validate::Severity;
+    let errors = |json: &str| -> Vec<String> {
+        fhir_pods_core::validate_bytes(json.as_bytes())
+            .report
+            .issues
+            .iter()
+            .filter(|i| i.severity == Severity::Error)
+            .map(|i| format!("{} | {}", i.path, i.message))
+            .collect()
+    };
+    let obs = |r: &str| format!(r#"{{"resourceType":"Observation","status":"final","code":{{"text":"x"}},"subject":{{"reference":"{r}"}}}}"#);
+    // the format rule applies where a reference resolves — inside a Bundle;
+    // a standalone resource's bare id passes (probed, 6.10.4)
+    let bundled = |r: &str| {
+        format!(
+            r#"{{"resourceType":"Bundle","type":"collection","entry":[{{"fullUrl":"urn:uuid:7c0f3f2e-5b7d-4e0a-9c1f-1a2b3c4d5e6f","resource":{}}}]}}"#,
+            obs(r)
+        )
+    };
+    let e = errors(&bundled("1"));
+    assert!(e.iter().any(|x| x.contains("Relative URLs must be of the format")), "{e:?}");
+    assert!(errors(&obs("1")).is_empty(), "{:?}", errors(&obs("1")));
+    assert!(errors(&bundled("NotAType/1")).is_empty(), "{:?}", errors(&bundled("NotAType/1")));
+    assert!(errors(&bundled("Patient/1/_history/2")).is_empty());
+    assert!(errors(&bundled("urn:uuid:9f1a7a0e-3c1e-4b3a-9f0b-2b0e1d6c5a11")).is_empty());
+}
+
+/// An empty string beside a carrier with content is a value absent, not a
+/// value wrong — validator_cli 6.10.4 passes `"family": ""` with a
+/// `_family` translation extension (and an empty `questionnaire` with its
+/// carrier), while an empty string with no carrier is still not a value.
+/// Found by the mutation lane.
+#[test]
+fn an_empty_string_beside_a_carrier_with_content_is_an_absent_value() {
+    use fhir_pods_core::validate::Severity;
+    let errors = |json: &str| -> Vec<String> {
+        fhir_pods_core::validate_bytes(json.as_bytes())
+            .report
+            .issues
+            .iter()
+            .filter(|i| i.severity == Severity::Error)
+            .map(|i| format!("{} | {}", i.path, i.message))
+            .collect()
+    };
+    let carried = r#"{"resourceType":"Patient","name":[{"family":"","_family":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/translation","extension":[{"url":"lang","valueCode":"fr"},{"url":"content","valueString":"Forgeron"}]}]}}]}"#;
+    assert!(errors(carried).is_empty(), "{:?}", errors(carried));
+    let bare = r#"{"resourceType":"Patient","name":[{"family":""}]}"#;
+    let e = errors(bare);
+    assert!(e.iter().any(|x| x.starts_with("Patient.name.family | ")), "{e:?}");
+}
+
+/// Inside a Bundle, a reference that resolves to an entry is held to the
+/// element's base targets by the target's own type — validator_cli 6.10.4
+/// resolves by `fullUrl` (a `urn:uuid` entry by its uuid; a relative
+/// `Type/id` only against a RESTful fullUrl), so a relative reference among
+/// `urn:uuid` entries resolves nowhere and is not judged. Found by the
+/// gut-path lane: a referral whose reason was a Flag.
+#[test]
+fn a_resolved_reference_in_a_bundle_is_held_to_the_elements_base_targets() {
+    use fhir_pods_core::validate::Severity;
+    let errors = |json: &str| -> Vec<String> {
+        fhir_pods_core::validate_bytes(json.as_bytes())
+            .report
+            .issues
+            .iter()
+            .filter(|i| i.severity == Severity::Error)
+            .map(|i| format!("{} | {}", i.path, i.message))
+            .collect()
+    };
+    let bundle = |reason: &str, target: &str| {
+        format!(
+            r#"{{"resourceType":"Bundle","type":"collection","entry":[
+  {{"fullUrl":"urn:uuid:00000000-0000-4000-8000-000000000000","resource":{{"resourceType":"ServiceRequest","id":"s1","status":"active","intent":"proposal","code":{{"text":"x"}},"subject":{{"reference":"Patient/p1"}},"reasonReference":[{{"reference":"{reason}"}}]}}}},
+  {{"fullUrl":"urn:uuid:00000001-0000-4000-8000-000000000001","resource":{target}}}]}}"#
+        )
+    };
+    const FLAG: &str = r#"{"resourceType":"Flag","id":"f1","status":"active","code":{"text":"x"},"subject":{"reference":"Patient/p1"}}"#;
+    const OBS: &str = r#"{"resourceType":"Observation","id":"o1","status":"final","code":{"text":"x"},"subject":{"reference":"Patient/p1"}}"#;
+    let e = errors(&bundle("urn:uuid:00000001-0000-4000-8000-000000000001", FLAG));
+    assert!(e.iter().any(|x| x.contains("Invalid Resource target type. Found Flag")), "{e:?}");
+    assert!(errors(&bundle("urn:uuid:00000001-0000-4000-8000-000000000001", OBS)).is_empty());
+    assert!(errors(&bundle("Flag/f1", FLAG)).is_empty(), "{:?}", errors(&bundle("Flag/f1", FLAG)));
+}

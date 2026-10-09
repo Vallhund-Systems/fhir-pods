@@ -222,6 +222,23 @@ fn check_reference_targets<D: Document>(
         return;
     }
     for (i, inst) in doc.instances(path).iter().enumerate() {
+        // a declared `type` outside the profile's targets is wrong before
+        // any resolution — and so is a canonical where a type name belongs;
+        // judged only beside a `reference` (probed, 6.10.4)
+        if let Some(t) = inst.scalars("$this.type").into_iter().next() {
+            let referenced = !inst.scalars("$this.reference").is_empty();
+            if referenced && !allowed.iter().any(|(ty, _)| *ty == t) {
+                r.push(
+                    Severity::Error,
+                    IssueType::Structure,
+                    &format!("{path}[{i}]"),
+                    format!(
+                        "Invalid Resource target type. Found {t}, but expected one of ({})",
+                        allowed.iter().map(|(ty, _)| *ty).collect::<Vec<_>>().join(", ")
+                    ),
+                );
+            }
+        }
         let Some(reference) = inst.scalars("$this.reference").into_iter().next() else { continue };
         let Some(target) = scope.resolved(inst) else { continue };
         let rt = target.scalars("$this.resourceType");
@@ -616,7 +633,8 @@ fn check_element<D: Document>(
         BindingKind::Code => {
             let codes = doc.scalars(el.path);
             for code in &codes {
-                report_membership(tx.validate_code(vs, "", code), vs, code, label, r);
+                let m = under_base(tx.validate_code(vs, "", code), &b, el.path, |set| tx.validate_code(set, "", code));
+                report_membership(m, vs, code, label, r);
             }
             // an element present without a value (a `_name` carrier alone —
             // a data-absent-reason) still owes the code the binding requires
@@ -633,7 +651,10 @@ fn check_element<D: Document>(
         BindingKind::Coding => {
             for inst in doc.instances(el.path) {
                 if let Some((system, code)) = coding_of(&inst) {
-                    report_membership(tx.validate_code(vs, system, code), vs, code, label, r);
+                    let m = under_base(tx.validate_code(vs, system, code), &b, el.path, |set| {
+                        tx.validate_code(set, system, code)
+                    });
+                    report_membership(m, vs, code, label, r);
                 }
             }
         }
@@ -646,7 +667,7 @@ fn check_element<D: Document>(
                 // with no code also fail the parent concept's required
                 // binding; a standalone Coding with no code is not judged.
                 let codings = inst.instances("$this.coding");
-                let codeable_concept = is_codeable_concept(el);
+                let codeable_concept = is_codeable_concept(el).unwrap_or_else(|| concept_shaped(&inst));
                 if codings.is_empty() && codeable_concept {
                     r.push(
                         Severity::Error,
@@ -656,23 +677,39 @@ fn check_element<D: Document>(
                     );
                     continue;
                 }
-                let mut verdict = None;
-                for c in codings {
-                    if let Some((system, code)) = coding_of(&c) {
-                        match tx.validate_code(vs, system, code) {
-                            Membership::Member => {
-                                verdict = Some(Membership::Member);
-                                break;
+                let concept = |set: &str| -> Option<Membership> {
+                    let mut verdict = None;
+                    for c in &codings {
+                        if let Some((system, code)) = coding_of(c) {
+                            match tx.validate_code(set, system, code) {
+                                Membership::Member => return Some(Membership::Member),
+                                Membership::Unknown => verdict = Some(Membership::Unknown),
+                                Membership::NotMember => verdict = verdict.or(Some(Membership::NotMember)),
                             }
-                            Membership::Unknown => verdict = Some(Membership::Unknown),
-                            Membership::NotMember => verdict = verdict.or(Some(Membership::NotMember)),
+                        }
+                    }
+                    verdict
+                };
+                let base = base_binding_under(&b, el.path);
+                let mut verdict = concept(vs);
+                if !matches!(verdict, Some(Membership::Member | Membership::NotMember)) {
+                    if let Some(base) = base {
+                        if let v @ Some(Membership::Member | Membership::NotMember) = concept(base.value_set) {
+                            verdict = v;
                         }
                     }
                 }
                 if let Some(v) = verdict {
                     report_membership(v, vs, "the codings", label, r);
                 } else if codeable_concept {
-                    report_membership(Membership::NotMember, vs, "the codings", label, r);
+                    // Coding objects exist, none with a code: no member of the
+                    // set — where the set can be decided at all. Where it
+                    // cannot (a LOINC-built set, offline) the reference
+                    // validator says nothing, and neither do we beyond the
+                    // usual "not checked".
+                    let judged = decidable(tx, vs) || base.is_some_and(|b| decidable(tx, b.value_set));
+                    let m = if judged { Membership::NotMember } else { Membership::Unknown };
+                    report_membership(m, vs, "the codings", label, r);
                 }
             }
         }
@@ -684,23 +721,38 @@ fn check_element<D: Document>(
 /// bound to UCUM (`bp`'s `component.value[x]`) carries the same binding
 /// kind but no codings, and is judged by its own system and code, never by
 /// their absence; a choice the profile leaves open is not decided here.
-fn is_codeable_concept(el: &ElementConstraint) -> bool {
+fn is_codeable_concept(el: &ElementConstraint) -> Option<bool> {
     if !el.types.is_empty() {
-        return el.types == ["CodeableConcept"];
+        return Some(el.types == ["CodeableConcept"]);
     }
     let mut segs = el.path.split('.');
-    let Some(mut ctx) = segs.next() else { return false };
+    let mut ctx = segs.next()?;
     let mut ty = None;
     for seg in segs {
         let name = seg.split(':').next().unwrap_or(seg);
         if name.ends_with("[x]") {
-            return false;
+            // a path through a choice (`Extension.value[x].type`) cannot be
+            // typed from the table: the instance decides
+            return None;
         }
-        let Some(ch) = crate::typing::child(ctx, name) else { return false };
+        let ch = crate::typing::child(ctx, name)?;
         ctx = ch.ctx;
         ty = Some(ch.ty);
     }
-    ty == Some("CodeableConcept")
+    Some(ty == Some("CodeableConcept"))
+}
+
+/// Where the table cannot type the element, the instance can: a
+/// `CodeableConcept` carries codings or text, and never a `Quantity`'s
+/// value, unit, comparator or code scalars (`bp`'s `component.value[x]`
+/// carries the same binding kind; a Quantity of system and code alone is
+/// still a Quantity). An object with neither is not judged.
+fn concept_shaped<D: Document>(inst: &D) -> bool {
+    let concept = !inst.instances("$this.coding").is_empty() || !inst.scalars("$this.text").is_empty();
+    let quantity = ["$this.value", "$this.unit", "$this.comparator", "$this.code"]
+        .iter()
+        .any(|p| !inst.scalars(p).is_empty());
+    concept && !quantity
 }
 
 /// Is the coded value at `path` a member of the set? `Code`: the scalar;
@@ -770,6 +822,52 @@ fn membership_seen<D: Document>(b: &Binding, inst: &D, path: &str, tx: &dyn Term
         }
     }
     (verdict, seen)
+}
+
+/// Can the provider decide membership in `set` at all? A set it carries
+/// answers every (system, code) — including none; a set it does not know
+/// answers nothing.
+fn decidable(tx: &dyn TerminologyProvider, set: &str) -> bool {
+    tx.knows_set(set)
+}
+
+/// The base's own required binding on the element at `path`, of the same
+/// kind as the profile's and to a different set. A profile only narrows a
+/// required base set, so what the base refuses the profile refuses too —
+/// and the reference validator reports both. Where the profile's set
+/// cannot be decided offline (an IPS status subset), the base's still can.
+fn base_binding_under(b: &crate::compiled::Binding, path: &str) -> Option<&'static crate::compiled::Binding> {
+    let (parent, key) = path.rsplit_once('.')?;
+    let mut segs = parent.split('.');
+    let mut ctx = crate::typing::known_type(segs.next()?)?;
+    for s in segs {
+        if s.ends_with("[x]") {
+            // a choice folds to its first type in the table — not the
+            // instance's; the base beneath a choice is not looked up
+            return None;
+        }
+        ctx = crate::typing::child(ctx, s)?.ctx;
+    }
+    let (_, _, base) = crate::typemap::BASE_BINDINGS.iter().find(|(c, k, _)| *c == ctx && *k == key)?;
+    let same_set = base.value_set.split('|').next() == b.value_set.split('|').next();
+    (base.kind == b.kind && !same_set).then_some(base)
+}
+
+/// A profile verdict that could not be decided, judged by the base's set
+/// where there is one.
+fn under_base(
+    m: Membership,
+    b: &crate::compiled::Binding,
+    path: &str,
+    judge: impl Fn(&str) -> Membership,
+) -> Membership {
+    if m != Membership::Unknown {
+        return m;
+    }
+    match base_binding_under(b, path) {
+        Some(base) => judge(base.value_set),
+        None => m,
+    }
 }
 
 fn coding_of(inst: &impl Document) -> Option<(&str, &str)> {
@@ -1124,6 +1222,74 @@ fn references_in<D: Document>(node: &D, path: &str, out: &mut Vec<(String, Strin
     }
 }
 
+/// Inside any Bundle, a reference that resolves to an entry is held to its
+/// element's base targets by the target's own type — the reference
+/// validator's "Invalid Resource target type", resolved as it resolves: an
+/// absolute or `urn:` reference by its `fullUrl`, a relative `Type/id` only
+/// against a RESTful `fullUrl` ending so (among `urn:uuid` entries it names
+/// nothing and is not judged). A resource declaring a compiled profile is
+/// the profile's to hold to its own targets.
+pub(crate) fn check_reference_targets_base<D: Document>(bundle: &D, r: &mut Report) {
+    let entries: Vec<(Option<String>, Option<D>)> = bundle
+        .instances("$this.entry")
+        .into_iter()
+        .map(|e| {
+            (e.scalars("$this.fullUrl").first().map(|s| String::from(*s)), e.child_instances("resource").into_iter().next())
+        })
+        .collect();
+    let resolve = |reference: &str| -> Option<&'static str> {
+        let identity = reference.rsplit_once("/_history/").map(|(i, _)| i).unwrap_or(reference);
+        let relative = !identity.contains(':');
+        if relative && !identity.contains('/') {
+            return None; // a bare id names no entry (the format rule reports it)
+        }
+        entries
+            .iter()
+            .find(|(full, _)| {
+                full.as_deref().is_some_and(|f| {
+                    f == identity || (relative && f.ends_with(identity) && f[..f.len() - identity.len()].ends_with('/'))
+                })
+            })
+            .and_then(|(_, res)| res.as_ref())
+            .and_then(|res| res.scalars("$this.resourceType").first().copied())
+            .and_then(|rt| crate::typemap::RESOURCES.binary_search(&rt).ok().map(|k| crate::typemap::RESOURCES[k]))
+    };
+    for (i, (_, res)) in entries.iter().enumerate() {
+        let Some(res) = res else { continue };
+        let Some(rt) = res.scalars("$this.resourceType").first().copied() else { continue };
+        let profiled = res
+            .scalars("$this.meta.profile")
+            .iter()
+            .any(|u| crate::REGISTRY.iter().any(|p| p.url == u.split('|').next().unwrap_or(u)));
+        if profiled {
+            continue;
+        }
+        for (path, targets) in crate::typemap::REFERENCE_TARGETS {
+            if !(path.starts_with(rt) && path.as_bytes().get(rt.len()) == Some(&b'.')) {
+                continue;
+            }
+            for (j, inst) in res.instances(path).iter().enumerate() {
+                let Some(reference) = inst.scalars("$this.reference").first().copied() else { continue };
+                if reference.starts_with('#') {
+                    continue;
+                }
+                let Some(target) = resolve(reference) else { continue };
+                if !targets.split('|').any(|t| t == target) {
+                    r.push(
+                        Severity::Error,
+                        IssueType::Structure,
+                        &format!("Bundle.entry[{i}].resource.{path}[{j}]"),
+                        format!(
+                            "Invalid Resource target type. Found {target}, but expected one of ([{}])",
+                            targets.replace('|', ", ")
+                        ),
+                    );
+                }
+            }
+        }
+    }
+}
+
 /// What a document Bundle owes beyond its profile, as the reference
 /// validator has it: the Composition's references resolve inside the
 /// bundle, and every entry is reachable from the Composition by following
@@ -1190,8 +1356,16 @@ pub(crate) fn check_document<D: Document>(bundle: &D, r: &mut Report) {
     // the Composition's own references
     let mut refs = Vec::new();
     references_in(composition, "Bundle.entry[0].resource", &mut refs);
+    // a relative reference whose type the base does not define resolves
+    // nowhere and is not held to the bundle (the reference validator passes it)
+    let resolvable = |reference: &str| {
+        reference.contains(':')
+            || reference
+                .split_once('/')
+                .is_some_and(|(ty, _)| crate::typemap::RESOURCES.binary_search(&ty).is_ok())
+    };
     for (path, reference) in &refs {
-        if !reference.starts_with('#') && index_of(reference).is_none() {
+        if !reference.starts_with('#') && resolvable(reference) && index_of(reference).is_none() {
             r.push(
                 Severity::Error,
                 IssueType::Structure,

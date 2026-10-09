@@ -255,6 +255,73 @@ validator's own rule, which takes an unknown URL anywhere else on trust. A
 profile snapshot that merely restates a datatype's invariant or binding is
 not compiled a second time.
 
+Rules the mutation lane added (0.19.4), each probed against the oracle:
+`Reference.type` is held to the element's targets — the base's where no
+compiled profile applies (a generated table of every base Reference
+element's targets), the profile's under one — by bare type name and only
+beside a `reference`; a relative reference inside a Bundle is `Type/id`
+(a type the base does not define passes the format and resolves nowhere,
+so a document is not held to it); inside a Bundle, a reference that
+resolves to an entry — by `fullUrl`, a relative `Type/id` only against a
+RESTful one — is held to the element's base targets by the target's own
+type; an empty string beside a carrier with
+content is a value absent, not a value wrong, though a required binding
+still wants its code; where a profile's required set cannot be decided
+offline, the base's own required set on the same element decides (a
+profile only narrows it); a coding with no code fails a required binding
+only where the set can be decided — the oracle says nothing where it
+cannot; a binding beneath a choice (`Extension.value[x].type`) is typed by
+the instance's shape; and the vital-sign profiles are implied by the
+reference validator's own code table (`3141-9` is a body weight, `8306-3`
+a height, `8331-1` a temperature, `55284-4` and `8480-6` a blood pressure,
+`59408-5` an oxygen saturation, `8287-5` a head circumference), not by the
+magic code alone. Value sets defined in `hl7.terminology.r4` are bundled
+alongside the guides' own.
+
+## Two adversarial lanes: mutation (`conformance/mutate.py`) and the gut path (`conformance/gut.py`)
+
+A corpus of publisher-valid examples can only show where the pod is
+*stricter* than the reference validator; three releases in a row were fixed
+on host reports of leniency no lane could see. The mutation lane derives
+every release-corpus original under nine fixed mutations — drop one
+top-level element; a coding with its code removed, a concept reduced to
+text; a primitive of the wrong JSON type; an array of objects reduced to
+`[{}]`; a `status` / `gender` / `use` / `intent` / `mode` / `kind` / `type`
+set outside its set; a top-level primitive set to `null`; a string set
+empty; a reference to a type the base does not define, and a bare id; an
+extension with a url and nothing else, and one with no url — and puts every
+derived file (19,067 at 0.19.4) before validator_cli 6.10.4, one JVM per
+class, the oracle's verdicts cached per class. It reports, lenient first:
+where the pod says valid and the oracle invalid, the reverse, and where both
+say invalid but the pod misses an error path the oracle reports (after the
+reasons lane's own path spelling and with the original's recorded
+differences subtracted). Accepted differences are named in
+`mutate-triage.json`; the lane exits 1 while an unaccepted lenient or
+stricter case remains. Its first run found nine defects (0.19.4, above).
+
+The gut-path lane is the end-to-end proof for the shape a clinical-module
+host builds: a synthetic sixteen-part instrument (`conformance/gut/make_gut.py`
+— nested groups, `enableWhen`, required and repeating groups, coded answers
+from its own code system and value sets, integer and decimal scales, a 1–7
+stool-form choice, an eleven-item boolean safety screen; nothing in it is
+copied from any real instrument), complete and minimal responses and
+thirteen single-defect ones, the derived observations, an alarm `Flag`, a
+clinician-summary `Composition`, a referral `ServiceRequest`, the research
+export `Consent` and `Bundle`, and the `AuditEvent`. Every case is judged
+three ways — the scenario's expectation, the pod (given the instrument the
+way a host gives it, and the value sets as a compiled terminology table),
+and the oracle with the same definitions loaded as an IG folder — then
+`--chain` lifts every valid resource through its base profile and lowers
+it back, de-identifies it, and exports the record for the AU region (every
+re-profiled resource, the AU PS document, the BALP audit event), and judges
+each derived file the same way. One reviewed difference is named in
+`gut-triage.json`: the oracle also reports a vendor code as unknown in the
+CodeSystem it has loaded, which the pod — given the value sets as a table,
+not the code system — cannot. A host's finding the chain surfaces: a
+response de-identified under Safe Harbor loses free-text answers, and a
+required free-text item then makes the copy invalid against its instrument
+on both sides — instrument design, not validation.
+
 ## Export: which profile, and what is never invented
 
 `export` (0.11.0) picks, per resource, the region's profile it goes out

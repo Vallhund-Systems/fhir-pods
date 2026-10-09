@@ -224,6 +224,31 @@ def main():
                 vs = b["valueSet"].split("|")[0]
                 f.write(f'    ({rs(ctx_of[parent])}, {rs(key)}, Binding {{ value_set: {rs(vs)}, kind: BindingKind::{kind} }}),\n')
         f.write("];\n\n")
+        # the resource types a base Reference element may point at — what
+        # `Reference.type` is held to (the reference validator checks the
+        # declared type against the element's targets even with no profile)
+        f.write("/// The target resource types of every base Reference element with named\n")
+        f.write("/// targets: (element path, `Type|Type…`). An element that may point at\n")
+        f.write("/// any resource is left out.\n")
+        f.write("pub static REFERENCE_TARGETS: &[(&str, &str)] = &[\n")
+        base_sd = "http://hl7.org/fhir/StructureDefinition/"
+        for t in types:
+            if sds[t]["kind"] != "resource":
+                continue
+            for e in sds[t]["snapshot"]["element"]:
+                refs = [x for x in e.get("type", []) if x.get("code") == "Reference"]
+                if not refs or "." not in e["path"]:
+                    continue
+                targets = []
+                for x in refs:
+                    for tp in x.get("targetProfile", []):
+                        if not tp.startswith(base_sd):
+                            continue
+                        targets.append(tp[len(base_sd):])
+                if not targets or any(x in ("Resource", "DomainResource") for x in targets):
+                    continue
+                f.write(f'    ({rs(e["path"])}, {rs("|".join(sorted(set(targets))))}),\n')
+        f.write("];\n\n")
         f.write("/// The distinct type codes: `type|type…`, `#Backbone.path` (a backbone or\n")
         f.write("/// content reference), `~Element.path` (an inline Element).\n")
         f.write("pub static CODES: &[&str] = &[\n")

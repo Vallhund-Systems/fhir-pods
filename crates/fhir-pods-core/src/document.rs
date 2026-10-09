@@ -566,9 +566,16 @@ fn base_binding_object<'v, 'a>(v: &'v Value<'a>, ctx: &'static str, w: &mut Walk
     } else if ctx == "CodeableConcept" {
         // Coding objects exist, but none carries a code. The Coding itself is
         // permitted to be partial; the parent concept still has no member of
-        // its required value set.
+        // its required value set — where the set can be decided at all
+        // (the reference validator says nothing for a set it cannot expand
+        // offline, and neither do we beyond "not checked").
         let label = w.label(w.root);
-        report_base_binding(crate::terminology::Membership::NotMember, b, "the codings", label, w);
+        let m = if w.tx.validate_code(b.value_set, "", "") != crate::terminology::Membership::Unknown {
+            crate::terminology::Membership::NotMember
+        } else {
+            crate::terminology::Membership::Unknown
+        };
+        report_base_binding(m, b, "the codings", label, w);
     }
 }
 
@@ -1012,6 +1019,54 @@ fn structure_object<'v, 'a>(
     // ref-1: a local reference names a contained resource of the resource it
     // sits in (or of one enclosing it)
     if ctx == "Reference" {
+        // a relative reference is `Type/id` (`/_history/v` allowed): the
+        // reference validator's format rule, applied where it resolves —
+        // inside a Bundle (a standalone resource's bare id passes it). It
+        // names no type list: a type it does not know passes here and
+        // resolves nowhere
+        if let (Some((_, Value::Str(r))), "Bundle") = (kvs.iter().find(|(k, _)| k.as_ref() == "reference"), w.root) {
+            // a conditional reference (`Patient?identifier=…`, a transaction's)
+            // is not a relative URL and is not held to the shape
+            let relative = !r.starts_with('#') && !r.contains(':') && !r.contains('?');
+            let shaped = r
+                .split_once('/')
+                .is_some_and(|(ty, rest)| !ty.is_empty() && !rest.is_empty() && !rest.starts_with('/'));
+            if relative && !shaped {
+                w.gaps.push((
+                    alloc::format!("{path}.reference"),
+                    crate::validate::IssueType::Value,
+                    alloc::format!("Relative URLs must be of the format [ResourceName]/[id]. Encountered {r}"),
+                ));
+            }
+        }
+        // a declared `type` is held to the element's base targets where no
+        // compiled profile applies (a profile's own targets are the engine's
+        // to check), as the reference validator holds it — by bare type name
+        // only (a canonical there is "not a valid Target" to it)
+        // … and only beside a `reference`: a type on an identifier-only or
+        // display-only reference is not judged (probed, 6.10.4)
+        let unprofiled = w.profiles.last().is_none_or(|p| p.is_empty());
+        let referenced = kvs.iter().any(|(k, v)| k.as_ref() == "reference" && matches!(v, Value::Str(_)));
+        if let (Some((_, Value::Str(t))), true) =
+            (kvs.iter().find(|(k, _)| k.as_ref() == "type"), unprofiled && referenced)
+        {
+            if let Some(targets) = w.ctxs.len().checked_sub(2).and_then(|i| {
+                let ((parent, _), (_, key)) = (w.ctxs[i], w.ctxs[i + 1]);
+                let at = alloc::format!("{parent}.{key}");
+                crate::typemap::REFERENCE_TARGETS.iter().find(|(p, _)| *p == at).map(|(_, t)| *t)
+            }) {
+                if !targets.split('|').any(|x| x == t.as_ref()) {
+                    w.gaps.push((
+                        path.into(),
+                        crate::validate::IssueType::Structure,
+                        alloc::format!(
+                            "Invalid Resource target type. Found {t}, but expected one of ({})",
+                            targets.replace('|', ", ")
+                        ),
+                    ));
+                }
+            }
+        }
         if let Some((_, Value::Str(r))) = kvs.iter().find(|(k, _)| k.as_ref() == "reference") {
             if let Some(local) = r.strip_prefix('#') {
                 let root_ids = w.contained.iter().rev().find(|(inside, _)| !inside).map(|(_, ids)| ids.as_slice());
@@ -1366,12 +1421,40 @@ fn structure_object<'v, 'a>(
                     }
                 }
                 let expected = expected_kind(ch.ty);
+                // an empty string beside a carrier with content (`"family": ""`
+                // with `_family.extension`) is a value absent, not a value
+                // wrong: the reference validator passes it on the carrier's
+                // content, as ele-1 does
+                let carried = matches!(x, Value::Str(s) if s.is_empty()) && {
+                    let carrier_key = alloc::format!("_{bare}");
+                    kvs.iter().any(|(k, v)| {
+                        k.as_ref() == carrier_key
+                            && match v {
+                                Value::Object(m) => !m.is_empty(),
+                                Value::Array(values) => {
+                                    matches!(values.get(i), Some(Value::Object(m)) if !m.is_empty())
+                                }
+                                _ => false,
+                            }
+                    })
+                };
                 if json_kind(x) != expected {
                     w.gaps.push((
                         child_path.clone(),
                         ValueIssue,
                         alloc::format!("{child_path}: a {} is a JSON {expected}, found {}", ch.ty, json_kind(x)),
                     ));
+                } else if carried {
+                    // nothing to hold the value to; the carrier is walked as
+                    // an element below — but a required binding still wants
+                    // its code, as the reference validator says
+                    if let (true, Some(b)) = (ch.ty == "code", base_binding(ctx, bare, w)) {
+                        w.gaps.push((
+                            child_path.clone(),
+                            crate::validate::IssueType::CodeInvalid,
+                            alloc::format!("No code provided, and a code is required from the value set {}", b.value_set),
+                        ));
+                    }
                 } else if !(primitive_value_ok(ch.ty, x) || (ctx == "Binary" && bare == "data")) {
                     // `Binary.data` is the content itself, not held to the base64
                     // lexical check the reference validator applies to Attachment.data

@@ -1,0 +1,3 @@
+{
+  "qr-answer-not-in-set.json": "both invalid; the oracle also reports the code as unknown in the vendor CodeSystem it has loaded as an IG — the pod carries the value sets as a terminology table, not the code system, so it reports the value-set failure only"
+}

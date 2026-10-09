@@ -687,6 +687,12 @@ struct HostTx {
 }
 
 impl TerminologyProvider for HostTx {
+    /// A host callback is never asked an empty code: decidability of a set
+    /// the core does not carry is not claimed on its behalf.
+    fn knows_set(&self, _value_set: &str) -> bool {
+        false
+    }
+
     fn validate_code(&self, value_set: &str, system: &str, code: &str) -> Membership {
         let r = unsafe {
             (self.cb)(
@@ -759,6 +765,10 @@ mod wasm_host {
     struct ImportTx;
 
     impl TerminologyProvider for ImportTx {
+        fn knows_set(&self, _value_set: &str) -> bool {
+            false
+        }
+
         fn validate_code(&self, value_set: &str, system: &str, code: &str) -> Membership {
             membership(unsafe {
                 fhir_pods_host_tx(
@@ -894,6 +904,10 @@ mod android {
     }
 
     impl TerminologyProvider for JavaTx<'_, '_> {
+        fn knows_set(&self, _value_set: &str) -> bool {
+            false
+        }
+
         fn validate_code(&self, value_set: &str, system: &str, code: &str) -> Membership {
             let mut env = self.env.borrow_mut();
             let (Ok(vs), Ok(sys), Ok(cd)) = (env.new_string(value_set), env.new_string(system), env.new_string(code))

@@ -181,6 +181,7 @@ fn validate_bytes_in(
     let bundle = (rt == "Bundle").then_some(&doc);
     if let Some(b) = bundle {
         engine::check_document(b, &mut report);
+        engine::check_reference_targets_base(b, &mut report);
     }
     let defaults = cache.map(|v| v.defaults.as_slice()).unwrap_or(&[]);
     // one memo for the whole document: entries indexed once, each target's
@@ -361,7 +362,8 @@ fn select_profiles(
             let loinc = fixed("code.coding.system") == Some("http://loinc.org");
             let carries = match fixed("code.coding.code").filter(|_| loinc) {
                 Some(code) => doc.instances("$this.code.coding").iter().any(|c| {
-                    c.scalars("$this.code").contains(&code) && c.scalars("$this.system").contains(&"http://loinc.org")
+                    c.scalars("$this.system").contains(&"http://loinc.org")
+                        && c.scalars("$this.code").iter().any(|got| *got == code || implied_alias(p.url, got))
                 }),
                 None => doc.instances("$this.category.coding").iter().any(|c| {
                     c.scalars("$this.code").contains(&"vital-signs")
@@ -379,6 +381,23 @@ fn select_profiles(
         out.extend(implied.iter().filter(|p| !all.iter().any(|q| derives_from(q, p.url))).copied());
     }
     out
+}
+
+/// The further LOINC codes the reference validator takes as implying a
+/// vital-sign profile, beyond the profile's own magic code: its code table,
+/// probed one code at a time against 6.10.4 (an Observation in the
+/// vital-signs category carrying only that code is held to the profile).
+/// Not implied there, and so not here: 8334-1, 8335-2, 8462-4, 8478-0.
+fn implied_alias(profile: &str, code: &str) -> bool {
+    const ALIASES: &[(&str, &[&str])] = &[
+        ("/bodyheight", &["3137-7", "8306-3", "8308-9"]),
+        ("/bodyweight", &["3141-9"]),
+        ("/bodytemp", &["8328-7", "8331-1", "8332-9"]),
+        ("/oxygensat", &["59408-5"]),
+        ("/bp", &["55284-4", "8480-6"]),
+        ("/headcircum", &["8287-5"]),
+    ];
+    ALIASES.iter().any(|(suffix, codes)| profile.ends_with(suffix) && codes.contains(&code))
 }
 
 /// The compiled profile a host may lower into, lift from or ask the slots

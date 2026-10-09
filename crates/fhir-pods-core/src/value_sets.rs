@@ -21,6 +21,13 @@ fn set(url: &str) -> Option<Codes> {
 
 /// Is (`system`, `code`) in the bundled set at `url`? An empty `system` (a
 /// bare `code` element) matches the code in any of the set's systems.
+/// Is the set one the core can decide at all — a bundled expansion, or a
+/// whole code system the packages ship?
+pub fn knows(url: &str) -> bool {
+    let base = url.split('|').next().unwrap_or(url);
+    WHOLE_SYSTEMS.binary_search_by(|(u, _)| u.cmp(&base)).is_ok() || set(url).is_some()
+}
+
 pub fn membership(url: &str, system: &str, code: &str) -> Option<bool> {
     // a set that is the whole of a system the packages do not ship: the
     // system decides; a bare code cannot be placed

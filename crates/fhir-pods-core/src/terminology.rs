@@ -32,6 +32,16 @@ pub trait TerminologyProvider {
     fn display(&self, _system: &str, _code: &str) -> Option<String> {
         None
     }
+
+    /// Can the provider decide membership in `value_set` at all? The
+    /// verifier asks before holding a coding with no code to a required
+    /// binding (the reference validator says nothing where it cannot
+    /// expand the set). Default: whether an empty code gets a definite
+    /// answer — a provider that would be asked something it cannot take
+    /// should answer this directly.
+    fn knows_set(&self, value_set: &str) -> bool {
+        self.validate_code(value_set, "", "") != Membership::Unknown
+    }
 }
 
 /// The value sets compiled into the core (see [`crate::value_sets`]).
@@ -50,6 +60,10 @@ impl TerminologyProvider for Bundled {
     fn display(&self, system: &str, code: &str) -> Option<String> {
         crate::value_sets::display(system, code).map(String::from)
     }
+
+    fn knows_set(&self, value_set: &str) -> bool {
+        crate::value_sets::knows(value_set)
+    }
 }
 
 /// Providers in order; the first definite answer wins. Put [`Bundled`]
@@ -58,6 +72,10 @@ impl TerminologyProvider for Bundled {
 pub struct Chain<'a>(pub &'a [&'a dyn TerminologyProvider]);
 
 impl TerminologyProvider for Chain<'_> {
+    fn knows_set(&self, value_set: &str) -> bool {
+        self.0.iter().any(|p| p.knows_set(value_set))
+    }
+
     fn validate_code(&self, value_set: &str, system: &str, code: &str) -> Membership {
         for p in self.0 {
             let m = p.validate_code(value_set, system, code);
@@ -102,6 +120,11 @@ impl Recorder {
 }
 
 impl TerminologyProvider for Recorder {
+    /// Nothing is decided here, and a decidability probe is not a need.
+    fn knows_set(&self, _value_set: &str) -> bool {
+        false
+    }
+
     fn validate_code(&self, value_set: &str, system: &str, code: &str) -> Membership {
         let mut asked = self.asked.borrow_mut();
         if !asked.iter().any(|n| n.value_set == value_set && n.system == system && n.code == code) {

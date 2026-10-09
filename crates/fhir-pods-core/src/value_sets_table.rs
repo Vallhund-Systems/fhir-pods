@@ -25,11 +25,7 @@
 //! - `http://hl7.org/fhir/uv/ips/ValueSet/pregnancies-summary-uv-ips` — licensed http://loinc.org
 //! - `http://hl7.org/fhir/uv/ips/ValueSet/results-status-uv-ips` — exclude form
 //! - `http://loinc.org/vs/LL379-9` — no ValueSet http://loinc.org/vs/LL379-9
-//! - `http://terminology.hl7.org/ValueSet/conformance-expectation` — no ValueSet http://terminology.hl7.org/ValueSet/conformance-expectation
-//! - `http://terminology.hl7.org/ValueSet/cql-access-modifier` — no ValueSet http://terminology.hl7.org/ValueSet/cql-access-modifier
-//! - `http://terminology.hl7.org/ValueSet/jurisdiction` — no ValueSet http://terminology.hl7.org/ValueSet/jurisdiction
-//! - `http://terminology.hl7.org/ValueSet/sex-parameter-for-clinical-use` — no ValueSet http://terminology.hl7.org/ValueSet/sex-parameter-for-clinical-use
-//! - `http://terminology.hl7.org/ValueSet/smart-capabilities` — no ValueSet http://terminology.hl7.org/ValueSet/smart-capabilities
+//! - `http://terminology.hl7.org/ValueSet/jurisdiction` — no complete CodeSystem urn:iso:std:iso:3166
 //! - `https://fhir.infoway-inforoute.ca/ValueSet/healthconcerncode` — no ValueSet https://fhir.infoway-inforoute.ca/ValueSet/healthconcerncode
 //! - `https://healthterminologies.gov.au/fhir/ValueSet/amt-vaccine-1` — no ValueSet https://healthterminologies.gov.au/fhir/ValueSet/amt-vaccine-1
 //! - `https://healthterminologies.gov.au/fhir/ValueSet/australian-immunisation-register-vaccine-1` — no ValueSet https://healthterminologies.gov.au/fhir/ValueSet/australian-immunisation-register-vaccine-1
@@ -3192,6 +3188,38 @@ pub static SETS: &[(&str, &[(&str, &str, &str)])] = &[
         ("http://terminology.hl7.org/CodeSystem/v2-0203", "PGN", ""),
         ("http://terminology.hl7.org/CodeSystem/v2-0203", "PLAC", "Placer Identifier"),
     ]),
+    ("http://terminology.hl7.org/ValueSet/conformance-expectation", &[
+        ("http://terminology.hl7.org/CodeSystem/conformance-expectation", "MAY", "MAY"),
+        ("http://terminology.hl7.org/CodeSystem/conformance-expectation", "SHALL", "SHALL"),
+        ("http://terminology.hl7.org/CodeSystem/conformance-expectation", "SHOULD", "SHOULD"),
+        ("http://terminology.hl7.org/CodeSystem/conformance-expectation", "SHOULD-NOT", "SHOULD-NOT"),
+    ]),
+    ("http://terminology.hl7.org/ValueSet/cql-access-modifier", &[
+        ("http://terminology.hl7.org/CodeSystem/cql-access-modifier", "private", "Private"),
+        ("http://terminology.hl7.org/CodeSystem/cql-access-modifier", "public", "Public"),
+    ]),
+    ("http://terminology.hl7.org/ValueSet/sex-parameter-for-clinical-use", &[
+        ("http://terminology.hl7.org/CodeSystem/data-absent-reason", "unknown", "Unknown"),
+        ("http://terminology.hl7.org/CodeSystem/sex-parameter-for-clinical-use", "female-typical", "Apply female-typical setting or reference range"),
+        ("http://terminology.hl7.org/CodeSystem/sex-parameter-for-clinical-use", "male-typical", "Apply male-typical setting or reference range"),
+        ("http://terminology.hl7.org/CodeSystem/sex-parameter-for-clinical-use", "specified", "Apply specified setting or reference range"),
+    ]),
+    ("http://terminology.hl7.org/ValueSet/smart-capabilities", &[
+        ("http://terminology.hl7.org/CodeSystem/smart-capabilities", "client-confidential-symmetric", "Confidential Client Profile"),
+        ("http://terminology.hl7.org/CodeSystem/smart-capabilities", "client-public", "Public Client Profile"),
+        ("http://terminology.hl7.org/CodeSystem/smart-capabilities", "context-ehr-encounter", "Allows \"Encounter Level Launch Context (EHR)\""),
+        ("http://terminology.hl7.org/CodeSystem/smart-capabilities", "context-ehr-patient", "Allows \"Patient Level Launch Context (EHR)\""),
+        ("http://terminology.hl7.org/CodeSystem/smart-capabilities", "context-passthrough-banner", "Allows \"Need Patient Banner\""),
+        ("http://terminology.hl7.org/CodeSystem/smart-capabilities", "context-passthrough-style", "Allows \"Smart Style Style\""),
+        ("http://terminology.hl7.org/CodeSystem/smart-capabilities", "context-standalone-encounter", "Allows \"Encounter Level Launch Context (STANDALONE)\""),
+        ("http://terminology.hl7.org/CodeSystem/smart-capabilities", "context-standalone-patient", "Allows \"Patient Level Launch Context (STANDALONE)\""),
+        ("http://terminology.hl7.org/CodeSystem/smart-capabilities", "launch-ehr", "EHR Launch Mode"),
+        ("http://terminology.hl7.org/CodeSystem/smart-capabilities", "launch-standalone", "Standalone Launch Mode"),
+        ("http://terminology.hl7.org/CodeSystem/smart-capabilities", "permission-offline", "Supports Refresh Token"),
+        ("http://terminology.hl7.org/CodeSystem/smart-capabilities", "permission-patient", "Supports Patient Level Scopes"),
+        ("http://terminology.hl7.org/CodeSystem/smart-capabilities", "permission-user", "Supports User Level Scopes"),
+        ("http://terminology.hl7.org/CodeSystem/smart-capabilities", "sso-openid-connect", "Supports OpenID Connect"),
+    ]),
     ("http://terminology.hl7.org/ValueSet/v3-ConfidentialityClassification", &[
         ("http://terminology.hl7.org/CodeSystem/v3-Confidentiality", "L", "low"),
         ("http://terminology.hl7.org/CodeSystem/v3-Confidentiality", "M", "moderate"),
@@ -3380,7 +3408,6 @@ pub static DISPLAYS: &[(&str, &str, &str)] = &[
     ("http://terminology.hl7.org/CodeSystem/observation-category", "social-history", "Social History"),
     ("http://terminology.hl7.org/CodeSystem/observation-category", "survey", "Survey"),
     ("http://terminology.hl7.org/CodeSystem/observation-category", "vital-signs", "Vital Signs"),
-    ("http://terminology.hl7.org/CodeSystem/provenance-participant-type", "author", "Author"),
     ("http://terminology.hl7.org/CodeSystem/provenance-participant-type", "custodian", "Custodian"),
     ("http://terminology.hl7.org/CodeSystem/v2-0074", "LAB", "Laboratory"),
     ("http://terminology.hl7.org/CodeSystem/v2-0203", "EI", "Employee number"),
@@ -3393,7 +3420,6 @@ pub static DISPLAYS: &[(&str, &str, &str)] = &[
     ("http://terminology.hl7.org/CodeSystem/v2-0203", "NPI", "National provider identifier"),
     ("http://terminology.hl7.org/CodeSystem/v2-0203", "PEN", "Pension Number"),
     ("http://terminology.hl7.org/CodeSystem/v2-0203", "PI", "Patient internal identifier"),
-    ("http://terminology.hl7.org/CodeSystem/v2-0203", "PRN", "Provider number"),
     ("http://terminology.hl7.org/CodeSystem/v2-0443", "AP", "Administering Provider"),
     ("http://terminology.hl7.org/CodeSystem/v2-0443", "OP", "Ordering Provider"),
     ("http://terminology.hl7.org/CodeSystem/v3-ActClass", "PCPR", "care provision"),
@@ -3405,7 +3431,6 @@ pub static DISPLAYS: &[(&str, &str, &str)] = &[
         "XrequestId",
         "transport specific unique identifier where http X-Request-Id is used",
     ),
-    ("https://profiles.ihe.net/ITI/BALP/CodeSystem/OtherIdentifierTypes", "SAML-subject-id", "SAML subject-id"),
     ("https://profiles.ihe.net/ITI/BALP/CodeSystem/UserAgentTypes", "AuthzOauthService", "OAuth Authorization Server"),
     ("https://profiles.ihe.net/ITI/BALP/CodeSystem/UserAgentTypes", "UserOauthAgent", "User OAuth Agent participant"),
     ("https://profiles.ihe.net/ITI/BALP/CodeSystem/UserAgentTypes", "UserSamlAgent", "User SAML Agent participant"),

@@ -39,7 +39,7 @@ done
 rm -f "$OUT"/*.rs
 python3 "$ROOT/tools/gen_all.py" --primaries "${#PRIMARIES[@]}" --base "$R4" "$OUT" "$PROVENANCE" "${PRIMARIES[@]}" "${DEPS[@]}"
 python3 "$ROOT/tools/gen_typemap.py" "$R4" "$OUT" "$ROOT/crates/fhir-pods-core/src/typemap.rs"
-python3 "$ROOT/tools/gen_valuesets.py" "$OUT" "$ROOT/crates/fhir-pods-core/src/value_sets_table.rs" "$R4" "${PRIMARIES[@]}" "${DEPS[@]}"
+python3 "$ROOT/tools/gen_valuesets.py" "$OUT" "$ROOT/crates/fhir-pods-core/src/value_sets_table.rs" "$R4" "${PRIMARIES[@]}" "${DEPS[@]}" "$THO"
 # every definition the packages hold under HL7's own URL spaces (a `uri` there that names nothing is an error)
 python3 "$ROOT/tools/gen_known_urls.py" "$ROOT/crates/fhir-pods-core/src/known_urls.rs" "${PRIMARIES[@]}" "${DEPS[@]}" "$R4" "$THO"
 # the base code systems' content: the union of R4 core's and THO's copies

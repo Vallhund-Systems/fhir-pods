@@ -211,3 +211,17 @@ fn a_questionnaires_own_enable_when_wiring_is_checked() {
         && i.path == "Questionnaire.item[2].enableWhen[0]"
         && i.message == "Unable to find an item with the linkId 'no-such-item' which is referenced in the enableWhen for 'packs'"), "{}", fhir_pods_core::wire::report(&r));
 }
+
+/// A coded answer with no system (a display alone) names nothing a value
+/// set could hold: the reference validator's terminology error, not a pass.
+/// Found by the gut-path lane.
+#[test]
+fn a_coded_answer_without_a_system_is_a_terminology_error() {
+    let v = validator();
+    let items = GOOD.replace(
+        r#"{"linkId": "vs", "answer": [{"valueCoding": {"system": "http://example.org/cs", "code": "n"}}]}"#,
+        r#"{"linkId": "vs", "answer": [{"valueCoding": {"display": "No"}}]}"#,
+    );
+    let e = errors(&v, &response(&items, "completed"));
+    assert!(e.iter().any(|x| x.contains("Coding has no system")), "{e:?}");
+}

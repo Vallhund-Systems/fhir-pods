@@ -1,5 +1,78 @@
 # Changelog
 
+## 0.19.4 — 2026-10-09
+
+**Two new lanes — a mutation lane and a gut-path lane — and the nine
+findings they made.** Three releases in a row had shown the same thing: a
+corpus of publisher-valid examples can only show where the pod is stricter
+than the reference validator, never where it is more lenient. The mutation
+lane (`conformance/mutate.py`) derives every release-corpus original under
+nine fixed mutations — drop an element, blank or strip a coding, wrong
+JSON type, empty backbone, bad enum, null primitive, empty string, bad or
+bare reference, orphan extension — 19,067 derived files, every one put
+before validator_cli 6.10.4, lenient cases first. The gut-path lane
+(`conformance/gut.py`) is a synthetic sixteen-part clinical instrument
+with its own code systems and value sets, responses held to it, and the
+chain a host builds around it — derived observations, an alarm `Flag`, a
+clinician-summary `Composition`, a referral, research-export `Consent`,
+the export `Bundle`, the `AuditEvent` — judged three ways (the scenario's
+expectation, the pod, the oracle with the same definitions loaded as an IG
+folder), then lifted and lowered, de-identified, and exported for the AU
+region, every derived file judged again. Both lanes close at **0
+untriaged disagreements**.
+
+What they found, each probed against the oracle and fixed:
+
+- *A profile's undecidable set hid the base's.* `Observation.status` of
+  `mutated` under an IPS profile was valid: the profile binds `status` to
+  a subset the pod cannot expand offline, and the base's required set was
+  never consulted. A profile only narrows a required base set, so where
+  the profile's verdict cannot be decided the base's now is — on `code`,
+  `Coding` and `CodeableConcept` alike.
+- *`Reference.type` was never checked.* It is held to the element's
+  targets — the base's where no compiled profile applies, the profile's
+  under one — by bare type name (a canonical is wrong there), and only
+  beside a `reference` (an identifier-only reference's `type` is not
+  judged). Base targets are a new generated table.
+- *A binding beneath a choice was not judged.* IHE BALP's `ihe-otherId`
+  binds `Extension.value[x].type`; the table cannot type a path through a
+  choice, so the instance's shape now decides (codings or text — never a
+  `Quantity`'s value and unit).
+- *Vital-sign profiles are implied by the oracle's code table, not the
+  magic code alone:* `3141-9` is a body weight, `8306-3` a body height,
+  `8331-1` a body temperature, `55284-4` a blood pressure … — each code
+  probed; the aliases are listed in the source.
+- *THO value sets were not bundled.* `sex-parameter-for-clinical-use` and
+  its kin are now compiled from `hl7.terminology.r4`; 33 sets remain on
+  the seam.
+- *A code-less coding was an error even where the set is undecidable*
+  (0.19.3 over-reached): the oracle says nothing there, so neither does
+  the pod beyond "not checked"; where the set is known, the error stands.
+- *An empty string beside a carrier with content* (`"family": ""` with a
+  `_family` translation extension) is a value absent, not a value wrong;
+  a required binding still wants its code.
+- *A relative reference is `Type/id`* inside a Bundle (`1` alone is the
+  oracle's format error); a type the base does not define passes and is
+  not held to a document's contents.
+- *A coded answer with no system* names nothing a questionnaire's value
+  set could hold — the oracle's terminology error, not a pass — and three
+  questionnaire labels moved to where the oracle places them (the item
+  holding a stray or duplicate, not the stray).
+- *A resolved reference in a Bundle is held to its element's base targets
+  by the target's own type.* The gut-path chain's first referral named a
+  `Flag` as its reason; the oracle refused the AU document ("Invalid
+  Resource target type. Found Flag, but expected one of ([Condition,
+  Observation, DiagnosticReport, DocumentReference])") and the pod did not.
+  Resolved as the oracle resolves: by `fullUrl`, a relative `Type/id` only
+  against a RESTful one — among `urn:uuid` entries it names nothing and is
+  not judged (probed). A resource declaring a compiled profile is held to
+  the profile's targets by the engine as before.
+
+Every lane as 0.19.3 — release corpus 1,776/1,776, no untriaged error
+difference, base examples 5,130/5,290 with 0 stricter, questionnaire 74/81
+and 73/81; the mutation lane 19,067/19,067 on verdict; the gut-path lane
+71/71 — 262 tests. ABI 13 unchanged.
+
 ## 0.19.3 — 2026-10-06
 
 **A content-referenced backbone's invariants hold at every depth; a
