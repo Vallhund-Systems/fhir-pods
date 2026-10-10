@@ -1364,14 +1364,18 @@ mod tests {
             let resource_of = |lowered: &str| -> String {
                 lowered.split(",\"validation\":").next().unwrap().trim_start_matches("{\"resource\":").to_string()
             };
-            let lift = |resource: &str| unpack(fhir_pods_lift(QR.as_ptr(), QR.len(), resource.as_ptr(), resource.len()));
+            let lift =
+                |resource: &str| unpack(fhir_pods_lift(QR.as_ptr(), QR.len(), resource.as_ptr(), resource.len()));
             // before the form is loaded: valid, the unresolved form said
             let before = lower(&response(r#","answer":[{"valueString":"forty-two"}]"#));
             assert!(before.contains("\"valid\":true") && before.contains("could not be resolved"), "{before}");
             assert_eq!(fhir_pods_questionnaire_load(form.as_ptr(), form.len()), 1);
             // wrong type, missing required, and the valid control — through lower, lift and validate alike
             for (answer, finding) in [
-                (r#","answer":[{"valueString":"forty-two"}]"#, Some("Answer value must be of the type integer not string")),
+                (
+                    r#","answer":[{"valueString":"forty-two"}]"#,
+                    Some("Answer value must be of the type integer not string"),
+                ),
                 ("", Some("No response answer found for required item 'age'")),
                 (r#","answer":[{"valueInteger":42}]"#, None),
             ] {
@@ -1382,7 +1386,10 @@ mod tests {
                 for (op, out) in [("lower", &lowered), ("lift", &lifted), ("validate", &validated)] {
                     match finding {
                         Some(f) => assert!(out.contains("\"valid\":false") && out.contains(f), "{op}: {out}"),
-                        None => assert!(out.contains("\"valid\":true") && !out.contains("could not be resolved"), "{op}: {out}"),
+                        None => assert!(
+                            out.contains("\"valid\":true") && !out.contains("could not be resolved"),
+                            "{op}: {out}"
+                        ),
                     }
                 }
             }

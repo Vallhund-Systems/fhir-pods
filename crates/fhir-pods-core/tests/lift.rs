@@ -33,7 +33,11 @@ fn a_questionnaire_response_lifts_to_its_slots_and_lowers_back_to_itself() {
     let lowered = v.lower(QR, inputs.as_bytes()).unwrap();
     // no questionnaire loaded: the response is valid, with the unresolved form said (information)
     assert!(lowered.validation.is_valid(), "{}", wire::report(&lowered.validation));
-    assert!(wire::report(&lowered.validation).contains("could not be resolved"), "{}", wire::report(&lowered.validation));
+    assert!(
+        wire::report(&lowered.validation).contains("could not be resolved"),
+        "{}",
+        wire::report(&lowered.validation)
+    );
     let lifted = v.lift(QR, lowered.resource.as_bytes()).unwrap();
     assert!(lifted.missing.is_empty() && lifted.extras.is_empty(), "{:?} {:?}", lifted.missing, lifted.extras);
     let i = &lifted.inputs;

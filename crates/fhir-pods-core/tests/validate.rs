@@ -1204,7 +1204,11 @@ fn a_code_less_coding_is_judged_only_where_the_set_can_be_decided() {
             r#"{{"resourceType":"DocumentReference","meta":{{"profile":["http://hl7.org/fhir/us/core/StructureDefinition/us-core-documentreference"]}},"status":"current","type":{ty},"category":[{{"coding":[{{"system":"http://hl7.org/fhir/us/core/CodeSystem/us-core-documentreference-category","code":"clinical-note"}}]}}],"subject":{{"reference":"Patient/p"}},"content":[{{"attachment":{{"contentType":"text/plain","data":"eA=="}}}}]}}"#
         )
     };
-    assert!(at(&doc(r#"{"coding":[{"system":"http://loinc.org","display":"Discharge summary"}]}"#), "DocumentReference.type").is_empty());
+    assert!(at(
+        &doc(r#"{"coding":[{"system":"http://loinc.org","display":"Discharge summary"}]}"#),
+        "DocumentReference.type"
+    )
+    .is_empty());
     let e = at(&doc(r#"{"text":"Discharge summary"}"#), "DocumentReference.type");
     assert!(e.iter().any(|m| m.starts_with("No code provided")), "{e:?}");
 }
@@ -1233,12 +1237,15 @@ fn a_references_declared_type_is_held_to_the_elements_targets() {
     for bad in ["Organization", "Mutated", "http://hl7.org/fhir/StructureDefinition/Patient"] {
         let e = errors(&immunization(bad));
         assert!(
-            e.iter().any(|x| x.starts_with("Immunization.patient | Invalid Resource target type") && x.contains("(Patient)")),
+            e.iter().any(
+                |x| x.starts_with("Immunization.patient | Invalid Resource target type") && x.contains("(Patient)")
+            ),
             "{bad}: {e:?}"
         );
     }
     assert!(errors(&immunization("Patient")).is_empty(), "{:?}", errors(&immunization("Patient")));
-    let e = errors(r#"{"resourceType":"Patient","managingOrganization":{"reference":"Organization/1","type":"Mutated"}}"#);
+    let e =
+        errors(r#"{"resourceType":"Patient","managingOrganization":{"reference":"Organization/1","type":"Mutated"}}"#);
     assert!(e.iter().any(|x| x.starts_with("Patient.managingOrganization | Invalid Resource target type")), "{e:?}");
 }
 
@@ -1292,7 +1299,9 @@ fn a_binding_beneath_a_choice_is_judged_by_the_instances_shape() {
     };
     let coded = r#"{"coding":[{"system":"https://profiles.ihe.net/ITI/BALP/CodeSystem/OtherIdentifierTypes","code":"SAML-subject-id"}]}"#;
     assert!(errors(&audit(coded)).is_empty(), "{:?}", errors(&audit(coded)));
-    let e = errors(&audit(r#"{"coding":[{"system":"https://profiles.ihe.net/ITI/BALP/CodeSystem/OtherIdentifierTypes","display":"x"}]}"#));
+    let e = errors(&audit(
+        r#"{"coding":[{"system":"https://profiles.ihe.net/ITI/BALP/CodeSystem/OtherIdentifierTypes","display":"x"}]}"#,
+    ));
     assert!(e.iter().any(|x| x.contains("agent") && x.contains("not in the bound value set")), "{e:?}");
     let e = errors(&audit(r#"{"text":"x"}"#));
     assert!(e.iter().any(|x| x.contains("agent") && x.contains("No code provided")), "{e:?}");
@@ -1314,7 +1323,11 @@ fn a_relative_reference_has_the_type_slash_id_shape() {
             .map(|i| format!("{} | {}", i.path, i.message))
             .collect()
     };
-    let obs = |r: &str| format!(r#"{{"resourceType":"Observation","status":"final","code":{{"text":"x"}},"subject":{{"reference":"{r}"}}}}"#);
+    let obs = |r: &str| {
+        format!(
+            r#"{{"resourceType":"Observation","status":"final","code":{{"text":"x"}},"subject":{{"reference":"{r}"}}}}"#
+        )
+    };
     // the format rule applies where a reference resolves — inside a Bundle;
     // a standalone resource's bare id passes (probed, 6.10.4)
     let bundled = |r: &str| {
@@ -1418,18 +1431,27 @@ fn a_narrative_is_held_to_what_the_reference_validator_allows() {
     let txt2 = "inv.txt-2 | txt-2: The narrative SHALL have some non-whitespace content".to_string();
     // valid, as probed — including what the reference parser tolerates
     for ok in [
-        format!(r#"<div {X}><p>Summary <b>bold</b> <a href="https://example.org/x">link</a></p><table><tr><td>a</td></tr></table></div>"#),
+        format!(
+            r#"<div {X}><p>Summary <b>bold</b> <a href="https://example.org/x">link</a></p><table><tr><td>a</td></tr></table></div>"#
+        ),
         format!(r#"<div {X}><div><p>x</p></div></div>"#),
         format!(r#"<div {X} class="c" id="n1" lang="en"><p style="color:red">x</p></div>"#),
         format!(r#"<div {X}><img src="http://e.org/x.png" alt="t"/></div>"#),
         format!(r#"<div {X}><p>a&#160;b &amp; c &#xZZ; &#99999999999;</p></div>"#),
-        format!(r##"<div {X}><a href="data:text/html,a b">t</a><a href="JavaScript:alert(1)">u</a><a href="#">v</a></div>"##),
-        format!(r##"{}<?xml version="1.0"?><!DOCTYPE html><!--->   <div {X}><p>t</p></div>text<p>after the root</p>"##, "\u{feff}"),
+        format!(
+            r##"<div {X}><a href="data:text/html,a b">t</a><a href="JavaScript:alert(1)">u</a><a href="#">v</a></div>"##
+        ),
+        format!(
+            r##"{}<?xml version="1.0"?><!DOCTYPE html><!--->   <div {X}><p>t</p></div>text<p>after the root</p>"##,
+            "\u{feff}"
+        ),
         format!(r#"<h:div xmlns:h="{NS}"><h:p>t</h:p></h:div>"#),
         format!(r##"<div {X}><p id="s1">t</p><a href="#s1">u</a><a name="s2">v</a><a href="#s2">w</a></div>"##),
         format!(r#"<div {X}><table><thead><tr><th>t</th></tr></thead></table></div>"#),
         // (the root left open on purpose: an unclosed element at the end passes)
-        format!(r#"<div {X}><p class=c title="a" title="b">t</p><map name="m"><area href="http://e.org" alt="a" shape="rect" coords="0,0,1,1" nohref="nohref"/></map>"#),
+        format!(
+            r#"<div {X}><p class=c title="a" title="b">t</p><map name="m"><area href="http://e.org" alt="a" shape="rect" coords="0,0,1,1" nohref="nohref"/></map>"#
+        ),
         format!(r##"<div {X}><a href="#s9">forward</a><p id="s9">t</p></div>"##),
         format!(r#"<div {X}><p><span><b>x</b></span></p><![CDATA[<script>]]></div>"#),
     ] {
@@ -1525,7 +1547,13 @@ fn a_narrative_is_held_to_what_the_reference_validator_allows() {
         .filter(|i| i.severity == Severity::Error)
         .map(|i| format!("{} @ {}", i.id, i.path))
         .collect();
-    assert_eq!(ids, vec!["inv.txt-1 @ Patient.contained.text.div".to_string(), "narrative.element @ Patient.contained.text.div".to_string()]);
+    assert_eq!(
+        ids,
+        vec![
+            "inv.txt-1 @ Patient.contained.text.div".to_string(),
+            "narrative.element @ Patient.contained.text.div".to_string()
+        ]
+    );
     // the classifier never mistakes quoted narrative text for another family
     assert_eq!(
         errors(&format!(r#"<div {X}><a href="javascript:x">not evaluated: outside the supported FHIRPath core</a></div>"#)),

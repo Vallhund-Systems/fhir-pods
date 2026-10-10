@@ -766,9 +766,8 @@ fn is_codeable_concept(el: &ElementConstraint) -> Option<bool> {
 /// still a Quantity). An object with neither is not judged.
 fn concept_shaped<D: Document>(inst: &D) -> bool {
     let concept = !inst.instances("$this.coding").is_empty() || !inst.scalars("$this.text").is_empty();
-    let quantity = ["$this.value", "$this.unit", "$this.comparator", "$this.code"]
-        .iter()
-        .any(|p| !inst.scalars(p).is_empty());
+    let quantity =
+        ["$this.value", "$this.unit", "$this.comparator", "$this.code"].iter().any(|p| !inst.scalars(p).is_empty());
     concept && !quantity
 }
 
@@ -1251,7 +1250,10 @@ pub(crate) fn check_reference_targets_base<D: Document>(bundle: &D, r: &mut Repo
         .instances("$this.entry")
         .into_iter()
         .map(|e| {
-            (e.scalars("$this.fullUrl").first().map(|s| String::from(*s)), e.child_instances("resource").into_iter().next())
+            (
+                e.scalars("$this.fullUrl").first().map(|s| String::from(*s)),
+                e.child_instances("resource").into_iter().next(),
+            )
         })
         .collect();
     let resolve = |reference: &str| -> Option<&'static str> {
@@ -1377,9 +1379,7 @@ pub(crate) fn check_document<D: Document>(bundle: &D, r: &mut Report) {
     // nowhere and is not held to the bundle (the reference validator passes it)
     let resolvable = |reference: &str| {
         reference.contains(':')
-            || reference
-                .split_once('/')
-                .is_some_and(|(ty, _)| crate::typemap::RESOURCES.binary_search(&ty).is_ok())
+            || reference.split_once('/').is_some_and(|(ty, _)| crate::typemap::RESOURCES.binary_search(&ty).is_ok())
     };
     for (path, reference) in &refs {
         if !reference.starts_with('#') && resolvable(reference) && index_of(reference).is_none() {

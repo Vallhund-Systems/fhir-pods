@@ -181,7 +181,11 @@ fn a_questionnaire_and_its_response_lower_from_the_base_definitions() {
         )
         .unwrap();
     assert!(answers.validation.is_valid(), "{}", wire::report(&answers.validation));
-    assert!(answers.resource.contains(r#""questionnaire":"http://example.org/Questionnaire/intake|1""#), "{}", answers.resource);
+    assert!(
+        answers.resource.contains(r#""questionnaire":"http://example.org/Questionnaire/intake|1""#),
+        "{}",
+        answers.resource
+    );
     // a response that skips the form's required question is invalid on the
     // way out, by the form's rule, not lowering's
     let short = v
@@ -193,7 +197,10 @@ fn a_questionnaire_and_its_response_lower_from_the_base_definitions() {
     // and the wrong kind for a slot is lowering's own finding
     let bad = lower(QR, r#"{"status":"completed","authored":"yesterday","item":"name=Alex"}"#);
     let report = wire::report(&bad.validation);
-    assert!(report.contains("'authored' expects a dateTime") && report.contains("'item' expects a BackboneElement"), "{report}");
+    assert!(
+        report.contains("'authored' expects a dateTime") && report.contains("'item' expects a BackboneElement"),
+        "{report}"
+    );
 }
 
 /// The base profile a lowered resource declares must ask exactly what the
@@ -223,11 +230,15 @@ fn a_declared_base_profile_still_checks_what_the_base_requires_beneath_a_content
     ] {
         let without = v.validate(bare.as_bytes());
         assert!(!without.is_valid(), "{}", wire::report(&without));
-        let declared = bare.replacen(r#""status""#, &format!(r#""meta":{{"profile":["{url}"]}},"status""#, ), 1);
+        let declared = bare.replacen(r#""status""#, &format!(r#""meta":{{"profile":["{url}"]}},"status""#,), 1);
         let with = v.validate(declared.as_bytes());
         assert_eq!(errors(&with), errors(&without), "declaring {url} changed the findings");
         // and lowering, which always declares, says the same
-        let inputs = bare.replacen(r#""resourceType":"QuestionnaireResponse","#, "", 1).replacen(r#""resourceType":"Questionnaire","#, "", 1);
+        let inputs = bare.replacen(r#""resourceType":"QuestionnaireResponse","#, "", 1).replacen(
+            r#""resourceType":"Questionnaire","#,
+            "",
+            1,
+        );
         let lowered = v.lower(url, inputs.as_bytes()).unwrap();
         assert_eq!(errors(&lowered.validation), errors(&without), "lowering into {url} changed the findings");
     }

@@ -53,10 +53,59 @@ const MAX_BLOCKS: usize = 64;
 
 /// The elements a narrative may carry (probed element by element).
 const ELEMENTS: &[&str] = &[
-    "a", "abbr", "acronym", "address", "area", "b", "bdo", "big", "blockquote", "br", "caption", "cite", "code",
-    "col", "colgroup", "dd", "dfn", "div", "dl", "dt", "em", "h1", "h2", "h3", "h4", "h5", "h6", "hr", "i", "img",
-    "kbd", "li", "map", "ol", "p", "pre", "q", "samp", "small", "span", "strong", "sub", "sup", "table", "tbody",
-    "td", "tfoot", "th", "thead", "tr", "tt", "ul", "var",
+    "a",
+    "abbr",
+    "acronym",
+    "address",
+    "area",
+    "b",
+    "bdo",
+    "big",
+    "blockquote",
+    "br",
+    "caption",
+    "cite",
+    "code",
+    "col",
+    "colgroup",
+    "dd",
+    "dfn",
+    "div",
+    "dl",
+    "dt",
+    "em",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "hr",
+    "i",
+    "img",
+    "kbd",
+    "li",
+    "map",
+    "ol",
+    "p",
+    "pre",
+    "q",
+    "samp",
+    "small",
+    "span",
+    "strong",
+    "sub",
+    "sup",
+    "table",
+    "tbody",
+    "td",
+    "tfoot",
+    "th",
+    "thead",
+    "tr",
+    "tt",
+    "ul",
+    "var",
 ];
 
 /// Where an element must sit (parent names).
@@ -269,7 +318,9 @@ impl Parser<'_, '_> {
                 match self.find_from(self.i + 2, "?>") {
                     Some(j) => self.i = j + 2,
                     None => {
-                        self.fail("Error parsing XHTML: Malformed XHTML: unterminated processing instruction".to_owned());
+                        self.fail(
+                            "Error parsing XHTML: Malformed XHTML: unterminated processing instruction".to_owned(),
+                        );
                         return;
                     }
                 }
@@ -326,7 +377,9 @@ impl Parser<'_, '_> {
                 let closing = core::str::from_utf8(&self.s[j..k]).unwrap_or("").trim().to_owned();
                 let qname = self.open.last().map(|o| o.qname.clone()).unwrap_or_default();
                 if closing != qname {
-                    self.fail(format!("Error parsing XHTML: Malformed XHTML: Found \"</{closing}>\" expecting \"</{qname}>\""));
+                    self.fail(format!(
+                        "Error parsing XHTML: Malformed XHTML: Found \"</{closing}>\" expecting \"</{qname}>\""
+                    ));
                     return;
                 }
                 self.i = (k + 1).min(self.s.len());
@@ -357,7 +410,9 @@ impl Parser<'_, '_> {
                 match self.find_from(self.i + 2, "?>") {
                     Some(j) => self.i = j + 2,
                     None => {
-                        self.fail("Error parsing XHTML: Malformed XHTML: unterminated processing instruction".to_owned());
+                        self.fail(
+                            "Error parsing XHTML: Malformed XHTML: unterminated processing instruction".to_owned(),
+                        );
                         return;
                     }
                 }
@@ -408,7 +463,8 @@ impl Parser<'_, '_> {
         let qname = core::str::from_utf8(&self.s[name_start..self.i]).unwrap_or("").to_owned();
         if qname.is_empty() {
             let parent = self.stack.last().cloned().unwrap_or_default();
-            return self.fail(format!("Error parsing XHTML: Unable to Parse HTML - node '{parent}' has unexpected content"));
+            return self
+                .fail(format!("Error parsing XHTML: Unable to Parse HTML - node '{parent}' has unexpected content"));
         }
         let (prefix, local) = match qname.split_once(':') {
             Some((p, l)) => (Some(p.to_owned()), l.to_owned()),
@@ -497,11 +553,17 @@ impl Parser<'_, '_> {
             .map(|(_, v)| v.clone())
             .or_else(|| prefix.as_ref().map(|_| "http://error/undefined-namespace".to_owned()));
         if root && local != "div" {
-            self.out.push(Finding { message: format!("Wrong name on the XHTML ('{local}') - must start with div"), txt1: false });
+            self.out.push(Finding {
+                message: format!("Wrong name on the XHTML ('{local}') - must start with div"),
+                txt1: false,
+            });
         }
         if ns.as_deref() != Some(XHTML) {
             self.out.push(Finding {
-                message: format!("Wrong namespace on the XHTML ('{}', should be '{XHTML}')", ns.as_deref().unwrap_or("null")),
+                message: format!(
+                    "Wrong namespace on the XHTML ('{}', should be '{XHTML}')",
+                    ns.as_deref().unwrap_or("null")
+                ),
                 txt1: false,
             });
         }
@@ -512,7 +574,10 @@ impl Parser<'_, '_> {
             if let Some((_, children)) = CHILDREN.iter().find(|(e, _)| *e == parent) {
                 if !children.contains(&local.as_str()) {
                     self.out.push(Finding {
-                        message: format!("Elements of type {parent} at {} cannot have the following children: {local}", self.path()),
+                        message: format!(
+                            "Elements of type {parent} at {} cannot have the following children: {local}",
+                            self.path()
+                        ),
                         txt1: false,
                     });
                 }
@@ -561,7 +626,10 @@ impl Parser<'_, '_> {
                 continue;
             }
             if !attribute_allowed(&local, k) {
-                self.out.push(Finding { message: format!("Invalid attribute name in the XHTML ('{k}' on '{local}')"), txt1: true });
+                self.out.push(Finding {
+                    message: format!("Invalid attribute name in the XHTML ('{k}' on '{local}')"),
+                    txt1: true,
+                });
             }
             if k == "id" {
                 self.ids.insert(v.clone());
@@ -639,7 +707,8 @@ impl Parser<'_, '_> {
     /// neither active content nor one that cannot be followed.
     fn check_url(&mut self, url: &str, at: &str, label: &str, image: bool) {
         if url.is_empty() {
-            self.out.push(Finding { message: "The URL is not valid because '(URL is empty)': ".to_owned(), txt1: false });
+            self.out
+                .push(Finding { message: "The URL is not valid because '(URL is empty)': ".to_owned(), txt1: false });
             if !image {
                 self.out.push(Finding { message: format!("Hyperlink at '{at}' for '{label}' is empty"), txt1: false });
             }
@@ -672,7 +741,8 @@ impl Parser<'_, '_> {
             } else {
                 format!("URL contains {count} Invalid Characters: {}", shown.join(","))
             };
-            self.out.push(Finding { message: format!("The URL is not valid because '({reason})': {url}"), txt1: false });
+            self.out
+                .push(Finding { message: format!("The URL is not valid because '({reason})': {url}"), txt1: false });
         }
         if let Some(frag) = url.strip_prefix('#') {
             if !frag.is_empty() {
@@ -752,7 +822,10 @@ impl Parser<'_, '_> {
                     "quot" => out.push('"'),
                     "apos" => out.push('\''),
                     _ if HTML_ENTITIES.binary_search(&reference).is_ok() => {
-                        self.out.push(Finding { message: format!("Invalid entity in the XHTML ('&{reference};')"), txt1: false });
+                        self.out.push(Finding {
+                            message: format!("Invalid entity in the XHTML ('&{reference};')"),
+                            txt1: false,
+                        });
                         out.push('&');
                         out.push_str(reference);
                         out.push(';');
@@ -804,8 +877,27 @@ fn java_int(s: &str, radix: u32) -> Option<i32> {
 fn attribute_allowed(element: &str, attr: &str) -> bool {
     // on every element (probed on p, div, span, li, ol, tr, td, table, a, img, area, map)
     const GLOBAL: &[&str] = &[
-        "abbr", "accesskey", "align", "axis", "char", "charoff", "class", "colspan", "dir", "headers", "id", "lang",
-        "rowspan", "scope", "span", "style", "tabindex", "title", "valign", "width", "xml:lang",
+        "abbr",
+        "accesskey",
+        "align",
+        "axis",
+        "char",
+        "charoff",
+        "class",
+        "colspan",
+        "dir",
+        "headers",
+        "id",
+        "lang",
+        "rowspan",
+        "scope",
+        "span",
+        "style",
+        "tabindex",
+        "title",
+        "valign",
+        "width",
+        "xml:lang",
     ];
     if GLOBAL.contains(&attr) {
         return true;

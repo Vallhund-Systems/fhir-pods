@@ -113,7 +113,11 @@ pub fn rule_id(code: IssueType, message: &str) -> &'static str {
             return INVARIANT_IDS[i].1;
         }
         if is_invariant_key(key) {
-            return if ends("not evaluated: outside the supported FHIRPath core") { "not-supported.fhirpath" } else { "inv.other" };
+            return if ends("not evaluated: outside the supported FHIRPath core") {
+                "not-supported.fhirpath"
+            } else {
+                "inv.other"
+            };
         }
     }
     // anchored at the end: a narrative finding quotes narrative text, which
@@ -172,7 +176,10 @@ pub fn rule_id(code: IssueType, message: &str) -> &'static str {
     if starts("The entry resource did not match any of the allowed profiles") {
         return "structure.entry-type";
     }
-    if has("no `_` carrier") || has("extension carrier must have some content") || has("Resource.id cannot carry extensions") {
+    if has("no `_` carrier")
+        || has("extension carrier must have some content")
+        || has("Resource.id cannot carry extensions")
+    {
         return "structure.carrier";
     }
     if has("allows one choice") || has("allows the types") {
@@ -323,12 +330,17 @@ pub fn rule_id(code: IssueType, message: &str) -> &'static str {
     if starts("The value set '") || starts("The unit value set '") {
         return "questionnaire.value-set";
     }
-    if starts("Questions with an enableWhen") || starts("Target for this question") || starts("Unable to find an item with the linkId")
-        || starts("Definition for item") || starts("Option list has no") || starts("Cannot validate")
+    if starts("Questions with an enableWhen")
+        || starts("Target for this question")
+        || starts("Unable to find an item with the linkId")
+        || starts("Definition for item")
+        || starts("Option list has no")
+        || starts("Cannot validate")
     {
         return "questionnaire.definition";
     }
-    if starts("'") && (has("expects") || has("is not an input of") || has("takes one object") || has("must be an object"))
+    if starts("'")
+        && (has("expects") || has("is not an input of") || has("takes one object") || has("must be an object"))
         || (has("is fixed to") && has("by the profile"))
     {
         return "lower.input";

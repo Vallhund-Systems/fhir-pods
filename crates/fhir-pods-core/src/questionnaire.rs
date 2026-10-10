@@ -1079,7 +1079,8 @@ impl<'q, 'v, 'a, 't> Checker<'q, 'v, 'a, 't> {
             // a coding with no system (or no code) names nothing the set
             // could hold: the reference validator's terminology error
             if code.is_empty() || system.is_empty() {
-                let (c, s) = (if code.is_empty() { "null" } else { code }, if system.is_empty() { "null" } else { system });
+                let (c, s) =
+                    (if code.is_empty() { "null" } else { code }, if system.is_empty() { "null" } else { system });
                 let (_, name) = self.membership(vs, system, code);
                 r.push(
                     Severity::Error,

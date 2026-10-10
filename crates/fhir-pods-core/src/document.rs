@@ -1036,7 +1036,8 @@ fn structure_object<'v, 'a>(
         }
         if let Some((_, Value::Str(r))) = kvs.iter().find(|(k, _)| k.as_ref() == "reference") {
             if let Some(local) = r.strip_prefix('#') {
-                let root_ids = w.contained.iter().rev().find(|(inside, _, _)| !inside).map(|(_, ids, _)| ids.as_slice());
+                let root_ids =
+                    w.contained.iter().rev().find(|(inside, _, _)| !inside).map(|(_, ids, _)| ids.as_slice());
                 if !local.is_empty() && !root_ids.is_some_and(|ids| ids.iter().any(|id| id == local)) {
                     w.gaps.push((
                         alloc::format!("{path}.reference"),
@@ -1440,7 +1441,10 @@ fn structure_object<'v, 'a>(
                         w.gaps.push((
                             child_path.clone(),
                             crate::validate::IssueType::CodeInvalid,
-                            alloc::format!("No code provided, and a code is required from the value set {}", b.value_set),
+                            alloc::format!(
+                                "No code provided, and a code is required from the value set {}",
+                                b.value_set
+                            ),
                         ));
                     }
                 } else if !(primitive_value_ok(ch.ty, x) || (ctx == "Binary" && bare == "data")) {
