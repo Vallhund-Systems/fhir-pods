@@ -45,7 +45,10 @@ const outcome = pod.operationOutcome(JSON.stringify(observation));
 ```
 
 `validate` never throws for bad input: unparseable JSON is a `fatal` issue in
-the report. Both calls are synchronous. Historical v0.8.3 measurements were
+the report.
+Every issue carries a stable rule `id` (`binding.no-code`, `inv.cmp-1`,
+`questionnaire.required-answer`, …) — assert on that, never on message text;
+the ids and their contract are in [docs/rules.md](../../docs/rules.md). Both calls are synchronous. Historical v0.8.3 measurements were
 69–89 µs on an M4 Max for the recorded profiled-resource fixtures, including JSON copy
 and parse; see the [benchmark guide](bench/README.md) for scope and provenance.
 

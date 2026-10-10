@@ -476,6 +476,11 @@ impl Walker<'_> {
             };
             let action = match action {
                 Action::Remove if self.is_required(&child_path, path, &key) => Action::Mask,
+                // a QuestionnaireResponse answer's value is masked, never
+                // dropped: an answer with no value is no answer, and a
+                // required item then has none — the reference validator
+                // passes the value-less answer with its carrier (probed)
+                Action::Remove if ctx == "QuestionnaireResponse.item.answer" && key.starts_with("value") => Action::Mask,
                 // clamping is what the walk does to an Age on the way through; as a rule it means keep
                 Action::Clamp => Action::Keep,
                 a => a,

@@ -24,6 +24,7 @@ table the pod loads for the local value sets.
 """
 import json
 import os
+import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "out")
@@ -446,7 +447,26 @@ def main():
     defs = [questionnaire(), code_system(), obs_code_system()] + [value_set(k) for k in VS]
     for r in defs:
         json.dump(r, open(os.path.join(DEFS, f"{r['resourceType']}-{r['id']}.json"), "w"), indent=1)
-    open(os.path.join(OUT, "gut.terminology.txt"), "w").write(terminology_table())
+    # the table the pod loads, compiled from the definitions the way a host
+    # compiles a vendor's: the CodeSystem and ValueSets as files
+    import subprocess
+    files = sorted(os.path.join(DEFS, f) for f in os.listdir(DEFS) if f.startswith(("ValueSet-", "CodeSystem-")))
+    table = subprocess.run([sys.executable, os.path.join(HERE, "..", "..", "tools", "compile_valueset.py"), *files],
+                           capture_output=True, text=True)
+    if table.returncode != 0:
+        raise SystemExit(f"compile_valueset.py refused the definitions: {table.stderr.strip()}")
+    open(os.path.join(OUT, "gut.terminology.txt"), "w").write(table.stdout)
+    # the same sets and members as the hand-written table, whatever the order
+    def parsed(text):
+        sets, current = {}, None
+        for line in text.splitlines()[1:]:
+            if line.startswith("= "):
+                current = line[2:]
+                sets[current] = set()
+            elif line.strip():
+                sets[current].add(tuple(line.split("\t")[:2]))
+        return sets
+    assert parsed(table.stdout) == parsed(terminology_table()), "the compiled table differs from the hand-written one"
 
     full = response_full()
     cases = []

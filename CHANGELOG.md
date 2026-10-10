@@ -1,5 +1,59 @@
 # Changelog
 
+## 0.20.0 — 2026-10-09
+
+**Stable rule ids, and a gate.** Every finding now carries a machine-
+readable id — `issues[].id` in the pods' JSON report, `issue.details.coding`
+under system `urn:fhir-pods:rule` in an `OperationOutcome` — so a host
+asserts on *which* rule fired, never on message text: `binding.no-code`,
+`reference.target-type`, `questionnaire.required-answer`, `inv.cmp-1` …
+59 families and one id per invariant key (361 of them); the contract is
+`docs/rules.md` (an id never changes meaning; a new kind of finding gets a
+new id; `other.<type>` is the fallback and a defect). The id is derived
+where the finding is recorded, from its type and message family
+(`src/rules.rs`), and a test holds every finding on the release corpus,
+the 19,067 mutation files and the gut-path scenario to zero `other.*`.
+
+The CLI gains `gate`: `fhir-pods gate [--questionnaire Q.json]…
+[--terminology T.txt] FILE…` validates every file and prints one report —
+each file's verdict and error-level findings by id, the counts by id over
+the run — exiting 1 when any file has an error. That is what runs on a
+vendor's deliverables and in CI. `--questionnaire` (repeatable) is new on
+`validate` too: the instrument a response names, loaded the way a host
+loads it.
+
+The JSON report and the `OperationOutcome` gain a field each; nothing is
+removed and the C ABI is unchanged (ABI 13). The wasm and Expo typings
+carry `id`. 
+Three gut-path gaps closed in the same release:
+
+- *A vendor's value sets into the pod without a terminology server.*
+  `tools/compile_valueset.py` now compiles a `ValueSet` that carries no
+  expansion from its `compose` when — and only when — the set is enumerated
+  there: every include lists its concepts, or names a system whose
+  `CodeSystem` is given on the command line with `content: complete`; an
+  enumerated exclude is applied; a filter, an intensional include or a
+  system not given complete is refused with the reason. The gut-path
+  scenario now compiles its table through it.
+- *De-identifying a QuestionnaireResponse keeps its answers.* Safe Harbor
+  removes a free-text answer's value; the answer was then empty and
+  dropped, and a required item had no answer — an invalid copy on both
+  validators. The value is now masked in place: a value-less answer with a
+  data-absent-reason carrier (`_valueString`), which validator_cli 6.10.4
+  passes against the instrument (probed; the dropped form it refuses).
+- *A response naming another version of a loaded questionnaire* is now
+  said — a warning (`questionnaire.version-mismatch`) a host pinning
+  instrument versions can gate on — and not judged against it; the
+  reference validator resolves by url alone, and a host that wants that
+  loads the version it means.
+
+A fresh review of the rule table found seven questionnaire messages and
+three invariant keys (`sdf-8a`, a profile's `pvc2` and
+`hasMemberOrComponent`) that fell through to `other.*`, and one clause that
+claimed any message mentioning a fullUrl; all fixed before the tag, the
+invariant table now generated from the keys the core reports rather than
+a shape, and each corner pinned as a test sample. Lanes as 0.19.4; 267 tests.
+
 ## 0.19.4 — 2026-10-09
 
 **Two new lanes — a mutation lane and a gut-path lane — and the nine

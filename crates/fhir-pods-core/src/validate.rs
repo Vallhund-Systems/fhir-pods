@@ -38,6 +38,9 @@ pub struct Issue {
     /// `wire::expression` derives the FHIRPath `OperationOutcome.issue.expression` from it.
     pub path: String,
     pub message: String,
+    /// The stable rule id (`binding.no-code`, `inv.cmp-1`, …): what a host
+    /// asserts on. See [`crate::rules`].
+    pub id: &'static str,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -57,6 +60,7 @@ impl Report {
     }
 
     pub(crate) fn push(&mut self, severity: Severity, code: IssueType, path: &str, message: String) {
-        self.issues.push(Issue { severity, code, path: path.into(), message });
+        let id = crate::rules::rule_id(code, &message);
+        self.issues.push(Issue { severity, code, path: path.into(), message, id });
     }
 }

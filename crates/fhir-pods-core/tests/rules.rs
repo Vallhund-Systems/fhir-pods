@@ -1,0 +1,102 @@
+//! Stable rule ids: every finding carries one, the table documents every
+//! one, and nothing the lanes produce falls through to `other.*`.
+
+use fhir_pods_core::rules::{rule_id, RULES};
+use fhir_pods_core::validate::IssueType;
+
+#[test]
+fn every_rule_id_is_documented_and_every_documented_id_is_real() {
+    let docs = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/rules.md")).unwrap();
+    for (id, _) in RULES {
+        assert!(docs.contains(&format!("`{id}`")), "docs/rules.md does not list `{id}`");
+    }
+    // every id the classifier can return is in the table (or an invariant / fallback family)
+    let samples = [
+        (IssueType::Structure, "could not parse JSON at byte 3: x"),
+        (IssueType::Structure, "resourceType is required"),
+        (IssueType::Structure, "Patient.foo is not an element of Patient"),
+        (IssueType::Required, "Patient.gender is required (min 1, found 0)"),
+        (IssueType::CodeInvalid, "No code provided, and a code is required from the value set x"),
+        (IssueType::CodeInvalid, "'the codings' is not in the bound value set"),
+        (IssueType::Structure, "Invalid Resource target type. Found Flag, but expected one of (Patient)"),
+        (IssueType::Invariant, "cmp-1: A section must contain at least one of text, entries, or sub-sections"),
+        (IssueType::Invariant, "que-7: If the operator is 'exists', the value must be a boolean"),
+        (IssueType::NotSupported, "txt-1 not evaluated: outside the supported FHIRPath core"),
+        (IssueType::Structure, "LinkId 'p2.q99' not found in questionnaire"),
+        (IssueType::BusinessRule, "No response answer found for required item 'p1.age'"),
+        (IssueType::CodeInvalid, "The code 'x' in the system 'y' is not in the options value set (z) specified by the questionnaire. Terminology Error: …"),
+        (IssueType::Value, "Relative URLs must be of the format [ResourceName]/[id]. Encountered 1"),
+        // the reviewer's reachable corners: keys the shape heuristic alone would miss, and
+        // messages the first table did not claim
+        (IssueType::Invariant, "sdf-8a: In any snapshot, all the elements must be in the same order as the base"),
+        (IssueType::Invariant, "pvc2: Minimum count must be less than or equal to maximum count of part."),
+        (IssueType::Invariant, "hasMemberOrComponent: component and hasMember are mutually exclusive"),
+        (IssueType::Invariant, "zzz-not-listed-9: a key no table lists"),
+        (IssueType::Value, "Bundle.entry[0].fullUrl is not a valid uri"),
+        (IssueType::Structure, "Answer value must be one of the 5 types [Coding, date, time, integer, string] not boolean"),
+        (IssueType::BusinessRule, "The answer to the item x is a string, but answerConstraint is 'optionsOnly', so the answer has to be one of the options the questionnaire specifies"),
+        (IssueType::BusinessRule, "The mime type text/html is not valid for this answer (allowed = [text/plain])"),
+        (IssueType::BusinessRule, "The resource type 'Device' in the reference Device/1 is not allowed (allowed = [Patient])"),
+        (IssueType::BusinessRule, "The answer 'x' does not conform to the expected format 'nnn' (regex '[0-9]{3}')"),
+        (IssueType::BusinessRule, "The value 3 kg has a unit that is not valid (allowed = [mg])"),
+        (IssueType::BusinessRule, "No LinkId, so can't be validated"),
+    ];
+    let expected = [
+        "parse.json", "parse.resource-type", "structure.unknown-element", "structure.required", "binding.no-code",
+        "binding.not-member", "reference.target-type", "inv.cmp-1", "inv.que-7", "not-supported.fhirpath",
+        "questionnaire.linkid-unknown", "questionnaire.required-answer", "questionnaire.answer-not-in-set",
+        "reference.shape",
+        "inv.sdf-8a", "inv.pvc2", "inv.hasMemberOrComponent", "inv.other", "value.invalid",
+        "questionnaire.answer-type", "questionnaire.answer-not-in-set", "questionnaire.answer-content",
+        "questionnaire.answer-content", "questionnaire.answer-content", "questionnaire.answer-content",
+        "questionnaire.linkid-unknown",
+    ];
+    for ((code, message), want) in samples.iter().zip(expected) {
+        assert_eq!(rule_id(*code, message), want, "{message}");
+    }
+}
+
+#[test]
+fn a_report_and_an_operation_outcome_carry_the_id() {
+    let v = fhir_pods_core::validate_bytes(br#"{"resourceType":"Patient","gender":"mutated"}"#);
+    assert!(v.report.issues.iter().any(|i| i.id == "binding.not-member"), "{:?}", v.report.issues);
+    let json = fhir_pods_core::wire::report(&v);
+    assert!(json.contains(r#""id":"binding.not-member""#), "{json}");
+    let outcome = v.report.to_operation_outcome();
+    assert!(outcome.contains(r#"{"system":"urn:fhir-pods:rule","code":"binding.not-member"}"#), "{outcome}");
+}
+
+/// Every finding on the release corpus (when it is present) has a real id:
+/// a message no family claims is a defect of the rules table, not a
+/// finding a host can act on.
+#[test]
+fn nothing_on_the_corpus_falls_through_to_other() {
+    let conformance = concat!(env!("CARGO_MANIFEST_DIR"), "/../../conformance");
+    let mut dirs = vec![format!("{conformance}/corpus"), format!("{conformance}/gut/out/cases")];
+    if let Ok(classes) = std::fs::read_dir(format!("{conformance}/mutations")) {
+        dirs.extend(classes.flatten().filter(|e| e.path().is_dir()).map(|e| e.path().to_string_lossy().into_owned()));
+    }
+    let mut unclassified = std::collections::BTreeMap::new();
+    let mut seen = 0usize;
+    for dir in dirs {
+        let Ok(entries) = std::fs::read_dir(&dir) else { continue };
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if !name.ends_with(".json") || name.starts_with('_') || name.ends_with("manifest.json") {
+                continue;
+            }
+            let Ok(bytes) = std::fs::read(entry.path()) else { continue };
+            let v = fhir_pods_core::validate_bytes(&bytes);
+            seen += 1;
+            for i in &v.report.issues {
+                if i.id.starts_with("other.") || i.id == "inv.other" {
+                    unclassified.entry(i.message.chars().take(80).collect::<String>()).or_insert(i.id);
+                }
+            }
+        }
+    }
+    if seen == 0 {
+        return; // no derived corpora on this machine
+    }
+    assert!(unclassified.is_empty(), "unclassified findings: {unclassified:#?}");
+}

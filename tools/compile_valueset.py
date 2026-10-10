@@ -25,8 +25,17 @@ Nothing is inferred from a response merely parsing. Keep the licence of
 what you compile: a SNOMED CT expansion is licensed content and belongs in
 the host's own build, never in the pods.
 
+A ValueSet that carries no expansion is compiled from its `compose` when —
+and only when — the set is enumerated there: every `include` lists its
+`concept`s, or names a `system` whose CodeSystem is also given (a file on
+the command line, `content: complete`), with no `filter` and no nested
+`valueSet`; an enumerated `exclude` is applied. Anything else (a filter, an
+intensional include, a system the command line does not carry complete) is
+refused with the reason — a vendor's instrument ships its CodeSystem and
+ValueSets as files, and this is the path that turns them into the table.
+
 Usage:
-    compile_valueset.py [--no-display] <expanded-valueset.json> [...] > terminology.txt
+    compile_valueset.py [--no-display] <valueset-or-codesystem.json> [...] > terminology.txt
 """
 import json
 import sys
@@ -55,23 +64,80 @@ def params_of(vs):
     return out
 
 
+def concepts_of(cs):
+    """(code, display) of every concept of a CodeSystem, hierarchy flattened."""
+    stack = list(cs.get("concept") or [])
+    rows = set()
+    while stack:
+        c = stack.pop()
+        stack.extend(c.get("concept", []))
+        if c.get("code"):
+            rows.add((c["code"], (c.get("display") or "").replace("\t", " ").replace("\n", " ")))
+    return rows
+
+
+def compose_rows(path, vs, systems):
+    """The rows of an enumerated compose, or exit with why it is not one."""
+    url = vs["url"]
+    compose = vs.get("compose") or {}
+    rows = set()
+    for inc in compose.get("include") or []:
+        if inc.get("filter"):
+            sys.exit(f"{path}: {url}: an include with a filter is not enumerated — run $expand")
+        if inc.get("valueSet"):
+            sys.exit(f"{path}: {url}: an include of another value set is not enumerated — run $expand")
+        system = inc.get("system")
+        if inc.get("concept"):
+            if not system:
+                sys.exit(f"{path}: {url}: an include lists concepts without a system")
+            for c in inc["concept"]:
+                if c.get("code"):
+                    rows.add((system, c["code"], (c.get("display") or "").replace("\t", " ").replace("\n", " ")))
+        elif system:
+            if system not in systems:
+                sys.exit(f"{path}: {url}: includes all of {system}, which was not given as a complete CodeSystem")
+            rows |= {(system, code, display) for code, display in systems[system]}
+        else:
+            sys.exit(f"{path}: {url}: an include with neither system nor concepts")
+    for exc in compose.get("exclude") or []:
+        if exc.get("filter") or exc.get("valueSet") or not exc.get("concept"):
+            sys.exit(f"{path}: {url}: only an enumerated exclude can be applied")
+        gone = {(exc.get("system"), c.get("code")) for c in exc["concept"]}
+        rows = {r for r in rows if (r[0], r[1]) not in gone}
+    if not rows:
+        sys.exit(f"{path}: {url}: the compose names no concept")
+    return rows
+
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     with_display = "--no-display" not in sys.argv
     if not args:
         sys.exit(__doc__)
-    # every page of a set, by url
+    # every page of a set, by url; code systems given complete, by url
     sets = {}
-    for path in args:
-        vs = json.load(open(path))
+    systems = {}
+    composed = []
+    loaded = [(path, json.load(open(path))) for path in args]
+    for path, r in loaded:
+        if r.get("resourceType") == "CodeSystem":
+            if not r.get("url"):
+                sys.exit(f"{path}: CodeSystem has no url")
+            if r.get("content") != "complete":
+                sys.exit(f"{path}: {r['url']}: CodeSystem content is '{r.get('content')}', not complete — it cannot stand for the whole system")
+            systems[r["url"]] = concepts_of(r)
+    for path, vs in loaded:
+        if vs.get("resourceType") == "CodeSystem":
+            continue
         if vs.get("resourceType") != "ValueSet":
-            sys.exit(f"{path}: not a ValueSet")
+            sys.exit(f"{path}: not a ValueSet or CodeSystem")
         url = vs.get("url")
         if not url:
             sys.exit(f"{path}: ValueSet has no url")
         exp = vs.get("expansion")
         if exp is None or exp.get("contains") is None:
-            sys.exit(f"{path}: no expansion — run $expand first")
+            composed.append((path, vs))
+            continue
         params = params_of(vs)
         if any(v is True for v in params.get("limitedExpansion", [])) or "too-costly" in params:
             sys.exit(f"{path}: {url}: the expansion is limited (limitedExpansion / too-costly) — not a complete set")
@@ -88,6 +154,11 @@ def main():
             if entry["total"] not in (None, exp["total"]):
                 sys.exit(f"{path}: {url}: pages disagree on total ({entry['total']} vs {exp['total']})")
             entry["total"] = exp["total"]
+    for path, vs in composed:
+        url = vs["url"]
+        if url in sets:
+            sys.exit(f"{path}: {url}: given both expanded and by compose")
+        sets[url] = {"rows": compose_rows(path, vs, systems), "pages": [], "total": None}
     out = ["fhir-pods-terminology 1"]
     for url in sorted(sets):
         e = sets[url]

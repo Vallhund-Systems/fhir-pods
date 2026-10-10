@@ -439,3 +439,27 @@ fn a_required_repeating_element_that_empties_is_masked_as_an_array() {
     );
     assert!(d.validation.is_valid(), "{}", wire::report(&d.validation));
 }
+
+/// A QuestionnaireResponse answer whose free-text value goes is masked —
+/// a value-less answer with a data-absent-reason carrier — never dropped:
+/// an answer with no value is no answer, and a required item then has
+/// none. validator_cli 6.10.4 passes the carrier form and refuses the
+/// dropped one (probed). Found by the gut-path lane's chain stage.
+#[test]
+fn a_questionnaire_responses_free_text_answer_is_masked_not_dropped() {
+    use fhir_pods_core::deidentify::Policy;
+    const Q: &str = r#"{"resourceType":"Questionnaire","url":"http://example.org/Questionnaire/meds","version":"1","status":"active",
+      "item":[{"linkId":"name","type":"string","required":true},{"linkId":"days","type":"integer"}]}"#;
+    let qr = r#"{"resourceType":"QuestionnaireResponse","questionnaire":"http://example.org/Questionnaire/meds|1","status":"completed",
+      "item":[{"linkId":"name","answer":[{"valueString":"Omeprazole"}]},{"linkId":"days","answer":[{"valueInteger":120}]}]}"#;
+    let v = Validator::new().with_questionnaire(Q.as_bytes());
+    let d = v.deidentify(qr.as_bytes(), &Policy::safe_harbor(b"salt").today(2026)).unwrap();
+    assert!(!d.resource.contains("Omeprazole"), "{}", d.resource);
+    assert!(
+        d.resource.contains(r#""answer":[{"_valueString":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/data-absent-reason","valueCode":"masked"}]}}]"#),
+        "{}",
+        d.resource
+    );
+    assert!(d.resource.contains(r#""valueInteger":120"#), "{}", d.resource);
+    assert!(d.validation.is_valid(), "{}", wire::report(&d.validation));
+}

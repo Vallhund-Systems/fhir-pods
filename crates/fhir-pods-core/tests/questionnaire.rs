@@ -225,3 +225,19 @@ fn a_coded_answer_without_a_system_is_a_terminology_error() {
     let e = errors(&v, &response(&items, "completed"));
     assert!(e.iter().any(|x| x.contains("Coding has no system")), "{e:?}");
 }
+
+/// A response naming a version of a loaded questionnaire other than the one
+/// loaded is said — a warning a host pinning instrument versions can gate
+/// on — and not judged against it (the reference validator resolves by url
+/// alone; a host that wants that loads the version it means).
+#[test]
+fn a_response_naming_another_version_of_a_loaded_questionnaire_is_warned() {
+    let v = validator();
+    let qr = response(GOOD, "completed").replace("intake|1", "intake|2");
+    let report = v.validate(qr.as_bytes());
+    assert!(report.is_valid(), "{:?}", report.report.issues);
+    let w: Vec<_> = report.report.issues.iter().filter(|i| i.id == "questionnaire.version-mismatch").collect();
+    assert_eq!(w.len(), 1, "{:?}", report.report.issues);
+    assert!(w[0].message.contains("names version 2 but version 1 is loaded"), "{}", w[0].message);
+    assert_eq!(w[0].severity, Severity::Warning);
+}

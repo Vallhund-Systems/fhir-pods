@@ -19,7 +19,8 @@ mod stdio;
 const HELP: &str = "fhir-pods — local FHIR tools
 
 Usage:
-  fhir-pods validate [--outcome] [FILE|-]
+  fhir-pods validate [--outcome] [--questionnaire Q.json]... [FILE|-]
+  fhir-pods gate [--questionnaire Q.json]... FILE...
   fhir-pods lower PROFILE_URL [FILE|-]
   fhir-pods lift PROFILE_URL|\"\" [FILE|-]
   fhir-pods deidentify --policy POLICY_FILE [FILE|-]
@@ -38,12 +39,15 @@ Audit kinds: read, query, create, update, delete; or patient- prefixed variants.
 Export regions: au, us, uk, ca, nz, ips. Input: a JSON object with resources, author, date, and optionally audit.
 Input defaults to stdin. Use -- before positional arguments beginning with -.
 POLICY_FILE may be - only when the resource is read from a file.
---terminology TABLE is accepted by validate, lower, lift, document, audit, export,
+--terminology TABLE is accepted by validate, gate, lower, lift, document, audit, export,
 v2, needs and must-support. TABLE may be - only with a resource file.
+--questionnaire Q.json (repeatable) loads a Questionnaire a response may name; validate and gate.
+gate validates every FILE and prints one report: each file's verdict and error-level
+findings by rule id, and the counts by id over the run (see docs/rules.md).
 slots, profiles and v2 --structure read no stdin. v2 input is ER7 text; other inputs are JSON.
 Results are JSON on stdout. Usage/I/O errors are JSON on stderr.
 Exit 0: valid result (deidentify: no remaining findings; lift: no missing; v2: no unplaced;
-export: every resource, the document and the audit event valid).
+export: every resource, the document and the audit event valid; gate: every file valid).
 Exit 1: invalid result, remaining findings, missing lift slots, unplaced v2 segments, or rejected input.
 Exit 2: command usage, policy/terminology configuration, or I/O failure.
 Warnings, including unresolved terminology, do not change a valid verdict.
@@ -53,11 +57,14 @@ struct Args {
     command: String,
     parameter: Option<String>,
     input: PathBuf,
+    /// `gate`: every input file, in order.
+    inputs: Vec<PathBuf>,
     policy: Option<PathBuf>,
     outcome: bool,
     v2_options: Options,
     structure: Option<String>,
     terminology: Option<PathBuf>,
+    questionnaires: Vec<PathBuf>,
 }
 
 enum Failure {
@@ -73,6 +80,7 @@ fn parse(args: Vec<OsString>) -> Result<Args, Failure> {
     if !matches!(
         command,
         "validate"
+            | "gate"
             | "lower"
             | "lift"
             | "deidentify"
@@ -94,6 +102,7 @@ fn parse(args: Vec<OsString>) -> Result<Args, Failure> {
     let mut code_systems = Vec::new();
     let mut structure = None;
     let mut terminology = None;
+    let mut questionnaires = Vec::new();
     let mut literal = false;
     let mut tail = args[1..].iter();
     while let Some(arg) = tail.next() {
@@ -106,6 +115,10 @@ fn parse(args: Vec<OsString>) -> Result<Args, Failure> {
                 policy = Some(PathBuf::from(tail.next().ok_or_else(|| bad("--policy needs a file path"))?));
             }
             Some("--outcome") if !literal && command == "validate" && !outcome => outcome = true,
+            Some("--questionnaire") if !literal && matches!(command, "validate" | "gate") => {
+                questionnaires
+                    .push(PathBuf::from(tail.next().ok_or_else(|| bad("--questionnaire needs a file path"))?));
+            }
             Some("--terminology") if !literal && !matches!(command, "deidentify" | "slots" | "profiles") => {
                 if terminology.is_some() {
                     return Err(bad("--terminology may only be supplied once"));
@@ -159,9 +172,13 @@ fn parse(args: Vec<OsString>) -> Result<Args, Failure> {
     } else {
         None
     };
-    if positional.len() > 1 {
+    if positional.len() > 1 && command != "gate" {
         return Err(bad("only one input file is accepted"));
     }
+    if command == "gate" && positional.is_empty() {
+        return Err(bad("gate needs at least one input file"));
+    }
+    let inputs: Vec<PathBuf> = positional.iter().map(PathBuf::from).collect();
     if structure.is_some()
         && (!positional.is_empty() || timezone.is_some() || !code_systems.is_empty() || terminology.is_some())
     {
@@ -189,7 +206,62 @@ fn parse(args: Vec<OsString>) -> Result<Args, Failure> {
     if input.as_os_str() == "-" && terminology.as_ref().is_some_and(|p| p.as_os_str() == "-") {
         return Err(bad("resource and terminology cannot both use stdin"));
     }
-    Ok(Args { command: command.into(), parameter, input, policy, outcome, v2_options, structure, terminology })
+    Ok(Args {
+        command: command.into(),
+        parameter,
+        input,
+        inputs,
+        policy,
+        outcome,
+        v2_options,
+        structure,
+        terminology,
+        questionnaires,
+    })
+}
+
+/// Every file validated, one report: per file its verdict and error-level
+/// findings by rule id, and the counts by id over the run. Valid iff every
+/// file is.
+fn gate(
+    inputs: &[PathBuf],
+    validator: &Validator,
+    tx: &dyn fhir_pods_core::terminology::TerminologyProvider,
+) -> Result<(String, bool), Failure> {
+    use std::collections::BTreeMap;
+    let mut files = Vec::new();
+    let mut counts: BTreeMap<&'static str, i64> = BTreeMap::new();
+    let mut all_valid = true;
+    for path in inputs {
+        let bytes = read(path)?;
+        let v = validator.validate_with(&bytes, tx);
+        let valid = v.is_valid();
+        all_valid &= valid;
+        let mut errors = Vec::new();
+        for i in &v.report.issues {
+            if matches!(i.severity, fhir_pods_core::validate::Severity::Error | fhir_pods_core::validate::Severity::Fatal) {
+                *counts.entry(i.id).or_insert(0) += 1;
+                errors.push(Node::Object(vec![
+                    ("id".into(), Node::Str(i.id.into())),
+                    ("path".into(), Node::Str(i.path.clone())),
+                    ("message".into(), Node::Str(i.message.clone())),
+                ]));
+            }
+        }
+        files.push(Node::Object(vec![
+            ("file".into(), Node::Str(path.to_string_lossy().into_owned())),
+            ("resourceType".into(), Node::Str(v.resource_type.clone())),
+            ("valid".into(), Node::Bool(valid)),
+            ("errors".into(), Node::Array(errors)),
+        ]));
+    }
+    let counts = Node::Object(counts.into_iter().map(|(k, n)| (k.into(), Node::Number(n.to_string()))).collect());
+    let out = Node::Object(vec![
+        ("valid".into(), Node::Bool(all_valid)),
+        ("files".into(), Node::Array(files)),
+        ("counts".into(), counts),
+    ]);
+    Ok((out.to_json(), all_valid))
 }
 
 fn read(path: &std::path::Path) -> Result<Vec<u8>, Failure> {
@@ -239,8 +311,16 @@ fn run(args: Args) -> Result<(String, bool), Failure> {
         .transpose()?
         .unwrap_or_default();
     let tx = Chain(&[&Bundled, &table]);
+    let mut validator = Validator::new();
+    for q in &args.questionnaires {
+        if !validator.load_questionnaire(&read(q)?) {
+            return Err(Failure::Usage(format!("{} is not a Questionnaire", q.display())));
+        }
+    }
+    if args.command == "gate" {
+        return gate(&args.inputs, &validator, &tx);
+    }
     let input = read(&args.input)?;
-    let validator = Validator::new();
     let rejected = |error: &dyn std::fmt::Display| Failure::Rejected(error.to_string());
     Ok(match args.command.as_str() {
         "validate" => {

@@ -757,6 +757,7 @@ mod value_sets_table;
 /// The base code systems' content (generated): what a Coding's code is held to.
 pub mod code_systems_table;
 pub mod validate;
+pub mod rules;
 
 pub mod path;
 

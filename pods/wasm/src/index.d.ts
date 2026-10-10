@@ -9,6 +9,8 @@ export interface Issue {
   severity: Severity;
   /** FHIR IssueType code (`required`, `value`, `invariant`, `structure`, `code-invalid`, …). */
   code: string;
+  /** The stable rule id (`binding.no-code`, `inv.cmp-1`, `questionnaire.required-answer`, …) — what to assert on; see docs/rules.md. */
+  id: string;
   /** The element the finding is about, as a dotted path (`Observation.value[x]:valueQuantity.code`). */
   path: string;
   message: string;
@@ -35,7 +37,8 @@ export interface OperationOutcome {
 export interface OperationOutcomeIssue {
   severity: Severity;
   code: string;
-  details?: { text: string };
+  /** `coding` carries the stable rule id under system `urn:fhir-pods:rule`. */
+  details?: { text: string; coding?: { system: string; code: string }[] };
   /** FHIRPath expression(s) locating the finding. */
   expression?: string[];
 }

@@ -49,7 +49,9 @@ pub fn operation_outcome(r: &Report) -> String {
         out.push_str(severity_str(issue.severity));
         out.push_str("\",\"code\":\"");
         out.push_str(issue_type_str(issue.code));
-        out.push_str("\",\"details\":{\"text\":\"");
+        out.push_str("\",\"details\":{\"coding\":[{\"system\":\"urn:fhir-pods:rule\",\"code\":\"");
+        out.push_str(issue.id);
+        out.push_str("\"}],\"text\":\"");
         escape(&mut out, &issue.message);
         out.push_str("\"},\"expression\":[\"");
         escape(&mut out, &expression(&issue.path, issue.code));
@@ -127,6 +129,8 @@ pub fn report(v: &Validation) -> String {
         out.push_str(severity_str(issue.severity));
         out.push_str("\",\"code\":\"");
         out.push_str(issue_type_str(issue.code));
+        out.push_str("\",\"id\":\"");
+        out.push_str(issue.id);
         out.push_str("\",\"path\":\"");
         escape(&mut out, &issue.path);
         out.push_str("\",\"message\":\"");

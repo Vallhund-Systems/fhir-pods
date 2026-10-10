@@ -43,7 +43,7 @@ whether a particular import, export, or transformation is acceptable.
 | --- | --- | --- |
 | **Lift** | Extract a resource's variable data through a compiled profile; use an explicit profile or one declared by the resource | Slot inputs, validation, missing required slots, uncovered paths (`extras`), and fixed-value `conflicts` |
 | **Lower / slots** | Inspect a profile's inputs and build a resource from them, supplying the profile's fixed content | Resource and validation, including unknown inputs, type conflicts, and unmet constraints |
-| **Validate** | Check base R4 structure and supported rules, declared profiles (including nested resources), extension placement, and available terminology | A typed report or FHIR `OperationOutcome`; unsupported checks and unresolved terminology are visible; must-support gaps are available separately |
+| **Validate** | Check base R4 structure and supported rules, declared profiles (including nested resources), extension placement, and available terminology | A typed report or FHIR `OperationOutcome`; every finding carries a stable rule id (`binding.no-code`, `inv.cmp-1`, … — [docs/rules.md](docs/rules.md)) to assert on; unsupported checks and unresolved terminology are visible; must-support gaps are available separately |
 | **De-identify** | Apply the built-in `safe-harbor` policy or host rules: remove or mask identifying fields, reduce date precision, and pseudonymise identifiers and references with a host-supplied salt | Transformed resource, validation, an applied-action trail, remaining checker findings, and free-text sites retained by host rules (`residual`) |
 | **Assemble documents** | Build IPS or AU Patient Summary Bundles with profile-defined sections, generated narrative, and rewritten references | Document, placed and omitted inputs, and validation |
 | **Audit / provenance** | Build IHE BALP audit events for reads, queries, creates, updates, and deletes, with or without patient context; lower `Provenance` and failed-action `AuditEvent` records from base definitions | Resource and validation; the host supplies actors, time, subject, source, and correlation context |
@@ -227,7 +227,7 @@ does not infer a jurisdiction or supply a complete regional compliance regime.
 
 | Surface | Delivery |
 | --- | --- |
-| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.19.4 artifact is 3,006,010 bytes (770,754 bytes gzip-9). [Guide](pods/wasm/README.md) |
+| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.20.0 artifact is 3,024,869 bytes (776,692 bytes gzip-9). [Guide](pods/wasm/README.md) |
 | **Expo** | Native iOS XCFramework and Android jniLibs behind the Expo Modules API. [Guide](pods/expo/README.md) |
 | **Rust / C** | `fhir_pods_core` directly or the shared [ABI 13 header](crates/fhir-pods-ffi/include/fhir_pods.h) |
 | **CLI** | Local JSON/ER7 input, structured output, and exit codes for scripting. [Guide](crates/fhir-pods-cli/README.md) |
@@ -297,6 +297,7 @@ cargo test --workspace                       # unit, integration, and bounded se
 ./scripts/check-no-std.sh                    # bare-metal core build
 JAVA_HOME=<jdk17> python3 conformance/run.py # release conformance gate
 python3 conformance/base.py                 # published R4 regression gate
+target/debug/fhir-pods gate --questionnaire q.json FILE…   # CI / acceptance gate: verdict and findings by rule id, exit 1 on any error
 JAVA_HOME=<jdk17> python3 conformance/mutate.py   # mutation lane: every original under nine mutations
 JAVA_HOME=<jdk17> python3 conformance/gut.py --chain   # gut-path scenario, end to end
 ./scripts/gen-profiles.sh                   # regenerate the registry from pinned packages

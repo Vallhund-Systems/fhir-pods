@@ -1,3 +1,4 @@
 {
-  "qr-answer-not-in-set.json": "both invalid; the oracle also reports the code as unknown in the vendor CodeSystem it has loaded as an IG — the pod carries the value sets as a terminology table, not the code system, so it reports the value-set failure only"
+ "qr-answer-not-in-set.json": "both invalid; the oracle also reports the code as unknown in the vendor CodeSystem it has loaded as an IG \u2014 the pod carries the value sets as a terminology table, not the code system, so it reports the value-set failure only",
+ "consent-research__emptybb-policyRule.coding.json": "both invalid; label depth \u2014 the pod reports ele-1 at the emptied coding, the oracle at its parent concept"
 }

@@ -428,6 +428,22 @@ pub(crate) fn check(
         }
     } else if let Some(q) = loaded.iter().find(|q| q.matches(canonical)) {
         q
+    } else if let Some(other) = loaded.iter().find(|q| q.matches(canonical.split('|').next().unwrap_or(canonical))) {
+        // the same questionnaire is loaded at another version: said, so a
+        // host pinning instrument versions sees the mismatch; not judged
+        // against it (the reference validator resolves by url alone and
+        // judges; a host that wants that loads the version it means)
+        r.push(
+            Severity::Warning,
+            IssueType::BusinessRule,
+            label,
+            format!(
+                "The questionnaire '{canonical}' names version {} but version {} is loaded; the response was not validated against it",
+                canonical.split('|').nth(1).unwrap_or(""),
+                other.version.as_deref().unwrap_or("(none)")
+            ),
+        );
+        return;
     } else if let Some(q) = bundle
         .into_iter()
         .flat_map(|b| items_of(b, "entry"))
