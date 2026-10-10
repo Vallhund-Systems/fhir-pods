@@ -46,24 +46,44 @@ pub mod generated_testcases {
     include!("generated_testcases/mod.rs");
 }
 
-/// The shipped registry, plus the isolated test context in an opt-in build.
-#[cfg(not(feature = "testcase-profiles"))]
-pub use generated::REGISTRY;
+/// A host's own profiles, compiled at build time (`scripts/gen-host-profiles.sh`).
+#[cfg(feature = "host-profiles")]
+#[doc(hidden)]
+pub mod generated_host {
+    include!("generated_host/mod.rs");
+}
 
 #[cfg(feature = "testcase-profiles")]
+const TESTCASE_REGISTRY: &[&CompiledProfile] = generated_testcases::REGISTRY;
+#[cfg(all(feature = "host-profiles", not(feature = "testcase-profiles")))]
+const TESTCASE_REGISTRY: &[&CompiledProfile] = &[];
+#[cfg(feature = "host-profiles")]
+const HOST_REGISTRY: &[&CompiledProfile] = generated_host::REGISTRY;
+#[cfg(all(feature = "testcase-profiles", not(feature = "host-profiles")))]
+const HOST_REGISTRY: &[&CompiledProfile] = &[];
+
+/// The shipped registry, plus the isolated test context and the host's own
+/// profiles in an opt-in build — the shipped profiles first, so a host
+/// profile never shadows a shipped canonical (the generator refuses one).
+#[cfg(not(any(feature = "testcase-profiles", feature = "host-profiles")))]
+pub use generated::REGISTRY;
+
+#[cfg(any(feature = "testcase-profiles", feature = "host-profiles"))]
 pub static REGISTRY: &[&CompiledProfile] = &{
-    let shipped = generated::REGISTRY;
-    let tests = generated_testcases::REGISTRY;
-    let mut profiles = [generated::REGISTRY[0]; generated::REGISTRY.len() + generated_testcases::REGISTRY.len()];
-    let mut i = 0;
-    while i < shipped.len() {
-        profiles[i] = shipped[i];
-        i += 1;
-    }
-    let mut j = 0;
-    while j < tests.len() {
-        profiles[i + j] = tests[j];
-        j += 1;
+    const N: usize = generated::REGISTRY.len() + TESTCASE_REGISTRY.len() + HOST_REGISTRY.len();
+    let mut profiles = [generated::REGISTRY[0]; N];
+    let mut n = 0;
+    let parts: [&[&CompiledProfile]; 3] = [generated::REGISTRY, TESTCASE_REGISTRY, HOST_REGISTRY];
+    let mut p = 0;
+    while p < parts.len() {
+        let part = parts[p];
+        let mut i = 0;
+        while i < part.len() {
+            profiles[n] = part[i];
+            n += 1;
+            i += 1;
+        }
+        p += 1;
     }
     profiles
 };
@@ -756,8 +776,8 @@ mod value_sets_table;
 
 /// The base code systems' content (generated): what a Coding's code is held to.
 pub mod code_systems_table;
-pub mod validate;
 pub mod rules;
+pub mod validate;
 pub mod xhtml;
 
 pub mod path;

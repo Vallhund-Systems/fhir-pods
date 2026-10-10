@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.21.0 — 2026-10-10
+
+**Host profiles, as a build.** A host's own profiles — the gut module's
+score `Observation`, say — compile into the pod the way the shipped registry
+does: `scripts/gen-host-profiles.sh <package dir>` writes
+`src/generated_host` (a stub registry until then), `--features
+host-profiles` merges it after the shipped profiles (the pods' build scripts
+take `FEATURES=host-profiles`), and a canonical the shipped registry already
+holds is refused rather than shadowed. The host package is primary — every
+resource, `Identifier` and complex `Extension` profile in it is compiled —
+and the pinned packages are what it derives from and slices by; a
+dependency profile the generator re-emits for a host slice is pruned, the
+shipped copy serving. Proven end to end in the gut-path lane
+(`conformance/gut.py --host-profile`): a synthetic gut-score profile (code
+pattern, integer value, member, device, derivation) with a snapshot built
+from R4's Observation, compiled into a feature build in its own target dir,
+seven cases judged against validator_cli given the same definition, the
+stub restored afterwards. 7/7 agree.
+
+A fresh review of the first cut shaped the generator: the registry is now
+written only once the whole package checks out (generated into a scratch
+dir, moved into place), the refusals mirror the generator's own rule
+(a constraint with a snapshot on a resource, an `Identifier` or a complex
+`Extension` — a base-resource copy in the package is not refused, a
+differential-only definition is, by name, since it would compile to
+nothing), provenance names the package rather than its path, the host
+profiles' invariant keys get stable rule ids (`tools/gen_rules.py` scans
+the host registry too, and `--reset` restores the shipped set), a release
+ignores an inherited `FEATURES` and checks the pods' passthrough, and the
+lane resets the stub whatever fails. `rust-version = "1.83"` is declared
+(the registry's const reads).
+
+Regions: the Gulf stays on the IPS floor — no FHIR package for NPHIES,
+Malaffi or NABIDH is published on packages.fhir.org or Simplifier as of
+today (`docs/scope.md`). ABI 13 unchanged.
+
 ## 0.20.1 — 2026-10-09
 
 **The narrative is checked.** `txt-1` — the narrative holds to the basic

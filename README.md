@@ -265,7 +265,7 @@ compliance.
 | Supporting-resource tests | **11 of 160** cases compare (the rest are the questionnaire lane's, or need a package, an IG, a validator option, a filter): **9/11** agree, 0 stricter (`conformance/supporting.py`) |
 | HL7 v2 sample messages | **77 of 139** public synthetic messages convert (62 name structures the maps do not cover); every bundle before validator_cli: **77/77** verdicts agree, **74/77** on every error, 0 stricter — and all 77 are invalid on both sides, for reasons the lane lists (`conformance/v2samples.py`) |
 | Mutation lane | **19,067/19,067** derived files agree on the verdict at v0.19.4 — every release-corpus original under nine fixed mutations (drop, code-less and text-only concept, wrong JSON type, empty backbone, bad enum, null primitive, empty string, bad and bare reference, orphan extension), lenient cases first; 0 untriaged (`conformance/mutate.py`) |
-| Gut-path scenario | **71/71** agree at v0.19.4 — a synthetic sixteen-part instrument with its own code systems and value sets, responses held to it, the derived chain (observations, alarm flag, clinician summary, referral, research consent, export bundle, audit event), then lifted and lowered, de-identified and exported for the AU region; judged three ways with the definitions loaded into the oracle as an IG folder (`conformance/gut.py`) |
+| Gut-path scenario | **71/71** agree at v0.19.4 — a synthetic sixteen-part instrument with its own code systems and value sets, responses held to it, the derived chain (observations, alarm flag, clinician summary, referral, research consent, export bundle, audit event), then lifted and lowered, de-identified and exported for the AU region; judged three ways with the definitions loaded into the oracle as an IG folder (`conformance/gut.py`); `--host-profile` (0.21.0) compiles the scenario's own score profile into a feature build and judges 7 more cases against the oracle given the same definition |
 | Synthea cohort | **14/14** bundles (10 seeded patients + hospital + practitioner, 27.3 MB, 9,482 US Core entries) agree on the verdict and on every error-level issue; the pod validates the whole cohort in 3.96 s (6.9 MB/s; largest bundle 9.7 MB in 1.48 s). Larger cohorts wait on batching the oracle (`conformance/synthea.py`) |
 | Ad-hoc profile tests | **10 of 53** cases compare: **9/10** agree with Java and **7/7** with Firely where available; other cases have compiler, snapshot, or manifest exclusions |
 
@@ -306,6 +306,35 @@ JAVA_HOME=<jdk17> python3 conformance/gut.py --chain   # gut-path scenario, end 
 (cd pods/wasm && npm test)                   # exercise the JS wrapper
 ./scripts/release.sh                        # package artifacts with SHA256SUMS
 ```
+
+### Host profiles
+
+A host's own profiles — a gut-score `Observation`, a programme's
+`QuestionnaireResponse` constraints — are compiled into the pod at build
+time, the same way the shipped registry is, and selected by declaration
+(`meta.profile`) like any shipped profile:
+
+```bash
+./scripts/gen-host-profiles.sh path/to/your/package     # StructureDefinitions with snapshots, as JSON
+cargo build --features host-profiles                    # core / cli
+FEATURES=host-profiles ./scripts/build-wasm.sh          # the pods (ios / android likewise)
+./scripts/gen-host-profiles.sh --reset                  # back to the stub
+```
+
+The host package is primary: every resource profile, `Identifier` and
+complex `Extension` profile in it is compiled; the pinned packages are what
+it may derive from and slice by (AU Core, US Core, IPS, …). The registry is
+written only when the whole package compiles: a profile the shipped registry
+already holds is refused (the shipped one comes first in the registry, so it
+could never shadow it anyway), and a definition without a snapshot is refused
+by name — a differential alone compiles to nothing. The profiles' own
+invariant keys get stable rule ids (`inv.<key>`) in the host build, as the
+shipped ones do. Host value sets and code systems are not bundled: give them
+to the pod as a terminology table (`tools/compile_valueset.py`) or a
+terminology provider.
+The gut-path lane proves the whole path (`conformance/gut.py
+--host-profile`): a synthetic score profile compiled into a feature build
+and judged against validator_cli with the same definition.
 
 ## License
 

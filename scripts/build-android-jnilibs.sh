@@ -5,6 +5,7 @@
 #
 #   ANDROID_HOME=~/Library/Android/sdk ./scripts/build-android-jnilibs.sh
 #   → pods/expo/android/src/main/jniLibs/{arm64-v8a,x86_64}/libfhir_pods_ffi.so
+# FEATURES="host-profiles" builds the host's own compiled profiles in (scripts/gen-host-profiles.sh).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -29,7 +30,7 @@ build() { # <rust target> <abi> <clang triple prefix>
   local target="$1" abi="$2" triple="$3"
   local var="CARGO_TARGET_$(echo "$target" | tr '[:lower:]-' '[:upper:]_')_LINKER"
   echo "==> $abi ($target)"
-  env "$var=$BIN/$triple$API-clang" cargo build -q -p fhir-pods-ffi --release --target "$target"
+  env "$var=$BIN/$triple$API-clang" cargo build -q -p fhir-pods-ffi --release --target "$target" ${FEATURES:+--features "$FEATURES"}
   mkdir -p "$DEST/$abi"
   cp "$ROOT/target/$target/release/libfhir_pods_ffi.so" "$DEST/$abi/"
   echo "    $(wc -c < "$DEST/$abi/libfhir_pods_ffi.so" | tr -d ' ') bytes"

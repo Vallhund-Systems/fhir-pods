@@ -165,6 +165,8 @@ def main():
     ap.add_argument("--mutate", action="store_true")
     ap.add_argument("--chain", action="store_true",
                     help="also derive the chain: lowered copies, de-identified copies, the AU export")
+    ap.add_argument("--host-profile", action="store_true",
+                    help="also compile the scenario's own Observation profile into the pod (a host's build) and judge the score against it")
     ap.add_argument("--filter")
     a = ap.parse_args()
     make_gut.main()
@@ -173,6 +175,11 @@ def main():
     manifest = json.load(open(os.path.join(CASES, "manifest.json")))
     meta = {c["file"]: c for c in manifest}
     paths = [os.path.join(CASES, c["file"]) for c in manifest if not a.filter or a.filter in c["file"]]
+    host_paths = []
+    if a.host_profile:
+        host = json.load(open(os.path.join(make_gut.HOST_CASES, "manifest.json")))
+        meta.update({c["file"]: c for c in host})
+        host_paths = [os.path.join(make_gut.HOST_CASES, c["file"]) for c in host if not a.filter or a.filter in c["file"]]
     if a.mutate:
         import mutate
         mdir = os.path.join(OUT, "mutations")
@@ -192,16 +199,29 @@ def main():
     if a.chain:
         paths += chain_stage(probe, manifest, meta)
     cache = os.path.join(OUT, "_oracle.json")
-    if a.reuse_oracle and os.path.exists(cache):
-        oracle = json.load(open(cache))
-    else:
+    oracle = json.load(open(cache)) if a.reuse_oracle and os.path.exists(cache) else {}
+    # the oracle runs on what the cache lacks (everything, without --reuse-oracle)
+    wanted = paths + host_paths
+    missing = [p for p in wanted if os.path.basename(p) not in oracle]
+    if missing:
         run.IGS = run.IGS + [DEFS]  # the scenario's definitions, as an IG folder
         run.CORPUS = OUT
-        oracle = {}
-        for i in range(0, len(paths), 800):
-            oracle.update({k: [v[0], v[1], sorted(v[2])] for k, v in run.oracle_batch(paths[i:i + 800]).items()})
+        for i in range(0, len(missing), 800):
+            oracle.update({k: [v[0], v[1], sorted(v[2])] for k, v in run.oracle_batch(missing[i:i + 800]).items()})
         json.dump(oracle, open(cache, "w"))
     rows = judge(probe, paths, meta, oracle)
+    if a.host_profile:
+        # the host's build: its package compiled into the registry, a probe
+        # with the feature in its own target dir (the default probe stays
+        # what it is), the stub restored afterwards whatever happens
+        try:
+            subprocess.check_call([os.path.join(ROOT, "scripts", "gen-host-profiles.sh"), make_gut.PKG], cwd=ROOT, stdout=subprocess.DEVNULL)
+            subprocess.check_call(["cargo", "build", "-q", "-p", "fhir-pods-core", "--example", "probe", "--features", "host-profiles",
+                                   "--target-dir", os.path.join(ROOT, "target", "host-profiles")], cwd=ROOT)
+            host_probe = os.path.join(ROOT, "target", "host-profiles", "debug", "examples", "probe")
+            rows += judge(host_probe, host_paths, meta, oracle)
+        finally:
+            subprocess.check_call([os.path.join(ROOT, "scripts", "gen-host-profiles.sh"), "--reset"], cwd=ROOT, stdout=subprocess.DEVNULL)
     triage = json.load(open(TRIAGE)) if os.path.exists(TRIAGE) else {}
     counts = {}
     for r in rows:

@@ -1,0 +1,6 @@
+// The host's own compiled profiles — a stub until scripts/gen-host-profiles.sh
+// writes the registry for a host package (see README, "Host profiles"). Built
+// in with `--features host-profiles`; the shipped registry stays as it is.
+use crate::compiled::CompiledProfile;
+
+pub static REGISTRY: &[&CompiledProfile] = &[];

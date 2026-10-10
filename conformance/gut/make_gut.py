@@ -349,6 +349,72 @@ def observation(oid, code, value, derived="QuestionnaireResponse/qr-full"):
     return o
 
 
+PKG = os.path.join(OUT, "pkg", "package")
+HOST_CASES = os.path.join(OUT, "host-cases")
+PROFILE_URL = f"{BASE}/StructureDefinition/gut-triage-score"
+R4_OBSERVATION = os.path.join(HERE, "..", "package-r4", "package", "StructureDefinition-Observation.json")
+
+
+def host_profile():
+    """The host's own profile on the score: a gut-score Observation carries
+    the score code, an integer value, a member and the module that computed
+    it. Compiled into the pod at build time (scripts/gen-host-profiles.sh)
+    and given to the oracle as an IG definition — the snapshot is R4's
+    Observation with the differential applied, the way a publisher would."""
+    diff = [
+        {"id": "Observation", "path": "Observation"},
+        {"id": "Observation.code", "path": "Observation.code",
+         "patternCodeableConcept": {"coding": [{"system": CS_OBS, "code": "triage-score"}]}},
+        {"id": "Observation.subject", "path": "Observation.subject", "min": 1,
+         "type": [{"code": "Reference", "targetProfile": ["http://hl7.org/fhir/StructureDefinition/Patient"]}]},
+        {"id": "Observation.value[x]", "path": "Observation.value[x]", "min": 1, "type": [{"code": "integer"}]},
+        {"id": "Observation.derivedFrom", "path": "Observation.derivedFrom", "min": 1},
+        {"id": "Observation.device", "path": "Observation.device", "min": 1,
+         "type": [{"code": "Reference", "targetProfile": ["http://hl7.org/fhir/StructureDefinition/Device"]}]},
+    ]
+    base = json.load(open(R4_OBSERVATION))
+    snapshot = json.loads(json.dumps(base["snapshot"]["element"]))
+    by_id = {e["id"]: e for e in snapshot}
+    for d in diff:
+        e = by_id[d["id"]]
+        for k, v in d.items():
+            if k not in ("id", "path"):
+                e[k] = v
+    return {
+        "resourceType": "StructureDefinition", "id": "gut-triage-score", "url": PROFILE_URL, "version": "1.0.0",
+        "name": "GutTriageScore", "title": "Gut triage score", "status": "active", "fhirVersion": "4.0.1",
+        "kind": "resource", "abstract": False, "type": "Observation",
+        "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Observation", "derivation": "constraint",
+        "differential": {"element": diff}, "snapshot": {"element": snapshot},
+    }
+
+
+def host_cases():
+    """The score held to the host's profile — by declaration only."""
+    def scored(oid, **changes):
+        o = observation(oid, "triage-score", {"valueInteger": 19})
+        o["meta"] = {"profile": [PROFILE_URL]}
+        o["device"] = {"reference": "Device/gut-module"}
+        for k, v in changes.items():
+            if v is None:
+                o.pop(k, None)
+            else:
+                o[k] = v
+        return o
+    cases = [
+        ("host-score-ok", scored("hs-1"), True, "the score as the host profile requires it"),
+        ("host-score-wrong-code", scored("hs-2", code={"coding": [coding(CS_OBS, "stool-form", "Stool form, Bristol scale")]}),
+         False, "the profile fixes the code to the score"),
+        ("host-score-string-value", scored("hs-3", valueInteger=None, valueString="19"), False, "the profile allows only an integer value"),
+        ("host-score-no-device", scored("hs-4", device=None), False, "the profile requires the module as the device"),
+        ("host-score-no-subject", scored("hs-5", subject=None), False, "the profile requires the member"),
+        ("host-score-no-derivation", scored("hs-6", derivedFrom=None), False, "the profile requires the response it derives from"),
+    ]
+    undeclared = observation("hs-7", "stool-form", {"valueString": "x"})
+    cases.append(("host-score-undeclared", undeclared, True, "without the declaration the base Observation applies"))
+    return cases
+
+
 def patient():
     return {
         "resourceType": "Patient", "id": "p1",
@@ -548,7 +614,22 @@ def main():
     add("bundle-export", export_bundle(full, [score, stool, severity]), True, "the research export collection")
     add("auditevent-export", audit_event(), True, "the export audit record", False)
     json.dump(cases, open(os.path.join(CASES, "manifest.json"), "w"), indent=1)
-    print(f"wrote {len(defs)} definitions, {len(cases)} cases")
+    # the host's profile: a package dir for the pod's build, a definition for the oracle
+    os.makedirs(PKG, exist_ok=True)
+    os.makedirs(HOST_CASES, exist_ok=True)
+    for f in os.listdir(HOST_CASES):
+        os.remove(os.path.join(HOST_CASES, f))
+    sd = host_profile()
+    json.dump(sd, open(os.path.join(PKG, "StructureDefinition-gut-triage-score.json"), "w"), indent=1)
+    json.dump(sd, open(os.path.join(DEFS, "StructureDefinition-gut-triage-score.json"), "w"), indent=1)
+    json.dump({"name": "example.gut.module", "version": "1.0.0", "fhirVersions": ["4.0.1"],
+               "dependencies": {"hl7.fhir.r4.core": "4.0.1"}}, open(os.path.join(PKG, "package.json"), "w"), indent=1)
+    hosts = []
+    for name, resource, expect, why in host_cases():
+        json.dump(resource, open(os.path.join(HOST_CASES, f"{name}.json"), "w"), indent=1)
+        hosts.append({"file": f"{name}.json", "expect": expect, "why": why, "questionnaire": False})
+    json.dump(hosts, open(os.path.join(HOST_CASES, "manifest.json"), "w"), indent=1)
+    print(f"wrote {len(defs)} definitions, {len(cases)} cases, a host profile and {len(hosts)} host cases")
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@
 #
 # Run on macOS with Xcode installed:
 #   ./scripts/build-ios-xcframework.sh
+# FEATURES="host-profiles" builds the host's own compiled profiles in (scripts/gen-host-profiles.sh).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -17,8 +18,8 @@ echo "==> ensuring iOS targets"
 rustup target add aarch64-apple-ios aarch64-apple-ios-sim >/dev/null
 
 echo "==> building device + simulator slices (release)"
-cargo build -p "$CRATE" --release --target aarch64-apple-ios
-cargo build -p "$CRATE" --release --target aarch64-apple-ios-sim
+cargo build -p "$CRATE" --release --target aarch64-apple-ios ${FEATURES:+--features "$FEATURES"}
+cargo build -p "$CRATE" --release --target aarch64-apple-ios-sim ${FEATURES:+--features "$FEATURES"}
 
 echo "==> assembling XCFramework"
 rm -rf "$XCF"

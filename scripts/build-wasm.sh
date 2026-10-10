@@ -4,6 +4,7 @@
 #
 #   ./scripts/build-wasm.sh
 #   → pods/wasm/dist/fhir_pods.wasm
+# FEATURES="host-profiles" builds the host's own compiled profiles in (scripts/gen-host-profiles.sh).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -14,7 +15,7 @@ echo "==> ensuring wasm32 target"
 rustup target add wasm32-unknown-unknown >/dev/null
 
 echo "==> building (release, opt-level z, lto, panic=abort)"
-cargo build -q -p fhir-pods-ffi --release --target wasm32-unknown-unknown
+cargo build -q -p fhir-pods-ffi --release --target wasm32-unknown-unknown ${FEATURES:+--features "$FEATURES"}
 
 mkdir -p "$DIST"
 if command -v wasm-opt >/dev/null 2>&1; then

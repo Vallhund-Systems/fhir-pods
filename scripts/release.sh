@@ -5,6 +5,7 @@
 #
 #   ./scripts/release.sh            # → dist/<version>/
 set -euo pipefail
+unset FEATURES   # a release ships the shipped registry only; host builds set FEATURES themselves
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' "$ROOT/crates/fhir-pods-core/Cargo.toml" | head -1)"
@@ -24,6 +25,8 @@ git -C "$ROOT" grep -Il -iE "$WALL" -- . >/dev/null 2>&1 && { echo "clean-room c
 
 echo "==> tests"
 (cd "$ROOT" && cargo test -q --workspace >/dev/null)
+(cd "$ROOT" && cargo check -q -p fhir-pods-core --features host-profiles)   # the host-profile stub still builds
+(cd "$ROOT" && cargo check -q -p fhir-pods-ffi --features host-profiles)    # and the pods' passthrough
 "$ROOT/scripts/check-no-std.sh" >/dev/null
 "$ROOT/scripts/smoke-c.sh" >/dev/null
 
@@ -45,9 +48,10 @@ echo "==> $DIST"
 ls -la "$DIST" | sed 's/^/    /'
 
 # The cross-target builds exist only to be packed: once packed they are
-# ~12 GB of dead weight per release, and cargo never collects them. The host
-# profiles (debug, release) stay — the next test run reuses them.
+# ~12 GB of dead weight per release, and cargo never collects them. The native
+# debug and release profiles stay — the next test run reuses them; the gut
+# lane's host-profile build (target/host-profiles) goes with the rest.
 echo "==> sweeping the packed cross-target builds"
-rm -rf "$ROOT"/target/{wasm32-unknown-unknown,aarch64-apple-ios,aarch64-apple-ios-sim,aarch64-linux-android,x86_64-linux-android,thumbv7em-none-eabi,doc}
+rm -rf "$ROOT"/target/{wasm32-unknown-unknown,aarch64-apple-ios,aarch64-apple-ios-sim,aarch64-linux-android,x86_64-linux-android,thumbv7em-none-eabi,doc,host-profiles}
 echo "    target/ is now $(du -sh "$ROOT/target" | cut -f1) — 'cargo clean' when the debug profile has grown past a few GB"
 echo "==> tag with: git tag -a v$VERSION -m 'fhir-pods $VERSION'"

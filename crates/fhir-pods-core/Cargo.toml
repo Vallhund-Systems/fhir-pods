@@ -1,7 +1,8 @@
 [package]
 name = "fhir-pods-core"
-version = "0.20.1"
+version = "0.21.0"
 edition = "2021"
+rust-version = "1.87"   # const reads of the registry statics (1.83), usize::is_multiple_of (1.87)
 license = "MIT"
 description = "Embeddable compliance runtime for health applications: FHIR lift/lower, validation, de-identification, documents, audit, and HL7 v2."
 publish = false
@@ -9,6 +10,9 @@ publish = false
 [features]
 # Opt-in conformance build only; prepared by conformance/testcase_profiles.py.
 testcase-profiles = []
+# A host's own profiles, compiled at build time by scripts/gen-host-profiles.sh
+# into src/generated_host (a stub registry until then) and merged into REGISTRY.
+host-profiles = []
 
 [dependencies]
 # Intentionally zero external dependencies: the JSON parser, the FHIRPath and

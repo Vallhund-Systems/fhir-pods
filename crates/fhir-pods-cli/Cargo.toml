@@ -1,7 +1,8 @@
 [package]
 name = "fhir-pods-cli"
-version = "0.20.1"
+version = "0.21.0"
 edition = "2021"
+rust-version = "1.87"   # const reads of the registry statics (1.83), usize::is_multiple_of (1.87)
 license = "MIT"
 description = "Local CLI for the fhir-pods compliance runtime: FHIR lift/lower, validation, de-identification, documents, audit, and HL7 v2."
 publish = false
@@ -12,3 +13,7 @@ path = "src/main.rs"
 
 [dependencies]
 fhir-pods-core = { path = "../fhir-pods-core" }
+
+[features]
+# A host's own profiles, compiled at build time (scripts/gen-host-profiles.sh).
+host-profiles = ["fhir-pods-core/host-profiles"]

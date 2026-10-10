@@ -435,6 +435,19 @@ harder. The mustSupport-only and non-required-binding-only element
 constraints (610) are not slices and carry nothing to enforce; they
 surface through `mustSupportGaps`.
 
+## Host profiles and regions
+
+A host's own profiles are compiled at build time (`scripts/gen-host-profiles.sh`,
+`--features host-profiles`), not loaded at run time: the compiler is the
+Python generator over a snapshot, and a runtime loader would be a second
+compiler to keep bug-for-bug with it. The gut-path lane proves the path end
+to end with a synthetic score profile (0.21.0). Export regions are AU, US, UK,
+CA, NZ and the IPS floor. The Gulf — Dubai (Malaffi / NABIDH) and Saudi
+(NPHIES) — gets the IPS floor until a FHIR package exists to compile: as of
+2026-10-10 neither packages.fhir.org nor Simplifier lists one, and the NPHIES
+publication site does not answer; a region is a package in `PRIMARIES` plus
+an export mapping, the way `uk`/`ca`/`nz` came in 0.13.0.
+
 ## What we skip, never guess
 
 - FHIRPath outside the supported core: `memberOf`, equivalence `~`,

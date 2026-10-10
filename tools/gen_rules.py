@@ -18,10 +18,13 @@ typemap = open(os.path.join(src, "typemap.rs")).read()
 tables = typemap[typemap.index("pub static DOMAIN_INVARIANTS"):typemap.index("pub static BASE_BINDINGS")]
 keys |= set(re.findall(r'"([a-z][a-z0-9]*(?:-[a-z0-9]+)*-\d+[a-z]?)"', tables))
 # every compiled profile's keys, verbatim (`pvc2`, `hasMemberOrComponent` included)
-gen = os.path.join(src, "generated")
-for name in os.listdir(gen):
-    if name.endswith(".rs"):
-        keys |= set(re.findall(r'key: "([^"]+)"', open(os.path.join(gen, name)).read()))
+# (a host's own compiled profiles too, so their keys get stable ids in a host build)
+for gen in (os.path.join(src, "generated"), os.path.join(src, "generated_host")):
+    if not os.path.isdir(gen):
+        continue
+    for name in os.listdir(gen):
+        if name.endswith(".rs"):
+            keys |= set(re.findall(r'key: "([^"]+)"', open(os.path.join(gen, name)).read()))
 # the walk's own
 keys |= {"ele-1", "ext-1", "dom-2", "dom-3", "dom-4", "dom-5", "dom-6", "ref-1", "txt-1", "txt-2", "bdl-1", "bdl-2",
          "bdl-3", "bdl-4", "bdl-7", "bdl-9", "bdl-10", "bdl-11", "bdl-12"}
