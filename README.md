@@ -259,7 +259,7 @@ compliance.
 | Lane | Latest recorded result |
 | --- | --- |
 | Release corpus | **1,766/1,766** verdicts agree at v0.15.0 (UK Core and NZ Base examples, six regions' export outputs, the base's binding fixtures); `conformance/reasons.py` puts every error-level issue side by side — three triaged residues on 1,766 files |
-| Published R4 examples | **5,130/5,290** compared verdicts agree; **160** reviewed lenient differences; **2** explicit oracle exclusions out of 5,292 selected inputs; no stricter verdicts |
+| Published R4 examples | **5,156/5,290** compared verdicts agree; **134** reviewed lenient differences; **2** explicit oracle exclusions out of 5,292 selected inputs; no stricter verdicts |
 | Published validator base tests | **63/84** agree with stored Java outcomes; **13/20** with stored Firely outcomes; differences are reviewed individually |
 | Questionnaire tests | **81 of 96** R4 JSON cases compare (the rest name an SDC package, a launch context or a validator policy option): **74/81** verdicts agree and **73/81** agree on every error-level issue; the 8 reviewed differences are terminology-server, display-name and attachment-integrity families (`conformance/questionnaire.py`) |
 | Supporting-resource tests | **11 of 160** cases compare (the rest are the questionnaire lane's, or need a package, an IG, a validator option, a filter): **9/11** agree, 0 stricter (`conformance/supporting.py`) |

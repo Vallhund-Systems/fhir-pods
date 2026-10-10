@@ -289,44 +289,6 @@ fn urn_ok(s: &str) -> bool {
     true
 }
 
-/// txt-2: does the narrative's xhtml carry any text that is not whitespace
-/// (tags and comments aside; `&nbsp;` is whitespace; an image counts)?
-fn narrative_has_content(div: &str) -> bool {
-    let mut rest = div;
-    while !rest.is_empty() {
-        if let Some(after) = rest.strip_prefix("<!--") {
-            rest = after.find("-->").map(|i| &after[i + 3..]).unwrap_or("");
-            continue;
-        }
-        if let Some(after) = rest.strip_prefix('<') {
-            // an image is content of its own
-            if after.starts_with("img") && after.as_bytes().get(3).is_none_or(|b| b.is_ascii_whitespace() || *b == b'/')
-            {
-                return true;
-            }
-            rest = after.find('>').map(|i| &after[i + 1..]).unwrap_or("");
-            continue;
-        }
-        if let Some(after) = rest.strip_prefix('&') {
-            let (entity, tail) = match after.find(';') {
-                Some(i) if i <= 8 => (&after[..i], &after[i + 1..]),
-                _ => ("", after),
-            };
-            if !matches!(entity, "nbsp" | "#160" | "#xa0" | "#xA0" | "") {
-                return true;
-            }
-            rest = tail;
-            continue;
-        }
-        let c = rest.chars().next().unwrap();
-        if !c.is_whitespace() {
-            return true;
-        }
-        rest = &rest[c.len_utf8()..];
-    }
-    false
-}
-
 /// The items an element's value stands for: the array's items when it
 /// repeats, the value itself otherwise — or the shape error.
 fn items_of<'x, 'a>(value: &'x Value<'a>, repeats: bool, path: &str) -> Result<Vec<&'x Value<'a>>, Gap> {
@@ -416,7 +378,7 @@ struct Walk<'v, 'a, 't> {
     /// a local reference (`#id`) must name (ref-1) is the contained of the
     /// nearest resource that is not — `%rootResource`'s, as the invariant
     /// reads — never of a resource nested inside a contained one.
-    contained: Vec<(bool, Vec<alloc::string::String>)>,
+    contained: Vec<(bool, Vec<alloc::string::String>, Option<alloc::string::String>)>,
     /// Every object on the way down (root first): its typing context (a
     /// resource type, a datatype, a backbone path, `Element` for a
     /// primitive's carrier) and the JSON key it was reached by — what an
@@ -994,7 +956,12 @@ fn structure_object<'v, 'a>(
                 .collect(),
             _ => Vec::new(),
         };
-        w.contained.push((contained, ids));
+        // the resource's own id: a narrative fragment resolves to it (probed)
+        let own = kvs.iter().find(|(k, _)| k.as_ref() == "id").and_then(|(_, v)| match v {
+            Value::Str(s) => Some(alloc::string::String::from(s.as_ref())),
+            _ => None,
+        });
+        w.contained.push((contained, ids, own));
         if w.profiled.last() == Some(&false) {
             for child in crate::typing::required_resource_children(ctx) {
                 if !has(child) {
@@ -1069,7 +1036,7 @@ fn structure_object<'v, 'a>(
         }
         if let Some((_, Value::Str(r))) = kvs.iter().find(|(k, _)| k.as_ref() == "reference") {
             if let Some(local) = r.strip_prefix('#') {
-                let root_ids = w.contained.iter().rev().find(|(inside, _)| !inside).map(|(_, ids)| ids.as_slice());
+                let root_ids = w.contained.iter().rev().find(|(inside, _, _)| !inside).map(|(_, ids, _)| ids.as_slice());
                 if !local.is_empty() && !root_ids.is_some_and(|ids| ids.iter().any(|id| id == local)) {
                     w.gaps.push((
                         alloc::format!("{path}.reference"),
@@ -1129,15 +1096,36 @@ fn structure_object<'v, 'a>(
             }
         }
     }
-    // txt-2: a narrative says something — its xhtml has text beyond
-    // whitespace, tags and comments
+    // the narrative's xhtml, as the reference validator holds it: txt-1
+    // (only the elements and attributes a narrative allows, well-formed,
+    // a div in the XHTML namespace) with the parser's own findings beside
+    // it, and txt-2 (text beyond whitespace, tags and comments — an image
+    // counts, an entity counts, CDATA does not)
     if ctx == "Narrative" {
         if let Some((_, Value::Str(div))) = kvs.iter().find(|(k, _)| k.as_ref() == "div") {
-            if !narrative_has_content(div) {
+            // a `#fragment` resolves to the resource's own id and its contained resources' ids too
+            let known: Vec<&str> = w
+                .contained
+                .last()
+                .map(|(_, ids, own)| ids.iter().map(|s| s.as_str()).chain(own.as_deref()).collect())
+                .unwrap_or_default();
+            let crate::xhtml::Inspection { findings, has_text } =
+                crate::xhtml::inspect(div, &alloc::format!("{path}.div"), &known);
+            if findings.iter().any(|f| f.txt1) {
                 w.gaps.push((
                     alloc::format!("{path}.div"),
                     Invariant,
-                    alloc::format!("txt-2: {path}.div must have some non-whitespace content"),
+                    alloc::string::String::from("txt-1: The narrative SHALL contain only the basic html formatting elements and attributes described in chapters 7-11 (except section 4 of chapter 9) and 15 of the HTML 4.0 standard, <a> elements (either name or href), images and internally contained style attributes"),
+                ));
+            }
+            for f in findings {
+                w.gaps.push((alloc::format!("{path}.div"), Structure, f.message));
+            }
+            if !has_text {
+                w.gaps.push((
+                    alloc::format!("{path}.div"),
+                    Invariant,
+                    alloc::string::String::from("txt-2: The narrative SHALL have some non-whitespace content"),
                 ));
             }
         }

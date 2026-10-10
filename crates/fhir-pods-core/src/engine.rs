@@ -363,7 +363,18 @@ fn contained_orphans<D: Document>(label: &str, doc: &D, scope: &Scope<'_, D>, r:
             Ok(e) => path::check_constraint_in(&e, ctx, None, Some(scope.root), scope.bundle),
             Err(_) => Verdict::Unsupported,
         };
+        // a narrative link to it (`<a href="#id">`, `<img src="#id">`) is a
+        // reference too, from the resource's narrative or a section's (probed)
+        let linked = || {
+            ["$this.text.div", "$this.section.text.div", "$this.section.section.text.div"]
+                .iter()
+                .flat_map(|sel| doc.scalars(sel))
+                .any(|div| crate::xhtml::fragments(div).iter().any(|f| *f == id))
+        };
         if let (Verdict::Fail, Verdict::Fail) = (verdict(&referenced, doc), verdict(refers_back, contained)) {
+            if linked() {
+                continue;
+            }
             r.push(
                 Severity::Error,
                 IssueType::Invariant,
@@ -377,6 +388,12 @@ fn contained_orphans<D: Document>(label: &str, doc: &D, scope: &Scope<'_, D>, r:
 }
 
 fn check_invariant<D: Document>(inv: &ProfileInvariant, label: &str, doc: &D, scope: &Scope<'_, D>, r: &mut Report) {
+    // the walk checks every Narrative.div for txt-1 and txt-2 (a profile
+    // restating them would report each twice — and R4's txt-2 expression is
+    // `htmlChecks()`, which would fail a narrative full of text)
+    if inv.key == "txt-1" || inv.key == "txt-2" {
+        return;
+    }
     if inv.key == "dom-3" {
         if let Some(done) = scope.evaluated {
             let mut done = done.done.borrow_mut();

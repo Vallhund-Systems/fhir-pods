@@ -163,8 +163,9 @@ case; resource `id` and `code` lexical rules. Taken in v0.9.1: every HL7 extensi
 resources, `regex` allowed on `ElementDefinition.type` as the reference
 validator allows it); the base code systems' codes; a code under
 `urn:ietf:rfc:3986` is a URI. Taken in v0.9.0: a canonical must be absolute
-unless it is a fragment; a narrative must say something (txt-2: text beyond
-whitespace, tags, comments and `&nbsp;`); `base64Binary` is the alphabet
+unless it is a fragment; a narrative must say something (txt-2: decoded text
+beyond a Java trim, or an image — since 0.20.1 read from the same parse as
+txt-1); `base64Binary` is the alphabet
 with padding at the end only; a `urn:uuid:` is a lowercase UUID and a
 `urn:oid:` an OID; a transaction-response's or batch-response's entries
 need no `fullUrl`.
@@ -436,12 +437,20 @@ surface through `mustSupportGaps`.
 
 ## What we skip, never guess
 
-- FHIRPath outside the supported core: `htmlChecks()` (xhtml validity),
-  `memberOf`, equivalence `~`, decimal arithmetic. (`resolve()` resolves
-  inside the resource and its bundle — `#id`, `fullUrl`, `Type/id` — and
-  string concatenation `&` is supported, since 0.5.0.)
+- FHIRPath outside the supported core: `memberOf`, equivalence `~`,
+  decimal arithmetic. (`resolve()` resolves inside the resource and its
+  bundle — `#id`, `fullUrl`, `Type/id` — and string concatenation `&` is
+  supported, since 0.5.0; `htmlChecks()` since 0.20.1 — the narrative's
+  XHTML as the reference validator holds it, every rule probed: its
+  element and attribute lists, the content model, XML's own entities (an
+  HTML entity name is an invalid entity, any other a parse failure), the
+  hyperlink rules on the decoded value, a `div` root with every element in
+  the XHTML namespace, its nesting limit of 500, its tolerances. The
+  parser's findings are errors of their own beside `txt-1`, as the
+  reference validator reports them; the one difference left is the text
+  of a Java exception it reports for an empty processing instruction.)
   Every one of the registry's invariant expressions parses and, on a typed
-  resource, evaluates — except the two above (`txt-1`/`txt-2`, `ctm-1`).
+  resource, evaluates — except `ctm-1`.
   Type tests and casts (`is`, `as`, `ofType`) resolve against the element's
   FHIR type — the profile's declared type for the invariant's own element,
   the element-type table for everything else (root `resourceType`, then key

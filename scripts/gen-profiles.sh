@@ -40,6 +40,7 @@ rm -f "$OUT"/*.rs
 python3 "$ROOT/tools/gen_all.py" --primaries "${#PRIMARIES[@]}" --base "$R4" "$OUT" "$PROVENANCE" "${PRIMARIES[@]}" "${DEPS[@]}"
 python3 "$ROOT/tools/gen_typemap.py" "$R4" "$OUT" "$ROOT/crates/fhir-pods-core/src/typemap.rs"
 python3 "$ROOT/tools/gen_rules.py" "$ROOT/crates/fhir-pods-core/src"   # every invariant key → its stable rule id
+python3 "$ROOT/tools/gen_xhtml_entities.py"                          # the HTML entity names the narrative check refuses
 python3 "$ROOT/tools/gen_rules_doc.py"                                 # docs/rules.md from the RULES table
 python3 "$ROOT/tools/gen_valuesets.py" "$OUT" "$ROOT/crates/fhir-pods-core/src/value_sets_table.rs" "$R4" "${PRIMARIES[@]}" "${DEPS[@]}" "$THO"
 # every definition the packages hold under HL7's own URL spaces (a `uri` there that names nothing is an error)

@@ -31,7 +31,6 @@
     "cql-validation": "CQL library availability and compiled expressions are not checked.",
     "definition-resolution": "The pod does not resolve external canonical definitions for these definition resources.",
     "terminology-filter": "The pod does not validate terminology definition filters against a terminology service.",
-    "xhtml-reference": "Narrative hyperlink and image-fragment resolution is outside the current XHTML checks.",
     "terminology-display": "Supplied terminology display text is not checked against reference terminology.",
     "profile-invariant": "The definition/resource invariant reported by the oracle is not evaluated by the pod.",
     "bundle-reference": "The oracle applies additional Bundle-relative reference identity rules.",
@@ -108,24 +107,6 @@
         "code-system-definition"
       ]
     },
-    "CodeSystem-v3-ActReason.json": {
-      "input_sha256": "92355dd041755c44a5011a3c2a0a1e9e910f325c5855faf03f5de646001f3ba1",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "56eb1ac95c19235e23bcd30e7585822445bd46efc0f2fa05e5702b61f1e02a6e",
-      "reasons": [
-        "xhtml-reference"
-      ]
-    },
-    "CodeSystem-v3-ActRelationshipType.json": {
-      "input_sha256": "7459387e4e3ac85dd18262b3701d6a51c9b4825a3ee4b9fc11c23fe685a3b8dd",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "a5b8c1c359fc31c8d0536d628554021f841be137a2aa3ed745eedae27e5959fa",
-      "reasons": [
-        "xhtml-reference"
-      ]
-    },
     "CodeSystem-v3-ActUSPrivacyLaw.json": {
       "input_sha256": "9505fee6ec5b608c051ab6c7abafdf1c7ead3bd34338070698511d0b3012aba8",
       "ours": "valid",
@@ -153,16 +134,6 @@
         "code-system-definition"
       ]
     },
-    "CodeSystem-v3-CalendarCycle.json": {
-      "input_sha256": "7204d7e6537089318b47cece9a2475ab9ae4e07e92d92483fa0c5b041e99a1b7",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "c692ce26f242ce9cca5bef1e4fa28360da7872aba2251b3a34c55d9f8c4f9820",
-      "reasons": [
-        "code-system-definition",
-        "xhtml-reference"
-      ]
-    },
     "CodeSystem-v3-Confidentiality.json": {
       "input_sha256": "c39317895914e32dfbc326e53e3c40ffaf6a198359be7e7ba84eff0904e552e6",
       "ours": "valid",
@@ -181,15 +152,6 @@
         "code-system-definition"
       ]
     },
-    "CodeSystem-v3-ContextControl.json": {
-      "input_sha256": "2dab40b3f98e9b54e50604764a0d681d27f20bb515d60f0e5cfa74432e8dea4a",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "5be0ab2cddadff95183a57f5968a00d88e53af5889f9e39210c49cc659490410",
-      "reasons": [
-        "xhtml-reference"
-      ]
-    },
     "CodeSystem-v3-Dentition.json": {
       "input_sha256": "db344fba0cdc4bc7023dd6a50efce1ed554829ac75e29b5255de51026f65df71",
       "ours": "valid",
@@ -206,25 +168,6 @@
       "oracle_signature": "4fb15b34bff0e43853a53867b35d6cc24e0b4a23fbc18ad6b98f0c6384da527a",
       "reasons": [
         "code-system-definition"
-      ]
-    },
-    "CodeSystem-v3-EntityCode.json": {
-      "input_sha256": "25d1488ea8e4dc161141e4ff08144b1e97644a2e7e604ee492a9614eefed9ca8",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "ac7fbec273f1f29f486b2eabc80ef52873447f175a222547ded4e94139a58897",
-      "reasons": [
-        "code-system-definition",
-        "xhtml-reference"
-      ]
-    },
-    "CodeSystem-v3-EntityNamePartQualifier.json": {
-      "input_sha256": "e301cee32740917c71141dd7f499f63075d9ceb5dff0d5ab3f73546f213ef5c6",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "a52ff7b00ce4e91b98613dabc8699e233dee13249ce0a39e61e49cbb923404d9",
-      "reasons": [
-        "xhtml-reference"
       ]
     },
     "CodeSystem-v3-EntityRisk.json": {
@@ -281,24 +224,6 @@
         "code-system-definition"
       ]
     },
-    "CodeSystem-v3-NullFlavor.json": {
-      "input_sha256": "2c4e5c65773d7af86ca381af9c604014232d21533bbbdf9d74eec0724a42d04d",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "b32619ca7b96d7d941dec2cdcd255fb7571cdc820b8a27b0a48ea5b85c01881a",
-      "reasons": [
-        "xhtml-reference"
-      ]
-    },
-    "CodeSystem-v3-ObservationInterpretation.json": {
-      "input_sha256": "4f3f2e7549e703029b6d4c99b798415b0f9c494267e08177e7ce717e4d6b0fc4",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "427be70b29c36e6ba5fcd4596040e5ddaccb787e2d69fe2bbd25a5c70b5e1b9c",
-      "reasons": [
-        "xhtml-reference"
-      ]
-    },
     "CodeSystem-v3-ObservationMethod.json": {
       "input_sha256": "b44c475ff17a0984896992888d71d97fab3abf2960d4337c379411b516ec143f",
       "ours": "valid",
@@ -344,25 +269,6 @@
         "code-system-definition"
       ]
     },
-    "CodeSystem-v3-RoleCode.json": {
-      "input_sha256": "8b4151bc4ea40a2b53b7a2c4b331f513f680f8f30e97133e795e00a444c35a68",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "a721b8da2fceee6e8b756a8c4fa728cf2c8ae81e088c9ee7a1b3851af5ec3ffe",
-      "reasons": [
-        "xhtml-reference"
-      ]
-    },
-    "CodeSystem-v3-RouteOfAdministration.json": {
-      "input_sha256": "7f3f875ecf49af112d7342e9316b453cea349a87a0f188e5874c33c339bbabb0",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "e0d9c15bccaf936b7de2d9b3d99d767759f29de3b6054a6664d610942822de1c",
-      "reasons": [
-        "code-system-definition",
-        "xhtml-reference"
-      ]
-    },
     "CodeSystem-v3-SubstitutionCondition.json": {
       "input_sha256": "de2cc18e4cf6bac880fa4d92fc8d68df5f74ec4d7d924156eea8897d3abea82c",
       "ours": "valid",
@@ -370,24 +276,6 @@
       "oracle_signature": "f1f95f2ba736ad8d889c3680e73df6a80ebb716ff6c848a02d8faac9d433ba5c",
       "reasons": [
         "code-system-definition"
-      ]
-    },
-    "CodeSystem-v3-hl7Realm.json": {
-      "input_sha256": "0df6d7bb887e519cc3327ac8598da2a794351bac90e50bfaecd654a405534fb5",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "93bcb115cd776743f1d840bd8b7e659e768612220759d7c0f1489e3a1f060912",
-      "reasons": [
-        "xhtml-reference"
-      ]
-    },
-    "CodeSystem-v3-orderableDrugForm.json": {
-      "input_sha256": "5c07faae65290bc334ea91eb2a46aa3d7a96a1586d676dfd4dc6dd0088d1b536",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "3b3aa691e988d5e99025ae58ed965efe443eb918aac681021f06fbee87ac86b0",
-      "reasons": [
-        "xhtml-reference"
       ]
     },
     "ConceptMap-cm-administrative-gender-v3.json": {
@@ -613,15 +501,6 @@
       "oracle_signature": "2f2358201ddb30841fb13d4a54df631a5606980c550e0bf9f9e473074b9bb183",
       "reasons": [
         "measure-definition"
-      ]
-    },
-    "Media-sound.json": {
-      "input_sha256": "9e655ac5dbbbb2846a572e712e18e3a575879a2eaab7805294fa44281251e1dd",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "9f804896c8b9039f3b2396607f15ac4f3f75035a7897b6a3739fdeaf703352fd",
-      "reasons": [
-        "xhtml-reference"
       ]
     },
     "PlanDefinition-example-cardiology-os.json": {
@@ -1375,123 +1254,6 @@
       "reasons": [
         "definition-resolution",
         "valueset-definition"
-      ]
-    },
-    "ValueSet-v3-ActCode.json": {
-      "input_sha256": "fb20530c424d9ca5b73456161edb973d88916e904c9378ec136a22481f395310",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "1494d560748bf2db5f5902395f3236ef51fe7f3eea6c4f895b33ca518faaae46",
-      "reasons": [
-        "xhtml-reference"
-      ]
-    },
-    "ValueSet-v3-ActReason.json": {
-      "input_sha256": "fe7d659914a096feae45c8ff7d3f425a167abe1725ded284092c5803d13ae285",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "5e774841839c096f54ecb9c804ea072e48d2d799eb6c4d23385887c55b139515",
-      "reasons": [
-        "xhtml-reference"
-      ]
-    },
-    "ValueSet-v3-ActRelationshipType.json": {
-      "input_sha256": "fda54cd0c82ecd1c76f07f6df78417fe03ab7f752fe0331bd815595ef1be1455",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "d0948f06bc2dedb700a2ca9140d47d59e957b49123c5ff52cd744a5444fe1b18",
-      "reasons": [
-        "xhtml-reference"
-      ]
-    },
-    "ValueSet-v3-CalendarCycle.json": {
-      "input_sha256": "cd36d3d726d477cc2740065bf82263add69208665c146edc521af6b9253fcb0c",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "46cb46fb39f8d9129351b052241ea2878a43549958fc398fdd329fae26e66c44",
-      "reasons": [
-        "xhtml-reference"
-      ]
-    },
-    "ValueSet-v3-ContextControl.json": {
-      "input_sha256": "ed9dfff42f8b31ae84c994c7ad6fccb22a0900e129f62446321dc837eda3abf2",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "e5ec62d363a1639e4d0628c94ab6743db0e6eed335f97b8df37aed6b81c640f4",
-      "reasons": [
-        "xhtml-reference"
-      ]
-    },
-    "ValueSet-v3-EntityCode.json": {
-      "input_sha256": "64a5f8c7f556a75b216663eee976890a8a1f7e6009bdf136c4e35e16f995e471",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "b14345ce5b4069605f6b74a0a1402200181decd65b35a1ab0e3808d694e75725",
-      "reasons": [
-        "xhtml-reference"
-      ]
-    },
-    "ValueSet-v3-EntityNamePartQualifier.json": {
-      "input_sha256": "1d7cc09f9eb1bd863cc705a2b69151f7e5be31a74db76373152bd4da3d96614c",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "136df90c1535f815eddf0291d1185d06d2b0b0a89f671dd7549e07e862624d97",
-      "reasons": [
-        "xhtml-reference"
-      ]
-    },
-    "ValueSet-v3-NullFlavor.json": {
-      "input_sha256": "aad2b352dc860d9e348480a753bb0e45496f1305574823b35e6a0411373462fb",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "08cf7e21bb8c001f6d44635f772d0a717c131ff1526c509f0f92420b7d60a53b",
-      "reasons": [
-        "xhtml-reference"
-      ]
-    },
-    "ValueSet-v3-ObservationInterpretation.json": {
-      "input_sha256": "37acc7541d1ffe413f9de2db84c2ca45dbd90bb5b1aed53c41bf10691d8d198e",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "1dbdfb4e27b6f4f3422a5db93f3be223342dfe27e88d0f5fb0d28e438f81f560",
-      "reasons": [
-        "xhtml-reference"
-      ]
-    },
-    "ValueSet-v3-RoleCode.json": {
-      "input_sha256": "7f0cb9a0366d3e3fe0f0b708419daeccc00398f932515f141a3227ba815f8bcc",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "9c4e2aeda2b3b413cfabda2fd550d3524a83f8c73afbb754772e25a534d6b4ae",
-      "reasons": [
-        "xhtml-reference"
-      ]
-    },
-    "ValueSet-v3-RouteOfAdministration.json": {
-      "input_sha256": "557727e2c36d3f51d42f2a10ae5e6a55836cb88565ea83f08eec07b0f125a823",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "30faa9b14ec294e86823ee8b369bc6c687d985273ce83309b6d3da7701ea832f",
-      "reasons": [
-        "xhtml-reference"
-      ]
-    },
-    "ValueSet-v3-hl7Realm.json": {
-      "input_sha256": "c3594f47b64629946bea3170ab402c9b69eb26294558bc3cbca2591a50b63d9b",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "6b64103d45c353e4f50113879f69cd38d59bf71a3f2316a9f337382c9ce04c6a",
-      "reasons": [
-        "xhtml-reference"
-      ]
-    },
-    "ValueSet-v3-orderableDrugForm.json": {
-      "input_sha256": "e20dfe802c9600a030659a12ead09b26ae4da6cb4e9b3b684259c24e9ddd5f11",
-      "ours": "valid",
-      "oracle": "invalid",
-      "oracle_signature": "7a8219bb497aa45980f9089cd2147b9562c2fd617f95569a73dc4b64a025ea63",
-      "reasons": [
-        "xhtml-reference"
       ]
     }
   },

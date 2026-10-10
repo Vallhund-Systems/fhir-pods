@@ -1345,6 +1345,16 @@ fn eval<D: Document>(e: &Expr, ctx: &Item<D>, env: &Env<'_, D>) -> Result<Vec<It
                 }
                 // `trace(name[, projection])` logs in other engines; here it is the identity.
                 ("trace", 1 | 2) => coll,
+                // `htmlChecks()` — the narrative's XHTML holds to what txt-1
+                // allows (the checker in `crate::xhtml`, probed against the
+                // reference validator); empty on an empty collection
+                ("htmlChecks", 0) => match single(&coll)? {
+                    Some(it) => {
+                        let s = text_of(it)?;
+                        vec![Item::Bool(crate::xhtml::check(&s).iter().all(|f| !f.txt1))]
+                    }
+                    None => vec![],
+                },
                 ("matches", 1) => match single(&coll)? {
                     Some(it) => {
                         let s = text_of(it)?;

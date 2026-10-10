@@ -758,6 +758,7 @@ mod value_sets_table;
 pub mod code_systems_table;
 pub mod validate;
 pub mod rules;
+pub mod xhtml;
 
 pub mod path;
 

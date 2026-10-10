@@ -81,6 +81,17 @@ page (`tools/gen_rules_doc.py`) and a test holds the two together.
 | `reference.target-profile` | a resolved target does not conform to any profile the element allows |
 | `reference.shape` | a relative reference that is not Type/id |
 
+## narrative
+
+| Id | Meaning |
+| --- | --- |
+| `narrative.parse` | the narrative is not well-formed XHTML |
+| `narrative.root` | the narrative's root is not a div in the XHTML namespace |
+| `narrative.element` | an element the narrative does not allow, or one out of its place (a li outside a list, a block inside a p) |
+| `narrative.attribute` | an attribute the narrative does not allow on that element |
+| `narrative.entity` | an entity other than XML's own |
+| `narrative.link` | a hyperlink that is empty, carries an invalid character, does not resolve, or has active content |
+
 ## Extensions
 
 | Id | Meaning |

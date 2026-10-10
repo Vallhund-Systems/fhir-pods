@@ -48,6 +48,13 @@ pub static RULES: &[(&str, &str)] = &[
     ("reference.target-type", "a reference's declared type or resolved target is not among the element's targets"),
     ("reference.target-profile", "a resolved target does not conform to any profile the element allows"),
     ("reference.shape", "a relative reference that is not Type/id"),
+    // --- narratives (txt-1 is `inv.txt-1`; the parser's findings beside it) ---
+    ("narrative.parse", "the narrative is not well-formed XHTML"),
+    ("narrative.root", "the narrative's root is not a div in the XHTML namespace"),
+    ("narrative.element", "an element the narrative does not allow, or one out of its place (a li outside a list, a block inside a p)"),
+    ("narrative.attribute", "an attribute the narrative does not allow on that element"),
+    ("narrative.entity", "an entity other than XML's own"),
+    ("narrative.link", "a hyperlink that is empty, carries an invalid character, does not resolve, or has active content"),
     // --- extensions ---
     ("extension.context", "an extension used where its definition does not allow it"),
     ("extension.unknown", "an extension whose definition could not be found"),
@@ -93,26 +100,47 @@ pub static RULES: &[(&str, &str)] = &[
 pub fn rule_id(code: IssueType, message: &str) -> &'static str {
     let m = message;
     let has = |s: &str| m.contains(s);
+    let ends = |s: &str| message.ends_with(s);
     let starts = |s: &str| m.starts_with(s);
     // an invariant: `key: human` — the key as the generated table lists it
     // (`cmp-1`, `que-7`, `us-core-1`, `sdf-8a`, a profile's `pvc2`), or one
     // shaped like a key the table missed
     if let Some((key, _)) = m.split_once(": ") {
         if let Ok(i) = INVARIANT_IDS.binary_search_by(|(k, _)| k.cmp(&key)) {
-            if has("not evaluated: outside the supported FHIRPath core") {
+            if ends("not evaluated: outside the supported FHIRPath core") {
                 return "not-supported.fhirpath";
             }
             return INVARIANT_IDS[i].1;
         }
         if is_invariant_key(key) {
-            return if has("not evaluated: outside the supported FHIRPath core") { "not-supported.fhirpath" } else { "inv.other" };
+            return if ends("not evaluated: outside the supported FHIRPath core") { "not-supported.fhirpath" } else { "inv.other" };
         }
     }
-    if has("not evaluated: outside the supported FHIRPath core") {
+    // anchored at the end: a narrative finding quotes narrative text, which
+    // may say anything
+    if ends("not evaluated: outside the supported FHIRPath core") {
         return if starts("Extension context") { "not-supported.extension-context" } else { "not-supported.fhirpath" };
     }
-    if has("not evaluated: outside the supported regex core") {
+    if ends("not evaluated: outside the supported regex core") {
         return "not-supported.regex";
+    }
+    if starts("Error parsing XHTML") {
+        return "narrative.parse";
+    }
+    if starts("Wrong name on the XHTML") || starts("Wrong namespace on the XHTML") {
+        return "narrative.root";
+    }
+    if starts("Invalid element name") || starts("Elements of type") || starts("Found block structures") {
+        return "narrative.element";
+    }
+    if starts("Invalid attribute name") {
+        return "narrative.attribute";
+    }
+    if starts("Invalid entity in the XHTML") {
+        return "narrative.entity";
+    }
+    if starts("Hyperlink") || starts("The URL is not valid") || starts("Image source") {
+        return "narrative.link";
     }
     if starts("could not parse JSON") {
         return "parse.json";

@@ -530,17 +530,17 @@ fn a_canonical_is_absolute_and_a_narrative_says_something() {
     let uri = r##"{"resourceType":"Basic","code":{"coding":[{"system":"codes/local","code":"x"}]}}"##;
     assert!(probe_str(uri).contains("\"valid\":true"), "{}", probe_str(uri));
     // txt-2: a narrative of whitespace, tags and comments only is an error; one with text is fine
-    let empty = r##"{"resourceType":"Basic","text":{"status":"generated","div":"<div xmlns=\"http://www.w3.org/1999/xhtml\"> <p> </p><!-- x --> &nbsp;</div>"},"code":{"text":"x"}}"##;
+    let empty = r##"{"resourceType":"Basic","text":{"status":"generated","div":"<div xmlns=\"http://www.w3.org/1999/xhtml\"> <p> </p><!-- x --> </div>"},"code":{"text":"x"}}"##;
     let r = probe_str(empty);
     assert!(
-        r.contains("\"valid\":false") && r.contains("txt-2: Basic.text.div must have some non-whitespace content"),
+        r.contains("\"valid\":false") && r.contains("txt-2: The narrative SHALL have some non-whitespace content"),
         "{r}"
     );
     let said = empty.replace("<p> </p>", "<p>Something</p>");
     assert!(probe_str(&said).contains("\"valid\":true"), "{}", probe_str(&said));
     let entity = empty.replace("<p> </p>", "<p>&amp;</p>");
     assert!(probe_str(&entity).contains("\"valid\":true"), "{}", probe_str(&entity));
-    let image = empty.replace("<p> </p>", "<img src=\\\"#a\\\" alt=\\\"diagram\\\"/>");
+    let image = empty.replace("<p> </p>", "<img src=\\\"http://example.org/a.png\\\" alt=\\\"diagram\\\"/>");
     assert!(probe_str(&image).contains("\"valid\":true"), "{}", probe_str(&image));
 }
 
@@ -1386,4 +1386,154 @@ fn a_resolved_reference_in_a_bundle_is_held_to_the_elements_base_targets() {
     assert!(e.iter().any(|x| x.contains("Invalid Resource target type. Found Flag")), "{e:?}");
     assert!(errors(&bundle("urn:uuid:00000001-0000-4000-8000-000000000001", OBS)).is_empty());
     assert!(errors(&bundle("Flag/f1", FLAG)).is_empty(), "{:?}", errors(&bundle("Flag/f1", FLAG)));
+}
+
+/// The narrative's XHTML, held as validator_cli 6.10.4 holds it — every
+/// case here probed, and the findings pinned by id and by message (the
+/// reference validator's wording): txt-1 with the parser's own finding
+/// beside it, txt-2 as it counts content, the content model, the link
+/// rules, the entity rules, its own nesting limit. Found wanting by the
+/// gut-path review: a clinician summary's narrative was never checked.
+#[test]
+fn a_narrative_is_held_to_what_the_reference_validator_allows() {
+    use fhir_pods_core::validate::Severity;
+    const X: &str = r#"xmlns="http://www.w3.org/1999/xhtml""#;
+    const NS: &str = "http://www.w3.org/1999/xhtml";
+    let errors = |div: &str| -> Vec<String> {
+        let json = format!(
+            r#"{{"resourceType":"Patient","id":"p","text":{{"status":"generated","div":"{}"}},"gender":"female"}}"#,
+            div.replace('\\', "\\\\").replace('"', "\\\"")
+        );
+        let mut v: Vec<String> = fhir_pods_core::validate_bytes(json.as_bytes())
+            .report
+            .issues
+            .iter()
+            .filter(|i| i.severity == Severity::Error)
+            .map(|i| format!("{} | {}", i.id, i.message))
+            .collect();
+        v.sort();
+        v
+    };
+    let txt1 = "inv.txt-1 | txt-1: The narrative SHALL contain only the basic html formatting elements and attributes described in chapters 7-11 (except section 4 of chapter 9) and 15 of the HTML 4.0 standard, <a> elements (either name or href), images and internally contained style attributes".to_string();
+    let txt2 = "inv.txt-2 | txt-2: The narrative SHALL have some non-whitespace content".to_string();
+    // valid, as probed — including what the reference parser tolerates
+    for ok in [
+        format!(r#"<div {X}><p>Summary <b>bold</b> <a href="https://example.org/x">link</a></p><table><tr><td>a</td></tr></table></div>"#),
+        format!(r#"<div {X}><div><p>x</p></div></div>"#),
+        format!(r#"<div {X} class="c" id="n1" lang="en"><p style="color:red">x</p></div>"#),
+        format!(r#"<div {X}><img src="http://e.org/x.png" alt="t"/></div>"#),
+        format!(r#"<div {X}><p>a&#160;b &amp; c &#xZZ; &#99999999999;</p></div>"#),
+        format!(r##"<div {X}><a href="data:text/html,a b">t</a><a href="JavaScript:alert(1)">u</a><a href="#">v</a></div>"##),
+        format!(r##"{}<?xml version="1.0"?><!DOCTYPE html><!--->   <div {X}><p>t</p></div>text<p>after the root</p>"##, "\u{feff}"),
+        format!(r#"<h:div xmlns:h="{NS}"><h:p>t</h:p></h:div>"#),
+        format!(r##"<div {X}><p id="s1">t</p><a href="#s1">u</a><a name="s2">v</a><a href="#s2">w</a></div>"##),
+        format!(r#"<div {X}><table><thead><tr><th>t</th></tr></thead></table></div>"#),
+        // (the root left open on purpose: an unclosed element at the end passes)
+        format!(r#"<div {X}><p class=c title="a" title="b">t</p><map name="m"><area href="http://e.org" alt="a" shape="rect" coords="0,0,1,1" nohref="nohref"/></map>"#),
+        format!(r##"<div {X}><a href="#s9">forward</a><p id="s9">t</p></div>"##),
+        format!(r#"<div {X}><p><span><b>x</b></span></p><![CDATA[<script>]]></div>"#),
+    ] {
+        assert!(errors(&ok).is_empty(), "{ok}: {:?}", errors(&ok));
+    }
+    // invalid, as probed: exactly these findings
+    let cases: Vec<(String, Vec<String>)> = vec![
+        (format!(r#"<div {X}><p>x</p><script>alert(1)</script><script>b</script></div>"#),
+         vec![txt1.clone(), "narrative.element | Invalid element name in the XHTML ('script')".into()]),
+        (format!(r#"<div {X}><p onclick="x()">x</p><p ärger="y">t</p></div>"#),
+         vec![txt1.clone(), "narrative.attribute | Invalid attribute name in the XHTML ('onclick' on 'p')".into(), "narrative.attribute | Invalid attribute name in the XHTML ('ärger' on 'p')".into()]),
+        (format!(r#"<div {X}><p>x</div>"#),
+         vec![txt1.clone(), txt2.clone(), r#"narrative.parse | Error parsing XHTML: Malformed XHTML: Found "</div>" expecting "</p>""#.into()]),
+        (format!(r#"<div {X}><p>a & b</p><script>x</script></div>"#),
+         vec![txt1.clone(), txt2.clone(), "narrative.parse | Error parsing XHTML: unable to parse character reference ' b''".into()]),
+        (format!(r#"<div {X}><p>a &#x110000; b</p></div>"#),
+         vec![txt1.clone(), txt2.clone(), "narrative.parse | Error parsing XHTML: Not a valid Unicode code point: 0x110000".into()]),
+        (format!("<div {X}>{}t{}</div>", "<span>".repeat(502), "</span>".repeat(502)),
+         vec![txt1.clone(), txt2.clone(), "narrative.parse | Error parsing XHTML: XHTML nesting depth exceeds maximum of 500".into()]),
+        (r#"<div><p>Summary</p></div>"#.to_string(),
+         vec![format!("narrative.root | Wrong namespace on the XHTML ('null', should be '{NS}')")]),
+        (format!(r#"<p {X}>x</p>"#),
+         vec!["narrative.root | Wrong name on the XHTML ('p') - must start with div".into()]),
+        (format!(r#"<div {X}><x:p>t</x:p></div>"#),
+         vec![format!("narrative.root | Wrong namespace on the XHTML ('http://error/undefined-namespace', should be '{NS}')")]),
+        (format!(r#"<div {X}><a href="java&#115;cript:alert(1)">x</a></div>"#),
+         vec!["narrative.link | Hyperlink scheme 'javascript' in 'javascript:alert(1)' at 'div/a' for 'x' has active content, which is a security risk and not allowed".into()]),
+        (format!(r#"<div {X}><a href="urn:x">t</a></div>"#),
+         vec!["narrative.link | Hyperlink scheme 'urn' in 'urn:x' at 'div/a' for 't' is not a valid hyperlinkable scheme".into()]),
+        (format!(r#"<div {X}><p>a &nbsp; d &copy;</p></div>"#),
+         vec!["narrative.entity | Invalid entity in the XHTML ('&copy;')".into(), "narrative.entity | Invalid entity in the XHTML ('&nbsp;')".into()]),
+        (format!(r#"<div {X}><li>t</li><li>u</li></div>"#),
+         vec!["narrative.element | Elements of type li must be in a ul|ol, not a div at div/li".into()]),
+        (format!(r#"<div {X}><table>text<tr><td>t</td></tr></table></div>"#),
+         vec!["narrative.element | Elements of type table at div/table cannot have the following children: @text".into()]),
+        (format!(r#"<div {X}><p><p>t</p></p></div>"#),
+         vec!["narrative.element | Invalid element name inside a paragraph in the XHTML ('p')".into()]),
+        (format!(r#"<div {X}><p><b><div>x</div></b></p></div>"#),
+         vec!["narrative.element | Found block structures inside a paragraph/text element b at div/p/b: b/div".into(), "narrative.element | Found block structures inside a paragraph/text element p at div/p: p/b/div".into(), "narrative.element | Invalid element name inside a paragraph in the XHTML ('div')".into()]),
+        (format!(r#"<div {X}><a href="http://e.org"><b><a href="http://e.org">t</a></b></a></div>"#),
+         vec!["narrative.element | Elements of type a at div/a cannot contain nested a at a/b/a".into()]),
+        (format!(r#"<div {X}><a href="">t</a></div>"#),
+         vec!["narrative.link | Hyperlink at 'div/a' for 't' is empty".into(), "narrative.link | The URL is not valid because '(URL is empty)': ".into()]),
+        (format!(r#"<div {X}><a href="http://e.org/a b&lt;c">t<b>u</b></a></div>"#),
+         vec!["narrative.link | The URL is not valid because '(URL contains 2 Invalid Characters: ' ','<')': http://e.org/a b<c".into()]),
+        // each occurrence counted, each character named once, in character order
+        (format!(r#"<div {X}><a href="http://e.org/&lt;a b c">t</a><a href="http://e.org/x y z">u</a></div>"#),
+         vec!["narrative.link | The URL is not valid because '(URL contains 3 Invalid Characters: ' ','<')': http://e.org/<a b c".into(), "narrative.link | The URL is not valid because '(URL contains 2 Invalid Characters: ' ')': http://e.org/x y z".into()]),
+        (format!(r##"<div {X}><a href="#nowhere">t</a><a name="x">u</a><img src="#x" alt="y"/></div>"##),
+         vec!["narrative.link | Hyperlink '#nowhere' at 'div/a' for 't' does not resolve".into(), "narrative.link | Image source '#x' at 'Patient.text.div/img' does not resolve".into()]),
+        (format!(r#"<div {X}><P>t</P></div>"#),
+         vec![txt1.clone(), "narrative.element | Invalid element name in the XHTML ('P')".into()]),
+        (format!(r#"<div {X}><blink>words</blink></div>"#),
+         vec![txt1.clone(), "narrative.element | Invalid element name in the XHTML ('blink')".into()]),
+        (format!(r#"<div {X}><br/><!-- c --><p>&#32;</p></div>"#), vec![txt2.clone()]),
+        (format!(r#"<div {X}><![CDATA[text]]></div>"#), vec![txt2.clone()]),
+    ];
+    // a fragment resolves to the resource's own id and to a contained resource's id,
+    // and a narrative link to a contained resource is a reference to it (dom-3)
+    let contained = |div: &str| -> Vec<String> {
+        let json = format!(
+            r#"{{"resourceType":"Patient","id":"p","contained":[{{"resourceType":"Binary","id":"c1","contentType":"image/png","data":"iVBORw0KGgo="}}],"text":{{"status":"generated","div":"{}"}},"gender":"female"}}"#,
+            div.replace('"', "\\\"")
+        );
+        let mut v: Vec<String> = fhir_pods_core::validate_bytes(json.as_bytes())
+            .report
+            .issues
+            .iter()
+            .filter(|i| i.severity == Severity::Error)
+            .map(|i| format!("{} | {}", i.id, i.message))
+            .collect();
+        v.sort();
+        v
+    };
+    assert_eq!(contained(&format!(r##"<div {X}><img src="#c1" alt="y"/></div>"##)), Vec::<String>::new());
+    assert_eq!(contained(&format!(r##"<div {X}><a href="#c1">t</a><a href="#p">u</a></div>"##)), Vec::<String>::new());
+    assert_eq!(
+        contained(&format!(r##"<div {X}><a href="#c9">t</a></div>"##)),
+        vec![
+            "inv.dom-3 | dom-3: The contained resource 'c1' is not referenced to from elsewhere in the containing resource nor does it refer to the containing resource".to_string(),
+            "narrative.link | Hyperlink '#c9' at 'div/a' for 't' does not resolve".to_string()
+        ]
+    );
+    // a narrative inside a contained resource is checked where it is
+    let nested = format!(
+        r##"{{"resourceType":"Patient","id":"p","contained":[{{"resourceType":"Organization","id":"o","name":"o","text":{{"status":"generated","div":"<div {}><script>x</script></div>"}}}}],"managingOrganization":{{"reference":"#o"}},"gender":"female"}}"##,
+        X.replace('"', "\\\"")
+    );
+    let ids: Vec<String> = fhir_pods_core::validate_bytes(nested.as_bytes())
+        .report
+        .issues
+        .iter()
+        .filter(|i| i.severity == Severity::Error)
+        .map(|i| format!("{} @ {}", i.id, i.path))
+        .collect();
+    assert_eq!(ids, vec!["inv.txt-1 @ Patient.contained.text.div".to_string(), "narrative.element @ Patient.contained.text.div".to_string()]);
+    // the classifier never mistakes quoted narrative text for another family
+    assert_eq!(
+        errors(&format!(r#"<div {X}><a href="javascript:x">not evaluated: outside the supported FHIRPath core</a></div>"#)),
+        vec!["narrative.link | Hyperlink scheme 'javascript' in 'javascript:x' at 'div/a' for 'not evaluated: outside the supported FHIRPath core' has active content, which is a security risk and not allowed".to_string()]
+    );
+    for (bad, want) in cases {
+        let mut want = want;
+        want.sort();
+        assert_eq!(errors(&bad), want, "{bad}");
+    }
 }
