@@ -323,6 +323,49 @@ response de-identified under Safe Harbor loses free-text answers, and a
 required free-text item then makes the copy invalid against its instrument
 on both sides — instrument design, not validation.
 
+## Narrative
+
+Every `Narrative.div` is judged as validator_cli 6.10.4 judges it (`txt-1`
+through `htmlChecks()`, `txt-2`, and the parser's own findings beside them —
+six `narrative.*` rule ids). Several of its rules are not the rules a reader
+would assume, and they are kept on purpose: bug-for-bug is the contract, and a
+host that wants more than the oracle asks for it. The 34 cases in
+`conformance/narrative/` record each probe — the narrative, the oracle's own
+diagnostics, the pod's report — and the lane fails on any disagreement.
+
+**Where the text stops.** A closing tag that does not match the open element
+is a parse failure (`Found "</div>" expecting "</p>"`), and a parse failure
+leaves no document, so `txt-1` and `txt-2` fail with it. An element *left
+open* where the text ends is taken as closed — the root `<div>` included — and
+so is a **start tag** the text ends inside: the element is kept with the
+attributes read so far, which is why a truncated root keeps its `xmlns` and
+reports only `txt-2`, while a bare `<div` has no namespace and reports both.
+The two truncations refused are a `/` that no `>` follows (`unexpected
+non-end of element`) and a **closing** tag the text ends inside (`Unexpected
+termination of html source`). A character that can begin no attribute name is
+`Unable to read attribute on <p>`. Text, or a second root, after the root is
+ignored. A fresh probe of the oracle (2026-10-14) corrected three of these:
+the closing-tag truncation was accepted, a start-tag truncation was refused,
+and an unreadable attribute carried the wrong message.
+
+**Images and hyperlinks are not checked alike.** An image's `src` is held to
+four things only: it may not be empty, it may carry no invalid character, a
+`data:` URL needs its comma, and a `#fragment` must resolve (to an `id` in the
+narrative, a contained resource, or the resource itself). The *scheme* rules —
+`javascript:` / `vbscript:` is active content, `urn:` / `cid:` is "not
+hyperlinkable" — are checked on `<a href>` only. So `<img
+src="http://example.org/x.png">` passes, and so do `https:`, a bare path,
+`file:`, `urn:`, `cid:` **and `javascript:`** (probed, each one). That is the
+oracle's behaviour and it is this pod's default. A host that does not want a
+narrative reference out of the resource — the fetch a renderer would make, or
+an image source nothing checks the scheme of — can refuse them; nothing about
+the default changes.
+
+Two narrative limits are declared elsewhere: a `<a href>` or `<img src>`
+pointing at another resource in the bundle is not resolved (the base lane's
+"Narrative hyperlinks" family), and `dom-6` is evaluated as the ordinary
+warning it is.
+
 ## Export: which profile, and what is never invented
 
 `export` (0.11.0) picks, per resource, the region's profile it goes out

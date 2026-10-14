@@ -1,0 +1,172 @@
+[
+  {
+    "file": "closed-well-formed.json",
+    "expect": true,
+    "reason": "Control: a closed, well-formed narrative in the XHTML namespace."
+  },
+  {
+    "file": "unclosed-p-in-closed-div.json",
+    "expect": false,
+    "reason": "A closing tag that does not match the open element is a parse failure: Found \"</div>\" expecting \"</p>\"."
+  },
+  {
+    "file": "unclosed-span-in-closed-div.json",
+    "expect": false,
+    "reason": "The same, with an inline element: the mismatch is what fails, not the element."
+  },
+  {
+    "file": "unclosed-p-then-closed-p.json",
+    "expect": false,
+    "reason": "A second p inside the first leaves one open, so </div> meets </p>."
+  },
+  {
+    "file": "unclosed-root-div.json",
+    "expect": true,
+    "reason": "An element left open where the text ends is taken as closed; the root included."
+  },
+  {
+    "file": "eof-p-open-with-text.json",
+    "expect": true,
+    "reason": "Two elements left open at the end, with content: still well-formed to this parser."
+  },
+  {
+    "file": "eof-root-open-bare-text.json",
+    "expect": true,
+    "reason": "Bare text under an unclosed root: content, no finding."
+  },
+  {
+    "file": "eof-inside-start-tag.json",
+    "expect": false,
+    "reason": "The text ends inside a start tag: the element is kept, so the narrative is empty — txt-2 alone, no parse failure."
+  },
+  {
+    "file": "eof-start-tag-after-content.json",
+    "expect": true,
+    "reason": "The same truncation after real content: nothing is reported at all."
+  },
+  {
+    "file": "eof-start-tag-attr-open.json",
+    "expect": true,
+    "reason": "The text ends inside a quoted attribute value: what was read is the value."
+  },
+  {
+    "file": "eof-after-equals.json",
+    "expect": true,
+    "reason": "The text ends just after an attribute's '=': tolerated like any other truncated start tag."
+  },
+  {
+    "file": "eof-root-start-tag-attr.json",
+    "expect": false,
+    "reason": "A truncated root start tag keeps its xmlns, so the namespace passes and only txt-2 fails."
+  },
+  {
+    "file": "eof-root-start-tag-bare.json",
+    "expect": false,
+    "reason": "A truncated root start tag with no xmlns: the element exists with no namespace, so the namespace finding stands beside txt-2."
+  },
+  {
+    "file": "eof-after-slash.json",
+    "expect": false,
+    "reason": "The one truncation refused: a '/' no '>' follows — unexpected non-end of element."
+  },
+  {
+    "file": "eof-inside-close-tag.json",
+    "expect": false,
+    "reason": "The text ends inside a closing tag: Unexpected termination of html source."
+  },
+  {
+    "file": "eof-close-tag-after-content.json",
+    "expect": false,
+    "reason": "The same inside the root's closing tag, after content: the parse failure stands alone and leaves no document, so txt-2 fails too."
+  },
+  {
+    "file": "eof-bare-lt-after-content.json",
+    "expect": false,
+    "reason": "A bare '<' at the end: a name is expected, so the node has unexpected content."
+  },
+  {
+    "file": "unexpected-char-in-start-tag.json",
+    "expect": false,
+    "reason": "A start tag whose next character can begin no attribute name: Unable to read attribute."
+  },
+  {
+    "file": "unexpected-char-mid-tag.json",
+    "expect": false,
+    "reason": "The same with a punctuation character: the message names the element, not the character."
+  },
+  {
+    "file": "img-external-http.json",
+    "expect": true,
+    "reason": "An external image source over http is accepted: nothing fetches it, and no scheme check applies to an image."
+  },
+  {
+    "file": "img-external-https.json",
+    "expect": true,
+    "reason": "The same over https."
+  },
+  {
+    "file": "img-src-relative-path.json",
+    "expect": true,
+    "reason": "A path-only image source is accepted; what it would resolve against is not the narrative's business."
+  },
+  {
+    "file": "img-src-file-scheme.json",
+    "expect": true,
+    "reason": "A file: image source is accepted — the scheme rules are for hyperlinks only."
+  },
+  {
+    "file": "img-src-urn.json",
+    "expect": true,
+    "reason": "urn: in an image source passes, where urn: in a hyperlink is 'not a valid hyperlinkable scheme'."
+  },
+  {
+    "file": "img-src-cid.json",
+    "expect": true,
+    "reason": "cid: in an image source passes, for the same reason."
+  },
+  {
+    "file": "img-src-javascript.json",
+    "expect": true,
+    "reason": "javascript: in an image source passes — the active-content check is a hyperlink check. A host that wants this refused sets externalNarrativeLinks."
+  },
+  {
+    "file": "img-src-vbscript.json",
+    "expect": true,
+    "reason": "vbscript: in an image source likewise passes."
+  },
+  {
+    "file": "img-data-url.json",
+    "expect": true,
+    "reason": "A data: image source needs only its comma."
+  },
+  {
+    "file": "img-src-data-no-comma.json",
+    "expect": false,
+    "reason": "A data: URL with no comma has no data: the URL is not valid."
+  },
+  {
+    "file": "img-src-empty.json",
+    "expect": false,
+    "reason": "An empty image source is an invalid URL (and, unlike a hyperlink, carries no second finding)."
+  },
+  {
+    "file": "img-fragment-unresolved.json",
+    "expect": false,
+    "reason": "A '#' image source that names no id in the narrative, no contained resource and not the resource itself does not resolve."
+  },
+  {
+    "file": "img-fragment-resolved.json",
+    "expect": true,
+    "reason": "The same fragment resolving to an id inside the narrative."
+  },
+  {
+    "file": "img-fragment-resource-id.json",
+    "expect": true,
+    "reason": "A '#' image source naming the resource's own id resolves."
+  },
+  {
+    "file": "link-external-http.json",
+    "expect": true,
+    "reason": "An external hyperlink over http is accepted, for contrast with the image cases."
+  }
+]

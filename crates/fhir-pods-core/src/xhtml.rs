@@ -9,8 +9,12 @@
 //! the HTML spec would — and its oddities are kept on purpose: a
 //! `javascript:` scheme is active content but `JavaScript:` is not; a
 //! numeric reference that does not parse as a Java `int` passes; an
-//! unclosed element at the end of the text passes; text or a second root
-//! after the root is ignored.
+//! element left open at the end of the text passes, and so does a start
+//! tag the text ends inside (the element keeps the attributes read so
+//! far) — a *closing* tag the text ends inside does not; text or a second
+//! root after the root is ignored; an image's source is not held to the
+//! hyperlink schemes at all, so `javascript:` in an `img src` passes
+//! unless the host asks for external narrative references to be refused.
 //!
 //! `no_std`: a hand tokenizer over the bytes; nothing is allocated beyond
 //! the findings, the element stack and the link tables.
@@ -374,6 +378,13 @@ impl Parser<'_, '_> {
                 while k < self.s.len() && self.s[k] != b'>' {
                     k += 1;
                 }
+                if k >= self.s.len() {
+                    // the text ends inside a closing tag: the one truncation
+                    // the reference parser refuses (probed — a start tag it
+                    // ends inside, and an element left open, both pass)
+                    self.fail("Error parsing XHTML: Unexpected termination of html source".to_owned());
+                    return;
+                }
                 let closing = core::str::from_utf8(&self.s[j..k]).unwrap_or("").trim().to_owned();
                 let qname = self.open.last().map(|o| o.qname.clone()).unwrap_or_default();
                 if closing != qname {
@@ -473,6 +484,10 @@ impl Parser<'_, '_> {
         // attributes
         let mut attrs: Vec<(String, String)> = Vec::new();
         let mut self_closing = false;
+        // the text ended inside this start tag: the reference parser keeps
+        // the element with the attributes it has read and ends the document
+        // there, so the element is still judged (probed)
+        let mut truncated = false;
         loop {
             self.skip_ws();
             match self.peek(0) {
@@ -508,13 +523,14 @@ impl Parser<'_, '_> {
                             while self.peek(0).is_some_and(|c| c != quote) {
                                 self.i += 1;
                             }
-                            if self.peek(0) != Some(quote) {
-                                return self.fail(format!(
-                                    "Error parsing XHTML: Malformed XHTML: unterminated attribute '{aname}'"
-                                ));
-                            }
                             let v = core::str::from_utf8(&self.s[v0..self.i]).unwrap_or("").to_owned();
-                            self.i += 1;
+                            if self.peek(0) == Some(quote) {
+                                self.i += 1;
+                            } else {
+                                // the text ended inside the value: what was
+                                // read is the value (probed)
+                                truncated = true;
+                            }
                             v
                         }
                         _ => {
@@ -529,9 +545,22 @@ impl Parser<'_, '_> {
                     let raw = raw.split('>').next().unwrap_or("");
                     let Some(value) = self.decode(raw) else { return false };
                     attrs.push((aname, value));
+                    if truncated {
+                        break;
+                    }
                 }
-                _ => {
+                None => {
+                    truncated = true;
+                    break;
+                }
+                // a `/` no `>` follows is the one truncation the reference
+                // parser refuses; anything else here is an unreadable
+                // attribute (both probed)
+                Some(b'/') => {
                     return self.fail(format!("Error parsing XHTML: unexpected non-end of element null::{qname}"));
+                }
+                Some(_) => {
+                    return self.fail(format!("Error parsing XHTML: Unable to read attribute on <{qname}>"));
                 }
             }
         }
@@ -660,6 +689,9 @@ impl Parser<'_, '_> {
         }
         if self_closing {
             self.close();
+        }
+        if truncated {
+            self.i = self.s.len(); // the document ends here; what is open is taken as closed
         }
         true
     }

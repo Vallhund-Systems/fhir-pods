@@ -1,0 +1,18 @@
+{
+  "resourceType": "Patient",
+  "id": "unclosed-root-div",
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>A closed paragraph, an unclosed root.</p>"
+  },
+  "name": [
+    {
+      "family": "Probe",
+      "given": [
+        "Narrative"
+      ]
+    }
+  ],
+  "gender": "female",
+  "birthDate": "1980-01-01"
+}

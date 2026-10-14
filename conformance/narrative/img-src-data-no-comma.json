@@ -1,0 +1,18 @@
+{
+  "resourceType": "Patient",
+  "id": "img-src-data-no-comma",
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Before.</p><img src=\"data:image/png;base64\" alt=\"bad data\"/></div>"
+  },
+  "name": [
+    {
+      "family": "Probe",
+      "given": [
+        "Narrative"
+      ]
+    }
+  ],
+  "gender": "female",
+  "birthDate": "1980-01-01"
+}

@@ -1,0 +1,18 @@
+{
+  "resourceType": "Patient",
+  "id": "img-src-cid",
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Before.</p><img src=\"cid:part1@example.org\" alt=\"cid\"/></div>"
+  },
+  "name": [
+    {
+      "family": "Probe",
+      "given": [
+        "Narrative"
+      ]
+    }
+  ],
+  "gender": "female",
+  "birthDate": "1980-01-01"
+}

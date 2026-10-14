@@ -1,5 +1,40 @@
 # Changelog
 
+## Unreleased
+
+**A host's second field report, probed.** Three independent readers drove the
+packed 0.21.0 pod with a compiled host profile and reported five things. Each
+was taken to validator_cli 6.10.4 before it was taken to the code, and the
+oracle contradicted part of the report: an unclosed `<p>` inside a closed root
+`<div>` is refused on both sides, and it was never accepted here. What the
+probes did find is a new lane and three corrections.
+
+*The narrative, where its text stops.* `conformance/narrative/` holds 34
+synthetic `Narrative.div` cases — the narrative, the oracle's own diagnostics,
+the pod's report — and fails on any disagreement. 34/34 agree; three did not
+before:
+
+- the text ending inside a **closing** tag was accepted, where the oracle
+  reports `Unexpected termination of html source` (with `txt-1` and `txt-2`,
+  a parse failure leaving no document);
+- the text ending inside a **start** tag was refused, where the oracle keeps
+  the element with the attributes read so far and ends the document there —
+  so `…</p><p` and `…<p class="x` pass, a truncated root keeps its `xmlns`
+  and reports only `txt-2`, and a bare `<div` has no namespace and reports
+  both. The one truncation it does refuse is a `/` that no `>` follows;
+- a character that can begin no attribute name reported `unexpected non-end
+  of element null::p`, where the oracle says `Unable to read attribute on
+  <p>`.
+
+*An image's source is not a hyperlink.* The report expected an external
+`<img src="http://…">` to be refused. The oracle accepts it — and `https:`,
+a bare path, `file:`, `urn:`, `cid:` and `javascript:` besides: the scheme
+rules (active content, "not hyperlinkable") are checked on `<a href>` only,
+an image's `src` only for an empty value, invalid characters, a `data:`
+URL's comma and a `#fragment` that must resolve. Each of those probed, each
+recorded, and the default stays the oracle's. `docs/scope.md` gains a
+**Narrative** section saying so.
+
 ## 0.21.0 — 2026-10-10
 
 **Host profiles, as a build.** A host's own profiles — the gut module's

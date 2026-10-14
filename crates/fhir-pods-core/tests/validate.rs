@@ -1565,3 +1565,88 @@ fn a_narrative_is_held_to_what_the_reference_validator_allows() {
         assert_eq!(errors(&bad), want, "{bad}");
     }
 }
+
+/// Where the narrative's text simply stops, and what an image's source is
+/// held to — the two things a host's report (2026-10-14) read the other way
+/// round. Every case probed against validator_cli 6.10.4 and recorded in
+/// `conformance/narrative/`: a closing tag that does not match is refused, a
+/// start tag the text ends inside is not, and the hyperlink scheme rules are
+/// not applied to an image at all.
+#[test]
+fn a_truncated_narrative_and_an_image_source_are_judged_as_the_oracle_judges_them() {
+    use fhir_pods_core::validate::Severity;
+    const X: &str = r#"xmlns="http://www.w3.org/1999/xhtml""#;
+    const NS: &str = "http://www.w3.org/1999/xhtml";
+    let errors = |div: &str| -> Vec<String> {
+        let json = format!(
+            r#"{{"resourceType":"Patient","id":"p","text":{{"status":"generated","div":"{}"}},"gender":"female"}}"#,
+            div.replace('\\', "\\\\").replace('"', "\\\"")
+        );
+        let mut v: Vec<String> = fhir_pods_core::validate_bytes(json.as_bytes())
+            .report
+            .issues
+            .iter()
+            .filter(|i| i.severity == Severity::Error)
+            .map(|i| format!("{} | {}", i.id, i.message))
+            .collect();
+        v.sort();
+        v
+    };
+    let txt1 = "inv.txt-1 | txt-1: The narrative SHALL contain only the basic html formatting elements and attributes described in chapters 7-11 (except section 4 of chapter 9) and 15 of the HTML 4.0 standard, <a> elements (either name or href), images and internally contained style attributes".to_string();
+    let txt2 = "inv.txt-2 | txt-2: The narrative SHALL have some non-whitespace content".to_string();
+    // tolerated: the text ends inside a start tag, which keeps the element and
+    // the attributes read so far — and every image source but the four checked
+    for ok in [
+        format!(r#"<div {X}><p>Real content.</p><p"#),
+        format!(r#"<div {X}><p>Real content.</p><p class="x"#),
+        format!(r#"<div {X}><p>Real content.</p><p class="#),
+        format!(r#"<div {X}><p>t</p><img src="javascript:alert(1)" alt="a"/></div>"#),
+        format!(r#"<div {X}><p>t</p><img src="vbscript:msgbox(1)" alt="a"/></div>"#),
+        format!(r#"<div {X}><p>t</p><img src="file:///etc/passwd" alt="a"/></div>"#),
+        format!(r#"<div {X}><p>t</p><img src="urn:uuid:9d4a" alt="a"/></div>"#),
+        format!(r#"<div {X}><p>t</p><img src="cid:part1@e.org" alt="a"/></div>"#),
+        format!(r#"<div {X}><p>t</p><img src="/assets/x.png" alt="a"/></div>"#),
+        format!(r##"<div {X}><p id="s">t</p><img src="#s" alt="a"/></div>"##),
+        format!(r##"<div {X}><p>t</p><img src="#p" alt="a"/></div>"##),
+    ] {
+        assert!(errors(&ok).is_empty(), "{ok}: {:?}", errors(&ok));
+    }
+    let cases: Vec<(String, Vec<String>)> = vec![
+        // a closing tag the text ends inside: the one truncation refused —
+        // and the failure leaves no document, so txt-2 goes with it
+        (format!(r#"<div {X}><p>Real content.</p></div"#),
+         vec![txt1.clone(), txt2.clone(), "narrative.parse | Error parsing XHTML: Unexpected termination of html source".into()]),
+        (format!(r#"<div {X}><p>Real content.</p"#),
+         vec![txt1.clone(), txt2.clone(), "narrative.parse | Error parsing XHTML: Unexpected termination of html source".into()]),
+        // a `/` that no `>` follows
+        (format!(r#"<div {X}><p>Real content.</p><p/"#),
+         vec![txt1.clone(), txt2.clone(), "narrative.parse | Error parsing XHTML: unexpected non-end of element null::p".into()]),
+        // a character that can begin no attribute name, truncation or not
+        (format!(r#"<div {X}><p ="x">t</p></div>"#),
+         vec![txt1.clone(), txt2.clone(), "narrative.parse | Error parsing XHTML: Unable to read attribute on <p>".into()]),
+        (format!(r#"<div {X}><p !>t</p></div>"#),
+         vec![txt1.clone(), txt2.clone(), "narrative.parse | Error parsing XHTML: Unable to read attribute on <p>".into()]),
+        // a start tag the text ends inside leaves an empty narrative: txt-2
+        // alone, no parse failure — and a truncated root keeps its xmlns,
+        // where a bare one has no namespace at all
+        (format!(r#"<div {X}><p"#), vec![txt2.clone()]),
+        (format!(r#"<div {X}"#), vec![txt2.clone()]),
+        ("<div".to_string(),
+         vec![txt2.clone(), format!("narrative.root | Wrong namespace on the XHTML ('null', should be '{NS}')")]),
+        // the four an image's source is held to: empty, invalid characters,
+        // a data: URL's comma, a fragment that resolves
+        (format!(r#"<div {X}><p>t</p><img src="" alt="a"/></div>"#),
+         vec!["narrative.link | The URL is not valid because '(URL is empty)': ".into()]),
+        (format!(r#"<div {X}><p>t</p><img src="data:image/png;base64" alt="a"/></div>"#),
+         vec!["narrative.link | The URL is not valid because '(No data found in data: URL)': data:image/png;base64".into()]),
+        (format!(r#"<div {X}><p>t</p><img src="http://e.org/a b.png" alt="a"/></div>"#),
+         vec!["narrative.link | The URL is not valid because '(URL contains Invalid Character: ' ')': http://e.org/a b.png".into()]),
+        (format!(r##"<div {X}><p>t</p><img src="#nowhere" alt="a"/></div>"##),
+         vec!["narrative.link | Image source '#nowhere' at 'Patient.text.div/img' does not resolve".into()]),
+    ];
+    for (bad, want) in cases {
+        let mut want = want;
+        want.sort();
+        assert_eq!(errors(&bad), want, "{bad}");
+    }
+}

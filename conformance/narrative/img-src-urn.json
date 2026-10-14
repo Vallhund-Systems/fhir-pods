@@ -1,0 +1,18 @@
+{
+  "resourceType": "Patient",
+  "id": "img-src-urn",
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Before.</p><img src=\"urn:uuid:4f1c2b84-5c60-4e0d-9b53-1f6d2e1a0c11\" alt=\"urn\"/></div>"
+  },
+  "name": [
+    {
+      "family": "Probe",
+      "given": [
+        "Narrative"
+      ]
+    }
+  ],
+  "gender": "female",
+  "birthDate": "1980-01-01"
+}

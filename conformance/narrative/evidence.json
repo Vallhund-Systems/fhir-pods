@@ -1,0 +1,1279 @@
+{
+  "recorded_at": "2026-10-14T19:21:34.838093+00:00",
+  "source_revision": "fd92f780ffeae083973964d20c99384b997e92b5",
+  "source_dirty": true,
+  "oracle_version": "6.10.4",
+  "oracle_sha256": "1106b9d58f9e363e47bea7c4fc065841e5fc91fe9d062775c3bfdd212bd653cc",
+  "oracle_options": [
+    "-version",
+    "4.0",
+    "-tx",
+    "n/a",
+    "-allow-example-urls",
+    "true"
+  ],
+  "oracle_exit_code": 0,
+  "note": "Verdict parity; the oracle's own diagnostics are retained for inspection. The pod's exact messages and rule ids are pinned by the core's narrative test.",
+  "counts": {
+    "total": 34,
+    "agree": 34,
+    "differ": 0
+  },
+  "probes": [
+    {
+      "file": "closed-well-formed.json",
+      "expect": true,
+      "reason": "Control: a closed, well-formed narrative in the XHTML namespace.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>A closed, well-formed narrative.</p></div>",
+      "sha256": "e263f2378d83aab7753c5b1b2062ca5875dbb0d2e1439b3fb5327d81c3325fd0",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "unclosed-p-in-closed-div.json",
+      "expect": false,
+      "reason": "A closing tag that does not match the open element is a parse failure: Found \"</div>\" expecting \"</p>\".",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>An unclosed paragraph.</div>",
+      "sha256": "727bd189c0dcccdae2b044a5c85f30815edacd2a4ced83db525ace32a61159c1",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "Error parsing XHTML: Malformed XHTML: Found \"</div>\" expecting \"</p>\" at line 1 column 74",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: txt-1: 'The narrative SHALL contain only the basic html formatting elements and attributes described in chapters 7-11 (except section 4 of chapter 9) and 15 of the HTML 4.0 standard, <a> elements (either name or href), images and internally contained style attributes'",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: txt-2: 'The narrative SHALL have some non-whitespace content'",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.txt-1",
+            "path": "Patient.text.div",
+            "message": "txt-1: The narrative SHALL contain only the basic html formatting elements and attributes described in chapters 7-11 (except section 4 of chapter 9) and 15 of the HTML 4.0 standard, <a> elements (either name or href), images and internally contained style attributes"
+          },
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "narrative.parse",
+            "path": "Patient.text.div",
+            "message": "Error parsing XHTML: Malformed XHTML: Found \"</div>\" expecting \"</p>\""
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.txt-2",
+            "path": "Patient.text.div",
+            "message": "txt-2: The narrative SHALL have some non-whitespace content"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "unclosed-span-in-closed-div.json",
+      "expect": false,
+      "reason": "The same, with an inline element: the mismatch is what fails, not the element.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><span>An unclosed span.</div>",
+      "sha256": "80a4cb2f9b77ea0dce6d6b2d76d43df0e5d45746c40e3af782efd9af462c8ccc",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "Error parsing XHTML: Malformed XHTML: Found \"</div>\" expecting \"</span>\" at line 1 column 72",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: txt-1: 'The narrative SHALL contain only the basic html formatting elements and attributes described in chapters 7-11 (except section 4 of chapter 9) and 15 of the HTML 4.0 standard, <a> elements (either name or href), images and internally contained style attributes'",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: txt-2: 'The narrative SHALL have some non-whitespace content'",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.txt-1",
+            "path": "Patient.text.div",
+            "message": "txt-1: The narrative SHALL contain only the basic html formatting elements and attributes described in chapters 7-11 (except section 4 of chapter 9) and 15 of the HTML 4.0 standard, <a> elements (either name or href), images and internally contained style attributes"
+          },
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "narrative.parse",
+            "path": "Patient.text.div",
+            "message": "Error parsing XHTML: Malformed XHTML: Found \"</div>\" expecting \"</span>\""
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.txt-2",
+            "path": "Patient.text.div",
+            "message": "txt-2: The narrative SHALL have some non-whitespace content"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "unclosed-p-then-closed-p.json",
+      "expect": false,
+      "reason": "A second p inside the first leaves one open, so </div> meets </p>.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>One.<p>Two.</p></div>",
+      "sha256": "f055337e4a3ee824d064a8270280579af43e6a849fa2d231c97324940d6fe8be",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "Error parsing XHTML: Malformed XHTML: Found \"</div>\" expecting \"</p>\" at line 1 column 67",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: txt-1: 'The narrative SHALL contain only the basic html formatting elements and attributes described in chapters 7-11 (except section 4 of chapter 9) and 15 of the HTML 4.0 standard, <a> elements (either name or href), images and internally contained style attributes'",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: txt-2: 'The narrative SHALL have some non-whitespace content'",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.txt-1",
+            "path": "Patient.text.div",
+            "message": "txt-1: The narrative SHALL contain only the basic html formatting elements and attributes described in chapters 7-11 (except section 4 of chapter 9) and 15 of the HTML 4.0 standard, <a> elements (either name or href), images and internally contained style attributes"
+          },
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "narrative.parse",
+            "path": "Patient.text.div",
+            "message": "Error parsing XHTML: Malformed XHTML: Found \"</div>\" expecting \"</p>\""
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.txt-2",
+            "path": "Patient.text.div",
+            "message": "txt-2: The narrative SHALL have some non-whitespace content"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "unclosed-root-div.json",
+      "expect": true,
+      "reason": "An element left open where the text ends is taken as closed; the root included.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>A closed paragraph, an unclosed root.</p>",
+      "sha256": "83d51279ba6d8d2d3c9f117175b45fc73ac41a8f6c5c0e0f333a38ef15856750",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "eof-p-open-with-text.json",
+      "expect": true,
+      "reason": "Two elements left open at the end, with content: still well-formed to this parser.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Text with the paragraph and the root left open.",
+      "sha256": "bd55ede5a28fe2278525a8cc6c5b3033741f72521b887a86db98f4d595fdafdc",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "eof-root-open-bare-text.json",
+      "expect": true,
+      "reason": "Bare text under an unclosed root: content, no finding.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">Bare text, root left open.",
+      "sha256": "22b4e9744fefb5db584c06e2637dcf62969c41c6637f21489f160b2ba4497f8d",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "eof-inside-start-tag.json",
+      "expect": false,
+      "reason": "The text ends inside a start tag: the element is kept, so the narrative is empty \u2014 txt-2 alone, no parse failure.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p",
+      "sha256": "0d906b6898201a6456c95ac974bdda85c64d53e0613d69c36c621124ff817607",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: txt-2: 'The narrative SHALL have some non-whitespace content'",
+          "paths": [
+            "Patient.text.div"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.txt-2",
+            "path": "Patient.text.div",
+            "message": "txt-2: The narrative SHALL have some non-whitespace content"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "eof-start-tag-after-content.json",
+      "expect": true,
+      "reason": "The same truncation after real content: nothing is reported at all.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Real content.</p><p",
+      "sha256": "be3a6373b97e58acd59d4bf8d7be4b1f0437a0a55d5a2a1a759bb81a983784e7",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "eof-start-tag-attr-open.json",
+      "expect": true,
+      "reason": "The text ends inside a quoted attribute value: what was read is the value.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Real content.</p><p class=\"x",
+      "sha256": "17500dd8ca69087b85ec8ee8a2ad225933208c36add1968d0d229a977401f7de",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "eof-after-equals.json",
+      "expect": true,
+      "reason": "The text ends just after an attribute's '=': tolerated like any other truncated start tag.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Real content.</p><p class=",
+      "sha256": "45c6e680822abc9fde93396802776b4e6d98bca90c48aecc37b906770d87f781",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "eof-root-start-tag-attr.json",
+      "expect": false,
+      "reason": "A truncated root start tag keeps its xmlns, so the namespace passes and only txt-2 fails.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"",
+      "sha256": "74c2e121cf4bf34fac0a5eeaa9a00bd54feb84f30d674b3763dcabf6798316f5",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: txt-2: 'The narrative SHALL have some non-whitespace content'",
+          "paths": [
+            "Patient.text.div"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.txt-2",
+            "path": "Patient.text.div",
+            "message": "txt-2: The narrative SHALL have some non-whitespace content"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "eof-root-start-tag-bare.json",
+      "expect": false,
+      "reason": "A truncated root start tag with no xmlns: the element exists with no namespace, so the namespace finding stands beside txt-2.",
+      "div": "<div",
+      "sha256": "9d69491e845d2316b42b505ca39a0c0455f127d222dcd9b701bcd89235233bf5",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: txt-2: 'The narrative SHALL have some non-whitespace content'",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "Wrong namespace on the XHTML ('null', should be 'http://www.w3.org/1999/xhtml')",
+          "paths": [
+            "Patient.text.div"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "narrative.root",
+            "path": "Patient.text.div",
+            "message": "Wrong namespace on the XHTML ('null', should be 'http://www.w3.org/1999/xhtml')"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.txt-2",
+            "path": "Patient.text.div",
+            "message": "txt-2: The narrative SHALL have some non-whitespace content"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "eof-after-slash.json",
+      "expect": false,
+      "reason": "The one truncation refused: a '/' no '>' follows \u2014 unexpected non-end of element.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Real content.</p><p/",
+      "sha256": "36731cfe6ca6d0edaf27ae3a648506fccdb322b24c1a9e3f07cfc4aa54d94202",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "Error parsing XHTML: unexpected non-end of element null::p  at line 1 column 66",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: txt-1: 'The narrative SHALL contain only the basic html formatting elements and attributes described in chapters 7-11 (except section 4 of chapter 9) and 15 of the HTML 4.0 standard, <a> elements (either name or href), images and internally contained style attributes'",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: txt-2: 'The narrative SHALL have some non-whitespace content'",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.txt-1",
+            "path": "Patient.text.div",
+            "message": "txt-1: The narrative SHALL contain only the basic html formatting elements and attributes described in chapters 7-11 (except section 4 of chapter 9) and 15 of the HTML 4.0 standard, <a> elements (either name or href), images and internally contained style attributes"
+          },
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "narrative.parse",
+            "path": "Patient.text.div",
+            "message": "Error parsing XHTML: unexpected non-end of element null::p"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.txt-2",
+            "path": "Patient.text.div",
+            "message": "txt-2: The narrative SHALL have some non-whitespace content"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "eof-inside-close-tag.json",
+      "expect": false,
+      "reason": "The text ends inside a closing tag: Unexpected termination of html source.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Text.</p",
+      "sha256": "8af39b55653e6809644c7f2e337a10f24da2827cddd09534e98a55042865e7e7",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "Error parsing XHTML: Unexpected termination of html source at line 1 column 54",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: txt-1: 'The narrative SHALL contain only the basic html formatting elements and attributes described in chapters 7-11 (except section 4 of chapter 9) and 15 of the HTML 4.0 standard, <a> elements (either name or href), images and internally contained style attributes'",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: txt-2: 'The narrative SHALL have some non-whitespace content'",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.txt-1",
+            "path": "Patient.text.div",
+            "message": "txt-1: The narrative SHALL contain only the basic html formatting elements and attributes described in chapters 7-11 (except section 4 of chapter 9) and 15 of the HTML 4.0 standard, <a> elements (either name or href), images and internally contained style attributes"
+          },
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "narrative.parse",
+            "path": "Patient.text.div",
+            "message": "Error parsing XHTML: Unexpected termination of html source"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.txt-2",
+            "path": "Patient.text.div",
+            "message": "txt-2: The narrative SHALL have some non-whitespace content"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "eof-close-tag-after-content.json",
+      "expect": false,
+      "reason": "The same inside the root's closing tag, after content: the parse failure stands alone and leaves no document, so txt-2 fails too.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Real content.</p></div",
+      "sha256": "95343586737a5cc610cfabedd6cbd7d648825e149c120800479ff7bf04a8d008",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "Error parsing XHTML: Unexpected termination of html source at line 1 column 68",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: txt-1: 'The narrative SHALL contain only the basic html formatting elements and attributes described in chapters 7-11 (except section 4 of chapter 9) and 15 of the HTML 4.0 standard, <a> elements (either name or href), images and internally contained style attributes'",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: txt-2: 'The narrative SHALL have some non-whitespace content'",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.txt-1",
+            "path": "Patient.text.div",
+            "message": "txt-1: The narrative SHALL contain only the basic html formatting elements and attributes described in chapters 7-11 (except section 4 of chapter 9) and 15 of the HTML 4.0 standard, <a> elements (either name or href), images and internally contained style attributes"
+          },
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "narrative.parse",
+            "path": "Patient.text.div",
+            "message": "Error parsing XHTML: Unexpected termination of html source"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.txt-2",
+            "path": "Patient.text.div",
+            "message": "txt-2: The narrative SHALL have some non-whitespace content"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "eof-bare-lt-after-content.json",
+      "expect": false,
+      "reason": "A bare '<' at the end: a name is expected, so the node has unexpected content.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Real content.</p><",
+      "sha256": "793a70525172fca07383c8b166ea6f0232fa5880966819389272d33561e35a3a",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "Error parsing XHTML: Unable to Parse HTML - node 'div' has unexpected content '\uffff' (last text = 'Real content.' at line 1 column 64",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: txt-1: 'The narrative SHALL contain only the basic html formatting elements and attributes described in chapters 7-11 (except section 4 of chapter 9) and 15 of the HTML 4.0 standard, <a> elements (either name or href), images and internally contained style attributes'",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: txt-2: 'The narrative SHALL have some non-whitespace content'",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.txt-1",
+            "path": "Patient.text.div",
+            "message": "txt-1: The narrative SHALL contain only the basic html formatting elements and attributes described in chapters 7-11 (except section 4 of chapter 9) and 15 of the HTML 4.0 standard, <a> elements (either name or href), images and internally contained style attributes"
+          },
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "narrative.parse",
+            "path": "Patient.text.div",
+            "message": "Error parsing XHTML: Unable to Parse HTML - node 'div' has unexpected content"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.txt-2",
+            "path": "Patient.text.div",
+            "message": "txt-2: The narrative SHALL have some non-whitespace content"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "unexpected-char-in-start-tag.json",
+      "expect": false,
+      "reason": "A start tag whose next character can begin no attribute name: Unable to read attribute.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p =\"x\">Real content.</p></div>",
+      "sha256": "09789aad031c7655fda34485afd0fc8bf09122f2fd63f86c31aacd9e48591d04",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "Error parsing XHTML: Unable to read attribute on <p> at line 1 column 46",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: txt-1: 'The narrative SHALL contain only the basic html formatting elements and attributes described in chapters 7-11 (except section 4 of chapter 9) and 15 of the HTML 4.0 standard, <a> elements (either name or href), images and internally contained style attributes'",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: txt-2: 'The narrative SHALL have some non-whitespace content'",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.txt-1",
+            "path": "Patient.text.div",
+            "message": "txt-1: The narrative SHALL contain only the basic html formatting elements and attributes described in chapters 7-11 (except section 4 of chapter 9) and 15 of the HTML 4.0 standard, <a> elements (either name or href), images and internally contained style attributes"
+          },
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "narrative.parse",
+            "path": "Patient.text.div",
+            "message": "Error parsing XHTML: Unable to read attribute on <p>"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.txt-2",
+            "path": "Patient.text.div",
+            "message": "txt-2: The narrative SHALL have some non-whitespace content"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "unexpected-char-mid-tag.json",
+      "expect": false,
+      "reason": "The same with a punctuation character: the message names the element, not the character.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p !>Real content.</p></div>",
+      "sha256": "1940a0975660adf1e902c29546a9ce102c3842b237160553e65977bccef8c97a",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "Error parsing XHTML: Unable to read attribute on <p> at line 1 column 46",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: txt-1: 'The narrative SHALL contain only the basic html formatting elements and attributes described in chapters 7-11 (except section 4 of chapter 9) and 15 of the HTML 4.0 standard, <a> elements (either name or href), images and internally contained style attributes'",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: txt-2: 'The narrative SHALL have some non-whitespace content'",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.txt-1",
+            "path": "Patient.text.div",
+            "message": "txt-1: The narrative SHALL contain only the basic html formatting elements and attributes described in chapters 7-11 (except section 4 of chapter 9) and 15 of the HTML 4.0 standard, <a> elements (either name or href), images and internally contained style attributes"
+          },
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "narrative.parse",
+            "path": "Patient.text.div",
+            "message": "Error parsing XHTML: Unable to read attribute on <p>"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.txt-2",
+            "path": "Patient.text.div",
+            "message": "txt-2: The narrative SHALL have some non-whitespace content"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "img-external-http.json",
+      "expect": true,
+      "reason": "An external image source over http is accepted: nothing fetches it, and no scheme check applies to an image.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Before.</p><img src=\"http://example.org/x.png\" alt=\"external\"/></div>",
+      "sha256": "db6d2b2661c4986bb8299041a8b92ea858b28f1799f67ff2e64f808917a1ab31",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "img-external-https.json",
+      "expect": true,
+      "reason": "The same over https.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Before.</p><img src=\"https://example.org/x.png\" alt=\"external\"/></div>",
+      "sha256": "e67bf9a4d837ca32195c738ac98390794440d4e417e931e3bca8feecc3dfc4cb",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "img-src-relative-path.json",
+      "expect": true,
+      "reason": "A path-only image source is accepted; what it would resolve against is not the narrative's business.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Before.</p><img src=\"/assets/x.png\" alt=\"relative\"/></div>",
+      "sha256": "e4775fef220ca3c0e8b2b29118b6fe30c2ecda5ddd1c12c237e7057b52a29e72",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "img-src-file-scheme.json",
+      "expect": true,
+      "reason": "A file: image source is accepted \u2014 the scheme rules are for hyperlinks only.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Before.</p><img src=\"file:///etc/passwd\" alt=\"file\"/></div>",
+      "sha256": "8ecbc73a365c88982fb39808604a98201827d93eda5dec124b95b4fa8f3e0d29",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "img-src-urn.json",
+      "expect": true,
+      "reason": "urn: in an image source passes, where urn: in a hyperlink is 'not a valid hyperlinkable scheme'.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Before.</p><img src=\"urn:uuid:4f1c2b84-5c60-4e0d-9b53-1f6d2e1a0c11\" alt=\"urn\"/></div>",
+      "sha256": "edd114d0744366b7cee49b5216847ef5e35a1bf0d74e47fe869b1d78bac8f384",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "img-src-cid.json",
+      "expect": true,
+      "reason": "cid: in an image source passes, for the same reason.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Before.</p><img src=\"cid:part1@example.org\" alt=\"cid\"/></div>",
+      "sha256": "773fff116cc8a0e0af02083f09284f0208e97d1cb1f6e3ccf83525fcf7086375",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "img-src-javascript.json",
+      "expect": true,
+      "reason": "javascript: in an image source passes \u2014 the active-content check is a hyperlink check. A host that wants this refused sets externalNarrativeLinks.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Before.</p><img src=\"javascript:alert(1)\" alt=\"active\"/></div>",
+      "sha256": "824fd15cc27fbf74e5f68dde57aed8fb19604fc3077e3774e642cce9c2c70adc",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "img-src-vbscript.json",
+      "expect": true,
+      "reason": "vbscript: in an image source likewise passes.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Before.</p><img src=\"vbscript:msgbox(1)\" alt=\"active\"/></div>",
+      "sha256": "6ed2eeada1ca62192f410a70409630ef906121530fe980e01b700ee89ceba2bd",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "img-data-url.json",
+      "expect": true,
+      "reason": "A data: image source needs only its comma.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Before.</p><img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==\" alt=\"inline\"/></div>",
+      "sha256": "a384e76f2c1dff5af20471c31be1d1bc4c5cb057e908ddf4924eae661514998b",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "img-src-data-no-comma.json",
+      "expect": false,
+      "reason": "A data: URL with no comma has no data: the URL is not valid.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Before.</p><img src=\"data:image/png;base64\" alt=\"bad data\"/></div>",
+      "sha256": "53dd01efcbfce611540a8f8f101a1512d3f6727dff6ee2e7fbd97253908f4aba",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "The URL is not valid because '(No data found in data: URL)': data:image/png;base64",
+          "paths": [
+            "Patient.text.div"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "narrative.link",
+            "path": "Patient.text.div",
+            "message": "The URL is not valid because '(No data found in data: URL)': data:image/png;base64"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "img-src-empty.json",
+      "expect": false,
+      "reason": "An empty image source is an invalid URL (and, unlike a hyperlink, carries no second finding).",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Before.</p><img src=\"\" alt=\"empty\"/></div>",
+      "sha256": "7d47529968e823b2c6737257724c7d0e7164901a34678a4ed004238fb400f1b7",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "The URL is not valid because '(URL is empty)': ",
+          "paths": [
+            "Patient.text.div"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "narrative.link",
+            "path": "Patient.text.div",
+            "message": "The URL is not valid because '(URL is empty)': "
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "img-fragment-unresolved.json",
+      "expect": false,
+      "reason": "A '#' image source that names no id in the narrative, no contained resource and not the resource itself does not resolve.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Before.</p><img src=\"#local-id\" alt=\"fragment\"/></div>",
+      "sha256": "33093cb8b7f24c30a0cbd82211d3972c5234facf98b7ff832de940cfe204d3b9",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "Image source '#local-id' at 'Patient.text.div/img' does not resolve",
+          "paths": [
+            "Patient.text.div"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "narrative.link",
+            "path": "Patient.text.div",
+            "message": "Image source '#local-id' at 'Patient.text.div/img' does not resolve"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "img-fragment-resolved.json",
+      "expect": true,
+      "reason": "The same fragment resolving to an id inside the narrative.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p id=\"local-id\">Target.</p><img src=\"#local-id\" alt=\"fragment\"/></div>",
+      "sha256": "a9455fff32afae5fcab185fd996d1368e7db33e0058082865135369975fc64c0",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "img-fragment-resource-id.json",
+      "expect": true,
+      "reason": "A '#' image source naming the resource's own id resolves.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Before.</p><img src=\"#img-fragment-resource-id\" alt=\"own id\"/></div>",
+      "sha256": "73f01783f847129f8766a58b4a9dd6322ac79d17495f7dfad227b386b686572f",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "link-external-http.json",
+      "expect": true,
+      "reason": "An external hyperlink over http is accepted, for contrast with the image cases.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p><a href=\"http://example.org/page\">external link</a></p></div>",
+      "sha256": "8a572e7b5666a1418e26cfdbb07d70418adde9eb448118961c658dc33b32cb01",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    }
+  ]
+}

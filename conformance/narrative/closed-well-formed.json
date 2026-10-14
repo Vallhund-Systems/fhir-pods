@@ -1,0 +1,18 @@
+{
+  "resourceType": "Patient",
+  "id": "closed-well-formed",
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>A closed, well-formed narrative.</p></div>"
+  },
+  "name": [
+    {
+      "family": "Probe",
+      "given": [
+        "Narrative"
+      ]
+    }
+  ],
+  "gender": "female",
+  "birthDate": "1980-01-01"
+}
