@@ -58,8 +58,8 @@ Questionnaire a response is held to has an item with no `type`
 (`questionnaire.definition`). A `warning` or `information` finding never
 changes the verdict, however much it matters: a resource whose declared
 profile this build has not compiled is valid by default, with
-`profile.unknown` naming it — see [Host options](#host-options---fail-closed-where-the-reference-validator-is-lenient)
-to make that an error instead of filtering the issue out. Both calls are synchronous. Historical v0.8.3 measurements were
+`profile.unknown` naming it — **Host options** below is how to make that an
+error instead of filtering the issue out. Both calls are synchronous. Historical v0.8.3 measurements were
 69–89 µs on an M4 Max for the recorded profiled-resource fixtures, including JSON copy
 and parse; see the [benchmark guide](bench/README.md) for scope and provenance.
 
