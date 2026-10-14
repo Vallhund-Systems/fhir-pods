@@ -9,10 +9,27 @@ class FhirPodsExpoModule : Module() {
      *  verifier runs synchronously and never calls back into JS. */
     @JvmStatic
     var terminology: FhirPodsTerminology? = null
+
+    /** The C ABI this wrapper is written against. The vendored jniLibs are
+     *  built from the same commit, so a mismatch means mismatched artifacts
+     *  were packed or vendored — reported at module creation rather than left
+     *  to surface at the first call. Mirrored in `FhirPodsExpoModule.swift`
+     *  and `src/index.ts`. */
+    const val EXPECTED_ABI = 14
   }
 
   override fun definition() = ModuleDefinition {
     Name("FhirPodsExpo")
+
+    OnCreate {
+      val abi = FhirPodsNative.abiVersion()
+      if (abi != EXPECTED_ABI) {
+        android.util.Log.e(
+          "fhir-pods",
+          "the vendored native library speaks ABI $abi, this module expects $EXPECTED_ABI - the packed artifacts do not match",
+        )
+      }
+    }
 
     Function("abiVersion") { FhirPodsNative.abiVersion() }
 

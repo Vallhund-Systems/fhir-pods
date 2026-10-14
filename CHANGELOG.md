@@ -165,7 +165,11 @@ entrypoint included, because a wrapper that calls one must not be handed a
 module that does not export it. A new member in a returned document, a new
 rule id, a reworded message do not move it — 0.20.0 added `issues[].id` at
 ABI 13 for exactly that reason. The architecture doc said "ABI 10" and is
-corrected to 14 with the whole ladder. The shared Node/Chrome harness and the
+corrected to 14 with the whole ladder — and its claim that every wrapper
+refuses a mismatched module is now true of the Expo pod as well: it contains
+its native library rather than being handed one, so a mismatch means
+mismatched artifacts were packed, and `src/index.ts` refuses it on import
+while the Swift and Kotlin modules log it on creation. The shared Node/Chrome harness and the
 C smoke exercise the new entry; the browser and Expo device evidence still
 reads ABI 13 and wants re-recording from a packed build.
 

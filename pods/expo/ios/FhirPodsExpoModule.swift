@@ -9,6 +9,13 @@ import FhirPodsFFI  // the C ABI, from the vendored XCFramework's modulemap
 ///     FhirPodsExpoModule.terminology = { valueSet, system, code in myCache.contains(valueSet, system, code) }
 public typealias FhirPodsTerminology = (_ valueSet: String, _ system: String, _ code: String) -> Bool?
 
+/// The C ABI this wrapper is written against. The vendored XCFramework is
+/// built from the same commit, so a mismatch means mismatched artifacts were
+/// packed or vendored — reported at module creation rather than left to
+/// surface as a missing symbol or a wrong result at the first call. Mirrored
+/// in `FhirPodsExpoModule.kt` and `src/index.ts`.
+private let FHIR_PODS_EXPECTED_ABI: UInt32 = 14
+
 public class FhirPodsExpoModule: Module {
   /// The host's terminology provider, if any. Native-side by design: the
   /// verifier runs synchronously and never calls back into JS.
@@ -16,6 +23,15 @@ public class FhirPodsExpoModule: Module {
 
   public func definition() -> ModuleDefinition {
     Name("FhirPodsExpo")
+
+    OnCreate {
+      let abi = fhir_pods_abi_version()
+      if abi != FHIR_PODS_EXPECTED_ABI {
+        NSLog(
+          "fhir-pods: the vendored native library speaks ABI %u, this module expects %u — the packed artifacts do not match",
+          abi, FHIR_PODS_EXPECTED_ABI)
+      }
+    }
 
     Function("abiVersion") { () -> Int in
       Int(fhir_pods_abi_version())

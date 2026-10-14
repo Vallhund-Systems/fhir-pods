@@ -114,16 +114,19 @@ Questionnaire loading and needs. See the
 surface** or the **memory contract** changes — and an added entrypoint is a
 change to the exported surface, because a wrapper that calls it would
 otherwise accept a module that does not export it and fail at the call rather
-than at instantiation. Every wrapper refuses a module whose
-`fhir_pods_abi_version()` is not the one it was written against, so the
-version is what makes a mismatch a clean refusal. What does *not* move the
-number: a new member in a returned JSON document, a new rule id, a reworded
-message, a wider accepted input. Those are additive within an entrypoint's
-contract and a host that ignores them is unaffected. Each bump is recorded in
-the [changelog](../CHANGELOG.md) with what it added: 14 host options, 13 the
-Questionnaire store, 12 discovery, 11 export, 10 HL7 v2, 9 lift, 8 audit, 7
-documents, 6 de-identification, 5 terminology, 4 lower/slots, 3 the first
-cut.
+than at instantiation. Every wrapper checks `fhir_pods_abi_version()` against
+the one it was written against and refuses a mismatch, so the version is what
+makes a mismatch a clean refusal — the wasm pod is handed its module and
+refuses it at `instantiate`; the Expo pod *contains* its native library, so a
+mismatch there means mismatched artifacts were packed or vendored, and it is
+refused on import by the TypeScript layer with the native modules logging it
+on creation. What does *not* move the number: a new member in a returned JSON
+document, a new rule id, a reworded message, a wider accepted input. Those are
+additive within an entrypoint's contract and a host that ignores them is
+unaffected. Each bump is recorded in the [changelog](../CHANGELOG.md) with
+what it added: 14 host options, 13 the Questionnaire store, 12 discovery, 11
+export, 10 HL7 v2, 9 lift, 8 audit, 7 documents, 6 de-identification, 5
+terminology, 4 lower/slots, 3 the first cut.
 
 Inputs are UTF-8 byte buffers: JSON for resources and options, ER7 for v2,
 and text for profile URLs or terminology tables. Results are JSON in

@@ -1,5 +1,20 @@
 import FhirPodsExpoModule from "./FhirPodsExpoModule";
 
+/**
+ * The C ABI this package is written against. Unlike the wasm pod, which is
+ * handed its module and refuses a mismatched one at `instantiate`, this
+ * package *contains* its native library — so a mismatch can only mean
+ * mismatched artifacts were packed or vendored. It is refused here, at
+ * import, rather than left to surface as a wrong result at the first call.
+ * The native modules log the same mismatch on creation.
+ */
+export const ABI_VERSION = 14;
+
+const abi = FhirPodsExpoModule.abiVersion();
+if (abi !== ABI_VERSION) {
+  throw new Error(`fhir-pods: the native library speaks ABI ${abi}, this package expects ${ABI_VERSION}`);
+}
+
 /** ABI version of the embedded compliance runtime. */
 export function abiVersion(): number {
   return FhirPodsExpoModule.abiVersion();

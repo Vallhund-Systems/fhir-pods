@@ -393,6 +393,10 @@ asked what they can't answer. `system` is "" for a bare `code` element.
 
 The last packed package is **0.21.0, ABI 13**; the source now speaks **ABI
 14** (`fhir_pods_options`), so the next build's artifacts carry that. The
+package refuses a mismatch on import — unlike the wasm pod, which is handed
+its module, this one *contains* its native library, so a mismatch means
+mismatched artifacts were packed or vendored; the native modules log it on
+creation and `src/index.ts` throws. The
 release build produces iOS XCFramework slices, Android libraries, and a
 packed Expo artifact. This package exposes the full operation family
 documented above.
