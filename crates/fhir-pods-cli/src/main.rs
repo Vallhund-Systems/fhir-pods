@@ -8,6 +8,7 @@ use fhir_pods_core::{
     deidentify::Policy,
     export::Region,
     node::Node,
+    options::Options as HostOptions,
     terminology::{Bundled, Chain, Expansions, Recorder},
     v2::Options,
     wire, Validator,
@@ -42,6 +43,10 @@ POLICY_FILE may be - only when the resource is read from a file.
 --terminology TABLE is accepted by validate, gate, lower, lift, document, audit, export,
 v2, needs and must-support. TABLE may be - only with a resource file.
 --questionnaire Q.json (repeatable) loads a Questionnaire a response may name; validate and gate.
+--options OPTIONS_FILE sets the host options (validate, gate): {\"unknownProfile\":
+\"warning\"|\"error\", \"externalNarrativeLinks\": \"allow\"|\"refuse\"}. Each default is the
+reference validator's own behaviour; \"error\" fails a declared profile this build has
+not compiled (see docs/rules.md).
 gate validates every FILE and prints one report: each file's verdict and error-level
 findings by rule id, and the counts by id over the run (see docs/rules.md).
 slots, profiles and v2 --structure read no stdin. v2 input is ER7 text; other inputs are JSON.
@@ -65,6 +70,7 @@ struct Args {
     structure: Option<String>,
     terminology: Option<PathBuf>,
     questionnaires: Vec<PathBuf>,
+    options: Option<PathBuf>,
 }
 
 enum Failure {
@@ -103,6 +109,7 @@ fn parse(args: Vec<OsString>) -> Result<Args, Failure> {
     let mut structure = None;
     let mut terminology = None;
     let mut questionnaires = Vec::new();
+    let mut host_options = None;
     let mut literal = false;
     let mut tail = args[1..].iter();
     while let Some(arg) = tail.next() {
@@ -124,6 +131,12 @@ fn parse(args: Vec<OsString>) -> Result<Args, Failure> {
                     return Err(bad("--terminology may only be supplied once"));
                 }
                 terminology = Some(PathBuf::from(tail.next().ok_or_else(|| bad("--terminology needs a file path"))?));
+            }
+            Some("--options") if !literal && matches!(command, "validate" | "gate") => {
+                if host_options.is_some() {
+                    return Err(bad("--options may only be supplied once"));
+                }
+                host_options = Some(PathBuf::from(tail.next().ok_or_else(|| bad("--options needs a file path"))?));
             }
             Some("--timezone" | "--code-system" | "--structure") if !literal && command == "v2" => {
                 let flag = arg.to_str().unwrap();
@@ -206,6 +219,9 @@ fn parse(args: Vec<OsString>) -> Result<Args, Failure> {
     if input.as_os_str() == "-" && terminology.as_ref().is_some_and(|p| p.as_os_str() == "-") {
         return Err(bad("resource and terminology cannot both use stdin"));
     }
+    if input.as_os_str() == "-" && host_options.as_ref().is_some_and(|p| p.as_os_str() == "-") {
+        return Err(bad("resource and options cannot both use stdin"));
+    }
     Ok(Args {
         command: command.into(),
         parameter,
@@ -217,6 +233,7 @@ fn parse(args: Vec<OsString>) -> Result<Args, Failure> {
         structure,
         terminology,
         questionnaires,
+        options: host_options,
     })
 }
 
@@ -311,7 +328,15 @@ fn run(args: Args) -> Result<(String, bool), Failure> {
         .transpose()?
         .unwrap_or_default();
     let tx = Chain(&[&Bundled, &table]);
-    let mut validator = Validator::new();
+    let host_options = args
+        .options
+        .as_ref()
+        .map(|p| {
+            HostOptions::from_json(&read(p)?).map_err(|error| Failure::Usage(format!("invalid options: {error}")))
+        })
+        .transpose()?
+        .unwrap_or_default();
+    let mut validator = Validator::new().with_options(host_options);
     for q in &args.questionnaires {
         if !validator.load_questionnaire(&read(q)?) {
             return Err(Failure::Usage(format!("{} is not a Questionnaire", q.display())));

@@ -35,6 +35,42 @@ URL's comma and a `#fragment` that must resolve. Each of those probed, each
 recorded, and the default stays the oracle's. `docs/scope.md` gains a
 **Narrative** section saying so.
 
+**Strictness is the host's call — `fhir_pods_options` (ABI 14).** The report's
+sharpest point: `profile.unknown` is a warning and the resource stays valid,
+so a host that has not compiled a profile it declares *fails open* unless it
+remembers to filter for the warning. The warning stays the default (D004: it
+is the oracle's own severity, and every lane measures that pod), and a host
+can now ask for the other thing:
+
+```json
+{ "unknownProfile": "warning" | "error", "externalNarrativeLinks": "allow" | "refuse" }
+```
+
+`"error"` reports the same finding, with the same id, at `error` — fail
+closed. `"refuse"` makes a narrative reference that leaves the resource an
+error (`narrative.external-link`, the one new id), which is where the field
+report's external image lands. An options document that does not say what it
+means — an unknown member, a value no option takes — is **refused whole**,
+and the options already in force stay: a typo in a strictness setting must
+never read as "off". An empty document restores the defaults.
+
+One entry per delivery, the shape `loadTerminology` / `loadQuestionnaire`
+established: `fhir_pods_options(json)` on the C ABI, `options(json)` in the
+wasm and Expo pods (`HostOptions` in both typings), `--options FILE` on the
+CLI's `validate` and `gate`, `Validator::set_options` / `with_options` in the
+core. The pods persist them for every call that follows — validate, lower,
+lift, export, document, v2 — and a Questionnaire load carries them through.
+
+**ABI 14**, and the policy written down (`docs/architecture.md`): the number
+rises whenever the exported surface or the memory contract changes, an added
+entrypoint included, because a wrapper that calls one must not be handed a
+module that does not export it. A new member in a returned document, a new
+rule id, a reworded message do not move it — 0.20.0 added `issues[].id` at
+ABI 13 for exactly that reason. The architecture doc said "ABI 10" and is
+corrected to 14 with the whole ladder. The shared Node/Chrome harness and the
+C smoke exercise the new entry; the browser and Expo device evidence still
+reads ABI 13 and wants re-recording from a packed build.
+
 ## 0.21.0 — 2026-10-10
 
 **Host profiles, as a build.** A host's own profiles — the gut module's

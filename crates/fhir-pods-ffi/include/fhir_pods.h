@@ -9,8 +9,10 @@
 extern "C" {
 #endif
 
-/* ABI version; a host refuses a mismatched module. This header is ABI 13. */
-#define FHIR_PODS_ABI_VERSION 13u
+/* ABI version; a host refuses a mismatched module. This header is ABI 14.
+ * It rises whenever the exported surface changes, a new entrypoint included:
+ * a wrapper that calls one must not be handed a module without it. */
+#define FHIR_PODS_ABI_VERSION 14u
 uint32_t fhir_pods_abi_version(void);
 
 /* Allocate `len` bytes in the module for the host to fill. */
@@ -163,6 +165,27 @@ int32_t fhir_pods_terminology_load(const uint8_t *ptr, size_t len);
  * the first), 0 when the bytes are not a Questionnaire (the store is
  * unchanged); empty input clears the store. */
 int32_t fhir_pods_questionnaire_load(const uint8_t *ptr, size_t len);
+
+/* Host options, for every call that follows (this module, its lifetime):
+ *   {"unknownProfile": "warning" | "error",
+ *    "externalNarrativeLinks": "allow" | "refuse"}
+ * Each default is what the reference validator itself does, so a default
+ * build is unchanged.
+ *  - unknownProfile: a declared profile this build has not compiled is a
+ *    warning and the resource stays valid (the reference validator's own
+ *    severity). "error" fails closed: the same finding (profile.unknown) at
+ *    error, so a host cannot accept an unverified claim by accident.
+ *  - externalNarrativeLinks: a narrative reference out of the resource is
+ *    accepted, as the reference validator accepts it — an image's `src` is
+ *    not even held to the hyperlink scheme rules, so `javascript:` in an
+ *    `img src` passes there. "refuse" makes any reference that is neither a
+ *    `#fragment` resolved inside the resource nor a `data:` URL an error
+ *    (narrative.external-link).
+ * Returns 1 when the options were taken, 0 when the document was refused —
+ * an unknown member or value included, since a typo in a strictness setting
+ * must not read as "off" — leaving the previous options in force. Empty
+ * input restores the defaults. */
+int32_t fhir_pods_options(const uint8_t *ptr, size_t len);
 
 /* What a host must resolve for this resource to validate without terminology
  * warnings — the bindings neither the bundled sets nor the loaded table could

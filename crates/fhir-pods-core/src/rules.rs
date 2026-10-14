@@ -55,6 +55,7 @@ pub static RULES: &[(&str, &str)] = &[
     ("narrative.attribute", "an attribute the narrative does not allow on that element"),
     ("narrative.entity", "an entity other than XML's own"),
     ("narrative.link", "a hyperlink that is empty, carries an invalid character, does not resolve, or has active content"),
+    ("narrative.external-link", "a narrative hyperlink or image source outside the resource, where the host refuses one (`externalNarrativeLinks`)"),
     // --- extensions ---
     ("extension.context", "an extension used where its definition does not allow it"),
     ("extension.unknown", "an extension whose definition could not be found"),
@@ -145,6 +146,9 @@ pub fn rule_id(code: IssueType, message: &str) -> &'static str {
     }
     if starts("Hyperlink") || starts("The URL is not valid") || starts("Image source") {
         return "narrative.link";
+    }
+    if starts("The narrative hyperlink") || starts("The narrative image source") {
+        return "narrative.external-link";
     }
     if starts("could not parse JSON") {
         return "parse.json";

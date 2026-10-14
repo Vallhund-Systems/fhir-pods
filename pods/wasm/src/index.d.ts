@@ -381,6 +381,15 @@ export interface Pod {
    */
   deidentify(json: string | Uint8Array, policy: DeidPolicy): Deidentified;
   /**
+   * Set the host options for every call that follows — the two strictness
+   * calls whose default is the reference validator's own behaviour, so a
+   * default pod is unchanged. `false` when the document is refused (an
+   * unknown member or value included, since a typo in a strictness setting
+   * must not read as "off") and the previous options stay in force; "" or
+   * `{}` restores the defaults.
+   */
+  options(json: HostOptions | string): boolean;
+  /**
    * Load a compiled terminology table (the line format `tools/compile_valueset.py`
    * writes from `$expand` responses). It answers after the bundled sets and
    * before `options.terminology`, for every call that follows. A set in the
@@ -406,6 +415,30 @@ export interface Pod {
   validateText(json: string | Uint8Array): string;
   /** Same as {@link operationOutcome}, unparsed — for the wire. */
   operationOutcomeText(json: string | Uint8Array): string;
+}
+
+/**
+ * The host options (see {@link Pod.options}). Every member is optional and
+ * takes its default — what the reference validator does — when absent.
+ */
+export interface HostOptions {
+  /**
+   * A declared profile this build has not compiled: `"warning"` (the
+   * default, and the reference validator's own severity) leaves the resource
+   * valid with a `profile.unknown` finding naming it; `"error"` fails closed
+   * — the same finding, at error.
+   */
+  unknownProfile?: "warning" | "error";
+  /**
+   * A narrative reference out of the resource — `<img src="http://…">`,
+   * `<a href="file:///…">`: `"allow"` (the default) is the reference
+   * validator's behaviour, which does not hold an image's `src` to the
+   * hyperlink scheme rules at all. `"refuse"` makes any reference that is
+   * neither a `#fragment` resolved inside the resource nor a `data:` URL an
+   * error (`narrative.external-link`) — for a host that renders the
+   * narrative and wants it to fetch nothing.
+   */
+  externalNarrativeLinks?: "allow" | "refuse";
 }
 
 /**

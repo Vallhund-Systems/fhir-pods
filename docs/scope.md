@@ -329,8 +329,9 @@ Every `Narrative.div` is judged as validator_cli 6.10.4 judges it (`txt-1`
 through `htmlChecks()`, `txt-2`, and the parser's own findings beside them —
 six `narrative.*` rule ids). Several of its rules are not the rules a reader
 would assume, and they are kept on purpose: bug-for-bug is the contract, and a
-host that wants more than the oracle asks for it. The 34 cases in
-`conformance/narrative/` record each probe — the narrative, the oracle's own
+host that wants more than the oracle asks for it
+([Host options](#host-options)). The 34 cases in `conformance/narrative/`
+record each probe — the narrative, the oracle's own
 diagnostics, the pod's report — and the lane fails on any disagreement.
 
 **Where the text stops.** A closing tag that does not match the open element
@@ -358,13 +359,34 @@ src="http://example.org/x.png">` passes, and so do `https:`, a bare path,
 `file:`, `urn:`, `cid:` **and `javascript:`** (probed, each one). That is the
 oracle's behaviour and it is this pod's default. A host that does not want a
 narrative reference out of the resource — the fetch a renderer would make, or
-an image source nothing checks the scheme of — can refuse them; nothing about
-the default changes.
+an image source nothing checks the scheme of — refuses them with
+`externalNarrativeLinks` ([Host options](#host-options)); nothing about the
+default changes.
 
 Two narrative limits are declared elsewhere: a `<a href>` or `<img src>`
 pointing at another resource in the bundle is not resolved (the base lane's
 "Narrative hyperlinks" family), and `dom-6` is evaluated as the ordinary
 warning it is.
+
+## Host options
+
+Two things the oracle is lenient about are the host's call. Both default to
+the oracle's behaviour, so a default pod is exactly what every lane above
+measures; neither changes *what* is checked.
+
+| Option | Default | The other value |
+| --- | --- | --- |
+| `unknownProfile` | `"warning"` — a declared profile this build has not compiled is a warning naming it (`profile.unknown`) and the resource stays valid. That is the reference validator's own severity ("Profile reference … has not been checked because it could not be found"), probed and pinned by `conformance/probes/unknown-declared-profile.json`. | `"error"` — the same finding, at `error`, so the resource is **invalid**. A host that treats an unverified claim as a failure fails closed instead of remembering to filter the issue out. |
+| `externalNarrativeLinks` | `"allow"` — a narrative reference out of the resource is accepted, as the oracle accepts it (see [Narrative](#narrative): an image's `src` is not held to the hyperlink scheme rules at all). | `"refuse"` — an `<img src>` or `<a href>` that is neither a `#fragment` resolved inside the resource nor a self-contained `data:` URL is an error (`narrative.external-link`). For a host that renders the narrative and wants it to fetch nothing. `txt-1` never moves: it is the invariant's own question. |
+
+The surface is one entry per delivery: `fhir_pods_options(json)` on the C ABI
+(ABI 14), `options(json)` in the wasm and Expo pods, `--options FILE` on the
+CLI's `validate` and `gate`, `Validator::set_options` in the core. The pods
+persist them for every call that follows — validation, lowering, lifting,
+export, documents, v2 alike — and an empty document restores the defaults. An
+options document that does not say what it means is **refused whole** (it
+returns false / exits 2) and the options already in force stay: a typo in a
+strictness setting must never read as "off".
 
 ## Export: which profile, and what is never invented
 

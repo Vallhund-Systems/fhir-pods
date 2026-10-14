@@ -107,6 +107,22 @@ impl<'a> Parsed<'a> {
         Vec<(alloc::string::String, TreeDoc<'_, 'a>)>,
         Vec<(alloc::string::String, TreeDoc<'_, 'a>, &'static crate::compiled::CompiledProfile)>,
     ) {
+        self.structure_full_with(tx, &crate::options::Options::default())
+    }
+
+    /// [`structure_full`](Self::structure_full) under the host's options —
+    /// what a narrative's references are held to.
+    #[allow(clippy::type_complexity)]
+    pub fn structure_full_with(
+        &self,
+        tx: &dyn crate::terminology::TerminologyProvider,
+        options: &crate::options::Options,
+    ) -> (
+        Vec<Gap>,
+        Vec<Gap>,
+        Vec<(alloc::string::String, TreeDoc<'_, 'a>)>,
+        Vec<(alloc::string::String, TreeDoc<'_, 'a>, &'static crate::compiled::CompiledProfile)>,
+    ) {
         let Some(rt) = resource_ctx(&self.value) else { return (Vec::new(), Vec::new(), Vec::new(), Vec::new()) };
         let mut w = Walk {
             root: rt,
@@ -122,6 +138,7 @@ impl<'a> Parsed<'a> {
             profiled: Vec::new(),
             profiles: Vec::new(),
             contained: Vec::new(),
+            refuse_external_links: options.refuse_external_narrative_links(),
         };
         structure_in(&self.value, rt, rt, &mut w);
         let nested = w
@@ -387,6 +404,9 @@ struct Walk<'v, 'a, 't> {
     /// Actual nodes corresponding to ctxs, so a FHIRPath context must
     /// select this owner rather than an equal-looking sibling elsewhere.
     nodes: Vec<&'v Value<'a>>,
+    /// The host asked for a narrative reference out of the resource to be
+    /// refused (`externalNarrativeLinks`); off is the oracle's behaviour.
+    refuse_external_links: bool,
 }
 
 /// Does a profile reach an extension of this url through a slice (an
@@ -1111,7 +1131,7 @@ fn structure_object<'v, 'a>(
                 .map(|(_, ids, own)| ids.iter().map(|s| s.as_str()).chain(own.as_deref()).collect())
                 .unwrap_or_default();
             let crate::xhtml::Inspection { findings, has_text } =
-                crate::xhtml::inspect(div, &alloc::format!("{path}.div"), &known);
+                crate::xhtml::inspect(div, &alloc::format!("{path}.div"), &known, w.refuse_external_links);
             if findings.iter().any(|f| f.txt1) {
                 w.gaps.push((
                     alloc::format!("{path}.div"),
@@ -1576,6 +1596,7 @@ impl<'v, 'a> Document for TreeDoc<'v, 'a> {
             profiled: Vec::new(),
             profiles: Vec::new(),
             contained: Vec::new(),
+            refuse_external_links: false,
         };
         structure_in(self.root, rt, rt, &mut w);
         !w.gaps.iter().any(|(_, kind, _)| *kind != crate::validate::IssueType::NotSupported)
@@ -1769,6 +1790,7 @@ mod context_tests {
             profiled: Vec::new(),
             profiles: Vec::new(),
             contained: Vec::new(),
+            refuse_external_links: false,
             ctxs: alloc::vec![("Patient", ""), ("Extension", "extension")],
             nodes: alloc::vec![parsed.value(), extension.value()],
         };
@@ -1802,6 +1824,7 @@ mod context_tests {
             profiled: Vec::new(),
             profiles: Vec::new(),
             contained: Vec::new(),
+            refuse_external_links: false,
             ctxs: alloc::vec![
                 ("Patient", ""),
                 ("Extension", "extension"),

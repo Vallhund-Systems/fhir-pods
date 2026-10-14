@@ -167,8 +167,11 @@ const URL_INVALID: &[char] = &[' ', '\t', '\n', '\r', '"', '<', '>', '\\', '^', 
 /// `label` is the narrative's path in the resource (`Patient.text.div`):
 /// an image's finding hangs off it. `known` are the ids a `#fragment`
 /// resolves to beyond the narrative's own: the resource's id and its
-/// contained resources' ids (probed).
-pub fn inspect(div: &str, label: &str, known: &[&str]) -> Inspection {
+/// contained resources' ids (probed). `refuse_external` is the host's
+/// `externalNarrativeLinks` option: with it, a reference that is neither a
+/// `#fragment` nor a self-contained `data:` URL is a finding of its own —
+/// the oracle has no such rule, which is why it is the host's to ask for.
+pub fn inspect(div: &str, label: &str, known: &[&str], refuse_external: bool) -> Inspection {
     let mut out = Vec::new();
     let mut p = Parser {
         s: div.as_bytes(),
@@ -184,6 +187,7 @@ pub fn inspect(div: &str, label: &str, known: &[&str]) -> Inspection {
         links_open: 0,
         label,
         fatal: false,
+        refuse_external,
     };
     p.document();
     let fatal = p.fatal;
@@ -208,9 +212,10 @@ pub fn inspect(div: &str, label: &str, known: &[&str]) -> Inspection {
     Inspection { findings: out, has_text: text }
 }
 
-/// The findings alone (`htmlChecks()`).
+/// The findings alone (`htmlChecks()`) — the invariant's own question, so
+/// always the oracle's rules: a host option never moves `txt-1`.
 pub fn check(div: &str) -> Vec<Finding> {
-    inspect(div, "div", &[]).findings
+    inspect(div, "div", &[], false).findings
 }
 
 /// The fragments the narrative links to (`<a href="#id">`, `<img
@@ -232,6 +237,7 @@ pub fn fragments(div: &str) -> Vec<String> {
         links_open: 0,
         label: "",
         fatal: false,
+        refuse_external: false,
     };
     p.document();
     if p.fatal {
@@ -275,6 +281,8 @@ struct Parser<'a, 'o> {
     links_open: usize,
     label: &'a str,
     fatal: bool,
+    /// The host refuses a narrative reference out of the resource.
+    refuse_external: bool,
 }
 
 impl Parser<'_, '_> {
@@ -753,7 +761,16 @@ impl Parser<'_, '_> {
                     txt1: false,
                 });
             }
-            return;
+            return; // self-contained: nothing leaves the resource to fetch
+        }
+        // the host's option, never the oracle's rule: anything but a
+        // `#fragment` resolved inside the resource leaves it
+        if self.refuse_external && !url.starts_with('#') {
+            let what = if image { "image source" } else { "hyperlink" };
+            self.out.push(Finding {
+                message: format!("The narrative {what} '{url}' at '{at}' is outside the resource"),
+                txt1: false,
+            });
         }
         let mut count = 0usize;
         let mut bad: Vec<char> = Vec::new();

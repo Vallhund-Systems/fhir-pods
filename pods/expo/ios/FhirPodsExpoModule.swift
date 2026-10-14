@@ -100,6 +100,15 @@ public class FhirPodsExpoModule: Module {
       return Int(bytes.withUnsafeBufferPointer { buf in fhir_pods_questionnaire_load(buf.baseAddress, buf.count) })
     }
 
+    // Host options for every call that follows: {"unknownProfile":
+    // "warning"|"error", "externalNarrativeLinks": "allow"|"refuse"} — each
+    // default the reference validator's own behaviour (1 = taken, 0 =
+    // refused and the previous options stay; "" restores the defaults).
+    Function("options") { (json: String) -> Int in
+      let bytes = Array(json.utf8)
+      return Int(bytes.withUnsafeBufferPointer { buf in fhir_pods_options(buf.baseAddress, buf.count) })
+    }
+
     // {"needs":[{"valueSet","system","code"},…]} — what a host must resolve.
     Function("terminologyNeeds") { (json: String) -> String in
       call({ ptr, len, _, _ in fhir_pods_terminology_needs(ptr, len) }, json)

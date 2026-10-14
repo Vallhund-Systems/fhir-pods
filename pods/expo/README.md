@@ -284,6 +284,37 @@ the app process, so the host should load the forms needed for that process and
 clear them when its data boundary changes. An unresolved form is reported as
 such; its item rules are not guessed.
 
+## Host options
+
+Two strictness calls are the host's, and both default to what the HL7
+reference validator itself does:
+
+```ts
+import { options } from "fhir-pods-expo";
+
+options({ unknownProfile: "error", externalNarrativeLinks: "refuse" }); // true
+options({}); // back to the defaults ("" does the same)
+```
+
+- **`unknownProfile`** — a resource declaring a profile this build has not
+  compiled is *valid* with a `profile.unknown` warning naming it (the
+  reference validator's own severity). `"error"` makes it invalid: the same
+  finding, at error — a host that will not accept an unverified claim fails
+  closed rather than remembering to check for the warning.
+- **`externalNarrativeLinks`** — a narrative reference out of the resource is
+  accepted, as the reference validator accepts it (an image's `src` is not
+  held to the hyperlink scheme rules at all there). `"refuse"` makes any
+  `<img src>` or `<a href>` that is neither a `#fragment` resolved inside the
+  resource nor a self-contained `data:` URL an error
+  (`narrative.external-link`).
+
+The options hold for every call that follows in this process — validate,
+lower, lift, export, document, v2 — the way a loaded Questionnaire does. A
+document that does not say what it means (an unknown member, or a value no
+option takes) returns `false` and leaves the options already in force: a typo
+in a strictness setting must never read as "off". Full semantics:
+[docs/scope.md](../../docs/scope.md#host-options).
+
 ## Terminology
 
 The pod bundles every licence-free value set the registry binds (the FHIR and
@@ -329,9 +360,11 @@ asked what they can't answer. `system` is "" for a bare `code` element.
 
 ## Status
 
-The current package is **0.21.0, ABI 13**. The release build produces iOS
-XCFramework slices, Android libraries, and a packed Expo artifact. This
-package exposes the full operation family documented above.
+The last packed package is **0.21.0, ABI 13**; the source now speaks **ABI
+14** (`fhir_pods_options`), so the next build's artifacts carry that. The
+release build produces iOS XCFramework slices, Android libraries, and a
+packed Expo artifact. This package exposes the full operation family
+documented above.
 
 The latest simulator exercise rebuilt and packed the **0.19.2 / ABI 13**
 module from source `98757de` on 2026-10-06, then installed that tarball in a

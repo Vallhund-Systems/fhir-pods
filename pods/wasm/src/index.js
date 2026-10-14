@@ -3,7 +3,7 @@
 // WebAssembly does (browser, edge runtimes, Node, Bun, Deno).
 
 /** The ABI this wrapper speaks; a module reporting anything else is refused. */
-export const ABI_VERSION = 13;
+export const ABI_VERSION = 14;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -138,6 +138,14 @@ export async function instantiate(source, options = {}) {
       if (out.error) throw new Error(`fhir-pods: ${out.error}`);
       return out;
     },
+    // Host options, for every call that follows (this module, its lifetime):
+    // {"unknownProfile": "warning"|"error", "externalNarrativeLinks":
+    // "allow"|"refuse"}. Each default is what the reference validator itself
+    // does — `error` fails closed on a profile this build has not compiled;
+    // `refuse` refuses a narrative reference out of the resource. Returns
+    // false when the document is refused (an unknown member or value
+    // included) and the previous options stay; "" restores the defaults.
+    options: (json) => callInt(ex.fhir_pods_options, typeof json === "string" ? json : JSON.stringify(json)) === 1,
     // Compiled terminology: load a table (the line format tools/compile_valueset.py
     // writes from $expand responses). It answers after the bundled sets and
     // before `options.terminology`, for every call that follows. Returns false

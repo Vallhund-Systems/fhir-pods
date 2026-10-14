@@ -109,6 +109,26 @@ int main(void) {
     printf("questionnaire: unloaded %.60s...; loaded %.60s...; lowered %.60s...\n", r_unloaded, r_loaded, qr_low);
     free(r_unloaded); free(r_loaded); free(qr_low); free(qr_cleared);
 
+    /* Host options (ABI 14): taken for the calls that follow, refused whole,
+       restored by an empty document. */
+    const char *declared = "{\"resourceType\":\"Patient\",\"id\":\"p\","
+                           "\"meta\":{\"profile\":[\"http://example.org/StructureDefinition/not-compiled\"]},\"gender\":\"female\"}";
+    char *o_default = call(fhir_pods_validate, declared);
+    ok = ok && strstr(o_default, "\"valid\":true") && strstr(o_default, "\"profile.unknown\"");
+    const char *strict = "{\"unknownProfile\":\"error\"}";
+    ok = ok && fhir_pods_options((const uint8_t *)strict, strlen(strict)) == 1;
+    char *o_strict = call(fhir_pods_validate, declared);
+    ok = ok && strstr(o_strict, "\"valid\":false") && strstr(o_strict, "\"profile.unknown\"");
+    const char *typo = "{\"unknownProfle\":\"error\"}";
+    ok = ok && fhir_pods_options((const uint8_t *)typo, strlen(typo)) == 0;
+    char *o_kept = call(fhir_pods_validate, declared);
+    ok = ok && strstr(o_kept, "\"valid\":false");
+    ok = ok && fhir_pods_options(NULL, 0) == 1;
+    char *o_cleared = call(fhir_pods_validate, declared);
+    ok = ok && strstr(o_cleared, "\"valid\":true");
+    printf("options: default %.40s...; strict %.40s...\n", o_default, o_strict);
+    free(o_default); free(o_strict); free(o_kept); free(o_cleared);
+
     /* Must-support: information, separate from validation. */
     const char *us = "{\"resourceType\":\"Patient\",\"meta\":{\"profile\":[\"http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient\"]},"
                      "\"identifier\":[{\"system\":\"http://h.example.org/mrn\",\"value\":\"1\"}],\"name\":[{\"family\":\"D\"}],\"gender\":\"male\"}";

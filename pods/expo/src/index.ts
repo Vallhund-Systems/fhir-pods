@@ -450,6 +450,39 @@ export function loadQuestionnaire(json: string): boolean {
 }
 
 /**
+ * The host options. Every member is optional and takes its default — what
+ * the reference validator does — when absent.
+ */
+export interface HostOptions {
+  /**
+   * A declared profile this build has not compiled: `"warning"` (the
+   * default, and the reference validator's own severity) leaves the resource
+   * valid with a `profile.unknown` finding naming it; `"error"` fails closed
+   * — the same finding, at error.
+   */
+  unknownProfile?: "warning" | "error";
+  /**
+   * A narrative reference out of the resource — `<img src="http://…">`,
+   * `<a href="file:///…">`: `"allow"` (the default) is the reference
+   * validator's behaviour, which does not hold an image's `src` to the
+   * hyperlink scheme rules at all. `"refuse"` makes any reference that is
+   * neither a `#fragment` resolved inside the resource nor a `data:` URL an
+   * error (`narrative.external-link`).
+   */
+  externalNarrativeLinks?: "allow" | "refuse";
+}
+
+/**
+ * Set the host options for every call that follows. `false` when the
+ * document is refused (an unknown member or value included, since a typo in
+ * a strictness setting must not read as "off") and the previous options stay
+ * in force; `{}` or "" restores the defaults.
+ */
+export function options(json: HostOptions | string): boolean {
+  return FhirPodsExpoModule.options(typeof json === "string" ? json : JSON.stringify(json)) === 1;
+}
+
+/**
  * What to resolve for this resource to validate without terminology warnings:
  * the bindings neither the bundled sets nor the loaded table could decide.
  * Resolve them against a terminology server (`$validate-code`, or `$expand`

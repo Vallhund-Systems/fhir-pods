@@ -91,6 +91,7 @@ page (`tools/gen_rules_doc.py`) and a test holds the two together.
 | `narrative.attribute` | an attribute the narrative does not allow on that element |
 | `narrative.entity` | an entity other than XML's own |
 | `narrative.link` | a hyperlink that is empty, carries an invalid character, does not resolve, or has active content |
+| `narrative.external-link` | a narrative hyperlink or image source outside the resource, where the host refuses one (`externalNarrativeLinks`) |
 
 ## Extensions
 

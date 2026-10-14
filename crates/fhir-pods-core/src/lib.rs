@@ -190,7 +190,8 @@ fn validate_bytes_in(
     };
     // The base spec's shape rules, profile or no profile: what every element
     // is, its JSON kind, whether it repeats, what a datatype requires.
-    let (gaps, warnings, nested, extensions) = parsed.structure_full(tx);
+    let host_options = cache.map(|v| v.options).unwrap_or_default();
+    let (gaps, warnings, nested, extensions) = parsed.structure_full_with(tx, &host_options);
     for (path, kind, message) in gaps {
         let severity = if kind == IssueType::NotSupported { Severity::Warning } else { Severity::Error };
         report.push(severity, kind, &path, message);
@@ -279,11 +280,19 @@ fn validate_resource<D: Document>(
     report: &mut Report,
 ) -> Vec<&'static CompiledProfile> {
     let at = |path: &str| if label.is_empty() { String::from(path) } else { format!("{label}.{path}") };
+    // the oracle's severity for a profile it cannot resolve is a warning, and
+    // that is the default; a host that will not accept an unverified claim
+    // sets `unknownProfile: "error"` and fails closed (the same finding, the
+    // same id — only the severity moves)
+    let unknown_profile = match cache.map(|v| v.options.unknown_profile).unwrap_or_default() {
+        options::UnknownProfile::Warning => Severity::Warning,
+        options::UnknownProfile::Error => Severity::Error,
+    };
     for url in doc.scalars("$this.meta.profile") {
         let base = url.split('|').next().unwrap_or(url);
         match crate::REGISTRY.iter().find(|p| p.url == base) {
             None => report.push(
-                Severity::Warning,
+                unknown_profile,
                 IssueType::NotSupported,
                 &at("meta.profile"),
                 format!("declared profile '{url}' is not compiled here, so it was not checked"),
@@ -547,6 +556,10 @@ fn parse_failure(e: json::ParseError) -> Validation {
 
 pub mod wire;
 
+/// Host options: the strictness calls a host may make, defaulting to the
+/// reference validator's own behaviour.
+pub mod options;
+
 /// An owned JSON tree (lowering builds one; de-identification rewrites one).
 pub mod node;
 
@@ -598,6 +611,9 @@ pub struct Validator {
     /// names one by canonical is held to (a contained one or a bundle entry
     /// is found without loading).
     questionnaires: Vec<questionnaire::Questionnaire>,
+    /// The host's strictness options; [`Default`] is the reference
+    /// validator's own behaviour.
+    options: options::Options,
 }
 
 impl Default for Validator {
@@ -633,7 +649,25 @@ impl Validator {
             invariants: keys.into_iter().map(|(k, key, e)| (k, path::parse_invariant(key, e).ok())).collect(),
             defaults: Vec::new(),
             questionnaires: Vec::new(),
+            options: options::Options::default(),
         }
+    }
+
+    /// The host options every call on this context takes.
+    pub fn options(&self) -> options::Options {
+        self.options
+    }
+
+    /// Set the host options (see [`options`](crate::options)); they apply to
+    /// every call on this context from now on.
+    pub fn set_options(&mut self, options: options::Options) {
+        self.options = options;
+    }
+
+    /// [`set_options`](Self::set_options), builder-style.
+    pub fn with_options(mut self, options: options::Options) -> Self {
+        self.options = options;
+        self
     }
 
     /// Apply `url`'s profile to every `resource_type` resource that declares

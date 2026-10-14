@@ -86,6 +86,14 @@ class FhirPodsExpoModule : Module() {
       FhirPodsNative.questionnaireLoad(json.toByteArray(Charsets.UTF_8))
     }
 
+    // Host options for every call that follows: {"unknownProfile":
+    // "warning"|"error", "externalNarrativeLinks": "allow"|"refuse"} — each
+    // default the reference validator's own behaviour (1 = taken, 0 =
+    // refused and the previous options stay; "" restores the defaults).
+    Function("options") { json: String ->
+      FhirPodsNative.options(json.toByteArray(Charsets.UTF_8))
+    }
+
     // {"needs":[{"valueSet","system","code"},…]} — what a host must resolve.
     Function("terminologyNeeds") { json: String ->
       String(FhirPodsNative.terminologyNeeds(json.toByteArray(Charsets.UTF_8)), Charsets.UTF_8)

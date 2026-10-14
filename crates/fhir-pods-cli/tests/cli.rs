@@ -137,6 +137,53 @@ fn document_and_needs_emit_inspectable_reports() {
     assert_eq!(needs.member("needs"), Some(&Node::Array(vec![])));
 }
 
+/// `--options` on validate and gate: the CI surface where a host wants to
+/// fail closed on a profile the pod has not compiled. The defaults are the
+/// reference validator's behaviour, and a bad options file is a usage error
+/// before any resource is read.
+#[test]
+fn host_options_fail_closed_on_an_uncompiled_profile() {
+    let files = Files::new();
+    const DECLARED: &str = r#"{"resourceType":"Patient","id":"p","meta":{"profile":["http://example.org/StructureDefinition/not-compiled"]},"gender":"female"}"#;
+    let resource = files.write("declared.json", DECLARED);
+    let strict = files.write("strict.json", r#"{"unknownProfile":"error"}"#);
+    let lenient = files.write("lenient.json", r#"{"unknownProfile":"warning"}"#);
+    let bad = files.write("bad.json", r#"{"unknownProfle":"error"}"#);
+
+    let file = resource.to_str().unwrap();
+    let valid = |node: &Node| node.member("valid") == Some(&Node::Bool(true));
+    assert!(valid(&result(&call(&["validate", file], b""), 0)));
+    assert!(valid(&result(&call(&["validate", "--options", lenient.to_str().unwrap(), file], b""), 0)));
+    let report = result(&call(&["validate", "--options", strict.to_str().unwrap(), file], b""), 1);
+    assert!(!valid(&report));
+    let errors: Vec<&str> = match report.member("issues") {
+        Some(Node::Array(issues)) => issues
+            .iter()
+            .filter(|i| i.member("severity").and_then(Node::as_str) == Some("error"))
+            .filter_map(|i| i.member("id").and_then(Node::as_str))
+            .collect(),
+        _ => Vec::new(),
+    };
+    assert_eq!(errors, vec!["profile.unknown"], "{report:?}");
+
+    // the gate takes it too, and exits 1 on the file — counted by id
+    let gated = result(&call(&["gate", "--options", strict.to_str().unwrap(), file], b""), 1);
+    assert_eq!(gated.member("valid"), Some(&Node::Bool(false)));
+    assert_eq!(
+        gated.member("counts").and_then(|c| c.member("profile.unknown")),
+        Some(&Node::Number("1".into())),
+        "{gated:?}"
+    );
+    assert!(valid(&result(&call(&["gate", file], b""), 0)));
+
+    // a refused options document never reaches a resource
+    let output = call(&["validate", "--options", bad.to_str().unwrap(), file], b"");
+    assert_eq!(output.status.code(), Some(2));
+    assert!(output.stdout.is_empty());
+    let error = Node::from_value(&json::parse(&output.stderr).unwrap());
+    assert!(error.member("error").and_then(Node::as_str).is_some_and(|e| e.contains("invalid options")), "{error:?}");
+}
+
 #[test]
 fn usage_and_io_failures_have_separate_exit_and_stderr() {
     for args in [

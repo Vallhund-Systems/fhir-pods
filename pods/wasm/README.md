@@ -10,7 +10,7 @@ JS  ──operation inputs──►  JS wrapper  ──C ABI──►  Rust comp
     ◄──output + findings──            ◄─────────         (wasm32)
 ```
 
-The wrapper uses `pod_alloc` / `pod_free` and the shared ABI 13 entrypoints.
+The wrapper uses `pod_alloc` / `pod_free` and the shared ABI 14 entrypoints.
 The module carries 1,147 compiled profiles from the pinned IGs and R4
 extension/base definitions, 126 bundled value sets, base code-system
 membership tables, FHIRPath, transformation and assembly engines, and HL7 v2
@@ -267,6 +267,37 @@ back in `residual`, so an empty `remaining` never reads as "all free text
 gone". What the base resource or an applied profile requires is masked
 (`data-absent-reason: masked`) rather than dropped, required children
 included; an extension whose value went goes with it.
+
+### Host options — fail closed where the reference validator is lenient
+
+```js
+pod.options({ unknownProfile: "error", externalNarrativeLinks: "refuse" }); // true
+pod.options({}); // back to the defaults ("" does the same)
+```
+
+Two strictness calls, both defaulting to what the HL7 reference validator
+itself does — so a pod nobody configures is exactly what the conformance
+lanes measure:
+
+- **`unknownProfile`** — a resource declaring a profile this build has not
+  compiled is *valid* with a `profile.unknown` warning naming it (the
+  reference validator's own severity). `"error"` makes it invalid: the same
+  finding, at error. A host that will not accept an unverified claim fails
+  closed here instead of remembering to check for the warning.
+- **`externalNarrativeLinks`** — a narrative reference out of the resource is
+  accepted, as the reference validator accepts it: the scheme rules
+  (`javascript:`, `urn:`) are checked on `<a href>` only, so even
+  `<img src="javascript:…">` passes there. `"refuse"` makes any `<img src>`
+  or `<a href>` that is neither a `#fragment` resolved inside the resource
+  nor a self-contained `data:` URL an error (`narrative.external-link`) —
+  for a host that renders the narrative and wants it to fetch nothing.
+
+The options hold for every call that follows — validate, lower, lift,
+export, document, v2 — on this instance. A document that does not say what
+it means (an unknown member, or a value no option takes) returns `false` and
+leaves the options already in force: a typo in a strictness setting must
+never read as "off". Full semantics:
+[docs/scope.md](../../docs/scope.md#host-options).
 
 ### Terminology
 

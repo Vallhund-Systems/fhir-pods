@@ -7,7 +7,8 @@
 //!
 //! The entrypoints — those below in detail, and `fhir_pods_lift`,
 //! `fhir_pods_deidentify`, `fhir_pods_document`, `fhir_pods_audit`, `fhir_pods_export`,
-//! `fhir_pods_v2`, `fhir_pods_terminology_load` / `_needs` alongside:
+//! `fhir_pods_v2`, `fhir_pods_options`, `fhir_pods_terminology_load` /
+//! `_needs` alongside:
 //! - [`fhir_pods_validate`] — the `Validation` JSON (`valid`, `profile(s)`, `issues[]`).
 //! - [`fhir_pods_operation_outcome`] — the spec resource, for the wire.
 //! - [`fhir_pods_must_support`] — must-support gaps, information only.
@@ -53,9 +54,11 @@ fn validator() -> std::sync::Arc<Validator> {
     slot.get_or_insert_with(|| std::sync::Arc::new(Validator::new())).clone()
 }
 
-/// Bump when the exported surface or the memory contract changes; the
-/// wrappers refuse a mismatched module.
-pub const ABI_VERSION: u32 = 13;
+/// Bump when the exported surface or the memory contract changes — a new
+/// entrypoint included, so a wrapper that calls it cannot be handed a module
+/// that lacks it (`docs/architecture.md`); the wrappers refuse a mismatched
+/// module. 14 added `fhir_pods_options`.
+pub const ABI_VERSION: u32 = 14;
 
 /// The compiled terminology table the host loaded (`fhir_pods_terminology_load`),
 /// consulted after the bundled sets and before any host callback.
@@ -596,6 +599,30 @@ pub unsafe extern "C" fn fhir_pods_questionnaire_load(ptr: *const u8, len: usize
     1
 }
 
+/// Set the host options for every call that follows — on this module, for
+/// its lifetime (`{"unknownProfile": "warning" | "error",
+/// "externalNarrativeLinks": "allow" | "refuse"}`; see
+/// [`fhir_pods_core::options`]). Each default is what validator_cli 6.10.4
+/// itself does, so a default build is unchanged. Returns 1 when the options
+/// were taken, 0 when the document was refused — an unknown member or value
+/// included, since a typo in a strictness setting must not read as "off" —
+/// and then the previous options stay in force. Empty input restores the
+/// defaults.
+#[no_mangle]
+pub unsafe extern "C" fn fhir_pods_options(ptr: *const u8, len: usize) -> i32 {
+    let Ok(options) = fhir_pods_core::options::Options::from_json(input(ptr, len)) else { return 0 };
+    // the whole replacement under the write lock, as a Questionnaire load is:
+    // calls in flight keep the snapshot they took
+    let mut slot = VALIDATOR.write().unwrap_or_else(|e| e.into_inner());
+    let mut next = match slot.as_deref() {
+        Some(v) => v.clone(),
+        None => Validator::new(),
+    };
+    next.set_options(options);
+    *slot = Some(std::sync::Arc::new(next));
+    1
+}
+
 /// What a host must resolve for this resource to validate without
 /// terminology warnings — every binding the bundled sets and the loaded
 /// table could not decide: `{"needs":[{"valueSet","system","code"},…]}`.
@@ -1108,6 +1135,16 @@ mod android {
     }
 
     #[no_mangle]
+    pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_options<'l>(
+        mut env: JNIEnv<'l>,
+        _this: JObject<'l>,
+        json: JByteArray<'l>,
+    ) -> jint {
+        let o = bytes_in(&mut env, &json);
+        unsafe { fhir_pods_options(o.as_ptr(), o.len()) as jint }
+    }
+
+    #[no_mangle]
     pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_terminologyNeeds<'l>(
         mut env: JNIEnv<'l>,
         _this: JObject<'l>,
@@ -1480,6 +1517,46 @@ mod tests {
         unsafe {
             let ret = fhir_pods_validate(std::ptr::null(), 0);
             unpack(ret);
+        }
+    }
+
+    /// Host options over the ABI: taken for the calls that follow, refused
+    /// whole when the document does not say what it means, and restored by
+    /// an empty document. Process-wide state, so it runs alone.
+    #[test]
+    fn options_over_the_abi() {
+        let _serial = TABLE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe {
+            let set = |json: &str| {
+                let b = json.as_bytes();
+                fhir_pods_options(b.as_ptr(), b.len())
+            };
+            let declared = r#"{"resourceType":"Patient","id":"p","meta":{"profile":["http://example.org/StructureDefinition/not-compiled"]},"gender":"female"}"#;
+            let external = r#"{"resourceType":"Patient","id":"p","text":{"status":"generated","div":"<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>t</p><img src=\"http://example.org/x.png\" alt=\"a\"/></div>"},"gender":"female"}"#;
+            // the default is the reference validator's own behaviour
+            assert_eq!(fhir_pods_options(std::ptr::null(), 0), 1);
+            let r = call(fhir_pods_validate, declared);
+            assert!(r.contains("\"valid\":true") && r.contains("\"profile.unknown\""), "{r}");
+            assert!(call(fhir_pods_validate, external).contains("\"valid\":true"));
+            // fail closed on both
+            assert_eq!(set(r#"{"unknownProfile":"error","externalNarrativeLinks":"refuse"}"#), 1);
+            let r = call(fhir_pods_validate, declared);
+            assert!(r.contains("\"valid\":false") && r.contains("\"profile.unknown\""), "{r}");
+            let r = call(fhir_pods_validate, external);
+            assert!(r.contains("\"valid\":false") && r.contains("\"narrative.external-link\""), "{r}");
+            // the OperationOutcome carries the same verdict, and the id
+            let outcome = call(fhir_pods_operation_outcome, declared);
+            assert!(outcome.contains("urn:fhir-pods:rule") && outcome.contains("profile.unknown"), "{outcome}");
+            // a document that does not say what it means is refused whole,
+            // and the options in force are untouched
+            for bad in [r#"{"unknownProfle":"error"}"#, r#"{"unknownProfile":"fatal"}"#, "[]", "nonsense"] {
+                assert_eq!(set(bad), 0, "{bad}");
+            }
+            assert!(call(fhir_pods_validate, declared).contains("\"valid\":false"));
+            // and an empty document restores the defaults
+            assert_eq!(fhir_pods_options(std::ptr::null(), 0), 1);
+            assert!(call(fhir_pods_validate, declared).contains("\"valid\":true"));
+            assert!(call(fhir_pods_validate, external).contains("\"valid\":true"));
         }
     }
 

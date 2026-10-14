@@ -101,10 +101,27 @@ Kotlin reaches the same operation family through the FFI crate's Android
 JNI shim. The package vendors the native artifacts. Hosts consume the pod
 as a standalone dependency; application mappings stay in the host.
 
-The current shared C ABI is **10**. It includes validation, OperationOutcome,
-slots, lift/lower, de-identification, documents, audit, HL7 v2, must-support
-inspection, and terminology loading/needs. See the
+The current shared C ABI is **14**. It includes validation, OperationOutcome,
+slots, lift/lower, de-identification, documents, audit, export, HL7 v2,
+must-support inspection, discovery, host options, and terminology /
+Questionnaire loading and needs. See the
 [header](../crates/fhir-pods-ffi/include/fhir_pods.h) for exact signatures.
+
+**Versioning the ABI.** `FHIR_PODS_ABI_VERSION` (the header, the FFI crate's
+`ABI_VERSION`, and each wrapper's own constant) rises whenever the **exported
+surface** or the **memory contract** changes — and an added entrypoint is a
+change to the exported surface, because a wrapper that calls it would
+otherwise accept a module that does not export it and fail at the call rather
+than at instantiation. Every wrapper refuses a module whose
+`fhir_pods_abi_version()` is not the one it was written against, so the
+version is what makes a mismatch a clean refusal. What does *not* move the
+number: a new member in a returned JSON document, a new rule id, a reworded
+message, a wider accepted input. Those are additive within an entrypoint's
+contract and a host that ignores them is unaffected. Each bump is recorded in
+the [changelog](../CHANGELOG.md) with what it added: 14 host options, 13 the
+Questionnaire store, 12 discovery, 11 export, 10 HL7 v2, 9 lift, 8 audit, 7
+documents, 6 de-identification, 5 terminology, 4 lower/slots, 3 the first
+cut.
 
 Inputs are UTF-8 byte buffers: JSON for resources and options, ER7 for v2,
 and text for profile URLs or terminology tables. Results are JSON in
@@ -164,6 +181,19 @@ is 2,387,366 bytes, or 586,075 bytes with gzip-9.
 Potential optimizations include validation during parsing, reusable output
 buffers, and specialized generated code. These are future designs; today's
 implementation uses an allocated tree and generic table-driven operations.
+
+## Host options
+
+Two strictness calls are the host's, and both default to what the reference
+validator does: `unknownProfile` (a declared profile this build has not
+compiled is a warning, or an error that fails the resource closed) and
+`externalNarrativeLinks` (a narrative reference out of the resource is
+accepted, or refused). They are data on the operation context
+(`Validator::set_options`), persisted across calls by the pods
+(`fhir_pods_options`, `options(json)`, `--options FILE`), and an options
+document that does not say what it means — an unknown member or value — is
+refused whole, leaving the previous options in force. Nothing here changes
+*what* is checked; see [scope](scope.md#host-options).
 
 ## Host responsibilities
 
