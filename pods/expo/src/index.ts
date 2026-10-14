@@ -6,6 +6,26 @@ export function abiVersion(): number {
 }
 
 // The report types below mirror pods/wasm/src/index.d.ts verbatim — the pods are standalone packages; keep them in sync.
+/**
+ * A finding's severity. `valid` is "no `error` and no `fatal`", so these are
+ * the two that decide a verdict:
+ *
+ * - `fatal` — something could not be checked at all, and the finding says
+ *   which. Only two are fatal: the input is not JSON (`parse.json`; there is
+ *   no document, so that finding stands alone — a short issue list there does
+ *   not mean "almost conformant") and the Questionnaire a response is held to
+ *   has an item with no `type` (`questionnaire.definition`).
+ * - `error` — the resource does not conform.
+ * - `warning` — a check that could not be performed (no bundled terminology,
+ *   an expression outside the supported core), a declared profile this build
+ *   has not compiled (`profile.unknown` — see {@link HostOptions} to make it
+ *   an error), or an invariant the definitions grade best-practice.
+ * - `information` — said for the record, never a defect (a skipped profile
+ *   invariant; no Questionnaire named at all).
+ *
+ * Every id, its severity and the condition that produces it are in
+ * `docs/rules.md` in the fhir-pods repository.
+ */
 export type Severity = "fatal" | "error" | "warning" | "information";
 
 /** One finding, in the pods' ergonomic shape. */
@@ -13,7 +33,7 @@ export interface Issue {
   severity: Severity;
   /** FHIR IssueType code (`required`, `value`, `invariant`, `structure`, `code-invalid`, …). */
   code: string;
-  /** The stable rule id (`binding.no-code`, `inv.cmp-1`, `questionnaire.required-answer`, …) — what to assert on; see docs/rules.md. */
+  /** The stable rule id (`binding.no-code`, `inv.cmp-1`, `questionnaire.required-answer`, …) — what to assert on, never the message text; see docs/rules.md for every id, its severity and what produces it. */
   id: string;
   /** The element the finding is about, as a dotted path (`Observation.value[x]:valueQuantity.code`). */
   path: string;
@@ -27,7 +47,7 @@ export interface Validation {
   profile?: string;
   /** Every profile applied, when a resource declares more than one. */
   profiles?: string[];
-  /** No `fatal` or `error` issues. */
+  /** No `fatal` and no `error` issue. A `warning` or `information` finding never changes it — including `profile.unknown`, which says a declared profile was never checked. */
   valid: boolean;
   issues: Issue[];
 }

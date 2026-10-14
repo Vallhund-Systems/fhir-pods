@@ -1,15 +1,36 @@
 //! Stable rule ids: every finding carries one, the table documents every
-//! one, and nothing the lanes produce falls through to `other.*`.
+//! one with the severity a host may see it at, nothing in the page is absent
+//! from the table (or the other way round), and nothing the lanes produce
+//! falls through to `other.*`.
 
 use fhir_pods_core::rules::{rule_id, RULES};
 use fhir_pods_core::validate::IssueType;
 
+/// The page is generated from the table (`tools/gen_rules_doc.py`), and this
+/// holds the two together in **both** directions: every id in the table is on
+/// the page with its severity and meaning verbatim, and every id the page
+/// lists is in the table. A host reads the page; a hand-edit to either side,
+/// or a stale regeneration, fails here.
 #[test]
 fn every_rule_id_is_documented_and_every_documented_id_is_real() {
     let docs = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/rules.md")).unwrap();
-    for (id, _) in RULES {
-        assert!(docs.contains(&format!("`{id}`")), "docs/rules.md does not list `{id}`");
+    for (id, severity, meaning) in RULES {
+        assert!(
+            docs.contains(&format!("| `{id}` | {severity} | {meaning} |")),
+            "docs/rules.md does not carry `{id}` with its severity and meaning (regenerate it)"
+        );
     }
+    // the other direction: an id on the page that no longer exists in the
+    // table (a rename, a hand-edited row) is just as much a drift
+    let listed: std::collections::BTreeSet<&str> = docs
+        .lines()
+        .filter(|l| l.matches('|').count() == 4) // an id row: id, severity, meaning
+        .filter_map(|l| l.strip_prefix("| `"))
+        .filter_map(|l| l.split_once('`'))
+        .map(|(id, _)| id)
+        .collect();
+    let table: std::collections::BTreeSet<&str> = RULES.iter().map(|(id, _, _)| *id).collect();
+    assert_eq!(listed, table, "docs/rules.md and the RULES table list different ids");
     // every id the classifier can return is in the table (or an invariant / fallback family)
     let samples = [
         (IssueType::Structure, "could not parse JSON at byte 3: x"),
@@ -117,4 +138,64 @@ fn nothing_on_the_corpus_falls_through_to_other() {
         return; // no derived corpora on this machine
     }
     assert!(unclassified.is_empty(), "unclassified findings: {unclassified:#?}");
+}
+
+/// The documented severity is measured, not asserted: every severity the
+/// lanes on this machine actually produce for an id must be one the page
+/// lists for it. Without the derived corpora this is a no-op, as the test
+/// above it is.
+#[test]
+fn every_severity_the_lanes_produce_is_documented() {
+    use fhir_pods_core::validate::Severity;
+    let conformance = concat!(env!("CARGO_MANIFEST_DIR"), "/../../conformance");
+    let mut dirs = vec![
+        format!("{conformance}/corpus"),
+        format!("{conformance}/gut/out/cases"),
+        format!("{conformance}/probes"),
+        format!("{conformance}/narrative"),
+    ];
+    if let Ok(classes) = std::fs::read_dir(format!("{conformance}/mutations")) {
+        dirs.extend(classes.flatten().filter(|e| e.path().is_dir()).map(|e| e.path().to_string_lossy().into_owned()));
+    }
+    let documented = |id: &str| -> Vec<&'static str> {
+        let key = if id.starts_with("inv.") && id != "inv.other" { "inv.<key>" } else { id };
+        let (_, severity, _) = RULES.iter().find(|(r, _, _)| *r == key).expect("every finding's id is in the table");
+        ["fatal", "error", "warning", "information"].into_iter().filter(|s| severity.contains(s)).collect()
+    };
+    let validator = fhir_pods_core::Validator::new();
+    let mut seen = 0usize;
+    for dir in dirs {
+        let Ok(entries) = std::fs::read_dir(&dir) else { continue };
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if !name.ends_with(".json")
+                || name.starts_with('_')
+                || name.contains("manifest")
+                || name.contains("evidence")
+            {
+                continue;
+            }
+            let Ok(bytes) = std::fs::read(entry.path()) else { continue };
+            seen += 1;
+            for i in validator.validate(&bytes).report.issues {
+                let severity = match i.severity {
+                    Severity::Fatal => "fatal",
+                    Severity::Error => "error",
+                    Severity::Warning => "warning",
+                    Severity::Information => "information",
+                };
+                let allowed = documented(i.id);
+                assert!(
+                    allowed.contains(&severity) || allowed.is_empty(),
+                    "{}: `{}` arrived at {severity}, which docs/rules.md does not list ({allowed:?}) — {}",
+                    name,
+                    i.id,
+                    i.message
+                );
+            }
+        }
+    }
+    if seen > 0 {
+        assert!(seen > 100, "only {seen} files: the corpora look truncated");
+    }
 }

@@ -29,6 +29,28 @@ void pod_free(uint8_t *ptr, size_t len);
  *         with pod_free(ret, 4 + length). Never NULL: a parse failure is a
  *         `fatal` issue in the document, not an error at the boundary. */
 
+/* Findings, and what `valid` means.
+ * Every issue carries a stable rule id (`issues[].id`; `issue.details.coding`
+ * under system urn:fhir-pods:rule in an OperationOutcome) and one of four
+ * severities (`issues[].severity`) — the ids, their severities and the
+ * conditions that produce them are docs/rules.md:
+ *   fatal        something could not be checked at all, and the report says
+ *                which. Two findings are fatal: the input is not JSON
+ *                (`parse.json` — there is no document, so that finding stands
+ *                alone) and the Questionnaire a response is held to has an
+ *                item with no type (`questionnaire.definition`).
+ *   error        the resource does not conform.
+ *   warning      a check that could not be performed (no bundled terminology,
+ *                an expression outside the supported core), a declared
+ *                profile this build has not compiled, a best-practice
+ *                invariant.
+ *   information  said for the record, never a defect.
+ * `"valid": true` means NO error and NO fatal issue. A warning or an
+ * information finding never changes it, however much it matters: a resource
+ * whose declared profile this build has not compiled is valid by default
+ * (the reference validator's own severity) — fhir_pods_options below is how
+ * a host makes that an error instead of filtering the issue out. */
+
 /* The ergonomic report: {"resourceType","profile","valid","issues":[...]}. */
 uint8_t *fhir_pods_validate(const uint8_t *ptr, size_t len);
 

@@ -48,7 +48,18 @@ const outcome = pod.operationOutcome(JSON.stringify(observation));
 the report.
 Every issue carries a stable rule `id` (`binding.no-code`, `inv.cmp-1`,
 `questionnaire.required-answer`, …) — assert on that, never on message text;
-the ids and their contract are in [docs/rules.md](../../docs/rules.md). Both calls are synchronous. Historical v0.8.3 measurements were
+every id, its severity and the condition that produces it are in
+[docs/rules.md](../../docs/rules.md).
+
+`valid` is **no `error` and no `fatal`**. `fatal` means something could not be
+checked at all and says which — only two findings are fatal: the input is not
+JSON (`parse.json`, and then that finding is the whole report) and the
+Questionnaire a response is held to has an item with no `type`
+(`questionnaire.definition`). A `warning` or `information` finding never
+changes the verdict, however much it matters: a resource whose declared
+profile this build has not compiled is valid by default, with
+`profile.unknown` naming it — see [Host options](#host-options---fail-closed-where-the-reference-validator-is-lenient)
+to make that an error instead of filtering the issue out. Both calls are synchronous. Historical v0.8.3 measurements were
 69–89 µs on an M4 Max for the recorded profiled-resource fixtures, including JSON copy
 and parse; see the [benchmark guide](bench/README.md) for scope and provenance.
 

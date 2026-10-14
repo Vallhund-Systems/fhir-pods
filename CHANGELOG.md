@@ -97,6 +97,44 @@ can be read from — a `CodeableConcept`, a quantity in kilograms — leaves it
 alone and names it in `residual`, so a rule that cannot bite is never silent,
 and the walk's own `Age` clamp is subsumed where both would fire.
 
+**`fatal`, said out loud — and a severity for every rule id.** The pod emits
+`severity: "fatal"` and nothing told a host so. `docs/rules.md` now opens with
+the severity set (`fatal` / `error` / `warning` / `information`), what `valid`
+means in each one's presence, and **when `fatal` is emitted**: exactly two
+findings, `parse.json` (the input is not JSON — there is no document, so that
+finding is the whole report, and a short issue list there must not read as
+"almost conformant") and `questionnaire.definition` where a held-to
+Questionnaire has an item with no `type` (the response cannot be judged
+against that item; the Questionnaire's own findings stand beside it). Both
+probed against validator_cli 6.10.4: it reports `fatal` for the same two
+inputs. The C header carries the same paragraph, and so do both pods'
+typings, where a host reading the packed pod actually looks.
+
+The rule table gains a **Severity** column — every one of the 67 ids, read
+from its push site and, where the lanes produce it, *measured*: a new test
+scans the release corpus, the mutation files, the gut cases and the probe
+lanes (20,997 files) and fails if an id ever arrives at a severity the page
+does not list for it. So `profile.unknown` is "warning — error where the host
+sets `unknownProfile`", `questionnaire.unresolved` is "information when none
+is named … warning when a named one could not be resolved",
+`not-supported.fhirpath` is "information for a profile invariant, warning for
+a datatype one", `questionnaire.answer-content` is "error — warning for a new
+line in an answer".
+
+**Why five ids read as undocumented, and what changed.** The host reported
+`questionnaire.unresolved`, `questionnaire.definition`,
+`questionnaire.item-shape`, `structure.json-type` and `parse.json` as having
+no entry in the table. All five *were* in `docs/rules.md` at 0.21.0 — with a
+one-line meaning, no severity and no statement of what produces them, and in
+a file that does not travel with the packed pod. Each now carries its
+severity and its condition (what `structure.json-type` counts as a wrong
+kind, including a `_` carrier given as an object; what `item-shape` forbids;
+that `questionnaire.definition` is a defect in the *Questionnaire*, not in
+the response), and the forward-only documentation test is now **both ways**:
+every id in the table is on the page with its severity and meaning verbatim,
+and every id the page lists is in the table — a hand-edited row or a stale
+regeneration fails.
+
 **ABI 14**, and the policy written down (`docs/architecture.md`): the number
 rises whenever the exported surface or the memory contract changes, an added
 entrypoint included, because a wrapper that calls one must not be handed a
