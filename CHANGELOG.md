@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.22.0 — 2026-10-14
 
 **A host's second field report, probed.** Three independent readers drove the
 packed 0.21.0 pod with a compiled host profile and reported five things. Each

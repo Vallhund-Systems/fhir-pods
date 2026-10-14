@@ -391,8 +391,7 @@ asked what they can't answer. `system` is "" for a bare `code` element.
 
 ## Status
 
-The last packed package is **0.21.0, ABI 13**; the source now speaks **ABI
-14** (`fhir_pods_options`), so the next build's artifacts carry that. The
+The packed package is **0.22.0, ABI 14** (`fhir_pods_options`). The
 package **refuses a mismatch at import**: `src/index.ts` throws
 `fhir-pods: the native library speaks ABI <n>, this package expects <m>`, and
 the Swift and Kotlin modules log the same on creation. Unlike the wasm pod,
