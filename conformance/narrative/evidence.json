@@ -1,7 +1,7 @@
 {
-  "recorded_at": "2026-10-14T21:48:32.228055+00:00",
-  "source_revision": "12777c89f6093b26d218cf5965a296a624650b5e",
-  "source_dirty": true,
+  "recorded_at": "2026-10-14T21:49:59.563428+00:00",
+  "source_revision": "47fa944f90383c8e9d810f3ec7d41a16802e5bc3",
+  "source_dirty": false,
   "oracle_version": "6.10.4",
   "oracle_sha256": "1106b9d58f9e363e47bea7c4fc065841e5fc91fe9d062775c3bfdd212bd653cc",
   "oracle_options": [
