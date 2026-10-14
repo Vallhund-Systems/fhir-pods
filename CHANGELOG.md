@@ -136,9 +136,9 @@ typings, where a host reading the packed pod actually looks.
 
 The rule table gains a **Severity** column — every one of the 67 ids, read
 from its push site and, where the lanes produce it, *measured*: a new test
-scans the release corpus, the mutation files, the gut cases and the probe
-lanes (20,997 files) and fails if an id ever arrives at a severity the page
-does not list for it. So `profile.unknown` is "warning — error where the host
+scans every file the release corpus, the mutation lane, the gut cases and the
+two probe lanes have on disk, and fails if an id ever arrives at a severity
+the page does not list for it. So `profile.unknown` is "warning — error where the host
 sets `unknownProfile`", `questionnaire.unresolved` is "information when none
 is named … warning when a named one could not be resolved",
 `not-supported.fhirpath` is "information for a profile invariant, warning for

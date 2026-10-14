@@ -331,9 +331,7 @@ fn run(args: Args) -> Result<(String, bool), Failure> {
     let host_options = args
         .options
         .as_ref()
-        .map(|p| {
-            HostOptions::from_json(&read(p)?).map_err(|error| Failure::Usage(format!("invalid options: {error}")))
-        })
+        .map(|p| HostOptions::from_json(&read(p)?).map_err(|error| Failure::Usage(format!("invalid options: {error}"))))
         .transpose()?
         .unwrap_or_default();
     let mut validator = Validator::new().with_options(host_options);
