@@ -267,13 +267,27 @@ export interface AuditInputs {
   extension?: Record<string, unknown>[];
 }
 
-/** What de-identification does to an element. */
-export type DeidAction = "keep" | "remove" | "mask" | "year" | "pseudonym" | "clamp";
+/**
+ * What de-identification does to an element. `collapse-age` is the host's
+ * declaration that this element *is* an age: over 89 aggregates (an integer
+ * or decimal to `90`; a quantity to `comparator: ">="` with 90 in its own
+ * unit). Nothing says which integer is an age, so the pod never guesses —
+ * and an element no age can be read from is left alone and named in
+ * `residual`. `clamp` is what the walk does to an `Age` on its own.
+ */
+export type DeidAction = "keep" | "remove" | "mask" | "year" | "pseudonym" | "clamp" | "collapse-age";
 
 /**
- * A de-identification policy. `base` is Safe Harbor unless "none"; `rules`
- * apply after it, most specific target first (`Patient.address.city` beats
- * `Address.city` beats `Address`). `salt` keys the pseudonyms — keep it
+ * A de-identification policy: the rule set a typed walk of the resource
+ * applies. `base` is the built-in `safe-harbor` policy unless `"none"` — a
+ * rule set *modelled on* HIPAA Safe Harbor's identifier list, by FHIR type.
+ * It is **not a compliance determination**: it covers the fields its rules
+ * name, in the resource it is given, and says nothing about
+ * re-identification risk from what remains, from the host's other data, or
+ * from how the copy is used. `rules` apply after the base, most specific
+ * target first (`Patient.address.city` beats `Address.city` beats
+ * `Address`). `salt` is **required and non-empty** — it keys the pseudonyms,
+ * and the call throws without one rather than emitting unkeyed ones; keep it
  * secret and stable. `today` (a date) is what "over 89" is measured against.
  */
 export interface DeidPolicy {
@@ -289,9 +303,9 @@ export interface Deidentified {
   applied: { path: string; action: DeidAction }[];
   /** The copy's conformance to the profiles it declares. */
   validation: Validation;
-  /** What a Safe Harbor check still finds in the copy — empty under the default policy. */
+  /** What the built-in policy's own check still finds in the copy — empty under the default policy. Not a compliance verdict. */
   remaining: { path: string; what: string }[];
-  /** Free text the policy kept in place (a CodeableConcept.text, a Dosage.text…), named so an empty `remaining` never reads as "all free text gone". */
+  /** Free text the policy kept in place (a CodeableConcept.text, a Dosage.text…), named so an empty `remaining` never reads as "all free text gone" — and a `collapse-age` rule that found no age to collapse. */
   residual: { path: string; what: string }[];
 }
 
@@ -373,11 +387,16 @@ export interface Pod {
    */
   export(region: ExportRegion, inputs: ExportInputs | string): Exported;
   /**
-   * A de-identified copy under `policy` (Safe Harbor by default): names,
-   * contact details, addresses below state, exact dates, ages over 89,
-   * narrative, notes and attachments removed (or masked where the profile
-   * requires the element); identifiers and references pseudonymised with
-   * the salt. Throws only when it cannot start (bad policy, not a resource).
+   * A copy of the resource under `policy` — the built-in `safe-harbor` rule
+   * set unless `base` says otherwise: names, contact details, addresses
+   * below state, exact dates (year only), ages over 89 on an `Age`,
+   * narrative, notes, attachments, signatures and device serials removed (or
+   * masked where the profile requires the element); identifiers and
+   * references pseudonymised with the salt. A rule set modelled on HIPAA
+   * Safe Harbor's identifier list — **not a compliance determination**; see
+   * {@link DeidPolicy}. Throws when it cannot start: a policy with no
+   * non-empty `salt`, an unknown `base` or action, or input that is not a
+   * FHIR resource.
    */
   deidentify(json: string | Uint8Array, policy: DeidPolicy): Deidentified;
   /**

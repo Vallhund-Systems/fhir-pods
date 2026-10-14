@@ -1,0 +1,26 @@
+{
+  "resourceType": "Condition",
+  "id": "age-collapsed-onset",
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Masked</p></div>"
+  },
+  "subject": {
+    "reference": "Patient/ba7816bf8f01cfea"
+  },
+  "code": {
+    "coding": [
+      {
+        "system": "http://example.org/conditions",
+        "code": "c1"
+      }
+    ]
+  },
+  "onsetAge": {
+    "value": 90,
+    "comparator": ">=",
+    "unit": "years",
+    "system": "http://unitsofmeasure.org",
+    "code": "a"
+  }
+}

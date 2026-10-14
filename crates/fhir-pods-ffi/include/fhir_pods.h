@@ -94,11 +94,27 @@ uint8_t *fhir_pods_v2_tx(const uint8_t *message, size_t message_len, const uint8
 
 /* De-identification: a copy of the resource under a policy (JSON:
  * {"salt": "...", "today": "YYYY-MM-DD", "base": "safe-harbor" | "none",
- *  "rules": [{"target": "Patient.address.city", "action": "keep"}, ...]}
- * — Safe Harbor by default; identifiers and references pseudonymised with
- * the salt). Returns {"resource": {...}, "applied": [{"path","action"}],
- * "validation": {...}, "remaining": [{"path","what"}]} — `remaining` is what
- * a Safe Harbor check still finds (empty under the default policy) — or
+ *  "rules": [{"target": "Patient.address.city", "action": "keep"}, ...]}).
+ * The policy is a rule set applied to a typed walk of the resource. `base`
+ * defaults to the built-in `safe-harbor` rule set — modelled on HIPAA Safe
+ * Harbor's identifier list, by FHIR type (names, contact details, addresses
+ * below state, dates to the year, ages over 89 on an Age, narrative, notes,
+ * attachments, signatures, device serials; identifiers and references
+ * pseudonymised with the salt). It is NOT a compliance determination: it
+ * covers the fields its rules name, in the resource it is given, and says
+ * nothing about re-identification risk from what remains, from the host's
+ * other data, or from how the copy is used. `salt` is REQUIRED and
+ * non-empty: without one the call returns {"error": ...} rather than
+ * unkeyed pseudonyms. Actions: keep, remove, mask, year, pseudonym, clamp,
+ * collapse-age — the last being the host's declaration that the element it
+ * names IS an age (over 89 aggregates: an integer or decimal to 90, a
+ * quantity to {"value": 90, "comparator": ">="} in its own unit), since
+ * nothing says which integer is an age and the pod never guesses.
+ * Returns {"resource": {...}, "applied": [{"path","action"}],
+ * "validation": {...}, "remaining": [{"path","what"}], "residual":
+ * [{"path","what"}]} — `remaining` is what the built-in policy's own check
+ * still finds (empty under the default policy), `residual` the free text a
+ * rule kept and any collapse-age rule that found no age — or
  * {"error": "..."} when it could not start. */
 uint8_t *fhir_pods_deidentify(const uint8_t *resource, size_t resource_len, const uint8_t *policy, size_t policy_len);
 

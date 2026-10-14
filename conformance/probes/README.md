@@ -1,8 +1,9 @@
 # Adversarial validation probes
 
-These 35 synthetic fixtures cover valid controls, JSON shapes, primitive limits,
+These 37 synthetic fixtures cover valid controls, JSON shapes, primitive limits,
 extensions, contained resources, unknown profiles, offline references, required
-coded content, and recursive content-reference validation.
+coded content, recursive content-reference validation, and the shape a
+de-identified age over 89 goes out as.
 `manifest.json` records an expected verdict and reason for each fixture. The
 shared corpus builder automatically includes them as `probe-*` cases.
 
@@ -36,6 +37,9 @@ Two expectations are deliberately narrower than a reader might assume:
 - A standalone required-bound `Coding` with `system` but no `code` is accepted
   by validator_cli 6.10.4. The same Coding inside a required-bound
   `CodeableConcept` does not satisfy the parent binding.
+- An `Age` or `Quantity` carrying `comparator: ">="` with `value: 90` is
+  valid — the form the `collapse-age` de-identification rule writes, so a
+  collapsed age is conformant where the host names the element.
 
 References: [R4 JSON representation](https://hl7.org/fhir/R4/json.html),
 [R4 datatypes](https://hl7.org/fhir/R4/datatypes.html),

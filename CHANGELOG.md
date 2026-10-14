@@ -61,6 +61,42 @@ CLI's `validate` and `gate`, `Validator::set_options` / `with_options` in the
 core. The pods persist them for every call that follows — validate, lower,
 lift, export, document, v2 — and a Questionnaire load carries them through.
 
+**De-identification says what it does.** The wrapper's comment promised "a
+Safe Harbor copy (by default)" — a compliance claim the code does not make
+and cannot. What `deidentify` does is apply a **policy object** — a rule set
+— to a typed walk and return the copy with a trail; the built-in policy is
+modelled on HIPAA Safe Harbor's identifier list, by FHIR type. The wording is
+corrected wherever it appeared (the wasm wrapper and both pods' typings and
+READMEs, the C header, the FFI and core docs, the main README, the CLI guide,
+`docs/architecture.md`) and `docs/scope.md` gains a **De-identification**
+section stating the claim and its limits: every element the rules name is
+transformed as the rule says, `applied` lists every change, `remaining` is
+the policy's own check over the copy — and nothing about re-identification
+risk from what remains, the host's other data, or how the copy is used is
+claimed. It is not an expert determination and not a certification. Two
+limits now said rather than discovered: the **salt is required** (the call
+refuses without a non-empty one rather than emit unkeyed pseudonyms), and an
+age is only aggregated where the pod can know it is one.
+
+**`collapse-age`, a policy action (the host names the element).** The report
+expected ages ≥ 90 to collapse. The walk already aggregates an `Age`-typed
+element over 89 — the type says what it is — but nothing says which
+*integer* is an age, so the pod never guesses. A rule now names it:
+
+```json
+{"target": "QuestionnaireResponse.item.answer.valueInteger", "action": "collapse-age"}
+```
+
+Over 89 then collapses: an integer or decimal to `90` (a primitive carries no
+comparator, and the host that named the element knows what 90 means there), a
+quantity-typed element to `{"value": 90, "comparator": ">="}` with the
+90-equivalent in its own unit — valid on both an `Age` and a `Quantity`
+(probed; `conformance/probes/age-collapsed-onset.json` and
+`-quantity.json`, the probe lane now 37/37). A rule naming an element no age
+can be read from — a `CodeableConcept`, a quantity in kilograms — leaves it
+alone and names it in `residual`, so a rule that cannot bite is never silent,
+and the walk's own `Age` clamp is subsumed where both would fire.
+
 **ABI 14**, and the policy written down (`docs/architecture.md`): the number
 rises whenever the exported surface or the memory contract changes, an added
 entrypoint included, because a wrapper that calls one must not be handed a

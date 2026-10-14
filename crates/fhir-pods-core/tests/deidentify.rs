@@ -463,3 +463,89 @@ fn a_questionnaire_responses_free_text_answer_is_masked_not_dropped() {
     assert!(d.resource.contains(r#""valueInteger":120"#), "{}", d.resource);
     assert!(d.validation.is_valid(), "{}", wire::report(&d.validation));
 }
+
+/// Safe Harbor aggregates ages over 89, and the walk does that to an `Age`
+/// on its own — but an *integer* a host uses for an age is just an integer
+/// to the pod, so collapsing one is a policy rule naming the element. Over
+/// 89 collapses: a primitive to `90`, a quantity to `comparator: ">="` with
+/// 90 in its own unit (probed: validator_cli 6.10.4 accepts that form on
+/// both an `Age` and a `Quantity` — `conformance/probes/age-collapsed-*`).
+/// A rule that names something no age can be read from says so in
+/// `residual` rather than passing silently.
+#[test]
+fn a_host_named_age_over_89_collapses_and_an_uncollapsible_one_is_said() {
+    let qr = r#"{"resourceType":"QuestionnaireResponse","id":"r","status":"completed",
+      "item":[{"linkId":"age","answer":[{"valueInteger":94}]},{"linkId":"young","answer":[{"valueInteger":40}]},
+              {"linkId":"edge","answer":[{"valueInteger":89}]}]}"#;
+    let age_rule = Policy::safe_harbor(b"salt")
+        .today(2026)
+        .rule("QuestionnaireResponse.item.answer.valueInteger", Action::CollapseAge);
+    let d = deid(qr, &age_rule);
+    assert!(d.resource.contains(r#""valueInteger":90"#), "{}", d.resource);
+    assert!(!d.resource.contains("94"), "{}", d.resource);
+    // under the threshold, untouched — the rule aggregates, it does not mask
+    assert!(
+        d.resource.contains(r#""valueInteger":40"#) && d.resource.contains(r#""valueInteger":89"#),
+        "{}",
+        d.resource
+    );
+    let applied: Vec<String> = d
+        .applied
+        .iter()
+        .map(|a| format!("{} {}", a.path, a.action.name()))
+        .filter(|a| a.contains("collapse"))
+        .collect();
+    assert_eq!(applied, vec!["QuestionnaireResponse.item.answer.valueInteger collapse-age"], "{:?}", d.applied);
+    assert!(d.residual.is_empty(), "{:?}", d.residual);
+
+    // without the rule nothing finds it: the pod does not guess which integer is an age
+    let bare = deid(qr, &Policy::safe_harbor(b"salt").today(2026));
+    assert!(bare.resource.contains(r#""valueInteger":94"#), "{}", bare.resource);
+
+    // a quantity says it exactly, in its own unit, and the walk's own Age
+    // clamp is subsumed (one action for the element, not two)
+    let cond = r#"{"resourceType":"Condition","id":"c","subject":{"reference":"Patient/x"},
+      "code":{"coding":[{"system":"http://example.org/c","code":"c1"}]},
+      "onsetAge":{"value":94,"unit":"years","system":"http://unitsofmeasure.org","code":"a"}}"#;
+    let d = deid(cond, &Policy::safe_harbor(b"salt").today(2026).rule("Condition.onsetAge", Action::CollapseAge));
+    assert!(d.resource.contains(r#""value":90,"comparator":">=","unit":"years""#), "{}", d.resource);
+    assert_eq!(
+        d.applied.iter().filter(|a| a.path == "Condition.onsetAge").map(|a| a.action.name()).collect::<Vec<_>>(),
+        vec!["collapse-age"],
+        "{:?}",
+        d.applied
+    );
+    assert!(d.validation.is_valid(), "{}", wire::report(&d.validation));
+    // months, not years: the 90-equivalent in the unit it was given
+    let months = cond.replace(
+        r#""value":94,"unit":"years","system":"http://unitsofmeasure.org","code":"a""#,
+        r#""value":1128,"unit":"months","system":"http://unitsofmeasure.org","code":"mo""#,
+    );
+    let d = deid(&months, &Policy::safe_harbor(b"salt").today(2026).rule("Condition.onsetAge", Action::CollapseAge));
+    assert!(d.resource.contains(r#""value":1080,"comparator":">=""#), "{}", d.resource);
+
+    // a rule on something no age reads from: left alone, and named
+    let d = deid(cond, &Policy::safe_harbor(b"salt").rule("Condition.code", Action::CollapseAge));
+    assert_eq!(
+        d.residual.iter().map(|f| (f.path.as_str(), f.what.as_str())).collect::<Vec<_>>(),
+        vec![("Condition.code", "age not collapsed: not an integer, a decimal, or a quantity in a unit of time")],
+        "{:?}",
+        d.residual
+    );
+    // and a quantity in a unit the policy does not read as time, the same way
+    let kg = cond.replace(
+        r#""value":94,"unit":"years","system":"http://unitsofmeasure.org","code":"a""#,
+        r#""value":94,"unit":"kg","system":"http://unitsofmeasure.org","code":"kg""#,
+    );
+    let d = deid(&kg, &Policy::safe_harbor(b"salt").rule("Condition.onsetAge", Action::CollapseAge));
+    assert!(d.residual.iter().any(|f| f.path == "Condition.onsetAge"), "{:?}", d.residual);
+
+    // the policy's JSON spelling
+    let policy = Policy::from_json(
+        br#"{"salt":"s","rules":[{"target":"QuestionnaireResponse.item.answer.valueInteger","action":"collapse-age"}]}"#,
+    )
+    .unwrap();
+    assert!(deid(qr, &policy).resource.contains(r#""valueInteger":90"#));
+    assert_eq!(Action::parse("collapse-age"), Some(Action::CollapseAge));
+    assert_eq!(Action::CollapseAge.name(), "collapse-age");
+}

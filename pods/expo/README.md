@@ -237,23 +237,43 @@ limit the reference validator has without a terminology server.
 ```ts
 import { deidentify } from "fhir-pods-expo";
 const { resource, applied, validation, remaining, residual } = deidentify(json, {
-  salt: await SecureStore.getItemAsync("deid-salt"), // keys the pseudonyms — secret, stable
+  salt: await SecureStore.getItemAsync("deid-salt"), // REQUIRED, non-empty — secret, stable
   today: "2026-09-16",
-  rules: [{ target: "Observation.effectiveDateTime", action: "keep" }], // on top of Safe Harbor
+  rules: [
+    { target: "Observation.effectiveDateTime", action: "keep" },        // on top of the built-in policy
+    { target: "Patient.extension.valueInteger", action: "collapse-age" }, // this element is an age
+  ],
 });
 ```
 
-Safe Harbor by default — names, contact details, addresses below state,
-exact dates (year only), ages over 89, narrative, notes, attachments,
-signatures and device serials go; identifiers and references become
-HMAC-SHA256 pseudonyms under the salt. Where the declared profile requires
+**What this does, exactly.** It applies a **policy object** to a typed walk
+of the resource and returns the copy with a trail. The built-in policy
+(`base: "safe-harbor"`, the default; `"none"` starts from nothing) is a rule
+set *modelled on* HIPAA Safe Harbor's identifier list, by FHIR type: names,
+contact details, addresses below state, exact dates (year only), ages over
+89 on an `Age`, narrative, notes, attachments, signatures and device serials
+go; identifiers and references become HMAC-SHA256 pseudonyms under the salt.
+**It is not a compliance determination** and the pod claims none: the policy
+covers the fields its rules name, in the resource it is given, and nothing
+about re-identification risk from what remains, the host's other data, or
+how the copy is used. Whoever releases the data owns that determination.
+
+`salt` is required and must be non-empty — the call throws without one
+rather than emitting unkeyed pseudonyms. Where the declared profile requires
 an element that goes, a `data-absent-reason: masked` stub stands in, so the
 copy stays conformant wherever the profile permits (`validation` says where
-it does not). `applied` is the audit trail; `remaining` is what a Safe
-Harbor check still finds, empty under the default policy. Rules target a
-type, a member of a type or an element; the most specific wins.
+it does not). `applied` is the audit trail; `remaining` is what the built-in
+policy's own check still finds, empty under the default policy. Rules target
+a type, a member of a type or an element; the most specific wins.
 
-Free text goes under Safe Harbor — a concept's `text`, a note, an
+`collapse-age` is the one rule the host must name an element for: an age over
+89 aggregates, but nothing says which *integer* is an age, so the pod never
+guesses. Where a rule names one, over 89 becomes `90`; a quantity-typed
+element says it exactly — `{"value": 90, "comparator": ">="}` in its own
+unit. An element no age can be read from is left alone and named in
+`residual`.
+
+Free text goes under the built-in policy — a concept's `text`, a note, an
 organisation's name, an extension's string payload — except a coding's
 display, a quantity's unit, an address's state and country, and an
 element's own `id` / `linkId`. A host that keeps a free-text site by rule

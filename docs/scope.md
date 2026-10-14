@@ -319,7 +319,7 @@ each derived file the same way. One reviewed difference is named in
 `gut-triage.json`: the oracle also reports a vendor code as unknown in the
 CodeSystem it has loaded, which the pod — given the value sets as a table,
 not the code system — cannot. A host's finding the chain surfaces: a
-response de-identified under Safe Harbor loses free-text answers, and a
+response de-identified under the built-in policy loses free-text answers, and a
 required free-text item then makes the copy invalid against its instrument
 on both sides — instrument design, not validation.
 
@@ -367,6 +367,44 @@ Two narrative limits are declared elsewhere: a `<a href>` or `<img src>`
 pointing at another resource in the bundle is not resolved (the base lane's
 "Narrative hyperlinks" family), and `dom-6` is evaluated as the ordinary
 warning it is.
+
+## De-identification: a rule set, not a determination
+
+`deidentify` applies a **policy** — a rule set — to a typed walk of the
+resource and returns the copy with a trail. The built-in policy
+(`base: "safe-harbor"`, the default) is modelled on HIPAA Safe Harbor's
+identifier list, by FHIR type: names, contact details, addresses below state,
+dates to the year, ages over 89 on an `Age`, narrative, notes, attachments,
+signatures and device serials go; identifiers and references become
+HMAC-SHA256 pseudonyms keyed by the salt, consistently.
+
+**What is claimed, and what is not.** The claim is mechanical: every element
+the rules name is transformed as the rule says, the walk is typed (what a
+node *is* decides, never its name), `applied` lists every change, `remaining`
+is the policy's own check over the copy, and `residual` names what a rule
+deliberately left. Nothing here is a compliance determination: the policy
+says nothing about re-identification risk from what remains, from the host's
+other data, or from how the copy is used; it is not an expert determination
+and not a certification. Whoever releases the data owns that.
+
+Two limits worth stating plainly:
+
+- **The salt is required.** Without a non-empty `salt` the operation refuses
+  (`policy needs a non-empty salt`) rather than emit unkeyed pseudonyms.
+- **An age is only an age where the host says so.** The walk aggregates an
+  `Age`-typed element over 89 on its own, because the type says what it is.
+  Nothing says which *integer* is an age, so the pod never guesses: a
+  `collapse-age` rule names the element (`QuestionnaireResponse.item.answer.valueInteger`,
+  `Patient.extension.valueInteger`, `Condition.onsetAge`) and over 89 then
+  collapses — an integer or decimal to `90`, a quantity to
+  `{"value": 90, "comparator": ">="}` in its own unit, the form validator_cli
+  6.10.4 accepts on an `Age` and a `Quantity` (probed,
+  `conformance/probes/age-collapsed-*`). A rule naming an element no age can
+  be read from leaves it alone and says so in `residual`.
+
+The gut-path lane's chain stage de-identifies the whole derived record and
+re-judges every file both ways, so the copies' conformance is measured, not
+asserted (`conformance/gut.py --chain`).
 
 ## Host options
 

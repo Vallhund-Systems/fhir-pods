@@ -44,6 +44,14 @@ option: the policy file has the same shape as the core's policy JSON:
 {"salt":"host-supplied-secret","today":"2026-09-16","base":"safe-harbor"}
 ```
 
+`salt` is required and must be non-empty. `base` selects the built-in rule
+set — modelled on HIPAA Safe Harbor's identifier list, by FHIR type — or
+`"none"` to start from the rules alone. The policy is a rule set, not a
+compliance determination: it covers the fields its rules name, in the
+resource it is given. `rules` actions are `keep`, `remove`, `mask`, `year`,
+`pseudonym` and `collapse-age` (the host declaring that the element it names
+is an age: over 89 aggregates).
+
 Results go to stdout as one JSON object. `validate --outcome` emits a FHIR
 OperationOutcome; default validation emits the pod report. `lower`,
 `audit`, `export`, `deidentify`, and `document` use the same result shapes as the WASM pod,

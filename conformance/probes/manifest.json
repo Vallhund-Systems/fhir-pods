@@ -208,5 +208,17 @@
     "profile": "http://hl7.org.au/fhir/StructureDefinition/au-composition",
     "expect": false,
     "reason": "Base required bindings still apply below contentReference recursion when a compiled profile is declared."
+  },
+  {
+    "file": "age-collapsed-onset.json",
+    "profile": null,
+    "expect": true,
+    "reason": "A de-identified age over 89 as the spec's own aggregate: an Age with comparator '>=' and value 90 is valid (what the collapse-age policy rule writes)."
+  },
+  {
+    "file": "age-collapsed-quantity.json",
+    "profile": null,
+    "expect": true,
+    "reason": "The same on a plain Quantity, so the rule's output is valid wherever a host names a quantity element as an age."
   }
 ]

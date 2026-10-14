@@ -132,7 +132,11 @@ export async function instantiate(source, options = {}) {
       if (out.error) throw new Error(`fhir-pods: ${out.error}`);
       return out;
     },
-    // De-identification: a Safe Harbor copy (by default) under a policy object.
+    // De-identification: a copy of the resource under a policy object — the
+    // built-in `safe-harbor` rule set unless `base` says otherwise, modelled
+    // on HIPAA Safe Harbor's identifier list by FHIR type. Not a compliance
+    // determination: it covers the fields its rules name, in this resource.
+    // `policy.salt` is required and non-empty, or the call throws.
     deidentify: (json, policy = {}) => {
       const out = JSON.parse(call(ex.fhir_pods_deidentify, json, JSON.stringify(policy)));
       if (out.error) throw new Error(`fhir-pods: ${out.error}`);

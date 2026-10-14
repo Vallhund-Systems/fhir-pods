@@ -1,12 +1,26 @@
-//! De-identification: a copy of a resource safe to leave the patient's
-//! device — Safe Harbor by default (names, contact details, addresses below
-//! state, exact dates, ages over 89, identifiers, narrative and notes,
-//! attachments), identifiers and references pseudonymised consistently with
-//! a host-supplied salt. Policy is data; the walk is typed, so what a node
-//! *is* (`HumanName`, `Address`, `date`…) decides, never its shape or its
-//! name alone. Where the resource's profile requires an element that is
-//! removed, a `data-absent-reason: masked` stub stands in, so the copy stays
-//! conformant wherever the profile permits.
+//! De-identification: a copy of a resource under a **policy** — a rule set
+//! applied to a typed walk, so what a node *is* (`HumanName`, `Address`,
+//! `date`…) decides, never its shape or its name alone. The built-in policy
+//! ([`Policy::safe_harbor`], the default) is modelled on HIPAA Safe Harbor's
+//! identifier list, by FHIR type: names, contact details, addresses below
+//! state, dates to the year, ages over 89 on an `Age`, narrative, notes,
+//! attachments, signatures and device serials go; identifiers and references
+//! become pseudonyms keyed by a host-supplied salt, consistently.
+//!
+//! **No compliance standard is claimed.** The policy covers the fields its
+//! rules name, in the resource it is given. It says nothing about
+//! re-identification risk from what remains, from the host's other data, or
+//! from how the copy is used; it is not an expert determination and not a
+//! certification. [`Deidentified::remaining`] is the built-in policy's own
+//! check over the copy, not a verdict on either. The salt is required (see
+//! [`PolicyError::MissingSalt`]): without one the operation refuses rather
+//! than emit unkeyed pseudonyms. An age the pod cannot recognise — an
+//! integer a host uses for one — collapses only where a rule names the
+//! element ([`Action::CollapseAge`]).
+//!
+//! Where the resource's profile requires an element that is removed, a
+//! `data-absent-reason: masked` stub stands in, so the copy stays conformant
+//! wherever the profile permits.
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
@@ -35,6 +49,15 @@ pub enum Action {
     /// An age over 89 reads as 90 (what the walk does to an `Age`; not a
     /// rule target).
     Clamp,
+    /// The host declares this element an age and asks for Safe Harbor's
+    /// aggregate: over 89 collapses. The pod cannot find ages by itself —
+    /// nothing says which integer is one — so this is a rule target and
+    /// only a rule target. An integer or decimal becomes `90`; a
+    /// Quantity-family element says it exactly, `{"value": 90,
+    /// "comparator": ">="}` in its own unit (the form the reference
+    /// validator accepts — probed). Anything else is left alone and named
+    /// in `residual`, so a rule that cannot bite is never silent.
+    CollapseAge,
 }
 
 impl Action {
@@ -46,6 +69,7 @@ impl Action {
             Action::Year => "year",
             Action::Pseudonym => "pseudonym",
             Action::Clamp => "clamp",
+            Action::CollapseAge => "collapse-age",
         }
     }
 
@@ -57,6 +81,7 @@ impl Action {
             "year" => Action::Year,
             "pseudonym" => Action::Pseudonym,
             "clamp" => Action::Clamp,
+            "collapse-age" => Action::CollapseAge,
             _ => return None,
         })
     }
@@ -87,7 +112,9 @@ impl Policy {
         Policy { salt: salt.to_vec(), today_year: None, rules: Vec::new() }
     }
 
-    /// HIPAA Safe Harbor's identifiers, by FHIR type.
+    /// The built-in policy: rules modelled on HIPAA Safe Harbor's identifier
+    /// list, by FHIR type. A rule set, not a compliance determination (see
+    /// the module docs).
     pub fn safe_harbor(salt: &[u8]) -> Self {
         let mut p = Policy::empty(salt);
         for (target, action) in [
@@ -265,12 +292,14 @@ pub struct Deidentified {
     pub applied: Vec<Applied>,
     /// The copy's conformance to the profiles it declares.
     pub validation: Validation,
-    /// What [`check`] still finds in the copy — empty under Safe Harbor.
+    /// What [`check`] still finds in the copy — empty under the built-in
+    /// policy. The policy's own check, never a compliance verdict.
     pub remaining: Vec<Finding>,
     /// Free text a policy rule kept in place — a `CodeableConcept.text` the
     /// host chose to keep, a `Dosage.text` — named so an empty `remaining`
-    /// never reads as "all free text gone". Empty under Safe Harbor alone;
-    /// the host judges these, or drops the rule.
+    /// never reads as "all free text gone" — and a [`Action::CollapseAge`]
+    /// rule that found no age to collapse. Empty under the built-in policy
+    /// alone; the host judges these, or drops the rule.
     pub residual: Vec<Finding>,
 }
 
@@ -488,6 +517,37 @@ impl Walker<'_> {
                 a => a,
             };
             match action {
+                // the host named this element an age: de-identify what is
+                // inside it as a kept element, then collapse the value
+                Action::CollapseAge => {
+                    self.keep(&mut value, child, &child_path);
+                    let (mut collapsed, mut unreadable) = (false, false);
+                    let mut apply = |n: &mut Node| match collapse_age(n, ty) {
+                        Some(true) => collapsed = true,
+                        Some(false) => {} // an age under the threshold: as given
+                        None => unreadable = true,
+                    };
+                    match &mut value {
+                        Node::Array(xs) => xs.iter_mut().for_each(&mut apply),
+                        v => apply(v),
+                    }
+                    if collapsed {
+                        // the walk's own `Age` clamp, where it ran, is
+                        // subsumed by the collapse at this very path
+                        self.applied.retain(|a| !(a.path == child_path && a.action == Action::Clamp));
+                        self.note(&child_path, Action::CollapseAge);
+                    }
+                    if unreadable {
+                        // the rule named something no age can be read from:
+                        // said, never silently skipped
+                        self.residual.push(Finding {
+                            path: child_path.clone(),
+                            what: "age not collapsed: not an integer, a decimal, or a quantity in a unit of time"
+                                .into(),
+                        });
+                    }
+                    out.push((key, value));
+                }
                 Action::Keep | Action::Clamp => {
                     if is_free_text(ctx, &key, ty) {
                         self.residual.push(Finding { path: child_path.clone(), what: "free text kept".into() });
@@ -854,6 +914,48 @@ fn age_years(kvs: &[(String, Node)]) -> Option<f64> {
     Some(value * years_per(unit)?)
 }
 
+/// The host named an element an age (`Action::CollapseAge`): over 89 reads
+/// as Safe Harbor's "90 or above". An integer or decimal becomes `90` — a
+/// primitive carries no comparator, and the host that named the element
+/// knows what 90 now means there; a Quantity-family element says it
+/// exactly, `comparator: ">="` with the 90-equivalent in its own unit (the
+/// form validator_cli 6.10.4 accepts on an `Age` and a `Quantity` — probed,
+/// `conformance/probes/age-*`). `Some(false)` = an age at or under 89, left
+/// as given; `None` = no age can be read from this node at all.
+fn collapse_age(node: &mut Node, ty: &str) -> Option<bool> {
+    if let Node::Number(n) = node {
+        if n.parse::<f64>().ok()? <= 89.0 {
+            return Some(false);
+        }
+        *node = Node::Number("90".to_string());
+        return Some(true);
+    }
+    let Node::Object(kvs) = node else { return None };
+    if !matches!(ty, "Quantity" | "SimpleQuantity" | "Age" | "Duration" | "Count" | "Distance" | "MoneyQuantity") {
+        return None;
+    }
+    if age_years(kvs)? <= 89.0 {
+        return Some(false);
+    }
+    let unit = kvs
+        .iter()
+        .find(|(k, _)| k == "code")
+        .or_else(|| kvs.iter().find(|(k, _)| k == "unit"))
+        .and_then(|(_, v)| v.as_str())
+        .unwrap_or("a");
+    let ninety = (90.0 / years_per(unit).unwrap_or(1.0) + 0.5) as i64;
+    kvs.retain(|(k, _)| k != "comparator");
+    let mut at = kvs.len();
+    for (i, (k, v)) in kvs.iter_mut().enumerate() {
+        if k == "value" {
+            *v = Node::Number(ninety.to_string());
+            at = i + 1;
+        }
+    }
+    kvs.insert(at, ("comparator".to_string(), Node::Str(">=".to_string())));
+    Some(true)
+}
+
 /// Ages over 89 read as 90, in the quantity's own unit.
 fn clamp_age(kvs: &mut Vec<(String, Node)>) -> bool {
     let Some(years) = age_years(kvs) else { return false };
@@ -955,7 +1057,7 @@ pub fn deidentify(input: &[u8], policy: &Policy, validator: &Validator) -> Resul
     Ok(Deidentified { resource, applied: walker.applied, validation, remaining, residual: walker.residual })
 }
 
-/// What Safe Harbor would still object to in `input`: identifying types
+/// What the built-in policy's own check still objects to in `input`: identifying types
 /// present (a name, a contact point, narrative, a note, an attachment) other
 /// than as masked stubs, address members below state, dates finer than a
 /// year, instants, reference displays, ages over 89. Pseudonymisation

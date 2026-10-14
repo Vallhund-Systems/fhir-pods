@@ -566,7 +566,9 @@ pub mod node;
 /// SHA-256 / HMAC-SHA256, for pseudonyms.
 pub mod hash;
 
-/// De-identification under a data policy (Safe Harbor by default).
+/// De-identification: a copy under a data policy — a rule set, the built-in
+/// one modelled on HIPAA Safe Harbor's identifier list, claiming no
+/// compliance determination of its own.
 pub mod deidentify;
 
 /// Documents: IPS / AU Patient Summary bundles assembled from resources.

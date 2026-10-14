@@ -238,33 +238,55 @@ limit the reference validator has without a terminology server.
 
 ```js
 const { resource, applied, validation, remaining, residual } = pod.deidentify(JSON.stringify(patient), {
-  salt: process.env.DEID_SALT,   // keys the pseudonyms — secret, stable
+  salt: process.env.DEID_SALT,   // REQUIRED, non-empty: keys the pseudonyms — secret, stable
   today: "2026-09-16",           // what "over 89" is measured against
-  rules: [{ target: "Observation.effectiveDateTime", action: "keep" }], // on top of Safe Harbor
+  rules: [
+    { target: "Observation.effectiveDateTime", action: "keep" },        // on top of the built-in policy
+    { target: "Patient.extension.valueInteger", action: "collapse-age" }, // this element is an age
+  ],
 });
 ```
 
-Safe Harbor by default: names, contact details, addresses below state,
-exact dates (year only), ages over 89, narrative, notes, attachments,
-signatures and device serials go; identifiers and references become
-HMAC-SHA256 pseudonyms under the salt, the same everywhere. Where the
-declared profile requires an element that goes, a `data-absent-reason:
-masked` stub stands in, so the copy stays conformant wherever the profile
-permits — `validation` says where it does not (a vital sign's date must be
-precise to the day, for one). `applied` is the audit trail; `remaining` is
-what a Safe Harbor check still finds, empty under the default policy. Rules
-target a type (`HumanName`), a member of a type (`Address.city`) or an
-element (`Patient.address.city`); the most specific wins; `base: "none"`
-starts from nothing. Free text outside narrative and notes is the host's
-call — name it in the rules.
+**What this does, exactly.** It applies a **policy object** to a typed walk
+of the resource and returns the copy with a trail. The built-in policy
+(`base: "safe-harbor"`, the default; `"none"` starts from nothing) is a rule
+set *modelled on* HIPAA Safe Harbor's identifier list, by FHIR type: names,
+contact details, addresses below state, exact dates (year only), ages over
+89 on an `Age`, narrative, notes, attachments, signatures and device serials
+go; identifiers and references become HMAC-SHA256 pseudonyms under the salt,
+the same everywhere. **It is not a compliance determination** and the pod
+makes no such claim: the policy covers the fields its rules name, in the
+resource it is given, and nothing about re-identification risk from the data
+that remains, the host's other data, or how the copy is used. Whoever
+releases the data owns that determination.
 
-Free text goes under Safe Harbor — a concept's `text`, a note, an
+`salt` is required and must be non-empty — the call throws without one
+rather than emitting unkeyed pseudonyms. Where the declared profile requires
+an element that goes, a `data-absent-reason: masked` stub stands in, so the
+copy stays conformant wherever the profile permits — `validation` says where
+it does not (a vital sign's date must be precise to the day, for one).
+`applied` is the audit trail; `remaining` is what the built-in policy's own
+check still finds, empty under the default policy. Rules target a type
+(`HumanName`), a member of a type (`Address.city`) or an element
+(`Patient.address.city`); the most specific wins.
+
+`collapse-age` is the one rule the host must name an element for: an age over
+89 aggregates, but nothing in FHIR says which *integer* is an age, so the pod
+never guesses. Where a rule names one, over 89 becomes `90` (an integer
+carries no comparator); a quantity-typed element says it exactly —
+`{"value": 90, "comparator": ">="}` in its own unit, a form the reference
+validator accepts. An element no age can be read from is left alone and
+named in `residual`, so a rule that cannot bite is never silent. Free text
+outside narrative and notes is the host's call — name it in the rules.
+
+Free text goes under the built-in policy — a concept's `text`, a note, an
 organisation's name, an extension's string payload — except a coding's
 display, a quantity's unit, an address's state and country, and an
 element's own `id` / `linkId`. A host that keeps a free-text site by rule
 (`{ target: "CodeableConcept.text", action: "keep" }`) gets every kept site
 back in `residual`, so an empty `remaining` never reads as "all free text
-gone". What the base resource or an applied profile requires is masked
+gone"; a `collapse-age` rule that found no age to collapse is named there
+too. What the base resource or an applied profile requires is masked
 (`data-absent-reason: masked`) rather than dropped, required children
 included; an extension whose value went goes with it.
 

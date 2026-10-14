@@ -195,11 +195,17 @@ pub unsafe extern "C" fn fhir_pods_lower_tx(
     with_tx(cb, ctx, |tx| pack(lower_json(input(profile, profile_len), input(inputs, inputs_len), tx).as_bytes()))
 }
 
-/// De-identify: `resource` under `policy` (JSON — `{"salt": "…", "today":
-/// "2026-09-16", "base": "safe-harbor" | "none", "rules": [{"target",
-/// "action"}]}`). Returns `{"resource": {…}, "applied": [{"path","action"}],
-/// "validation": {…}, "remaining": [{"path","what"}]}`, or `{"error": "…"}`
-/// when it could not start (bad policy, not a resource, unknown type).
+/// De-identify: a copy of `resource` under `policy` (JSON — `{"salt": "…",
+/// "today": "2026-09-16", "base": "safe-harbor" | "none", "rules":
+/// [{"target", "action"}]}`), the policy being a rule set applied to a typed
+/// walk. `base` defaults to the built-in `safe-harbor` rule set — modelled
+/// on HIPAA Safe Harbor's identifier list, by FHIR type — which is **not a
+/// compliance determination**: it covers the fields its rules name, in the
+/// resource it is given (see [`fhir_pods_core::deidentify`]). `salt` is
+/// required and non-empty. Returns `{"resource": {…}, "applied":
+/// [{"path","action"}], "validation": {…}, "remaining": [{"path","what"}],
+/// "residual": [{"path","what"}]}`, or `{"error": "…"}` when it could not
+/// start (no salt, bad policy, not a resource, unknown type).
 #[no_mangle]
 pub unsafe extern "C" fn fhir_pods_deidentify(
     resource: *const u8,

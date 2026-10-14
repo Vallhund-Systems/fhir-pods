@@ -1,7 +1,7 @@
 {
-  "recorded_at": "2026-10-04T03:43:30.052168+00:00",
-  "source_revision": "dd4fd5220c9b909c81f0adebc8de4c88e5347168",
-  "source_dirty": false,
+  "recorded_at": "2026-10-14T19:49:43.285303+00:00",
+  "source_revision": "114c135af952297c72a6de1785e25f7bc8cd8aeb",
+  "source_dirty": true,
   "oracle_version": "6.10.4",
   "oracle_sha256": "1106b9d58f9e363e47bea7c4fc065841e5fc91fe9d062775c3bfdd212bd653cc",
   "oracle_options": [
@@ -17,8 +17,8 @@
   "oracle_exit_code": 0,
   "note": "Terminology service disabled; the oracle may still resolve unknown profile URLs. Verdict parity only; issues retained for inspection.",
   "counts": {
-    "total": 35,
-    "agree": 35,
+    "total": 37,
+    "agree": 37,
     "differ": 0
   },
   "probes": [
@@ -46,6 +46,7 @@
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -86,6 +87,7 @@
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -134,12 +136,14 @@
           {
             "severity": "error",
             "code": "value",
+            "id": "structure.json-type",
             "path": "Patient.active",
             "message": "Patient.active: a boolean is a JSON boolean, found string"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -188,12 +192,14 @@
           {
             "severity": "error",
             "code": "value",
+            "id": "structure.json-type",
             "path": "Patient.birthDate",
             "message": "Patient.birthDate: a date is a JSON string, found number"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -242,12 +248,14 @@
           {
             "severity": "error",
             "code": "value",
+            "id": "structure.json-type",
             "path": "Patient.managingOrganization",
             "message": "Patient.managingOrganization: a Reference is a JSON object, found string"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -296,12 +304,14 @@
           {
             "severity": "error",
             "code": "structure",
+            "id": "structure.unknown-element",
             "path": "Patient.surpriseField",
             "message": "Patient.surpriseField is not an element of Patient"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -350,12 +360,14 @@
           {
             "severity": "error",
             "code": "structure",
+            "id": "structure.array",
             "path": "Patient.name",
             "message": "Patient.name repeats: expected an array"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -412,12 +424,14 @@
           {
             "severity": "error",
             "code": "structure",
+            "id": "structure.array",
             "path": "Patient.gender",
             "message": "Patient.gender is a single element, not an array"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -466,12 +480,14 @@
           {
             "severity": "error",
             "code": "value",
+            "id": "value.invalid",
             "path": "Patient.birthDate",
             "message": "Patient.birthDate is not a valid date"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -520,12 +536,14 @@
           {
             "severity": "error",
             "code": "value",
+            "id": "value.invalid",
             "path": "Patient.birthDate",
             "message": "Patient.birthDate is not a valid date"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -566,6 +584,7 @@
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -630,24 +649,28 @@
           {
             "severity": "error",
             "code": "structure",
+            "id": "structure.array",
             "path": "Patient.name",
             "message": "Patient.name is an empty array (leave the element out instead)"
           },
           {
             "severity": "error",
             "code": "required",
+            "id": "structure.required",
             "path": "Patient.name",
             "message": "Patient.name is required (min 1, found 0)"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           },
           {
             "severity": "error",
             "code": "invariant",
+            "id": "inv.au-core-pat-02",
             "path": "Patient",
             "message": "au-core-pat-02: At least one patient name shall have a family name, or if not available, the Data Absent Reason extension shall be present"
           }
@@ -704,12 +727,14 @@
           {
             "severity": "error",
             "code": "value",
+            "id": "value.invalid",
             "path": "Patient.birthDate",
             "message": "Patient.birthDate is not a valid date"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -758,12 +783,14 @@
           {
             "severity": "error",
             "code": "value",
+            "id": "value.invalid",
             "path": "Patient.multipleBirthInteger",
             "message": "Patient.multipleBirthInteger is not a valid integer"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -812,12 +839,14 @@
           {
             "severity": "error",
             "code": "value",
+            "id": "value.invalid",
             "path": "Patient.multipleBirthInteger",
             "message": "Patient.multipleBirthInteger is not a valid integer"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -858,6 +887,7 @@
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -906,12 +936,14 @@
           {
             "severity": "error",
             "code": "structure",
+            "id": "structure.choice",
             "path": "Patient.deceased[x]",
             "message": "Patient.deceased[x] allows one choice; found deceasedBoolean, deceasedDateTime"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -943,6 +975,7 @@
           {
             "severity": "error",
             "code": "structure",
+            "id": "parse.resource-type",
             "path": "resourceType",
             "message": "'NotAResource' is not a FHIR R4 resource type"
           }
@@ -982,12 +1015,14 @@
           {
             "severity": "warning",
             "code": "not-supported",
+            "id": "profile.unknown",
             "path": "meta.profile",
             "message": "declared profile 'https://example.org/StructureDefinition/missing-profile' is not compiled here, so it was not checked"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -1035,12 +1070,14 @@
           {
             "severity": "error",
             "code": "required",
+            "id": "structure.required",
             "path": "Patient.extension.url",
             "message": "Extension.url is required (min 1, found 0)"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -1080,12 +1117,14 @@
           {
             "severity": "error",
             "code": "invariant",
+            "id": "inv.ext-1",
             "path": "Patient.extension",
             "message": "ext-1: Patient.extension must have either extensions or a value, not both"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -1165,42 +1204,49 @@
           {
             "severity": "error",
             "code": "invariant",
+            "id": "inv.dom-2",
             "path": "Patient.contained",
             "message": "dom-2: Patient.contained is contained and must not itself contain resources"
           },
           {
             "severity": "error",
             "code": "invariant",
+            "id": "inv.ref-1",
             "path": "Patient.contained.partOf.reference",
             "message": "ref-1: reference '#inner' names no contained resource of Patient"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient.contained[0].Organization",
             "message": "dom-6: A resource should have narrative for robust management"
           },
           {
             "severity": "error",
             "code": "invariant",
+            "id": "inv.org-1",
             "path": "Patient.contained[0].Organization",
             "message": "org-1: The organization SHALL at least have a name or an identifier, and possibly more than one"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient.contained[0].Organization.contained[0].Organization",
             "message": "dom-6: A resource should have narrative for robust management"
           },
           {
             "severity": "error",
             "code": "invariant",
+            "id": "inv.org-1",
             "path": "Patient.contained[0].Organization.contained[0].Organization",
             "message": "org-1: The organization SHALL at least have a name or an identifier, and possibly more than one"
           }
@@ -1232,6 +1278,7 @@
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -1261,6 +1308,7 @@
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -1300,12 +1348,14 @@
           {
             "severity": "error",
             "code": "value",
+            "id": "structure.json-type",
             "path": "Patient.birthDate",
             "message": "Patient.birthDate: a date is a JSON string, found null"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -1335,6 +1385,7 @@
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -1366,6 +1417,7 @@
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Condition",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -1405,12 +1457,14 @@
           {
             "severity": "error",
             "code": "code-invalid",
+            "id": "binding.no-code",
             "path": "Condition.clinicalStatus",
             "message": "No code provided, and a code is required from the value set http://hl7.org/fhir/ValueSet/condition-clinical"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Condition",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -1450,12 +1504,14 @@
           {
             "severity": "error",
             "code": "code-invalid",
+            "id": "binding.no-code",
             "path": "Condition.clinicalStatus",
             "message": "No code provided, and a code is required from the value set http://hl7.org/fhir/ValueSet/condition-clinical"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Condition",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -1503,12 +1559,14 @@
           {
             "severity": "error",
             "code": "code-invalid",
+            "id": "binding.not-member",
             "path": "Condition.clinicalStatus",
             "message": "The value provided ('the codings') was not found in the value set 'http://hl7.org/fhir/ValueSet/condition-clinical', and a code is required from this value set"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Condition",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -1573,12 +1631,14 @@
           {
             "severity": "error",
             "code": "code-invalid",
+            "id": "binding.not-member",
             "path": "Condition.clinicalStatus",
             "message": "'the codings' is not in the bound value set"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Condition",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -1610,6 +1670,7 @@
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Encounter",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -1641,6 +1702,7 @@
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Encounter",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -1673,6 +1735,7 @@
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Composition",
             "message": "dom-6: A resource should have narrative for robust management"
           }
@@ -1721,16 +1784,90 @@
           {
             "severity": "error",
             "code": "code-invalid",
+            "id": "binding.not-member",
             "path": "Composition.section[0].section[0].mode",
             "message": "The value provided ('not-a-list-mode') was not found in the value set 'http://hl7.org/fhir/ValueSet/list-mode', and a code is required from this value set"
           },
           {
             "severity": "warning",
             "code": "invariant",
+            "id": "inv.dom-6",
             "path": "Composition",
             "message": "dom-6: A resource should have narrative for robust management"
           }
         ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "age-collapsed-onset.json",
+      "profile": null,
+      "expect": true,
+      "reason": "A de-identified age over 89 as the spec's own aggregate: an Age with comparator '>=' and value 90 is valid (what the collapse-age policy rule writes).",
+      "sha256": "8ea6e26c89511af622bab07fb6df73bdfcb8011b14af26f911e6ed8e6dcdafe0",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "text": "A definition for CodeSystem 'http://example.org/conditions' could not be found, so the code cannot be validated",
+          "paths": [
+            "Condition.code.coding[0].system"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Condition",
+        "valid": true,
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "not-supported",
+            "id": "not-supported.fhirpath",
+            "path": "Condition.onsetAge",
+            "message": "age-1 not evaluated: outside the supported FHIRPath core"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "age-collapsed-quantity.json",
+      "profile": null,
+      "expect": true,
+      "reason": "The same on a plain Quantity, so the rule's output is valid wherever a host names a quantity element as an age.",
+      "sha256": "d7791296b3687fb5cae0da079147da22dcac938c6ee0b717a2a7f14b8101371a",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "text": "A definition for CodeSystem 'http://example.org/observations' could not be found, so the code cannot be validated",
+          "paths": [
+            "Observation.code.coding[0].system"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'a' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "Observation.value.ofType(Quantity)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "text": "Best Practice Recommendation: In general, all observations should have a performer",
+          "paths": [
+            "Observation"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Observation",
+        "valid": true,
+        "issues": []
       },
       "agrees": true
     }

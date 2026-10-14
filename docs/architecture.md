@@ -75,8 +75,10 @@ Coverage is operation-specific:
   Lowering lifted inputs preserves what the slot model covers; arbitrary
   input data is not guaranteed to survive a round trip.
 - De-identification returns applied actions, remaining checker findings,
-  and free-text sites explicitly retained by host rules (`residual`). The
-  built-in policy's checks describe the transformation's coverage.
+  and sites a host rule left in place (`residual`). The built-in policy is a
+  rule set modelled on HIPAA Safe Harbor's identifier list; its checks
+  describe that transformation's coverage and claim no compliance
+  determination. The host owns the release decision.
 - Document assembly reports placed and omitted resources.
 - HL7 v2 conversion reports skipped map rows with reasons, unplaced
   segments, and valued fields absent from the maps.
