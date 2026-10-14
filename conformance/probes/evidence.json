@@ -1,7 +1,7 @@
 {
-  "recorded_at": "2026-10-14T19:49:43.285303+00:00",
-  "source_revision": "114c135af952297c72a6de1785e25f7bc8cd8aeb",
-  "source_dirty": true,
+  "recorded_at": "2026-10-14T21:20:47.403722+00:00",
+  "source_revision": "1c3b65e1b8441a83313d73e7f593c8a5308d2aae",
+  "source_dirty": false,
   "oracle_version": "6.10.4",
   "oracle_sha256": "1106b9d58f9e363e47bea7c4fc065841e5fc91fe9d062775c3bfdd212bd653cc",
   "oracle_options": [
@@ -1803,7 +1803,7 @@
       "file": "age-collapsed-onset.json",
       "profile": null,
       "expect": true,
-      "reason": "A de-identified age over 89 as the spec's own aggregate: an Age with comparator '>=' and value 90 is valid (what the collapse-age policy rule writes).",
+      "reason": "A de-identified age over 89 as the spec's own aggregate: an Age with comparator '>=' and value 90 is valid. This is what the collapse-age policy rule writes on an Age, Duration, Count or Distance.",
       "sha256": "8ea6e26c89511af622bab07fb6df73bdfcb8011b14af26f911e6ed8e6dcdafe0",
       "oracle_valid": true,
       "oracle_issues": [
@@ -1835,7 +1835,7 @@
       "file": "age-collapsed-quantity.json",
       "profile": null,
       "expect": true,
-      "reason": "The same on a plain Quantity, so the rule's output is valid wherever a host names a quantity element as an age.",
+      "reason": "The comparator form is valid on a plain Quantity too, recorded because the pod deliberately does not write it there: the base definitions constrain many Quantity elements to SimpleQuantity, which refuses a comparator, and the element-type table records the type code and not that profile (docs/scope.md).",
       "sha256": "d7791296b3687fb5cae0da079147da22dcac938c6ee0b717a2a7f14b8101371a",
       "oracle_valid": true,
       "oracle_issues": [
