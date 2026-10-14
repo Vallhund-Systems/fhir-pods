@@ -9,9 +9,9 @@ oracle contradicted part of the report: an unclosed `<p>` inside a closed root
 `<div>` is refused on both sides, and it was never accepted here. What the
 probes did find is a new lane and three corrections.
 
-*The narrative, where its text stops.* `conformance/narrative/` holds 34
+*The narrative, where its text stops.* `conformance/narrative/` holds 40
 synthetic `Narrative.div` cases — the narrative, the oracle's own diagnostics,
-the pod's report — and fails on any disagreement. 34/34 agree; three did not
+the pod's report — and fails on any disagreement. 40/40 agree; five did not
 before:
 
 - the text ending inside a **closing** tag was accepted, where the oracle
@@ -22,6 +22,15 @@ before:
   so `…</p><p` and `…<p class="x` pass, a truncated root keeps its `xmlns`
   and reports only `txt-2`, and a bare `<div` has no namespace and reports
   both. The one truncation it does refuse is a `/` that no `>` follows;
+- an **unterminated quoted attribute value** was then treated as that same
+  truncation, and it is not one: the parser takes the value to the tag's own
+  `>` and carries on after it, so `<p class="x>Real content.</p></div>` is a
+  paragraph with text and nothing is reported (four forms probed — either
+  quote, root closed or not, first attribute or not). Only a value that
+  reaches the end of the narrative truncates;
+- a bare `#` was dropped before resolution, so `<img src="#">` passed; the
+  oracle reports `Image source '#' … does not resolve` for an image and
+  accepts `<a href="#">`, which is the document itself;
 - a character that can begin no attribute name reported `unexpected non-end
   of element null::p`, where the oracle says `Unable to read attribute on
   <p>`.

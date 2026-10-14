@@ -37,7 +37,7 @@
   {
     "file": "eof-inside-start-tag.json",
     "expect": false,
-    "reason": "The text ends inside a start tag: the element is kept, so the narrative is empty — txt-2 alone, no parse failure."
+    "reason": "The text ends inside a start tag: the element is kept, so the narrative is empty \u2014 txt-2 alone, no parse failure."
   },
   {
     "file": "eof-start-tag-after-content.json",
@@ -67,7 +67,7 @@
   {
     "file": "eof-after-slash.json",
     "expect": false,
-    "reason": "The one truncation refused: a '/' no '>' follows — unexpected non-end of element."
+    "reason": "The one truncation refused: a '/' no '>' follows \u2014 unexpected non-end of element."
   },
   {
     "file": "eof-inside-close-tag.json",
@@ -112,7 +112,7 @@
   {
     "file": "img-src-file-scheme.json",
     "expect": true,
-    "reason": "A file: image source is accepted — the scheme rules are for hyperlinks only."
+    "reason": "A file: image source is accepted \u2014 the scheme rules are for hyperlinks only."
   },
   {
     "file": "img-src-urn.json",
@@ -127,7 +127,7 @@
   {
     "file": "img-src-javascript.json",
     "expect": true,
-    "reason": "javascript: in an image source passes — the active-content check is a hyperlink check. A host that wants this refused sets externalNarrativeLinks."
+    "reason": "javascript: in an image source passes \u2014 the active-content check is a hyperlink check. A host that wants this refused sets externalNarrativeLinks."
   },
   {
     "file": "img-src-vbscript.json",
@@ -168,5 +168,35 @@
     "file": "link-external-http.json",
     "expect": true,
     "reason": "An external hyperlink over http is accepted, for contrast with the image cases."
+  },
+  {
+    "file": "attr-unterminated-double.json",
+    "expect": true,
+    "reason": "A quoted attribute value with no closing quote: the parser takes the value to the tag's own '>' and carries on \u2014 the text after it is text, and nothing is reported."
+  },
+  {
+    "file": "attr-unterminated-single.json",
+    "expect": true,
+    "reason": "The same with a single quote."
+  },
+  {
+    "file": "attr-unterminated-no-root-close.json",
+    "expect": true,
+    "reason": "The same with the root left open, so the recovery and the end-of-text tolerance meet."
+  },
+  {
+    "file": "attr-unterminated-after-attr.json",
+    "expect": true,
+    "reason": "The same after a well-formed attribute, so the recovery does not depend on being the first."
+  },
+  {
+    "file": "img-fragment-empty.json",
+    "expect": false,
+    "reason": "A bare '#' as an image source resolves to nothing: \"Image source '#' ... does not resolve\"."
+  },
+  {
+    "file": "link-fragment-empty.json",
+    "expect": true,
+    "reason": "A bare '#' as a hyperlink is the document itself and passes \u2014 the contrast that makes the image case a rule and not an accident."
   }
 ]

@@ -1,6 +1,6 @@
 {
-  "recorded_at": "2026-10-14T19:21:34.838093+00:00",
-  "source_revision": "fd92f780ffeae083973964d20c99384b997e92b5",
+  "recorded_at": "2026-10-14T21:00:19.809763+00:00",
+  "source_revision": "fb45b285df91ac531ccf6daa5d472f966c830b47",
   "source_dirty": true,
   "oracle_version": "6.10.4",
   "oracle_sha256": "1106b9d58f9e363e47bea7c4fc065841e5fc91fe9d062775c3bfdd212bd653cc",
@@ -15,8 +15,8 @@
   "oracle_exit_code": 0,
   "note": "Verdict parity; the oracle's own diagnostics are retained for inspection. The pod's exact messages and rule ids are pinned by the core's narrative test.",
   "counts": {
-    "total": 34,
-    "agree": 34,
+    "total": 40,
+    "agree": 40,
     "differ": 0
   },
   "probes": [
@@ -1259,6 +1259,148 @@
       "reason": "An external hyperlink over http is accepted, for contrast with the image cases.",
       "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p><a href=\"http://example.org/page\">external link</a></p></div>",
       "sha256": "8a572e7b5666a1418e26cfdbb07d70418adde9eb448118961c658dc33b32cb01",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "attr-unterminated-double.json",
+      "expect": true,
+      "reason": "A quoted attribute value with no closing quote: the parser takes the value to the tag's own '>' and carries on \u2014 the text after it is text, and nothing is reported.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p class=\"x>Real content.</p></div>",
+      "sha256": "1e064efe0be1e689fb19deabd72d7f0a7e6e7b82c6561db298b1c34567ab57fc",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "attr-unterminated-single.json",
+      "expect": true,
+      "reason": "The same with a single quote.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p class='x>Real content.</p></div>",
+      "sha256": "5414a110697c7559f1d03eb32f77ccf40d1e2d286618bbe82f888ad04d6bc53f",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "attr-unterminated-no-root-close.json",
+      "expect": true,
+      "reason": "The same with the root left open, so the recovery and the end-of-text tolerance meet.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p class=\"x>Real content.</p>",
+      "sha256": "e68c47401a6f725dc5a901e9a277f5fbebfca0fcb2012aab42b32cda95f192b9",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "attr-unterminated-after-attr.json",
+      "expect": true,
+      "reason": "The same after a well-formed attribute, so the recovery does not depend on being the first.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p id=\"a\" class=\"x>Real content.</p></div>",
+      "sha256": "01893a5400a42680a0c3ae383ea9a79a9d7d7744f3afc927790c480c2d898b25",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "img-fragment-empty.json",
+      "expect": false,
+      "reason": "A bare '#' as an image source resolves to nothing: \"Image source '#' ... does not resolve\".",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>t</p><img src=\"#\" alt=\"a\"/></div>",
+      "sha256": "2a42f56c4448dbabb8ba9b12520d7e9316c9141295cca81e0fd058e9bf4373a0",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "Image source '#' at 'Patient.text.div/img' does not resolve",
+          "paths": [
+            "Patient.text.div"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "narrative.link",
+            "path": "Patient.text.div",
+            "message": "Image source '#' at 'Patient.text.div/img' does not resolve"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "link-fragment-empty.json",
+      "expect": true,
+      "reason": "A bare '#' as a hyperlink is the document itself and passes \u2014 the contrast that makes the image case a rule and not an accident.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p><a href=\"#\">t</a></p></div>",
+      "sha256": "1ef4be540f40fb19b5f82af8b3249363cb314cc41f33307b61f8e5a3a2d57a7e",
       "oracle_valid": true,
       "oracle_issues": [
         {

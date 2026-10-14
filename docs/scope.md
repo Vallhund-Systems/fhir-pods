@@ -330,9 +330,9 @@ through `htmlChecks()`, `txt-2`, and the parser's own findings beside them —
 six `narrative.*` rule ids). Several of its rules are not the rules a reader
 would assume, and they are kept on purpose: bug-for-bug is the contract, and a
 host that wants more than the oracle asks for it
-([Host options](#host-options)). The 34 cases in `conformance/narrative/`
-record each probe — the narrative, the oracle's own
-diagnostics, the pod's report — and the lane fails on any disagreement.
+([Host options](#host-options)). The 40 cases in `conformance/narrative/`
+record each probe — the narrative, the oracle's own diagnostics, the pod's
+report — and the lane fails on any disagreement.
 
 **Where the text stops.** A closing tag that does not match the open element
 is a parse failure (`Found "</div>" expecting "</p>"`), and a parse failure
@@ -341,18 +341,25 @@ open* where the text ends is taken as closed — the root `<div>` included — a
 so is a **start tag** the text ends inside: the element is kept with the
 attributes read so far, which is why a truncated root keeps its `xmlns` and
 reports only `txt-2`, while a bare `<div` has no namespace and reports both.
-The two truncations refused are a `/` that no `>` follows (`unexpected
-non-end of element`) and a **closing** tag the text ends inside (`Unexpected
-termination of html source`). A character that can begin no attribute name is
-`Unable to read attribute on <p>`. Text, or a second root, after the root is
-ignored. A fresh probe of the oracle (2026-10-14) corrected three of these:
-the closing-tag truncation was accepted, a start-tag truncation was refused,
-and an unreadable attribute carried the wrong message.
+An **unterminated quoted attribute value** is not a truncation at all: the
+parser takes the value to that tag's own `>` and carries on after it, so the
+text that follows is text (four forms probed — either quote, with and without
+the root closed, first attribute or not). Only a value that reaches the end of
+the narrative truncates the document. The two truncations refused are a `/`
+that no `>` follows (`unexpected non-end of element`) and a **closing** tag
+the text ends inside (`Unexpected termination of html source`). A character
+that can begin no attribute name is `Unable to read attribute on <p>`. Text,
+or a second root, after the root is ignored. Probing the oracle on 2026-10-14
+corrected five of these: the closing-tag truncation was accepted, a start-tag
+truncation and all four unterminated-value forms were refused, and an
+unreadable attribute carried the wrong message.
 
 **Images and hyperlinks are not checked alike.** An image's `src` is held to
 four things only: it may not be empty, it may carry no invalid character, a
 `data:` URL needs its comma, and a `#fragment` must resolve (to an `id` in the
-narrative, a contained resource, or the resource itself). The *scheme* rules —
+narrative, a contained resource, or the resource itself — and a bare `#`,
+which is the document itself, resolves for a **hyperlink** and not for an
+image: `<a href="#">` passes, `<img src="#">` does not). The *scheme* rules —
 `javascript:` / `vbscript:` is active content, `urn:` / `cid:` is "not
 hyperlinkable" — are checked on `<a href>` only. So `<img
 src="http://example.org/x.png">` passes, and so do `https:`, a bare path,

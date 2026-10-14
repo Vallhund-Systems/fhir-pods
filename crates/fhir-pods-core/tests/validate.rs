@@ -1599,6 +1599,14 @@ fn a_truncated_narrative_and_an_image_source_are_judged_as_the_oracle_judges_the
     for ok in [
         format!(r#"<div {X}><p>Real content.</p><p"#),
         format!(r#"<div {X}><p>Real content.</p><p class="x"#),
+        // an unterminated quoted value recovers at the tag's own `>`, so what
+        // follows is text and nothing is reported (four forms, each probed)
+        format!(r#"<div {X}><p class="x>Real content.</p></div>"#),
+        format!(r#"<div {X}><p class='x>Real content.</p></div>"#),
+        format!(r#"<div {X}><p class="x>Real content.</p>"#),
+        format!(r#"<div {X}><p id="a" class="x>Real content.</p></div>"#),
+        // a bare `#` is the document itself: a hyperlink may name it
+        format!(r##"<div {X}><p><a href="#">t</a></p></div>"##),
         format!(r#"<div {X}><p>Real content.</p><p class="#),
         format!(r#"<div {X}><p>t</p><img src="javascript:alert(1)" alt="a"/></div>"#),
         format!(r#"<div {X}><p>t</p><img src="vbscript:msgbox(1)" alt="a"/></div>"#),
@@ -1643,6 +1651,10 @@ fn a_truncated_narrative_and_an_image_source_are_judged_as_the_oracle_judges_the
          vec!["narrative.link | The URL is not valid because '(URL contains Invalid Character: ' ')': http://e.org/a b.png".into()]),
         (format!(r##"<div {X}><p>t</p><img src="#nowhere" alt="a"/></div>"##),
          vec!["narrative.link | Image source '#nowhere' at 'Patient.text.div/img' does not resolve".into()]),
+        // an image may not: a bare `#` resolves to nothing (probed — the
+        // hyperlink above passes, this does not)
+        (format!(r##"<div {X}><p>t</p><img src="#" alt="a"/></div>"##),
+         vec!["narrative.link | Image source '#' at 'Patient.text.div/img' does not resolve".into()]),
     ];
     for (bad, want) in cases {
         let mut want = want;

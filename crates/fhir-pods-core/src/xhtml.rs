@@ -531,15 +531,29 @@ impl Parser<'_, '_> {
                             while self.peek(0).is_some_and(|c| c != quote) {
                                 self.i += 1;
                             }
-                            let v = core::str::from_utf8(&self.s[v0..self.i]).unwrap_or("").to_owned();
                             if self.peek(0) == Some(quote) {
+                                let v = core::str::from_utf8(&self.s[v0..self.i]).unwrap_or("").to_owned();
                                 self.i += 1;
+                                v
                             } else {
-                                // the text ended inside the value: what was
-                                // read is the value (probed)
-                                truncated = true;
+                                // no closing quote: the reference parser takes
+                                // the value to this tag's own `>` and carries
+                                // on after it — the text that follows is text.
+                                // Only a value that reaches the end of the
+                                // narrative truncates the document (probed
+                                // both ways, `conformance/narrative/`).
+                                let span = &self.s[v0..self.i];
+                                match span.iter().position(|&c| c == b'>') {
+                                    Some(k) => {
+                                        self.i = v0 + k; // the loop's next pass takes the `>`
+                                        core::str::from_utf8(&span[..k]).unwrap_or("").to_owned()
+                                    }
+                                    None => {
+                                        truncated = true;
+                                        core::str::from_utf8(span).unwrap_or("").to_owned()
+                                    }
+                                }
                             }
-                            v
                         }
                         _ => {
                             let v0 = self.i;
@@ -794,7 +808,10 @@ impl Parser<'_, '_> {
                 .push(Finding { message: format!("The URL is not valid because '({reason})': {url}"), txt1: false });
         }
         if let Some(frag) = url.strip_prefix('#') {
-            if !frag.is_empty() {
+            // a bare `#` is the document itself, which a hyperlink may name
+            // and an image may not: `<a href="#">` passes and
+            // `<img src="#">` does not resolve (probed, both)
+            if !frag.is_empty() || image {
                 self.frags.push((frag.to_owned(), at.to_owned(), label.to_owned(), image));
             }
         } else if !image && count == 0 {
