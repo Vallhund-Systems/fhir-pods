@@ -220,9 +220,9 @@ int32_t fhir_pods_questionnaire_load(const uint8_t *ptr, size_t len);
  *    `#fragment` resolved inside the resource nor a `data:` URL an error
  *    (narrative.external-link).
  * Returns 1 when the options were taken, 0 when the document was refused —
- * an unknown member or value included, since a typo in a strictness setting
- * must not read as "off" — leaving the previous options in force. Empty
- * input restores the defaults. */
+ * an unknown member, an unknown value and a member given twice all are,
+ * since a typo in a strictness setting must not read as "off" — leaving the
+ * previous options in force. Empty input restores the defaults. */
 int32_t fhir_pods_options(const uint8_t *ptr, size_t len);
 
 /* What a host must resolve for this resource to validate without terminology

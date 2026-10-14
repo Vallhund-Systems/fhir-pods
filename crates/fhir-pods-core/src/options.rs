@@ -57,8 +57,10 @@ impl Options {
     /// From JSON: `{"unknownProfile": "warning" | "error",
     /// "externalNarrativeLinks": "allow" | "refuse"}`. Every member is
     /// optional and takes its default when absent; an empty document (or no
-    /// bytes at all) is the defaults. An unknown member or value is refused
-    /// outright — a typo in a strictness setting must not read as "off".
+    /// bytes at all) is the defaults. An unknown member, an unknown value,
+    /// and a member given twice are all refused outright — a typo in a
+    /// strictness setting must not read as "off", and neither must a stale
+    /// line a host forgot to delete.
     pub fn from_json(bytes: &[u8]) -> Result<Options, OptionsError> {
         if bytes.iter().all(|b| b.is_ascii_whitespace()) {
             return Ok(Options::default());
@@ -66,6 +68,11 @@ impl Options {
         let v = crate::json::parse(bytes).map_err(|_| OptionsError::NotAnObject)?;
         let Value::Object(members) = &v else { return Err(OptionsError::NotAnObject) };
         let mut options = Options::default();
+        for (i, (key, _)) in members.iter().enumerate() {
+            if members.iter().skip(i + 1).any(|(k, _)| k == key) {
+                return Err(OptionsError::DuplicateMember(key.as_ref().into()));
+            }
+        }
         for (key, value) in members {
             let Value::Str(text) = value else { return Err(OptionsError::BadValue(key.as_ref().into())) };
             match (key.as_ref(), text.as_ref()) {
@@ -99,6 +106,9 @@ pub enum OptionsError {
     UnknownMember(String),
     /// A member whose value is not one this option takes.
     BadValue(String),
+    /// A member given more than once: which one the host meant is a guess,
+    /// and a strictness setting is not a thing to guess at.
+    DuplicateMember(String),
 }
 
 impl core::fmt::Display for OptionsError {
@@ -107,6 +117,7 @@ impl core::fmt::Display for OptionsError {
             OptionsError::NotAnObject => f.write_str("options must be a JSON object"),
             OptionsError::UnknownMember(k) => write!(f, "'{k}' is not an option"),
             OptionsError::BadValue(k) => write!(f, "'{k}' does not take that value"),
+            OptionsError::DuplicateMember(k) => write!(f, "'{k}' is given more than once"),
         }
     }
 }

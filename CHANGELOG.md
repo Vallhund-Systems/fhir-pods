@@ -59,9 +59,11 @@ can now ask for the other thing:
 closed. `"refuse"` makes a narrative reference that leaves the resource an
 error (`narrative.external-link`, the one new id), which is where the field
 report's external image lands. An options document that does not say what it
-means — an unknown member, a value no option takes — is **refused whole**,
-and the options already in force stay: a typo in a strictness setting must
-never read as "off". An empty document restores the defaults.
+means is **refused whole** — an unknown member, a value no option takes, or a
+member given twice, which one review asked for on the same reasoning — and
+the options already in force stay: a typo in a strictness setting must never
+read as "off", and nor must a stale line a host forgot to delete. An empty
+document restores the defaults.
 
 One entry per delivery, the shape `loadTerminology` / `loadQuestionnaire`
 established: `fhir_pods_options(json)` on the C ABI, `options(json)` in the

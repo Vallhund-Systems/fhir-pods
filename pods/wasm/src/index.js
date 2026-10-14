@@ -147,8 +147,9 @@ export async function instantiate(source, options = {}) {
     // "allow"|"refuse"}. Each default is what the reference validator itself
     // does — `error` fails closed on a profile this build has not compiled;
     // `refuse` refuses a narrative reference out of the resource. Returns
-    // false when the document is refused (an unknown member or value
-    // included) and the previous options stay; "" restores the defaults.
+    // false when the document is refused (an unknown member, an unknown
+    // value, a member given twice) and the previous options stay; "" restores
+    // the defaults.
     options: (json) => callInt(ex.fhir_pods_options, typeof json === "string" ? json : JSON.stringify(json)) === 1,
     // Compiled terminology: load a table (the line format tools/compile_valueset.py
     // writes from $expand responses). It answers after the bundled sets and

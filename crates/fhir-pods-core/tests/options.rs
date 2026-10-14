@@ -109,6 +109,11 @@ fn an_options_document_that_does_not_say_what_it_means_is_refused() {
         Options::from_json(br#"{"externalNarrativeLinks":"deny"}"#),
         Err(OptionsError::BadValue("externalNarrativeLinks".into()))
     );
+    // a member given twice: which one the host meant is a guess
+    assert_eq!(
+        Options::from_json(br#"{"unknownProfile":"error","unknownProfile":"warning"}"#),
+        Err(OptionsError::DuplicateMember("unknownProfile".into()))
+    );
     assert_eq!(Options::from_json(b"[]"), Err(OptionsError::NotAnObject));
     assert_eq!(Options::from_json(b"not json"), Err(OptionsError::NotAnObject));
     assert_eq!(Options::from_json(br#""error""#), Err(OptionsError::NotAnObject));

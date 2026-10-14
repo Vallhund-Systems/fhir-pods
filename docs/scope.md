@@ -373,7 +373,9 @@ default changes.
 Two narrative limits are declared elsewhere: a `<a href>` or `<img src>`
 pointing at another resource in the bundle is not resolved (the base lane's
 "Narrative hyperlinks" family), and `dom-6` is evaluated as the ordinary
-warning it is.
+warning it is — which diverges from the oracle in both directions, at
+warning level only, on a narrative that fails to parse and on a contained
+resource's narrative; no verdict moves, so no lane scores it.
 
 ## De-identification: a rule set, not a determination
 
@@ -435,8 +437,10 @@ CLI's `validate` and `gate`, `Validator::set_options` in the core. The pods
 persist them for every call that follows — validation, lowering, lifting,
 export, documents, v2 alike — and an empty document restores the defaults. An
 options document that does not say what it means is **refused whole** (it
-returns false / exits 2) and the options already in force stay: a typo in a
-strictness setting must never read as "off".
+returns false / exits 2) and the options already in force stay: an unknown
+member, an unknown value, and a member given twice are all refusals, because
+a typo in a strictness setting must never read as "off" and neither must a
+stale line a host forgot to delete.
 
 ## Export: which profile, and what is never invented
 

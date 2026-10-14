@@ -341,9 +341,9 @@ options({}); // back to the defaults ("" does the same)
 
 The options hold for every call that follows in this process — validate,
 lower, lift, export, document, v2 — the way a loaded Questionnaire does. A
-document that does not say what it means (an unknown member, or a value no
-option takes) returns `false` and leaves the options already in force: a typo
-in a strictness setting must never read as "off". Full semantics:
+document that does not say what it means (an unknown member, a value no
+option takes, or a member given twice) returns `false` and leaves the options
+already in force: a typo in a strictness setting must never read as "off". Full semantics:
 [docs/scope.md](../../docs/scope.md#host-options).
 
 ## Terminology

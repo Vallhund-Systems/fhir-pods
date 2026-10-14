@@ -423,9 +423,9 @@ export interface Pod {
    * Set the host options for every call that follows — the two strictness
    * calls whose default is the reference validator's own behaviour, so a
    * default pod is unchanged. `false` when the document is refused (an
-   * unknown member or value included, since a typo in a strictness setting
-   * must not read as "off") and the previous options stay in force; "" or
-   * `{}` restores the defaults.
+   * unknown member, an unknown value, or a member given twice, since a typo
+   * in a strictness setting must not read as "off") and the previous options
+   * stay in force; "" or `{}` restores the defaults.
    */
   options(json: HostOptions | string): boolean;
   /**

@@ -528,9 +528,9 @@ export interface HostOptions {
 
 /**
  * Set the host options for every call that follows. `false` when the
- * document is refused (an unknown member or value included, since a typo in
- * a strictness setting must not read as "off") and the previous options stay
- * in force; `{}` or "" restores the defaults.
+ * document is refused (an unknown member, an unknown value and a member given
+ * twice all are, since a typo in a strictness setting must not read as "off")
+ * and the previous options stay in force; `{}` or "" restores the defaults.
  */
 export function options(json: HostOptions | string): boolean {
   return FhirPodsExpoModule.options(typeof json === "string" ? json : JSON.stringify(json)) === 1;

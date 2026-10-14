@@ -610,10 +610,10 @@ pub unsafe extern "C" fn fhir_pods_questionnaire_load(ptr: *const u8, len: usize
 /// "externalNarrativeLinks": "allow" | "refuse"}`; see
 /// [`fhir_pods_core::options`]). Each default is what validator_cli 6.10.4
 /// itself does, so a default build is unchanged. Returns 1 when the options
-/// were taken, 0 when the document was refused — an unknown member or value
-/// included, since a typo in a strictness setting must not read as "off" —
-/// and then the previous options stay in force. Empty input restores the
-/// defaults.
+/// were taken, 0 when the document was refused — an unknown member, an
+/// unknown value and a member given twice all are, since a typo in a
+/// strictness setting must not read as "off" — and then the previous options
+/// stay in force. Empty input restores the defaults.
 #[no_mangle]
 pub unsafe extern "C" fn fhir_pods_options(ptr: *const u8, len: usize) -> i32 {
     let Ok(options) = fhir_pods_core::options::Options::from_json(input(ptr, len)) else { return 0 };
