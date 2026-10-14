@@ -213,12 +213,12 @@
     "file": "age-collapsed-onset.json",
     "profile": null,
     "expect": true,
-    "reason": "A de-identified age over 89 as the spec's own aggregate: an Age with comparator '>=' and value 90 is valid (what the collapse-age policy rule writes)."
+    "reason": "A de-identified age over 89 as the spec's own aggregate: an Age with comparator '>=' and value 90 is valid. This is what the collapse-age policy rule writes on an Age, Duration, Count or Distance."
   },
   {
     "file": "age-collapsed-quantity.json",
     "profile": null,
     "expect": true,
-    "reason": "The same on a plain Quantity, so the rule's output is valid wherever a host names a quantity element as an age."
+    "reason": "The comparator form is valid on a plain Quantity too, recorded because the pod deliberately does not write it there: the base definitions constrain many Quantity elements to SimpleQuantity, which refuses a comparator, and the element-type table records the type code and not that profile (docs/scope.md)."
   }
 ]

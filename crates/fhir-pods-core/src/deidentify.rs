@@ -52,11 +52,14 @@ pub enum Action {
     /// The host declares this element an age and asks for Safe Harbor's
     /// aggregate: over 89 collapses. The pod cannot find ages by itself —
     /// nothing says which integer is one — so this is a rule target and
-    /// only a rule target. An integer or decimal becomes `90`; a
-    /// Quantity-family element says it exactly, `{"value": 90,
-    /// "comparator": ">="}` in its own unit (the form the reference
-    /// validator accepts — probed). Anything else is left alone and named
-    /// in `residual`, so a rule that cannot bite is never silent.
+    /// only a rule target. An integer or decimal becomes `90`; an `Age`,
+    /// `Duration`, `Count` or `Distance` says it exactly, `{"value": 90,
+    /// "comparator": ">="}` in its own unit (probed); a plain `Quantity`
+    /// takes the bare value, because many `Quantity` elements are
+    /// constrained to `SimpleQuantity`, which forbids a comparator, and the
+    /// element-type table cannot tell them apart
+    /// ([`comparator_allowed`]). Anything else is left alone and named in
+    /// `residual`, so a rule that cannot bite is never silent.
     CollapseAge,
 }
 
@@ -917,11 +920,11 @@ fn age_years(kvs: &[(String, Node)]) -> Option<f64> {
 /// The host named an element an age (`Action::CollapseAge`): over 89 reads
 /// as Safe Harbor's "90 or above". An integer or decimal becomes `90` — a
 /// primitive carries no comparator, and the host that named the element
-/// knows what 90 now means there; a Quantity-family element says it
-/// exactly, `comparator: ">="` with the 90-equivalent in its own unit (the
-/// form validator_cli 6.10.4 accepts on an `Age` and a `Quantity` — probed,
-/// `conformance/probes/age-*`). `Some(false)` = an age at or under 89, left
-/// as given; `None` = no age can be read from this node at all.
+/// knows what 90 now means there; a quantity whose type always bears a
+/// comparator says it exactly, `comparator: ">="` with the 90-equivalent in
+/// its own unit (see [`comparator_allowed`] for which types, and why a plain
+/// `Quantity` is not one of them). `Some(false)` = an age at or under 89,
+/// left as given; `None` = no age can be read from this node at all.
 fn collapse_age(node: &mut Node, ty: &str) -> Option<bool> {
     if let Node::Number(n) = node {
         if n.parse::<f64>().ok()? <= 89.0 {
@@ -952,8 +955,28 @@ fn collapse_age(node: &mut Node, ty: &str) -> Option<bool> {
             at = i + 1;
         }
     }
-    kvs.insert(at, ("comparator".to_string(), Node::Str(">=".to_string())));
+    if comparator_allowed(ty) {
+        kvs.insert(at, ("comparator".to_string(), Node::Str(">=".to_string())));
+    }
     Some(true)
+}
+
+/// May a `comparator` be written on an element of this type? Only where
+/// *every* element of the type carries one. `Age`, `Duration`, `Count` and
+/// `Distance` do (probed: validator_cli 6.10.4 accepts `comparator: ">="` on
+/// `Condition.onsetAge`, `Encounter.length`, `Task.input.valueCount` and
+/// `valueDistance`). A plain `Quantity` does **not**, however free its own
+/// definition is: the base definitions constrain many `Quantity` elements to
+/// `SimpleQuantity` — `Observation.referenceRange.low`,
+/// `MedicationAdministration.dosage.dose`, `Claim.item.quantity` — where
+/// `comparator` has max 0 and `sqty-1` refuses it, and the element-type table
+/// records the type code (`Quantity`) and not that profile, so the pod cannot
+/// tell the two apart. It therefore writes the bare value there, exactly as
+/// the walk's own `Age` clamp has always done. `SimpleQuantity` and
+/// `MoneyQuantity` named outright by a compiled profile are refused the same
+/// way (`sqty-1`, `mtqy-1`). See `docs/scope.md`.
+fn comparator_allowed(ty: &str) -> bool {
+    matches!(ty, "Age" | "Duration" | "Count" | "Distance")
 }
 
 /// Ages over 89 read as 90, in the quantity's own unit.

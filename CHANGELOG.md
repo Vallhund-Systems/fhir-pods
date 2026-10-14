@@ -97,14 +97,29 @@ element over 89 — the type says what it is — but nothing says which
 ```
 
 Over 89 then collapses: an integer or decimal to `90` (a primitive carries no
-comparator, and the host that named the element knows what 90 means there), a
-quantity-typed element to `{"value": 90, "comparator": ">="}` with the
-90-equivalent in its own unit — valid on both an `Age` and a `Quantity`
-(probed; `conformance/probes/age-collapsed-onset.json` and
-`-quantity.json`, the probe lane now 37/37). A rule naming an element no age
-can be read from — a `CodeableConcept`, a quantity in kilograms — leaves it
-alone and names it in `residual`, so a rule that cannot bite is never silent,
-and the walk's own `Age` clamp is subsumed where both would fire.
+comparator, and the host that named the element knows what 90 means there),
+and a quantity whose type *always* bears a comparator — `Age`, `Duration`,
+`Count`, `Distance` — to `{"value": 90, "comparator": ">="}` with the
+90-equivalent in its own unit (each probed; `conformance/probes/age-collapsed-*`,
+the probe lane now 37/37).
+
+A plain `Quantity` takes the bare `90`, and the review that found this is
+worth recording: the base definitions constrain some forty `Quantity`
+elements to `SimpleQuantity` — `Observation.referenceRange.low`,
+`MedicationAdministration.dosage.dose`, `Claim.item.quantity` — where
+`comparator` has max 0 and `sqty-1` refuses it, and R4 writes that as
+`{"code": "Quantity", "profile": [".../SimpleQuantity"]}`, so the pod's
+element-type table (type *codes*) cannot tell those from a free `Quantity`.
+Writing the comparator there produced a copy the oracle rejects while the pod
+called it valid. The writer is now type-safe, and the leniency behind it — the
+pod does not apply a datatype profile the base puts on an element — is
+declared in `docs/scope.md` with the probe, since closing it needs
+element→profile data in the generated tables and a walk that applies it.
+
+A rule naming an element no age can be read from — a `CodeableConcept`, a
+quantity in kilograms — leaves it alone and names it in `residual`, so a rule
+that cannot bite is never silent, and the walk's own `Age` clamp is subsumed
+where both would fire.
 
 **`fatal`, said out loud — and a severity for every rule id.** The pod emits
 `severity: "fatal"` and nothing told a host so. `docs/rules.md` now opens with

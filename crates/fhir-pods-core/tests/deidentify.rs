@@ -502,8 +502,8 @@ fn a_host_named_age_over_89_collapses_and_an_uncollapsible_one_is_said() {
     let bare = deid(qr, &Policy::safe_harbor(b"salt").today(2026));
     assert!(bare.resource.contains(r#""valueInteger":94"#), "{}", bare.resource);
 
-    // a quantity says it exactly, in its own unit, and the walk's own Age
-    // clamp is subsumed (one action for the element, not two)
+    // an Age says it exactly, in its own unit, and the walk's own Age clamp
+    // is subsumed (one action for the element, not two)
     let cond = r#"{"resourceType":"Condition","id":"c","subject":{"reference":"Patient/x"},
       "code":{"coding":[{"system":"http://example.org/c","code":"c1"}]},
       "onsetAge":{"value":94,"unit":"years","system":"http://unitsofmeasure.org","code":"a"}}"#;
@@ -523,6 +523,32 @@ fn a_host_named_age_over_89_collapses_and_an_uncollapsible_one_is_said() {
     );
     let d = deid(&months, &Policy::safe_harbor(b"salt").today(2026).rule("Condition.onsetAge", Action::CollapseAge));
     assert!(d.resource.contains(r#""value":1080,"comparator":">=""#), "{}", d.resource);
+
+    // a plain Quantity takes the bare value: the base definitions constrain
+    // many Quantity elements to SimpleQuantity, where a comparator is
+    // refused (probed: `Quantity.comparator: max allowed = 0` + `sqty-1` on
+    // Observation.referenceRange.low and MedicationAdministration.dosage.dose),
+    // and the element-type table cannot tell those from a free Quantity
+    let obs = r#"{"resourceType":"Observation","id":"o","status":"final",
+      "code":{"coding":[{"system":"http://example.org/o","code":"age"}]},
+      "referenceRange":[{"low":{"value":94,"unit":"years","system":"http://unitsofmeasure.org","code":"a"}}]}"#;
+    let d = deid(obs, &Policy::safe_harbor(b"salt").rule("Observation.referenceRange.low", Action::CollapseAge));
+    assert!(d.resource.contains(r#""value":90,"unit":"years""#), "{}", d.resource);
+    assert!(!d.resource.contains("comparator"), "a comparator on a SimpleQuantity element: {}", d.resource);
+    assert_eq!(
+        d.applied
+            .iter()
+            .filter(|a| a.path == "Observation.referenceRange.low")
+            .map(|a| a.action.name())
+            .collect::<Vec<_>>(),
+        vec!["collapse-age"]
+    );
+    // the types that always bear one keep it (each probed)
+    let enc = r#"{"resourceType":"Encounter","id":"e","status":"finished",
+      "class":{"system":"http://terminology.hl7.org/CodeSystem/v3-ActCode","code":"AMB"},
+      "length":{"value":94,"unit":"years","system":"http://unitsofmeasure.org","code":"a"}}"#;
+    let d = deid(enc, &Policy::safe_harbor(b"salt").rule("Encounter.length", Action::CollapseAge));
+    assert!(d.resource.contains(r#""value":90,"comparator":">=""#), "{}", d.resource);
 
     // a rule on something no age reads from: left alone, and named
     let d = deid(cond, &Policy::safe_harbor(b"salt").rule("Condition.code", Action::CollapseAge));
