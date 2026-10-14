@@ -1607,6 +1607,9 @@ fn a_truncated_narrative_and_an_image_source_are_judged_as_the_oracle_judges_the
         format!(r#"<div {X}><p id="a" class="x>Real content.</p></div>"#),
         // a bare `#` is the document itself: a hyperlink may name it
         format!(r##"<div {X}><p><a href="#">t</a></p></div>"##),
+        // a start tag ends at the first `>`, quoted or not: the title is cut
+        // there, the rest is text, and the paragraph still closes (probed)
+        format!(r#"<div {X}><p title="a>b">text</p></div>"#),
         format!(r#"<div {X}><p>Real content.</p><p class="#),
         format!(r#"<div {X}><p>t</p><img src="javascript:alert(1)" alt="a"/></div>"#),
         format!(r#"<div {X}><p>t</p><img src="vbscript:msgbox(1)" alt="a"/></div>"#),
@@ -1655,6 +1658,10 @@ fn a_truncated_narrative_and_an_image_source_are_judged_as_the_oracle_judges_the
         // hyperlink above passes, this does not)
         (format!(r##"<div {X}><p>t</p><img src="#" alt="a"/></div>"##),
          vec!["narrative.link | Image source '#' at 'Patient.text.div/img' does not resolve".into()]),
+        // the same first-`>` rule where it costs: the img keeps `http://e.org/a`,
+        // its `/>` is text, so it never closes and `</div>` meets `</img>`
+        (format!(r#"<div {X}><p>t</p><img src="http://e.org/a>b.png" alt="a"/></div>"#),
+         vec![txt1.clone(), txt2.clone(), r#"narrative.parse | Error parsing XHTML: Malformed XHTML: Found "</div>" expecting "</img>""#.into()]),
     ];
     for (bad, want) in cases {
         let mut want = want;

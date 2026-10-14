@@ -1,6 +1,6 @@
 {
-  "recorded_at": "2026-10-14T21:20:59.044419+00:00",
-  "source_revision": "1c3b65e1b8441a83313d73e7f593c8a5308d2aae",
+  "recorded_at": "2026-10-14T21:48:32.228055+00:00",
+  "source_revision": "12777c89f6093b26d218cf5965a296a624650b5e",
   "source_dirty": true,
   "oracle_version": "6.10.4",
   "oracle_sha256": "1106b9d58f9e363e47bea7c4fc065841e5fc91fe9d062775c3bfdd212bd653cc",
@@ -15,8 +15,8 @@
   "oracle_exit_code": 0,
   "note": "Verdict parity; the oracle's own diagnostics are retained for inspection. The pod's exact messages and rule ids are pinned by the core's narrative test.",
   "counts": {
-    "total": 40,
-    "agree": 40,
+    "total": 42,
+    "agree": 42,
     "differ": 0
   },
   "probes": [
@@ -1401,6 +1401,98 @@
       "reason": "A bare '#' as a hyperlink is the document itself and passes \u2014 the contrast that makes the image case a rule and not an accident.",
       "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p><a href=\"#\">t</a></p></div>",
       "sha256": "1ef4be540f40fb19b5f82af8b3249363cb314cc41f33307b61f8e5a3a2d57a7e",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "All OK",
+          "paths": []
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "attr-gt-in-value-img.json",
+      "expect": false,
+      "reason": "A start tag ends at the first '>', quoted or not: the img keeps 'http://e.org/a' as its src, stays open because its '/>' is now text, and '</div>' then meets '</img>'.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>t</p><img src=\"http://e.org/a>b.png\" alt=\"a\"/></div>",
+      "sha256": "ff4034e4236c8f55a2ca9f8add0468f596a3ddcece58b7fff26619688c6cde11",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invalid",
+          "text": "Error parsing XHTML: Malformed XHTML: Found \"</div>\" expecting \"</img>\" at line 1 column 98",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: txt-1: 'The narrative SHALL contain only the basic html formatting elements and attributes described in chapters 7-11 (except section 4 of chapter 9) and 15 of the HTML 4.0 standard, <a> elements (either name or href), images and internally contained style attributes'",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: txt-2: 'The narrative SHALL have some non-whitespace content'",
+          "paths": [
+            "Patient.text.div"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Patient"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.txt-1",
+            "path": "Patient.text.div",
+            "message": "txt-1: The narrative SHALL contain only the basic html formatting elements and attributes described in chapters 7-11 (except section 4 of chapter 9) and 15 of the HTML 4.0 standard, <a> elements (either name or href), images and internally contained style attributes"
+          },
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "narrative.parse",
+            "path": "Patient.text.div",
+            "message": "Error parsing XHTML: Malformed XHTML: Found \"</div>\" expecting \"</img>\""
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.txt-2",
+            "path": "Patient.text.div",
+            "message": "txt-2: The narrative SHALL have some non-whitespace content"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "attr-gt-in-value-title.json",
+      "expect": true,
+      "reason": "The same rule where it costs nothing: the p's title is cut at the '>', the rest is text, and the paragraph closes \u2014 valid on both sides, for the same reason.",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p title=\"a>b\">text</p></div>",
+      "sha256": "8b015f5b86878f56d6c56a4c53fb53a41ac94892f6b90a852b9a260d45d598f6",
       "oracle_valid": true,
       "oracle_issues": [
         {

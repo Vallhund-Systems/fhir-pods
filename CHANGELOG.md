@@ -9,9 +9,9 @@ oracle contradicted part of the report: an unclosed `<p>` inside a closed root
 `<div>` is refused on both sides, and it was never accepted here. What the
 probes did find is a new lane and three corrections.
 
-*The narrative, where its text stops.* `conformance/narrative/` holds 40
+*The narrative, where its text stops.* `conformance/narrative/` holds 42
 synthetic `Narrative.div` cases — the narrative, the oracle's own diagnostics,
-the pod's report — and fails on any disagreement. 40/40 agree; five did not
+the pod's report — and fails on any disagreement. 42/42 agree; six did not
 before:
 
 - the text ending inside a **closing** tag was accepted, where the oracle
@@ -31,6 +31,15 @@ before:
 - a bare `#` was dropped before resolution, so `<img src="#">` passed; the
   oracle reports `Image source '#' … does not resolve` for an image and
   accepts `<a href="#">`, which is the document itself;
+- and a `>` **inside a quoted attribute value** did not end the start tag.
+  0.20.1 read the value as ending there but let the tag run on to the real
+  `>`; the oracle ends the tag at the first `>` either way, so
+  `<img src="http://e.org/a>b.png" alt="a"/>` keeps `http://e.org/a`, has its
+  `/>` read as text, and stays open until `</div>` meets `</img>` —
+  `Malformed XHTML: Found "</div>" expecting "</img>"`, where the pod said
+  valid. The benign twin (`<p title="a>b">text</p>`, which agrees both ways)
+  is in the lane beside it, and this one rule subsumes the unterminated value
+  above;
 - a character that can begin no attribute name reported `unexpected non-end
   of element null::p`, where the oracle says `Unable to read attribute on
   <p>`.
@@ -102,14 +111,15 @@ Over 89 then collapses: an integer or decimal to `90` (a primitive carries no
 comparator, and the host that named the element knows what 90 means there),
 and a quantity whose type *always* bears a comparator — `Age`, `Duration`,
 `Count`, `Distance` — to `{"value": 90, "comparator": ">="}` with the
-90-equivalent in its own unit (each probed; `conformance/probes/age-collapsed-*`,
-the probe lane now 37/37).
+90-equivalent in its own unit (each probed;
+`conformance/probes/age-collapsed-*`, the probe lane now 37/37).
 
 A plain `Quantity` takes the bare `90`, and the review that found this is
-worth recording: the base definitions constrain some forty `Quantity`
-elements to `SimpleQuantity` — `Observation.referenceRange.low`,
+worth recording: the base definitions constrain **55** `Quantity` elements to
+`SimpleQuantity` — `Observation.referenceRange.low`,
 `MedicationAdministration.dosage.dose`, `Claim.item.quantity` — where
-`comparator` has max 0 and `sqty-1` refuses it, and R4 writes that as
+`comparator` has max 0 and `sqty-1` refuses it (`MoneyQuantity` constrains no
+base element in R4, so it is prospective), and R4 writes that as
 `{"code": "Quantity", "profile": [".../SimpleQuantity"]}`, so the pod's
 element-type table (type *codes*) cannot tell those from a free `Quantity`.
 Writing the comparator there produced a copy the oracle rejects while the pod
@@ -140,8 +150,9 @@ The rule table gains a **Severity** column — every one of the 67 ids, read
 from its push site and, where the lanes produce it, *measured*: a new test
 scans every file the release corpus, the mutation lane, the gut cases and the
 two probe lanes have on disk, and fails if an id ever arrives at a severity
-the page does not list for it. So `profile.unknown` is "warning — error where the host
-sets `unknownProfile`", `questionnaire.unresolved` is "information when none
+the page does not list for it. So `profile.unknown` is "warning — error
+where the host sets `unknownProfile`", `questionnaire.unresolved` is
+"information when none
 is named … warning when a named one could not be resolved",
 `not-supported.fhirpath` is "information for a profile invariant, warning for
 a datatype one", `questionnaire.answer-content` is "error — warning for a new
@@ -171,13 +182,13 @@ corrected to 14 with the whole ladder — and its claim that every wrapper
 refuses a mismatched module is now true of the Expo pod as well: it contains
 its native library rather than being handed one, so a mismatch means
 mismatched artifacts were packed, and `src/index.ts` refuses it on import
-while the Swift and Kotlin modules log it on creation. The shared Node/Chrome harness and the
-C smoke exercise the new entry; the browser and Expo device evidence still
-reads ABI 13 and wants re-recording from a packed build.
+while the Swift and Kotlin modules log it on creation. The shared Node/Chrome
+harness and the C smoke exercise the new entry; the browser and Expo device
+evidence still reads ABI 13 and wants re-recording from a packed build.
 
 Lanes, all green and all unchanged but for the two new probes: release gate
 **1,778/1,778** (1,776 + the two age probes), base **5,156/5,290** (134
-lenient, 0 stricter, 0 failures), probes **37/37**, narrative **34/34**,
+lenient, 0 stricter, 0 failures), probes **37/37**, narrative **42/42**,
 277 tests, clippy clean, 22 wasm Node tests, the C ABI smoke and the no-std
 build. No release: the version and the packed artifacts stay at 0.21.0.
 

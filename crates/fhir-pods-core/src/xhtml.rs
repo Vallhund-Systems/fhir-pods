@@ -522,38 +522,32 @@ impl Parser<'_, '_> {
                     }
                     self.i += 1;
                     self.skip_ws();
-                    // an unquoted value and a repeated attribute are taken (probed);
-                    // a quoted value runs to its quote
+                    // an unquoted value and a repeated attribute are taken (probed)
                     let raw = match self.peek(0) {
                         Some(quote @ (b'"' | b'\'')) => {
                             self.i += 1;
                             let v0 = self.i;
-                            while self.peek(0).is_some_and(|c| c != quote) {
+                            // A start tag ends at the first `>`, quoted or
+                            // not — the reference parser does not look for
+                            // the matching quote first (probed: an `img`
+                            // whose `src` carries a `>` is left open, and
+                            // `</div>` then meets `</img>`). So the value is
+                            // what was read, the `>` ends the tag, and what
+                            // follows it is text. A value that reaches the
+                            // end of the narrative instead truncates the
+                            // document, which is the one case the parser
+                            // tolerates there (both in
+                            // `conformance/narrative/`).
+                            while self.peek(0).is_some_and(|c| c != quote && c != b'>') {
                                 self.i += 1;
                             }
-                            if self.peek(0) == Some(quote) {
-                                let v = core::str::from_utf8(&self.s[v0..self.i]).unwrap_or("").to_owned();
-                                self.i += 1;
-                                v
-                            } else {
-                                // no closing quote: the reference parser takes
-                                // the value to this tag's own `>` and carries
-                                // on after it — the text that follows is text.
-                                // Only a value that reaches the end of the
-                                // narrative truncates the document (probed
-                                // both ways, `conformance/narrative/`).
-                                let span = &self.s[v0..self.i];
-                                match span.iter().position(|&c| c == b'>') {
-                                    Some(k) => {
-                                        self.i = v0 + k; // the loop's next pass takes the `>`
-                                        core::str::from_utf8(&span[..k]).unwrap_or("").to_owned()
-                                    }
-                                    None => {
-                                        truncated = true;
-                                        core::str::from_utf8(span).unwrap_or("").to_owned()
-                                    }
-                                }
+                            let v = core::str::from_utf8(&self.s[v0..self.i]).unwrap_or("").to_owned();
+                            match self.peek(0) {
+                                Some(c) if c == quote => self.i += 1,
+                                Some(_) => {} // the `>`: the loop's next pass ends the tag
+                                None => truncated = true,
                             }
+                            v
                         }
                         _ => {
                             let v0 = self.i;
@@ -563,9 +557,7 @@ impl Parser<'_, '_> {
                             core::str::from_utf8(&self.s[v0..self.i]).unwrap_or("").to_owned()
                         }
                     };
-                    // the reference parser's value ends at a literal `>` (probed)
-                    let raw = raw.split('>').next().unwrap_or("");
-                    let Some(value) = self.decode(raw) else { return false };
+                    let Some(value) = self.decode(&raw) else { return false };
                     attrs.push((aname, value));
                     if truncated {
                         break;

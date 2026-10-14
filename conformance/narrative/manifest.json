@@ -198,5 +198,15 @@
     "file": "link-fragment-empty.json",
     "expect": true,
     "reason": "A bare '#' as a hyperlink is the document itself and passes \u2014 the contrast that makes the image case a rule and not an accident."
+  },
+  {
+    "file": "attr-gt-in-value-img.json",
+    "expect": false,
+    "reason": "A start tag ends at the first '>', quoted or not: the img keeps 'http://e.org/a' as its src, stays open because its '/>' is now text, and '</div>' then meets '</img>'."
+  },
+  {
+    "file": "attr-gt-in-value-title.json",
+    "expect": true,
+    "reason": "The same rule where it costs nothing: the p's title is cut at the '>', the rest is text, and the paragraph closes \u2014 valid on both sides, for the same reason."
   }
 ]

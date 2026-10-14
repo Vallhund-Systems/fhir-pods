@@ -330,7 +330,7 @@ through `htmlChecks()`, `txt-2`, and the parser's own findings beside them —
 six `narrative.*` rule ids). Several of its rules are not the rules a reader
 would assume, and they are kept on purpose: bug-for-bug is the contract, and a
 host that wants more than the oracle asks for it
-([Host options](#host-options)). The 40 cases in `conformance/narrative/`
+([Host options](#host-options)). The 42 cases in `conformance/narrative/`
 record each probe — the narrative, the oracle's own diagnostics, the pod's
 report — and the lane fails on any disagreement.
 
@@ -341,18 +341,25 @@ open* where the text ends is taken as closed — the root `<div>` included — a
 so is a **start tag** the text ends inside: the element is kept with the
 attributes read so far, which is why a truncated root keeps its `xmlns` and
 reports only `txt-2`, while a bare `<div` has no namespace and reports both.
-An **unterminated quoted attribute value** is not a truncation at all: the
-parser takes the value to that tag's own `>` and carries on after it, so the
-text that follows is text (four forms probed — either quote, with and without
-the root closed, first attribute or not). Only a value that reaches the end of
-the narrative truncates the document. The two truncations refused are a `/`
-that no `>` follows (`unexpected non-end of element`) and a **closing** tag
-the text ends inside (`Unexpected termination of html source`). A character
+A start tag **ends at the first `>`, quoted or not** — the parser does not
+look for the matching quote first, so a `>` inside an attribute value ends the
+tag there and what follows it is text. That is benign on
+`<p title="a>b">text</p>` (the title is cut, the paragraph still closes) and
+not on `<img src="http://e.org/a>b.png" alt="a"/>`, whose `/>` becomes text,
+leaving the image open until `</div>` meets `</img>`. An **unterminated
+quoted attribute value** is the same rule and no truncation at all (four forms
+probed — either quote, with and without the root closed, first attribute or
+not). Only a value that reaches the end of the narrative truncates the
+document. The two truncations refused are a `/` that no `>` follows
+(`unexpected non-end of element`) and a **closing** tag the text ends inside
+(`Unexpected termination of html source`). A character
 that can begin no attribute name is `Unable to read attribute on <p>`. Text,
 or a second root, after the root is ignored. Probing the oracle on 2026-10-14
-corrected five of these: the closing-tag truncation was accepted, a start-tag
-truncation and all four unterminated-value forms were refused, and an
-unreadable attribute carried the wrong message.
+corrected six of these: the closing-tag truncation was accepted, a start-tag
+truncation and all four unterminated-value forms were refused, a `>` inside a
+quoted value did not end the tag — 0.20.1's reading, and the one that let a
+malformed image through — and an unreadable attribute carried the wrong
+message.
 
 **Images and hyperlinks are not checked alike.** An image's `src` is held to
 four things only: it may not be empty, it may carry no invalid character, a
@@ -592,13 +599,14 @@ an export mapping, the way `uk`/`ca`/`nz` came in 0.13.0.
   spec doesn't define has no type, and such an expression is skipped — and
   reported as an `information` issue naming the invariant.
 - **A datatype profile the base definitions put on an element**
-  (`SimpleQuantity`, `MoneyQuantity`) is not applied. The element-type table
-  records an element's type *code*, and R4 writes these as
-  `{"code": "Quantity", "profile": [".../SimpleQuantity"]}` —
-  `Observation.referenceRange.low`, `MedicationAdministration.dosage.dose`,
-  `Claim.item.quantity` and some forty more. So the pod reads them as a plain
-  `Quantity` and does not enforce `comparator` max 0, `sqty-1` ("The
-  comparator is not used on a SimpleQuantity") or `mtqy-1`, where the
+  (`SimpleQuantity`; `MoneyQuantity` prospectively — it constrains no base
+  element in R4) is not applied. The element-type table records an element's
+  type *code*, and R4 writes these as
+  `{"code": "Quantity", "profile": [".../SimpleQuantity"]}` — on **55** base
+  elements, among them `Observation.referenceRange.low`,
+  `MedicationAdministration.dosage.dose` and `Claim.item.quantity`. So the pod
+  reads them as a plain `Quantity` and does not enforce `comparator` max 0 or
+  `sqty-1` ("The comparator is not used on a SimpleQuantity"), where the
   reference validator does. Probed 2026-10-14, on both elements:
   `error Quantity.comparator: max allowed = 0, but found 1 (from
   http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)` and

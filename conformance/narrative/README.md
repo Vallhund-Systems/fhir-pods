@@ -1,6 +1,6 @@
 # Narrative probes
 
-Forty synthetic `Narrative.div` cases whose verdict a reader would not
+Forty-two synthetic `Narrative.div` cases whose verdict a reader would not
 guess: what validator_cli 6.10.4 tolerates where the text ends mid-markup, and
 what it does — and does not — check about an image's source. A host's report
 (2026-10-14) asserted three of these the other way round, so the lane records
@@ -16,8 +16,11 @@ the probe rather than the reasoning:
   `xmlns` (namespace fine, `txt-2` fails) while a bare `<div` has no namespace
   (both findings). The one truncation refused is a `/` that no `>` follows,
   and a **closing** tag the text ends inside (`Unexpected termination of html
-  source`). An unterminated *quoted attribute value* is not a truncation: the
-  parser recovers at that tag's own `>` and the text after it is text.
+  source`). A start tag ends at the first `>`, **quoted or not**, so a `>`
+  inside an attribute value ends the tag and the rest is text — benign on a
+  `title`, fatal on an `<img …/>` whose `/>` is then text and whose element
+  never closes. An unterminated quoted value is that same rule, not a
+  truncation.
 - An **external `<img src="http://…">` passes**, and so do `https:`, a bare
   path, `file:`, `urn:`, `cid:` — and `javascript:`. The hyperlink scheme
   rules (active content, "not hyperlinkable") are checked on `<a href>` only;
