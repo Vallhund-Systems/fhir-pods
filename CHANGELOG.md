@@ -190,7 +190,7 @@ Lanes, all green and all unchanged but for the two new probes: release gate
 **1,778/1,778** (1,776 + the two age probes), base **5,156/5,290** (134
 lenient, 0 stricter, 0 failures), probes **37/37**, narrative **42/42**,
 277 tests, clippy clean, 22 wasm Node tests, the C ABI smoke and the no-std
-build. No release: the version and the packed artifacts stay at 0.21.0.
+build. Released as 0.22.0 (ABI 14); the pods' packed artifacts carry it.
 
 ## 0.21.0 — 2026-10-10
 
