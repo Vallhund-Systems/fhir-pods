@@ -16,6 +16,40 @@ and artifacts are unchanged.
   the oracle judges the same bytes: 71/71 with `--chain`, 7/7 more with
   `--host-profile`, and the same one triaged residue (the oracle's extra
   code-system finding on `qr-answer-not-in-set`).
+- Every lane re-run at 0.22.0 (ABI 14; `dist/0.22.0/fhir_pods-0.22.0.wasm`
+  sha256 `77ab6c73…7679`, the wasm the Node tests load) and the README lane
+  table rewritten from the measurement, each row stamped at 0.22.0, with rows
+  added for the probe and narrative lanes. Release corpus **1,778/1,778**,
+  three triaged residues; probes **37/37**; narrative **42/42**; base
+  **5,156/5,290** (134 lenient, 0 stricter, 2 excluded); validator base tests
+  **64/84** Java, **14/20** Firely (18 lenient; 2 stricter than stored Java,
+  0 than both); questionnaire **74/81** verdicts, **73/81** every error (7
+  lenient, 0 stricter, 15 excluded); supporting **9/11** of 11 compared (2
+  lenient, 0 stricter, 149 excluded); ad-hoc profiles **12/13** Java, **7/7**
+  Firely (1 lenient, 0 stricter, 40 excluded); v2 samples **77/77** verdicts,
+  **74/77** every error, 0 stricter; Synthea **14/14** (4.39 s, 6.2 MB/s on a
+  loaded machine); mutation **19,067/19,067** (0 lenient, 0 stricter, 0
+  untriaged); instrument path **71/71** + **7/7** host-profile. 277 Rust
+  tests, 22 wasm Node tests, 18 Python harness checks, clippy clean.
+- The README had carried older figures: validator base tests 63/84 and 13/20
+  (`pat-dob-ext` agrees with both engines since 0.18.0 refused extensions no
+  package defines), ad-hoc profiles 10 compared and 9/10 (binding-
+  discriminated slices in 0.14.0 and nested slicing in 0.14.2 brought
+  `res-inv-example-good`, `res-inv-example-bad` and
+  `AuditEvent-slice23-second` out of the compiler-gap exclusions, all three
+  agreeing), the release corpus at 1,766, and test counts of 239 and 18.
+  Measured against each tag's tree; no verdict moved in 0.22.0.
+- Two lanes exit 1 at 0.22.0 and are left for review, not rebaselined. The
+  base gate: four definition-validation diagnostics moved on the oracle side
+  (`inv-1` reused across published definitions; which one validator_cli
+  rejects follows its load order, so `StructureDefinition-Task` now passes
+  there and `StructureDefinition-Parameters` fails), totals and every pod
+  verdict unchanged. The questionnaire lane: since 0.19.4 (a coded answer
+  with no system is an error) the pod reports nine answer-option errors on
+  `nested-questionnaire-nested-valueset` that the stored Java outcome does
+  not, so the reviewed reason no longer matches; the verdict is invalid on
+  both sides, and whether the oracle reports them in this configuration is
+  not yet probed.
 
 ## 0.22.0 — 2026-10-14
 
