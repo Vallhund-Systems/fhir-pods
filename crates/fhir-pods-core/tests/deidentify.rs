@@ -444,7 +444,7 @@ fn a_required_repeating_element_that_empties_is_masked_as_an_array() {
 /// a value-less answer with a data-absent-reason carrier — never dropped:
 /// an answer with no value is no answer, and a required item then has
 /// none. validator_cli 6.10.4 passes the carrier form and refuses the
-/// dropped one (probed). Found by the gut-path lane's chain stage.
+/// dropped one (probed). Found by the instrument-path lane's chain stage.
 #[test]
 fn a_questionnaire_responses_free_text_answer_is_masked_not_dropped() {
     use fhir_pods_core::deidentify::Policy;

@@ -48,6 +48,29 @@ separates selected, compared, agreed, lenient, stricter, excluded and failed
 cases. A passing gate means the reviewed baseline is unchanged, not that
 unimplemented rules were checked or every example agrees.
 
+## Instrument-path scenario
+
+`instrument.py` is one synthetic end-to-end scenario among the lanes, not a
+focus of the runtime: a sixteen-part questionnaire instrument with its own
+code systems and value sets (`instrument/make_instrument.py`, nothing copied
+from a real instrument), responses held to it, and the resources derived from
+them, each judged three ways — the scenario's expectation, the pod (given the
+instrument and a compiled terminology table, as a host gives them) and the
+oracle with the same definitions loaded as an IG folder.
+
+```sh
+JAVA_HOME=/opt/homebrew/opt/openjdk@17 CARGO_BUILD_JOBS=2 python3 conformance/instrument.py --chain
+JAVA_HOME=/opt/homebrew/opt/openjdk@17 CARGO_BUILD_JOBS=2 python3 conformance/instrument.py --chain --host-profile
+python3 conformance/instrument.py --reuse-oracle
+```
+
+`--chain` adds lifted-and-lowered and de-identified copies of every valid
+case and the record's AU export; `--host-profile` compiles the scenario's own
+score profile into a feature build (its own target dir, the stub registry
+restored afterwards) and judges seven more cases. Reviewed differences are
+named in `instrument-triage.json`; anything else fails. Outputs stay in the
+ignored `instrument/out/`.
+
 ## Published validator test cases
 
 `testcases.py` fetches only `validator/` from the Apache-2.0

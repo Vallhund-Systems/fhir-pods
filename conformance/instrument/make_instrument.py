@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""The gut-path scenario: a synthetic clinical instrument shaped like a
-sixteen-part gut-health questionnaire, and the resource chain a host builds
+"""The instrument-path scenario: a synthetic sixteen-part questionnaire
+instrument, and the resource chain a host builds
 around it — the questionnaire as a FHIR `Questionnaire` with its own code
 systems and value sets, `QuestionnaireResponse`s held to it, the score /
 stool-form / severity `Observation`s derived from a response, a `Flag` for a
@@ -15,11 +15,11 @@ items, repeating groups, coded answers from a local value set, integer and
 decimal scales, a Bristol-style 1–7 choice, an eleven-item boolean safety
 screen), so the pod's handling of that shape can be measured end to end.
 
-    python3 conformance/gut/make_gut.py        # writes conformance/gut/out/
+    python3 conformance/instrument/make_instrument.py   # writes conformance/instrument/out/
 
 `out/defs/` holds the definitions the oracle is given as an extra IG folder
 (CodeSystem, ValueSets, Questionnaire); `out/cases/` the instances with a
-`manifest.json` of expectations; `out/gut.terminology.txt` the compiled
+`manifest.json` of expectations; `out/instrument.terminology.txt` the compiled
 table the pod loads for the local value sets.
 """
 import json
@@ -356,7 +356,7 @@ R4_OBSERVATION = os.path.join(HERE, "..", "package-r4", "package", "StructureDef
 
 
 def host_profile():
-    """The host's own profile on the score: a gut-score Observation carries
+    """The host's own profile on the score: a score Observation carries
     the score code, an integer value, a member and the module that computed
     it. Compiled into the pod at build time (scripts/gen-host-profiles.sh)
     and given to the oracle as an IG definition — the snapshot is R4's
@@ -521,7 +521,7 @@ def main():
                            capture_output=True, text=True)
     if table.returncode != 0:
         raise SystemExit(f"compile_valueset.py refused the definitions: {table.stderr.strip()}")
-    open(os.path.join(OUT, "gut.terminology.txt"), "w").write(table.stdout)
+    open(os.path.join(OUT, "instrument.terminology.txt"), "w").write(table.stdout)
     # the same sets and members as the hand-written table, whatever the order
     def parsed(text):
         sets, current = {}, None

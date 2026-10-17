@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""The gut-path lane: the synthetic instrument scenario in `gut/make_gut.py`
-— a sixteen-part questionnaire with its own code systems and value sets,
+"""The instrument-path lane: the synthetic scenario in
+`instrument/make_instrument.py` — a sixteen-part questionnaire with its own code systems and value sets,
 responses held to it, and the derived chain (observations, flag, summary,
 referral, consent, export bundle, audit record) — judged end to end three
 ways: what the scenario expects, what the pod says, what validator_cli
 6.10.4 says with the same definitions loaded as an extra IG folder.
 
-    JAVA_HOME=... python3 conformance/gut.py            # generate, judge the cases
-    JAVA_HOME=... python3 conformance/gut.py --chain    # + lift/lower, de-identify, export for AU; judge the derived files
-    python3 conformance/gut.py --reuse-oracle            # pod side only
-    python3 conformance/gut.py --mutate                  # + the mutation classes over every case
+    JAVA_HOME=... python3 conformance/instrument.py            # generate, judge the cases
+    JAVA_HOME=... python3 conformance/instrument.py --chain    # + lift/lower, de-identify, export for AU; judge the derived files
+    python3 conformance/instrument.py --reuse-oracle            # pod side only
+    python3 conformance/instrument.py --mutate                  # + the mutation classes over every case
 
 The pod is given the instrument the way a host gives it (`probe
 --questionnaire`) and the local value sets as a compiled terminology table
 (`--terminology`). Exit 1 on any case where the three disagree and
-`gut-triage.json` does not name it.
+`instrument-triage.json` does not name it.
 """
 import argparse
 import json
@@ -24,18 +24,18 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-sys.path.insert(0, os.path.join(HERE, "gut"))
+sys.path.insert(0, os.path.join(HERE, "instrument"))
 import run  # noqa: E402
 import reasons  # noqa: E402
-import make_gut  # noqa: E402
+import make_instrument  # noqa: E402
 
 ROOT = run.ROOT
-OUT = make_gut.OUT
-DEFS = make_gut.DEFS
-CASES = make_gut.CASES
-TRIAGE = os.path.join(HERE, "gut-triage.json")
+OUT = make_instrument.OUT
+DEFS = make_instrument.DEFS
+CASES = make_instrument.CASES
+TRIAGE = os.path.join(HERE, "instrument-triage.json")
 QUESTIONNAIRE = os.path.join(DEFS, "Questionnaire-gut-instrument.json")
-TABLE = os.path.join(OUT, "gut.terminology.txt")
+TABLE = os.path.join(OUT, "instrument.terminology.txt")
 
 
 def ours(probe, path, questionnaire=True):
@@ -169,7 +169,7 @@ def main():
                     help="also compile the scenario's own Observation profile into the pod (a host's build) and judge the score against it")
     ap.add_argument("--filter")
     a = ap.parse_args()
-    make_gut.main()
+    make_instrument.main()
     subprocess.check_call(["cargo", "build", "-q", "-p", "fhir-pods-core", "--example", "probe"], cwd=ROOT)
     probe = os.path.join(ROOT, "target", "debug", "examples", "probe")
     manifest = json.load(open(os.path.join(CASES, "manifest.json")))
@@ -177,9 +177,9 @@ def main():
     paths = [os.path.join(CASES, c["file"]) for c in manifest if not a.filter or a.filter in c["file"]]
     host_paths = []
     if a.host_profile:
-        host = json.load(open(os.path.join(make_gut.HOST_CASES, "manifest.json")))
+        host = json.load(open(os.path.join(make_instrument.HOST_CASES, "manifest.json")))
         meta.update({c["file"]: c for c in host})
-        host_paths = [os.path.join(make_gut.HOST_CASES, c["file"]) for c in host if not a.filter or a.filter in c["file"]]
+        host_paths = [os.path.join(make_instrument.HOST_CASES, c["file"]) for c in host if not a.filter or a.filter in c["file"]]
     if a.mutate:
         import mutate
         mdir = os.path.join(OUT, "mutations")
@@ -215,7 +215,7 @@ def main():
         # with the feature in its own target dir (the default probe stays
         # what it is), the stub restored afterwards whatever happens
         try:
-            subprocess.check_call([os.path.join(ROOT, "scripts", "gen-host-profiles.sh"), make_gut.PKG], cwd=ROOT, stdout=subprocess.DEVNULL)
+            subprocess.check_call([os.path.join(ROOT, "scripts", "gen-host-profiles.sh"), make_instrument.PKG], cwd=ROOT, stdout=subprocess.DEVNULL)
             subprocess.check_call(["cargo", "build", "-q", "-p", "fhir-pods-core", "--example", "probe", "--features", "host-profiles",
                                    "--target-dir", os.path.join(ROOT, "target", "host-profiles")], cwd=ROOT)
             host_probe = os.path.join(ROOT, "target", "host-profiles", "debug", "examples", "probe")
@@ -226,7 +226,7 @@ def main():
     counts = {}
     for r in rows:
         counts[r["kind"]] = counts.get(r["kind"], 0) + 1
-    print("gut-path: " + ", ".join(f"{k} {v}" for k, v in sorted(counts.items())))
+    print("instrument-path: " + ", ".join(f"{k} {v}" for k, v in sorted(counts.items())))
     ungated = 0
     for r in rows:
         if r["kind"] == "agree":

@@ -1373,7 +1373,7 @@ fn an_empty_string_beside_a_carrier_with_content_is_an_absent_value() {
 /// resolves by `fullUrl` (a `urn:uuid` entry by its uuid; a relative
 /// `Type/id` only against a RESTful fullUrl), so a relative reference among
 /// `urn:uuid` entries resolves nowhere and is not judged. Found by the
-/// gut-path lane: a referral whose reason was a Flag.
+/// instrument-path lane: a referral whose reason was a Flag.
 #[test]
 fn a_resolved_reference_in_a_bundle_is_held_to_the_elements_base_targets() {
     use fhir_pods_core::validate::Severity;
@@ -1406,7 +1406,7 @@ fn a_resolved_reference_in_a_bundle_is_held_to_the_elements_base_targets() {
 /// reference validator's wording): txt-1 with the parser's own finding
 /// beside it, txt-2 as it counts content, the content model, the link
 /// rules, the entity rules, its own nesting limit. Found wanting by the
-/// gut-path review: a clinician summary's narrative was never checked.
+/// instrument-path review: a clinician summary's narrative was never checked.
 #[test]
 fn a_narrative_is_held_to_what_the_reference_validator_allows() {
     use fhir_pods_core::validate::Severity;

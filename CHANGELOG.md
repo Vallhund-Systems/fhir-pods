@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+Corrections to the released 0.22.0 documentation and lanes; the shipped code
+and artifacts are unchanged.
+
+- The instrument-path scenario lane (previously named for a host's use case)
+  is renamed; `conformance/instrument.py`, its generator
+  (`conformance/instrument/make_instrument.py`), corpus
+  (`conformance/instrument/out/`) and triage (`instrument-triage.json`)
+  follow. It is described by its FHIR shape — one synthetic sixteen-part
+  questionnaire instrument with its own code systems and value sets, its
+  derived chain, lift/lower, de-identification and a regional export — as one
+  scenario among the lanes. The fixtures' own identifiers are unchanged, so
+  the oracle judges the same bytes: 71/71 with `--chain`, 7/7 more with
+  `--host-profile`, and the same one triaged residue (the oracle's extra
+  code-system finding on `qr-answer-not-in-set`).
+
 ## 0.22.0 — 2026-10-14
 
 **A host's second field report, probed.** Three independent readers drove the
