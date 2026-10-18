@@ -34,7 +34,7 @@ OUT = make_instrument.OUT
 DEFS = make_instrument.DEFS
 CASES = make_instrument.CASES
 TRIAGE = os.path.join(HERE, "instrument-triage.json")
-QUESTIONNAIRE = os.path.join(DEFS, "Questionnaire-gut-instrument.json")
+QUESTIONNAIRE = os.path.join(DEFS, "Questionnaire-synthetic-instrument.json")
 TABLE = os.path.join(OUT, "instrument.terminology.txt")
 
 
@@ -86,17 +86,17 @@ def chain_stage(probe, manifest, meta):
     # the AU export of the record a host would hold
     record = {
         "resources": [json.load(open(os.path.join(CASES, f))) for f in
-                      ("patient.json", "device.json", "qr-full.json", "obs-score-1.json", "obs-stool-1.json",
+                      ("patient.json", "device.json", "qr-full.json", "obs-score-1.json", "obs-ordinal-1.json",
                        "obs-severity-1.json", "obs-alarm-1.json", "flag-alarm.json", "servicerequest-referral.json",
                        "consent-research.json")],
-        "author": "Device/gut-module",
+        "author": "Device/instrument-module",
         "date": "2026-10-09T10:00:00+10:00",
         "audit": {
             "recorded": "2026-10-09T10:05:00+10:00",
-            "client": {"who": "Device/gut-module", "network": "10.0.0.7"},
+            "client": {"who": "Device/instrument-module", "network": "10.0.0.7"},
             "server": {"who": {"display": "export.example.org"}, "network": "https://export.example.org/r4"},
             "user": {"who": "Patient/p1", "name": "The member"},
-            "source": {"observer": "Device/gut-module", "site": "gut-module"},
+            "source": {"observer": "Device/instrument-module", "site": "instrument-module"},
             "transaction": "export-1",
         },
     }
