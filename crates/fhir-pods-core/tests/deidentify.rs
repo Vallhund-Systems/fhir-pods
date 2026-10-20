@@ -527,14 +527,16 @@ fn a_host_named_age_over_89_collapses_and_an_uncollapsible_one_is_said() {
     // a plain Quantity takes the bare value: the base definitions constrain
     // many Quantity elements to SimpleQuantity, where a comparator is
     // refused (probed: `Quantity.comparator: max allowed = 0` + `sqty-1` on
-    // Observation.referenceRange.low and MedicationAdministration.dosage.dose),
-    // and the element-type table cannot tell those from a free Quantity
+    // Observation.referenceRange.low and MedicationAdministration.dosage.dose,
+    // and refused by the walk too since `ELEMENT_PROFILES`); the rule is held
+    // to the element's type, never to which element it is
     let obs = r#"{"resourceType":"Observation","id":"o","status":"final",
       "code":{"coding":[{"system":"http://example.org/o","code":"age"}]},
       "referenceRange":[{"low":{"value":94,"unit":"years","system":"http://unitsofmeasure.org","code":"a"}}]}"#;
     let d = deid(obs, &Policy::safe_harbor(b"salt").rule("Observation.referenceRange.low", Action::CollapseAge));
     assert!(d.resource.contains(r#""value":90,"unit":"years""#), "{}", d.resource);
     assert!(!d.resource.contains("comparator"), "a comparator on a SimpleQuantity element: {}", d.resource);
+    assert!(fhir_pods_core::validate_bytes(d.resource.as_bytes()).report.is_valid(), "{}", d.resource);
     assert_eq!(
         d.applied
             .iter()

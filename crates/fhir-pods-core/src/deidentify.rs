@@ -56,8 +56,8 @@ pub enum Action {
     /// `Duration`, `Count` or `Distance` says it exactly, `{"value": 90,
     /// "comparator": ">="}` in its own unit (probed); a plain `Quantity`
     /// takes the bare value, because many `Quantity` elements are
-    /// constrained to `SimpleQuantity`, which forbids a comparator, and the
-    /// element-type table cannot tell them apart
+    /// constrained to `SimpleQuantity`, which forbids a comparator — a rule
+    /// is held to the element's type, never to which element it is
     /// ([`comparator_allowed`]). Anything else is left alone and named in
     /// `residual`, so a rule that cannot bite is never silent.
     CollapseAge,
@@ -969,12 +969,12 @@ fn collapse_age(node: &mut Node, ty: &str) -> Option<bool> {
 /// definition is: the base definitions constrain many `Quantity` elements to
 /// `SimpleQuantity` — `Observation.referenceRange.low`,
 /// `MedicationAdministration.dosage.dose`, `Claim.item.quantity` — where
-/// `comparator` has max 0 and `sqty-1` refuses it, and the element-type table
-/// records the type code (`Quantity`) and not that profile, so the pod cannot
-/// tell the two apart. It therefore writes the bare value there, exactly as
-/// the walk's own `Age` clamp has always done. `SimpleQuantity` and
-/// `MoneyQuantity` named outright by a compiled profile are refused the same
-/// way (`sqty-1`, `mtqy-1`). See `docs/scope.md`.
+/// `comparator` has max 0 and `sqty-1` refuses it — as the shape walk now
+/// holds every such element (`typemap::ELEMENT_PROFILES`), so a comparator
+/// written there would make the copy invalid. The decision stays by type: it
+/// writes the bare value on every `Quantity`, exactly as the walk's own `Age`
+/// clamp has always done. `SimpleQuantity` and `MoneyQuantity` named outright
+/// by a compiled profile are refused the same way (`sqty-1`, `mqty-1`).
 fn comparator_allowed(ty: &str) -> bool {
     matches!(ty, "Age" | "Duration" | "Count" | "Distance")
 }

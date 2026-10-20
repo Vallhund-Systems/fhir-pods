@@ -10,6 +10,10 @@ them). Every resource type is included because a contained resource, or a
 Bundle entry, can be any of them — dom-3 walks `descendants().as(uri)`
 through the contained resources, and typing must not stop at the registry.
 
+Beside the type codes: the datatype profiles the package defines
+(`SimpleQuantity`, `MoneyQuantity`) and every base element whose type names
+one (`ELEMENT_PROFILES`), which the shape walk applies where it meets them.
+
 Usage:
     gen_typemap.py <r4.core/package/dir> <generated/profiles/dir> <out.rs>
 """
@@ -25,6 +29,83 @@ import re
 import sys
 
 IMPLICIT = {"id", "extension", "modifierExtension"}
+
+
+def applicable_datatype_profiles(pkg, datatypes):
+    """The package's datatype profiles the shape walk can apply whole —
+    `(url, version, name, type, prohibited, invariants)`, sorted by name —
+    and the canonicals of the ones it cannot. A datatype profile is a
+    `constraint` StructureDefinition on a complex datatype other than
+    `Extension` (an extension's own profile is the registry's).
+    Applicable whole means its differential says nothing but invariants on
+    the root and `max 0` on elements directly beneath it."""
+    out, skipped = [], []
+    for p in sorted(glob.glob(os.path.join(pkg, "StructureDefinition-*.json"))):
+        d = json.load(open(p))
+        if d.get("derivation") != "constraint" or d.get("type") not in datatypes or d.get("type") == "Extension":
+            continue
+        ty = d["type"]
+        prohibited, invariants, whole = [], [], True
+        for e in d["differential"]["element"]:
+            path = e["path"]
+            said = {k for k in e if k not in ("id", "path", "definition", "comment", "short", "requirements",
+                                               "mapping", "isSummary", "isModifier", "min", "max", "constraint")}
+            if said or e.get("sliceName"):
+                whole = False
+            elif path == ty:
+                if e.get("min", 0) != 0 or e.get("max", "*") != "*":
+                    whole = False
+                for c in e.get("constraint", []):
+                    if not c.get("key") or not c.get("expression"):
+                        whole = False
+                        continue
+                    invariants.append((c["key"], c.get("severity") == "error", c.get("human", ""), c["expression"]))
+            elif path.count(".") == 1 and path.startswith(ty + ".") and e.get("max") == "0" and not e.get("constraint"):
+                prohibited.append(path.split(".", 1)[1])
+            else:
+                whole = False
+        if whole:
+            out.append((d["url"], d["version"], d["name"], ty, prohibited, invariants))
+        else:
+            skipped.append(d["url"])
+    out.sort(key=lambda x: x[2])
+    return out, skipped
+
+
+def element_datatype_profiles(types, sds, index, profiles, skipped):
+    """Every base element whose `type[].profile` names a datatype profile, as
+    `(typing context of its parent, element key, profile index)`, sorted. The
+    context is the one the shape walk is in when it meets the element: the
+    type itself, or the bare path of a backbone / inline element; a choice's
+    key is the concrete key of the profiled alternative (`doseQuantity`). A
+    profile no applicable one answers to is refused, never dropped."""
+    rows = []
+    for t in types:
+        ctx_of = {t: t}
+        for e in sds[t]["snapshot"]["element"]:
+            codes = [x.get("code") for x in e.get("type", [])]
+            if codes in (["BackboneElement"], ["Element"]):
+                ctx_of[e["path"]] = e["path"]
+        for e in sds[t]["snapshot"]["element"]:
+            path = e["path"]
+            for x in e.get("type", []):
+                for url in x.get("profile", []):
+                    bare = url.split("|")[0]
+                    if bare not in index:
+                        why = "is not applicable whole" if bare in skipped else "is not a datatype profile the package defines"
+                        raise SystemExit(f"{path}: type profile {url} {why}")
+                    if profiles[index[bare]][3] != x["code"]:
+                        raise SystemExit(f"{path}: {url} constrains {profiles[index[bare]][3]}, not {x['code']}")
+                    parent, name = path.rsplit(".", 1)
+                    if parent not in ctx_of:
+                        raise SystemExit(f"{path}: no typing context for {parent}")
+                    if name.endswith("[x]"):
+                        name = name[:-3] + x["code"][0].upper() + x["code"][1:]
+                    rows.append((ctx_of[parent], name, index[bare]))
+    rows.sort()
+    if len(set((c, k) for c, k, _ in rows)) != len(rows):
+        raise SystemExit("an element names two datatype profiles")
+    return rows
 
 
 def main():
@@ -194,6 +275,41 @@ def main():
                     seen.add((path, key))
                     f.write(f'    ({rs(ctx)}, {rs(key)}, {str(c.get("severity") == "error").lower()}, {rs(c.get("human", ""))}, {rs(expr)}),\n')
         f.write("];\n\n")
+        # The datatype profiles the base package defines (`SimpleQuantity`,
+        # `MoneyQuantity`): what an element whose type names one owes beyond
+        # its type. R4 spells such an element `{"code": "Quantity", "profile":
+        # [".../SimpleQuantity"]}`, so the type code alone (above) reads it as
+        # a plain Quantity. A profile here is a constraint on a datatype whose
+        # differential the shape walk applies whole: invariants on the root,
+        # elements prohibited (`max 0`) directly under it. A profile any
+        # other way (`elementdefinition-de` slices its extensions) is left
+        # out, and one a base element names is refused below if it is not
+        # applicable whole — never applied in part.
+        profiles, skipped = applicable_datatype_profiles(pkg, {t for t in types if sds[t]["kind"] == "complex-type"})
+        index = {url: i for i, (url, _, _, _, _, _) in enumerate(profiles)}
+        element_profiles = element_datatype_profiles(types, sds, index, profiles, skipped)
+        f.write("/// The datatype profiles the base package defines, each as the shape walk\n")
+        f.write("/// applies it: (name, canonical `url|version` — as the reference validator\n")
+        f.write("/// names it —, the datatype it constrains, the elements it prohibits\n")
+        f.write("/// (`max 0`), its own invariants (key, is_error, human, expression)).\n")
+        if skipped:
+            f.write("/// Not applicable whole, so not listed (no base element names them):\n")
+            for s in sorted(skipped):
+                f.write(f"/// `{s}`\n")
+        f.write("#[allow(clippy::type_complexity)]\n")
+        f.write("pub static DATATYPE_PROFILES: &[(&str, &str, &str, &[&str], &[(&str, bool, &str, &str)])] = &[\n")
+        for url, version, name, ty, prohibited, invariants in profiles:
+            inv = ", ".join(f"({rs(k)}, {str(err).lower()}, {rs(h)}, {rs(x)})" for k, err, h, x in invariants)
+            f.write(f'    ({rs(name)}, {rs(url + "|" + version)}, {rs(ty)}, &[{", ".join(rs(p) for p in prohibited)}], &[{inv}]),\n')
+        f.write("];\n\n")
+        f.write(f"/// Every base element whose type names one of `DATATYPE_PROFILES` ({len(element_profiles)} in\n")
+        f.write("/// this package): (typing context of its parent, element key — a choice's\n")
+        f.write("/// concrete key, `doseQuantity` —, index into `DATATYPE_PROFILES`), sorted\n")
+        f.write("/// by context then key.\n")
+        f.write("pub static ELEMENT_PROFILES: &[(&str, &str, u8)] = &[\n")
+        for ctx, key, i in element_profiles:
+            f.write(f"    ({rs(ctx)}, {rs(key)}, {i}),\n")
+        f.write("];\n\n")
         # Every required binding the base definitions place on a coded
         # element — a resource's own (`Patient.gender`), a backbone's
         # (`Encounter.location.status`), a datatype's wherever it sits
@@ -261,7 +377,8 @@ def main():
             for rel, code, repeats, required in groups[t]:
                 f.write(f'    ("{rel}", {dictionary[code]}, {str(repeats).lower()}, {str(required).lower()}),\n')
         f.write("];\n")
-    print(f"wrote {out_path}: {n} entries, {len(types)} types, {len(dictionary)} codes")
+    print(f"wrote {out_path}: {n} entries, {len(types)} types, {len(dictionary)} codes, "
+          f"{len(profiles)} datatype profiles on {len(element_profiles)} elements")
 
 
 if __name__ == "__main__":

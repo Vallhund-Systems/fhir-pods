@@ -797,6 +797,80 @@ pub static DATATYPE_INVARIANTS: &[(&str, &str, bool, &str, &str)] = &[
     ("TriggerDefinition", "trd-3", true, "A named event requires a name, a periodic event requires timing, and a data event requires data", "(type = 'named-event' implies name.exists()) and (type = 'periodic' implies timing.exists()) and (type.startsWith('data-') implies data.exists())"),
 ];
 
+/// The datatype profiles the base package defines, each as the shape walk
+/// applies it: (name, canonical `url|version` — as the reference validator
+/// names it —, the datatype it constrains, the elements it prohibits
+/// (`max 0`), its own invariants (key, is_error, human, expression)).
+/// Not applicable whole, so not listed (no base element names them):
+/// `http://hl7.org/fhir/StructureDefinition/elementdefinition-de`
+#[allow(clippy::type_complexity)]
+pub static DATATYPE_PROFILES: &[(&str, &str, &str, &[&str], &[(&str, bool, &str, &str)])] = &[
+    ("MoneyQuantity", "http://hl7.org/fhir/StructureDefinition/MoneyQuantity|4.0.1", "Quantity", &[], &[("mqty-1", true, "There SHALL be a code if there is a value and it SHALL be an expression of currency.  If system is present, it SHALL be ISO 4217 (system = \"urn:iso:std:iso:4217\" - currency).", "(code.exists() or value.empty()) and (system.empty() or system = 'urn:iso:std:iso:4217')")]),
+    ("SimpleQuantity", "http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1", "Quantity", &["comparator"], &[("sqty-1", true, "The comparator is not used on a SimpleQuantity", "comparator.empty()")]),
+];
+
+/// Every base element whose type names one of `DATATYPE_PROFILES` (55 in
+/// this package): (typing context of its parent, element key — a choice's
+/// concrete key, `doseQuantity` —, index into `DATATYPE_PROFILES`), sorted
+/// by context then key.
+pub static ELEMENT_PROFILES: &[(&str, &str, u8)] = &[
+    ("ActivityDefinition", "quantity", 1),
+    ("CarePlan.activity.detail", "dailyAmount", 1),
+    ("CarePlan.activity.detail", "quantity", 1),
+    ("Claim.item", "quantity", 1),
+    ("Claim.item.detail", "quantity", 1),
+    ("Claim.item.detail.subDetail", "quantity", 1),
+    ("ClaimResponse.addItem", "quantity", 1),
+    ("ClaimResponse.addItem.detail", "quantity", 1),
+    ("ClaimResponse.addItem.detail.subDetail", "quantity", 1),
+    ("Contract.term.asset.valuedItem", "quantity", 1),
+    ("Coverage.costToBeneficiary", "valueQuantity", 1),
+    ("CoverageEligibilityRequest.item", "quantity", 1),
+    ("Dosage", "maxDosePerAdministration", 1),
+    ("Dosage", "maxDosePerLifetime", 1),
+    ("Dosage.doseAndRate", "doseQuantity", 1),
+    ("Dosage.doseAndRate", "rateQuantity", 1),
+    ("ExplanationOfBenefit.addItem", "quantity", 1),
+    ("ExplanationOfBenefit.addItem.detail", "quantity", 1),
+    ("ExplanationOfBenefit.addItem.detail.subDetail", "quantity", 1),
+    ("ExplanationOfBenefit.item", "quantity", 1),
+    ("ExplanationOfBenefit.item.detail", "quantity", 1),
+    ("ExplanationOfBenefit.item.detail.subDetail", "quantity", 1),
+    ("Immunization", "doseQuantity", 1),
+    ("MedicationAdministration.dosage", "dose", 1),
+    ("MedicationAdministration.dosage", "rateQuantity", 1),
+    ("MedicationDispense", "daysSupply", 1),
+    ("MedicationDispense", "quantity", 1),
+    ("MedicationKnowledge", "amount", 1),
+    ("MedicationKnowledge.administrationGuidelines.patientCharacteristics", "characteristicQuantity", 1),
+    ("MedicationKnowledge.drugCharacteristic", "valueQuantity", 1),
+    ("MedicationKnowledge.kinetics", "areaUnderCurve", 1),
+    ("MedicationKnowledge.kinetics", "lethalDose50", 1),
+    ("MedicationKnowledge.packaging", "quantity", 1),
+    ("MedicationKnowledge.regulatory.maxDispense", "quantity", 1),
+    ("MedicationRequest.dispenseRequest", "quantity", 1),
+    ("MedicationRequest.dispenseRequest.initialFill", "quantity", 1),
+    ("NutritionOrder.enteralFormula", "caloricDensity", 1),
+    ("NutritionOrder.enteralFormula", "maxVolumeToDeliver", 1),
+    ("NutritionOrder.enteralFormula.administration", "quantity", 1),
+    ("NutritionOrder.enteralFormula.administration", "rateQuantity", 1),
+    ("NutritionOrder.oralDiet.nutrient", "amount", 1),
+    ("NutritionOrder.supplement", "quantity", 1),
+    ("Observation.referenceRange", "high", 1),
+    ("Observation.referenceRange", "low", 1),
+    ("Range", "high", 1),
+    ("Range", "low", 1),
+    ("SampledData", "origin", 1),
+    ("Specimen.collection", "quantity", 1),
+    ("Specimen.container", "capacity", 1),
+    ("Specimen.container", "specimenQuantity", 1),
+    ("SpecimenDefinition.typeTested.container", "capacity", 1),
+    ("SpecimenDefinition.typeTested.container", "minimumVolumeQuantity", 1),
+    ("Substance.instance", "quantity", 1),
+    ("SupplyDelivery.suppliedItem", "quantity", 1),
+    ("VisionPrescription.lensSpecification", "duration", 1),
+];
+
 /// Every required binding the base definitions place on a coded element:
 /// (typing context, element key, binding) — checked by the shape walk at
 /// every object of that context, profile or none (a datatype's), or with

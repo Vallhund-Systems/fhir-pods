@@ -1669,3 +1669,63 @@ fn a_truncated_narrative_and_an_image_source_are_judged_as_the_oracle_judges_the
         assert_eq!(errors(&bad), want, "{bad}");
     }
 }
+
+#[test]
+fn an_element_the_base_types_simple_quantity_refuses_a_comparator() {
+    use fhir_pods_core::validate::Severity;
+    let errors = |json: &str| -> Vec<String> {
+        let mut v: Vec<String> = fhir_pods_core::validate_bytes(json.as_bytes())
+            .report
+            .issues
+            .iter()
+            .filter(|i| i.severity == Severity::Error)
+            .map(|i| format!("{} | {}", i.id, i.path))
+            .collect();
+        v.sort();
+        v
+    };
+    let q =
+        |c: &str| format!(r#"{{"value":3,{c}"unit":"mmol/L","system":"http://unitsofmeasure.org","code":"mmol/L"}}"#);
+    let obs = |extra: &str| {
+        format!(
+            r#"{{"resourceType":"Observation","id":"o","status":"final","code":{{"coding":[{{"system":"http://example.org/o","code":"x"}}]}},{extra}}}"#
+        )
+    };
+    // a plain Quantity may carry one; the SimpleQuantity elements beside it may not
+    assert!(errors(&obs(&format!(r#""valueQuantity":{}"#, q(r#""comparator":"<","#)))).is_empty());
+    assert!(errors(&obs(&format!(r#""referenceRange":[{{"low":{},"high":{}}}]"#, q(""), q("")))).is_empty());
+    let both = |at: &str| vec![format!("inv.sqty-1 | {at}"), format!("structure.max | {at}")];
+    // probed, validator_cli 6.10.4: `Quantity.comparator: max allowed = 0, but
+    // found 1 (from …/SimpleQuantity|4.0.1)` and `sqty-1`, both errors, both at
+    // the element — a resource's own, a datatype's (Range, Dosage), in a
+    // repeating element, a contained resource, a Bundle entry
+    assert_eq!(
+        errors(&obs(&format!(r#""referenceRange":[{{"low":{}}}]"#, q(r#""comparator":">=","#)))),
+        both("Observation.referenceRange[0].low")
+    );
+    assert_eq!(
+        errors(&obs(&format!(r#""valueRange":{{"low":{}}}"#, q(r#""comparator":">","#)))),
+        both("Observation.valueRange.low")
+    );
+    let mr = format!(
+        r#"{{"resourceType":"MedicationRequest","status":"active","intent":"order","medicationCodeableConcept":{{"text":"m"}},"subject":{{"reference":"Patient/p"}},"dosageInstruction":[{{"doseAndRate":[{{"doseQuantity":{}}}]}}]}}"#,
+        q(r#""comparator":">","#)
+    );
+    assert_eq!(errors(&mr), both("MedicationRequest.dosageInstruction[0].doseAndRate[0].doseQuantity"));
+    let contained = format!(
+        r##"{{"resourceType":"DiagnosticReport","status":"final","code":{{"text":"r"}},"result":[{{"reference":"#i"}}],"contained":[{}]}}"##,
+        obs(&format!(r#""referenceRange":[{{"high":{}}}]"#, q(r#""comparator":"<=","#))).replacen(
+            r#""id":"o""#,
+            r#""id":"i""#,
+            1
+        )
+    );
+    assert_eq!(errors(&contained), both("DiagnosticReport.contained[0].Observation.referenceRange[0].high"));
+    // present through its extension carrier alone is still present (probed)
+    let carrier = obs(
+        r#""referenceRange":[{"low":{"value":3,"_comparator":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/data-absent-reason","valueCode":"unknown"}]}}}]"#,
+    );
+    let got = errors(&carrier);
+    assert!(got.contains(&"structure.max | Observation.referenceRange[0].low".to_string()), "{got:?}");
+    assert!(got.contains(&"inv.sqty-1 | Observation.referenceRange[0].low".to_string()), "{got:?}");
+}

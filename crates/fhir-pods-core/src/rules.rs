@@ -31,7 +31,7 @@ pub static RULES: &[(&str, &str, &str)] = &[
     ("structure.carrier", "error", "a primitive's `_name` carrier that is malformed, empty, or on Resource.id"),
     ("structure.choice", "error", "two keys for one choice element, or a choice type the profile does not allow"),
     ("structure.required", "error", "a required element is missing (base or profile cardinality)"),
-    ("structure.max", "error", "an element repeats beyond its maximum"),
+    ("structure.max", "error", "an element repeats beyond its maximum — or is present at all where the maximum is 0, as `comparator` is on every element the base types `SimpleQuantity` (located at that element)"),
     ("structure.slice", "error", "a slice problem: an element matching more than one slice, a required slice absent, a slice not checked"),
     ("structure.entry-type", "error", "a bundle entry of a resource type, or matching no profile, the entry slicing allows"),
     // --- values ---
@@ -63,7 +63,7 @@ pub static RULES: &[(&str, &str, &str)] = &[
     ("extension.context", "error", "an extension used where its definition does not allow it"),
     ("extension.unknown", "error", "an extension whose definition could not be found"),
     // --- invariants (the key is the id's tail) ---
-    ("inv.<key>", "error — warning for an invariant the definitions grade best-practice (`dom-6`)", "a FHIRPath invariant failed: `inv.cmp-1`, `inv.que-7`, `inv.dom-6` …"),
+    ("inv.<key>", "error — warning for an invariant the definitions grade best-practice (`dom-6`)", "a FHIRPath invariant failed: `inv.cmp-1`, `inv.que-7`, `inv.dom-6` … — a datatype profile's own too, where the base puts one on an element (`inv.sqty-1`; `inv.mqty-1` for `MoneyQuantity`, which no R4 base element names)"),
     ("inv.other", "as the invariant's own", "an invariant whose key the generated table does not list (a defect of the generator, not of the finding)"),
     // --- bundles and documents ---
     ("bundle.full-url", "error", "an entry's fullUrl is missing or does not match its resource"),

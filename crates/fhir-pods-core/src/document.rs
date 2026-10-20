@@ -130,6 +130,7 @@ impl<'a> Parsed<'a> {
             gaps: Vec::new(),
             warnings: Vec::new(),
             invariants: Vec::new(),
+            profile_invariants: Vec::new(),
             nested: Vec::new(),
             extensions: Vec::new(),
             ctxs: Vec::new(),
@@ -379,6 +380,9 @@ struct Walk<'v, 'a, 't> {
     /// `typemap::DATATYPE_INVARIANTS`, parsed on first use in this walk
     /// (`None` = not yet; `Some(Err)` = outside the supported FHIRPath core).
     invariants: Vec<Option<Result<crate::path::Expr, ()>>>,
+    /// The invariants of `typemap::DATATYPE_PROFILES`, parsed on first use
+    /// in this walk, keyed by (profile, invariant) index.
+    profile_invariants: Vec<((u8, u8), Result<crate::path::Expr, ()>)>,
     nested: Vec<(alloc::string::String, &'v Value<'a>)>,
     /// Extension instances whose `url` names a compiled extension profile,
     /// with the label they sit at: validated against it by the caller.
@@ -663,6 +667,7 @@ fn structure_at<'v, 'a>(
     w.ctxs.push((ctx, key));
     w.nodes.push(v);
     datatype_invariants(v, ctx, w);
+    datatype_profile(v, w);
     base_binding_object(v, ctx, w);
     structure_object(v, ctx, path, contained, needs_content, w);
     w.nodes.pop();
@@ -722,6 +727,79 @@ fn datatype_invariants<'v, 'a>(v: &'v Value<'a>, ctx: &'static str, w: &mut Walk
                     )),
                 }
             }
+        }
+    }
+}
+
+/// The datatype profile the base definitions put on the element this object
+/// was reached by, applied whole (`typemap::ELEMENT_PROFILES`): R4 types
+/// `Observation.referenceRange.low`, `Dosage.doseAndRate.doseQuantity`,
+/// `Range.low` and 52 more `{"code": "Quantity", "profile":
+/// [".../SimpleQuantity"]}`, so the object is walked as the `Quantity` it is
+/// and then held to the profile's differential — every element it
+/// prohibits (`comparator`, max 0; present through its `_` carrier alone
+/// too) and its own invariants (`sqty-1`). Wherever the element sits: a
+/// resource's own, a datatype's (`Range`, `Dosage`), inside a contained
+/// resource or a Bundle entry, profile or none — as the reference validator
+/// judges every element by its declared type.
+fn datatype_profile<'v, 'a>(v: &'v Value<'a>, w: &mut Walk<'v, 'a, '_>) {
+    use crate::typemap::{DATATYPE_PROFILES, ELEMENT_PROFILES};
+    use crate::validate::IssueType::{Invariant, NotSupported, Structure};
+    let (Value::Object(kvs), Some(owner)) = (v, w.ctxs.len().checked_sub(2)) else { return };
+    let (parent, key) = (w.ctxs[owner].0, w.ctxs[owner + 1].1);
+    let Ok(i) = ELEMENT_PROFILES.binary_search_by(|(c, k, _)| (*c, *k).cmp(&(parent, key))) else { return };
+    let p = ELEMENT_PROFILES[i].2;
+    let (name, url, ty, prohibited, invariants) = DATATYPE_PROFILES[p as usize];
+    let label = w.label(w.root);
+    for element in prohibited {
+        if kvs.iter().any(|(k, _)| k.strip_prefix('_').unwrap_or(k) == *element) {
+            // located at the profiled element itself, as the reference
+            // validator locates it (`Observation.referenceRange[0].low`)
+            w.gaps.push((
+                label.clone(),
+                Structure,
+                alloc::format!(
+                    "{label}.{element} exceeds max 0 (found 1): {label} is a {name} ({url}), which prohibits {ty}.{element}"
+                ),
+            ));
+        }
+    }
+    if invariants.is_empty() {
+        return;
+    }
+    let this = owner + 1;
+    let resource = (0..=this).rev().find(|&i| resource_ctx(w.nodes[i]).is_some());
+    let root = resource.map(|i| TreeDoc::at(w.nodes[i], Some(w.ctxs[i].0)));
+    let bundle = (0..=this).rev().find(|&i| w.ctxs[i].0 == "Bundle").map(|i| TreeDoc::at(w.nodes[i], Some("Bundle")));
+    let here = TreeDoc::at(v, Some(ty));
+    for (n, (inv, is_error, human, expression)) in invariants.iter().enumerate() {
+        let at = (p, n as u8);
+        let cached = match w.profile_invariants.iter().position(|(k, _)| *k == at) {
+            Some(j) => j,
+            None => {
+                w.profile_invariants.push((at, crate::path::parse_invariant(inv, expression).map_err(|_| ())));
+                w.profile_invariants.len() - 1
+            }
+        };
+        let verdict = match &w.profile_invariants[cached].1 {
+            Ok(expr) => crate::path::check_constraint_in(expr, &here, Some(ty), root.as_ref(), bundle.as_ref()),
+            Err(()) => crate::path::Verdict::Unsupported,
+        };
+        match verdict {
+            crate::path::Verdict::Pass => {}
+            crate::path::Verdict::Fail => {
+                let finding = (label.clone(), Invariant, alloc::format!("{inv}: {human} ({label} is a {name}, {url})"));
+                if *is_error {
+                    w.gaps.push(finding)
+                } else {
+                    w.warnings.push(finding)
+                }
+            }
+            crate::path::Verdict::Unsupported => w.warnings.push((
+                label.clone(),
+                NotSupported,
+                alloc::format!("{inv} not evaluated: outside the supported FHIRPath core"),
+            )),
         }
     }
 }
@@ -1588,6 +1666,7 @@ impl<'v, 'a> Document for TreeDoc<'v, 'a> {
             gaps: Vec::new(),
             warnings: Vec::new(),
             invariants: Vec::new(),
+            profile_invariants: Vec::new(),
             nested: Vec::new(),
             extensions: Vec::new(),
             ctxs: Vec::new(),
@@ -1784,6 +1863,7 @@ mod context_tests {
             gaps: Vec::new(),
             warnings: Vec::new(),
             invariants: Vec::new(),
+            profile_invariants: Vec::new(),
             nested: Vec::new(),
             extensions: Vec::new(),
             segs: Vec::new(),
@@ -1818,6 +1898,7 @@ mod context_tests {
             gaps: Vec::new(),
             warnings: Vec::new(),
             invariants: Vec::new(),
+            profile_invariants: Vec::new(),
             nested: Vec::new(),
             extensions: Vec::new(),
             segs: Vec::new(),
@@ -1848,5 +1929,37 @@ mod context_tests {
             };
             assert_eq!(context_allows(&p, &names, &w), Ok(expected));
         }
+    }
+}
+
+#[cfg(test)]
+mod datatype_profile_tests {
+    use crate::typemap::{DATATYPE_PROFILES, ELEMENT_PROFILES};
+
+    /// The table the walk binary-searches is sorted, names a profile that
+    /// exists, and every row is an element the type table reads as the
+    /// datatype the profile constrains — so each row is one the walk meets.
+    #[test]
+    fn every_element_profile_row_is_reachable_and_sorted() {
+        assert!(ELEMENT_PROFILES.windows(2).all(|w| (w[0].0, w[0].1) < (w[1].0, w[1].1)), "sorted, no duplicates");
+        for (ctx, key, i) in ELEMENT_PROFILES {
+            let (name, _, ty, _, _) = DATATYPE_PROFILES[*i as usize];
+            let child = crate::typing::child(ctx, key);
+            assert_eq!(child.map(|c| c.ty), Some(ty), "{ctx}.{key} is a {ty} (for {name})");
+        }
+    }
+
+    /// R4 puts `SimpleQuantity` on 55 base elements and `MoneyQuantity` on
+    /// none; both are carried, the second for an element that names it.
+    #[test]
+    fn simple_quantity_on_55_elements_money_quantity_on_none() {
+        let index = |n: &str| DATATYPE_PROFILES.iter().position(|(name, ..)| *name == n).unwrap() as u8;
+        let (simple, money) = (index("SimpleQuantity"), index("MoneyQuantity"));
+        assert_eq!(ELEMENT_PROFILES.iter().filter(|(_, _, i)| *i == simple).count(), 55);
+        assert_eq!(ELEMENT_PROFILES.iter().filter(|(_, _, i)| *i == money).count(), 0);
+        let (_, url, _, prohibited, invariants) = DATATYPE_PROFILES[simple as usize];
+        assert_eq!(url, "http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1");
+        assert_eq!(prohibited, &["comparator"]);
+        assert_eq!(invariants.iter().map(|(k, ..)| *k).collect::<alloc::vec::Vec<_>>(), ["sqty-1"]);
     }
 }
