@@ -142,8 +142,8 @@ fn nothing_on_the_corpus_falls_through_to_other() {
 
 /// The documented severity is measured, not asserted: every severity the
 /// lanes on this machine actually produce for an id must be one the page
-/// lists for it. Without the derived corpora this is a no-op, as the test
-/// above it is.
+/// lists for it. Without the derived corpora it checks the committed probe
+/// and narrative fixtures alone, and says the corpus floor was skipped.
 #[test]
 fn every_severity_the_lanes_produce_is_documented() {
     use fhir_pods_core::validate::Severity;
@@ -195,7 +195,13 @@ fn every_severity_the_lanes_produce_is_documented() {
             }
         }
     }
-    if seen > 0 {
+    // the floor guards the derived corpora (`conformance/run.py` builds
+    // `corpus/`); on a fresh tree only the committed probe and narrative
+    // fixtures exist — every one of them was still checked above, and the
+    // floor is said to be skipped rather than passed
+    if std::path::Path::new(&format!("{conformance}/corpus")).is_dir() {
         assert!(seen > 100, "only {seen} files: the corpora look truncated");
+    } else {
+        eprintln!("corpus floor skipped: {conformance}/corpus is not built (run conformance/run.py); {seen} files checked without it");
     }
 }
