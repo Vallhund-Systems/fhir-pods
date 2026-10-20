@@ -111,7 +111,7 @@ fn a_report_and_an_operation_outcome_carry_the_id() {
 #[test]
 fn nothing_on_the_corpus_falls_through_to_other() {
     let conformance = concat!(env!("CARGO_MANIFEST_DIR"), "/../../conformance");
-    let mut dirs = vec![format!("{conformance}/corpus"), format!("{conformance}/gut/out/cases")];
+    let mut dirs = vec![format!("{conformance}/corpus"), format!("{conformance}/instrument/out/cases")];
     if let Ok(classes) = std::fs::read_dir(format!("{conformance}/mutations")) {
         dirs.extend(classes.flatten().filter(|e| e.path().is_dir()).map(|e| e.path().to_string_lossy().into_owned()));
     }
@@ -150,7 +150,7 @@ fn every_severity_the_lanes_produce_is_documented() {
     let conformance = concat!(env!("CARGO_MANIFEST_DIR"), "/../../conformance");
     let mut dirs = vec![
         format!("{conformance}/corpus"),
-        format!("{conformance}/gut/out/cases"),
+        format!("{conformance}/instrument/out/cases"),
         format!("{conformance}/probes"),
         format!("{conformance}/narrative"),
     ];

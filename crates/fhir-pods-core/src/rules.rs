@@ -9,7 +9,7 @@
 //! contract. An invariant's id is `inv.<key>` (`inv.cmp-1`, `inv.que-7`).
 //! A finding no family claims is `other.<type>` — a defect of this table,
 //! which the core's tests hold to zero over the release corpus, the
-//! mutation files and the gut-path scenario.
+//! mutation files and the instrument-path scenario.
 
 use crate::validate::IssueType;
 

@@ -58,7 +58,9 @@ This is a **verdict-changing** change — stricter on a comparator where the
 base says SimpleQuantity — and **not an ABI change** (ABI 14, no entrypoint
 or shape moved). Lanes re-measured: release gate **1,796/1,796** (1,778 + the
 eighteen probes), reasons 0 untriaged on 1,796 (3 triaged), published R4
-examples **5,156/5,290**, 134 lenient, 0 stricter — the pod's verdict on all
+examples **5,155/5,287**, 132 lenient, 0 stricter, 3 order-dependent oracle
+cases unscored (the base lane as it stands since the lane corrections below;
+5,156/5,290 and 134 before them) — the pod's verdict on all
 5,292 inputs is unchanged, and **no `base-triage.json` entry retires**: no
 R4 example puts a comparator on a SimpleQuantity element, and the oracle
 reports no SimpleQuantity finding on any of them, so the expected triage
@@ -68,8 +70,98 @@ unchanged on each; the next fresh run had none);
 narrative 42/42; questionnaire 74/81 (the lane exits 1 on one stale review, the same at
 0.22.0 core); supporting 9/11; validator test cases Java 64/84, Firely 14/20;
 ad-hoc profiles Java 12/13, Firely 7/7; v2 samples 77/77; Synthea 14/14;
-the gut-path scenario (`conformance/gut.py`) 71/71 (`--chain`) and 40/40
-(`--host-profile`); mutation lane 19,067/19,067, 0 untriaged. 281 tests.
+the instrument-path scenario (`conformance/instrument.py`) 71/71 (`--chain`)
+and 40/40 (`--host-profile`); mutation lane 19,067/19,067, 0 untriaged. 281 tests.
+
+Corrections to the released 0.22.0 documentation and lanes; the shipped code
+and artifacts are unchanged.
+
+- The instrument-path scenario lane (previously named for a host's use case)
+  is renamed; `conformance/instrument.py`, its generator
+  (`conformance/instrument/make_instrument.py`), corpus
+  (`conformance/instrument/out/`) and triage (`instrument-triage.json`)
+  follow. It is described by its FHIR shape — one synthetic sixteen-part
+  questionnaire instrument with its own code systems and value sets, its
+  derived chain, lift/lower, de-identification and a regional export — as one
+  scenario among the lanes, and its fixtures are neutral placeholders
+  (`example.org/instrument` canonicals, a 1–7 ordinal grade, generic parts,
+  condition codes and safety-screen items; no real instrument). Re-judged by
+  the oracle: 71/71 with `--chain`, 7/7 more with `--host-profile`, and the
+  same one triaged residue (the oracle's extra code-system finding on
+  `qr-answer-not-in-set`).
+- Every lane re-run at 0.22.0 (ABI 14; `dist/0.22.0/fhir_pods-0.22.0.wasm`
+  sha256 `77ab6c73…7679`, the wasm the Node tests load) and the README lane
+  table rewritten from the measurement, each row stamped at 0.22.0, with rows
+  added for the probe and narrative lanes. Release corpus **1,778/1,778**,
+  three triaged residues; probes **37/37**; narrative **42/42**; base
+  **5,155/5,287** (132 lenient, every one reviewed; 0 stricter; 2 excluded;
+  3 order-dependent oracle cases unscored); validator base tests **64/84** Java,
+  **14/20** Firely (18 lenient; 2 stricter than stored Java, 0 than both);
+  questionnaire **74/81** verdicts, **73/81** every error (7
+  lenient, 0 stricter, 15 excluded); supporting **9/11** of 11 compared (2
+  lenient, 0 stricter, 149 excluded); ad-hoc profiles **12/13** Java, **7/7**
+  Firely (1 lenient, 0 stricter, 40 excluded); v2 samples **77/77** verdicts,
+  **74/77** every error, 0 stricter; Synthea **14/14** (4.39 s, 6.2 MB/s on a
+  loaded machine); mutation **19,067/19,067** (0 lenient, 0 stricter, 0
+  untriaged); instrument path **71/71** + **7/7** host-profile. 277 Rust
+  tests, 22 wasm Node tests, 25 Python harness checks, clippy clean.
+- The README had carried older figures: validator base tests 63/84 and 13/20
+  (`pat-dob-ext` agrees with both engines since 0.18.0 refused extensions no
+  package defines), ad-hoc profiles 10 compared and 9/10 (binding-
+  discriminated slices in 0.14.0 and nested slicing in 0.14.2 brought
+  `res-inv-example-good`, `res-inv-example-bad` and
+  `AuditEvent-slice23-second` out of the compiler-gap exclusions, all three
+  agreeing), the release corpus at 1,766, and test counts of 239 and 18.
+  Measured against each tag's tree; no verdict moved in 0.22.0.
+- The questionnaire lane exits 1 on `nested-questionnaire-nested-valueset`,
+  and has since 0.19.4. validator_cli 6.10.4 (with `-tx n/a` and with its
+  default terminology server) reports that response's nine answer codings
+  without a system as warnings — "A code with no system has no defined
+  meaning…", twice each — beside the one questionnaireAdaptive-extension
+  error; the pod reports them as nine errors, `… in the system 'null' is not
+  in the options value set (ValueSet[null])`. The 0.19.4 rule (a coded answer
+  with no system is an error) came from a case with a display and no code
+  and over-reaches to a code without a system: on those findings the pod is
+  stricter than the oracle, a pod defect, and the stored Java outcome is
+  current. `ValueSet[null]` names nothing, although the contained ValueSet
+  has a url. The lane fails until the pod is fixed. `scripts/release.sh`
+  runs no conformance lane, and the released 0.19.4 line "every lane as
+  0.19.3" was true of the figures but not of this lane's exit status.
+- `conformance/testcases.py` fails on a reviewed difference that no longer
+  differs (as `questionnaire.py` already did). Seven such entries in
+  `testcases-triage.json` recorded `ours: valid` with gap reasons no longer
+  true and are removed: `questionnaire-enableWhen-dw`,
+  `q-enablewhen-me-wrong`, `mni-patientOverview-bundle-example1b`,
+  `pat-dob-ext`, `nested-questionnaire-nested-valueset`, `encounter-period`,
+  `ext-ccuk`. Figures unchanged.
+- Some base-lane oracle outcomes are decided by validator_cli's own
+  iteration order. 6.10.4 checks a definition's constraint key against the
+  first base structure carrying it (`findInvariantInBase` over
+  `ContextUtilities.allBaseStructures()`, a `java.util.HashSet` of proxies
+  without hashCode/equals: identity-hash order, different in each JVM), and
+  R4's base structures give `inv-1` three expressions — Parameters, Task,
+  TestReport. Validating any of them, or a definition with its own `inv-1`
+  (the `allergyintolerance-substanceExposureRisk` extension), yields no
+  finding or "The constraint key 'inv-1' already exists at the location …"
+  naming any one of the others (`StructureDefinition-Event`, a logical model,
+  never reaches that check: it fails `sdf-4` alone, an agreement); batch
+  composition plays no part, and judging one definition per JVM changes
+  nothing. `conformance/base.py` derives those
+  partners from the R4 core package and accepts exactly the outcomes they
+  explain: Parameters, Task and TestReport are order-dependent oracle cases
+  (`oracle_order_dependent` in `base-triage.json`, never scored), and the
+  allergy extension stays a reviewed lenient difference whose message may name
+  any partner and must carry its recorded FHIRPath error. Order-dependent rows
+  carry `agree: null` in the evidence. Compared 5,290 → 5,287,
+  agreements 5,156 → 5,155 (Parameters leaves them), lenient 134 → 132.
+  A fresh run also compares every outcome with the previous
+  `oracle-cache.json`, ignoring the source-file extension (an absolute path,
+  so another checkout's outcomes compare), and reports a failure caused only
+  by the oracle moving as drift, exit 2; exit 1 is the pod or the evidence.
+  `BASE_ORACLE_TIMEOUT` raises the per-batch bound (900 s) on a loaded
+  machine.
+- The README's Synthea row stated planned work; it now states the measured
+  limit (one oracle JVM over the 14 bundles; larger cohorts not measured).
 
 ## 0.22.0 — 2026-10-14
 

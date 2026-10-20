@@ -21,16 +21,6 @@
       "kind": "oracle-difference",
       "reason": "Example URL prohibition is Java CLI policy; stored Firely agrees with the pod."
     },
-    "questionnaire-enableWhen-dw": {
-      "input_sha256": "06ef93678818ac137329f2c9fcfd37a427d388105308186c6243c702c4299316",
-      "java_sha256": "b056d00d69b9c8d10c7586c9d70e2f68d64aca4d0a56bc2858546c9a5442dcd5",
-      "firely_sha256": "112ed748c204b1d64763079e204260e5f8cd46d04927c62eb08b1f064af54377",
-      "ours": "valid",
-      "java": "invalid",
-      "firely": "invalid",
-      "kind": "documented-gap",
-      "reason": "Unprofiled Questionnaire resource invariants (que-12) are not compiled."
-    },
     "mr-covid-bnd1": {
       "input_sha256": "dff1286c7bf100074ea78647ab8453f743f05183c78361fd42a5d3fff1ddf209",
       "java_sha256": "812824c8c9268d8bed1a44f0992fd1f6bb3962c1516b5bc063635457c3fd01b2",
@@ -40,16 +30,6 @@
       "firely": "valid",
       "kind": "oracle-difference",
       "reason": "Coding.system definition/ValueSet resolution and absolute-system checks are not implemented; stored Firely accepts."
-    },
-    "q-enablewhen-me-wrong": {
-      "input_sha256": "82cfa05b04ccdb5fc0efe14ee63393ac207699a77402657f3d70bb430b4da8a8",
-      "java_sha256": "df53ee273883302927dfd223f022d7809c7aea2accb9289355e98a732ac9901a",
-      "firely_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-      "ours": "valid",
-      "java": "invalid",
-      "firely": "valid",
-      "kind": "oracle-difference",
-      "reason": "Unprofiled Questionnaire invariants (que-12); stored Firely also accepts this case."
     },
     "obs-temp-bad": {
       "input_sha256": "1ef665de77194e260670b6d0bb505b82094b0c1df3b1ac52745d40c76987606d",
@@ -81,16 +61,6 @@
       "kind": "oracle-difference",
       "reason": "Relative Bundle.fullUrl and terminology display validation are not checked; stored Firely accepts."
     },
-    "mni-patientOverview-bundle-example1b": {
-      "input_sha256": "8b1bb4a29b125a4a971624a34ddcb6cbee0868037fd6889926fa339aa9531c76",
-      "java_sha256": "75f40f0dd4f47e44780cf19e2c75bf104cb7ab82124fdd61c7e148512ca5b4be",
-      "firely_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-      "ours": "valid",
-      "java": "invalid",
-      "firely": "valid",
-      "kind": "oracle-difference",
-      "reason": "Relative Bundle.fullUrl and terminology display validation are not checked; stored Firely accepts."
-    },
     "bundle-duplicate-ids-not": {
       "input_sha256": "e21bcdf6a063ce19bac7455cea02e58e454f1554733da46dfe172aff84ce3abf",
       "java_sha256": "c5052e7a9e99a7590b0d21ff9b550bbcf2360fe23e7baf039b6c4aff8550627b",
@@ -100,16 +70,6 @@
       "firely": "invalid",
       "kind": "documented-gap",
       "reason": "Terminology display validation and external definitions are not checked."
-    },
-    "pat-dob-ext": {
-      "input_sha256": "2e018f615ee82e9ccaa3768a78a9156c53af9b058f525f30cda41eb6428f71df",
-      "java_sha256": "50a891c72def297a4469120e1776bdca94b0830a270b9bdfc7de9a284f293e69",
-      "firely_sha256": "1b2113bc54695d8d6a4bfbe70a5d7b5c17035fa6654b3906d4faeaad98169079",
-      "ours": "valid",
-      "java": "invalid",
-      "firely": "invalid",
-      "kind": "documented-gap",
-      "reason": "External extension definition resolution is not performed."
     },
     "bundle-id-2": {
       "input_sha256": "6cf69107d11dca863d2c63594d28d173005d48e6b664da63c4def6db9b0bdd69",
@@ -215,32 +175,6 @@
       "current_java_version": "6.10.4",
       "current_java_outcome_sha256": "2ef021c4d5cf01b77d15d5834baff4efaf643ac7485638298951e7ff303b12dc"
     },
-    "nested-questionnaire-nested-valueset": {
-      "input_sha256": "1caa0f4151a6e209d932a62144c39af4749fdbe22f77b6677c9067b5c4664180",
-      "java_sha256": "52c71224343dd8aee746f97a74128016e42a4edb1d52aa8d35f09424c85fe850",
-      "firely_sha256": null,
-      "ours": "valid",
-      "java": "invalid",
-      "firely": null,
-      "kind": "documented-gap",
-      "reason": "External SDC extension definitions are not compiled or fetched.",
-      "current_java": "invalid",
-      "current_java_version": "6.10.4",
-      "current_java_outcome_sha256": "3655b0effecf0952d9f51f5a963e1b090b23abe4a895f4a3bce5e9e092f1b8b6"
-    },
-    "encounter-period": {
-      "input_sha256": "a9ace6271f4cdfd4611c8fa7fd0f9165f5eb891f1ca863abe93c71cda4957548",
-      "java_sha256": "6a97cd61ef9cc627e4ab8ec9677dde1b7a45d72dd909f8c699dcdc1760687050",
-      "firely_sha256": null,
-      "ours": "valid",
-      "java": "invalid",
-      "firely": null,
-      "kind": "documented-gap",
-      "reason": "The unprofiled Period ordering invariant (per-1) is not evaluated.",
-      "current_java": "invalid",
-      "current_java_version": "6.10.4",
-      "current_java_outcome_sha256": "679c22768bfb9172a28074909bdc997d9c6a88c968d4957208be47a4b12416ae"
-    },
     "base64-ws-spaces": {
       "input_sha256": "e18d69ef330537d26b10c251448f40e1dd2e8829f5086c997bba8c41f4ea8ac4",
       "java_sha256": "a69606c8e016caea0b35d0e0c3b9edb53394e3acbbe862aab641ab7bb5b99800",
@@ -279,19 +213,6 @@
       "current_java": "invalid",
       "current_java_version": "6.10.4",
       "current_java_outcome_sha256": "27a21b4eace7b592088ae46b201c2deae45f6ec9c8965ac841d8863a1a955b6b"
-    },
-    "ext-ccuk": {
-      "input_sha256": "93abf714d7f9d8f6f64a3f69d16a860101a887b0fc032f73aca5bc8f01b13764",
-      "java_sha256": "7caf247effd71d2f1f7e8bd5281a0b110da1a43351862b040f325cd1d7e909be",
-      "firely_sha256": null,
-      "ours": "valid",
-      "java": "invalid",
-      "firely": null,
-      "kind": "documented-gap",
-      "reason": "StructureDefinition snapshot generation and root-slicing restrictions are not checked.",
-      "current_java": "invalid",
-      "current_java_version": "6.10.4",
-      "current_java_outcome_sha256": "7f783a2d0631100d07b9b2b5e04620d472d022b5d79554593aff655662efb0cc"
     },
     "obs-mz": {
       "input_sha256": "5cad28e33b0ecfc0f6fc19b94e9f6971df350ce79230cfa7c055d0c63dc6bdc4",

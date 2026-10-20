@@ -279,7 +279,7 @@ a height, `8331-1` a temperature, `55284-4` and `8480-6` a blood pressure,
 magic code alone. Value sets defined in `hl7.terminology.r4` are bundled
 alongside the guides' own.
 
-## Two adversarial lanes: mutation (`conformance/mutate.py`) and the gut path (`conformance/gut.py`)
+## Two adversarial lanes: mutation (`conformance/mutate.py`) and the instrument path (`conformance/instrument.py`)
 
 A corpus of publisher-valid examples can only show where the pod is
 *stricter* than the reference validator; three releases in a row were fixed
@@ -300,11 +300,12 @@ differences subtracted). Accepted differences are named in
 `mutate-triage.json`; the lane exits 1 while an unaccepted lenient or
 stricter case remains. Its first run found nine defects (0.19.4, above).
 
-The gut-path lane is the end-to-end proof for the shape a clinical-module
-host builds: a synthetic sixteen-part instrument (`conformance/gut/make_gut.py`
+The instrument-path lane is one synthetic end-to-end scenario: the shape a
+host builds around a questionnaire instrument — a synthetic sixteen-part
+instrument (`conformance/instrument/make_instrument.py`
 — nested groups, `enableWhen`, required and repeating groups, coded answers
 from its own code system and value sets, integer and decimal scales, a 1–7
-stool-form choice, an eleven-item boolean safety screen; nothing in it is
+ordinal choice, an eleven-item boolean safety screen; nothing in it is
 copied from any real instrument), complete and minimal responses and
 thirteen single-defect ones, the derived observations, an alarm `Flag`, a
 clinician-summary `Composition`, a referral `ServiceRequest`, the research
@@ -316,7 +317,7 @@ and the oracle with the same definitions loaded as an IG folder — then
 it back, de-identifies it, and exports the record for the AU region (every
 re-profiled resource, the AU PS document, the BALP audit event), and judges
 each derived file the same way. One reviewed difference is named in
-`gut-triage.json`: the oracle also reports a vendor code as unknown in the
+`instrument-triage.json`: the oracle also reports a vendor code as unknown in the
 CodeSystem it has loaded, which the pod — given the value sets as a table,
 not the code system — cannot. A host's finding the chain surfaces: a
 response de-identified under the built-in policy loses free-text answers, and a
@@ -424,9 +425,9 @@ Two limits worth stating plainly:
   some elements. A rule naming an element no age can be read
   from leaves it alone and says so in `residual`.
 
-The gut-path lane's chain stage de-identifies the whole derived record and
+The instrument-path lane's chain stage de-identifies the whole derived record and
 re-judges every file both ways, so the copies' conformance is measured, not
-asserted (`conformance/gut.py --chain`).
+asserted (`conformance/instrument.py --chain`).
 
 ## Host options
 
@@ -567,7 +568,7 @@ surface through `mustSupportGaps`.
 A host's own profiles are compiled at build time (`scripts/gen-host-profiles.sh`,
 `--features host-profiles`), not loaded at run time: the compiler is the
 Python generator over a snapshot, and a runtime loader would be a second
-compiler to keep bug-for-bug with it. The gut-path lane proves the path end
+compiler to keep bug-for-bug with it. The instrument-path lane proves the path end
 to end with a synthetic score profile (0.21.0). Export regions are AU, US, UK,
 CA, NZ and the IPS floor. The Gulf — Dubai (Malaffi / NABIDH) and Saudi
 (NPHIES) — gets the IPS floor until a FHIR package exists to compile: as of

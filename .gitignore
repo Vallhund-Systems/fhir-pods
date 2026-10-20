@@ -7,7 +7,7 @@ conformance/validator_cli.jar
 # derived at run time from the pinned AU Core package (carries SNOMED displays)
 conformance/corpus/
 conformance/mutations/
-conformance/gut/out/
+conformance/instrument/out/
 conformance/corpus-base/
 conformance/package*/
 __pycache__/

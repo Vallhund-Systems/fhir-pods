@@ -49,7 +49,7 @@ ls -la "$DIST" | sed 's/^/    /'
 
 # The cross-target builds exist only to be packed: once packed they are
 # ~12 GB of dead weight per release, and cargo never collects them. The native
-# debug and release profiles stay — the next test run reuses them; the gut
+# debug and release profiles stay — the next test run reuses them; the instrument-path
 # lane's host-profile build (target/host-profiles) goes with the rest.
 echo "==> sweeping the packed cross-target builds"
 rm -rf "$ROOT"/target/{wasm32-unknown-unknown,aarch64-apple-ios,aarch64-apple-ios-sim,aarch64-linux-android,x86_64-linux-android,thumbv7em-none-eabi,doc,host-profiles}

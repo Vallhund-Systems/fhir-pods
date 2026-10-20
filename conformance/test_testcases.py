@@ -61,6 +61,15 @@ class EvidenceTests(unittest.TestCase):
                 self.assertEqual(lane.review({**row, key: value}, {"case": decision})["status"], "stale-review")
         self.assertEqual(lane.review(row, {})["status"], "unreviewed")
 
+    def test_a_triaged_case_that_now_agrees_fails_the_lane(self):
+        row = {"name": "case", "input_sha256": "input", "java_sha256": "java", "firely_sha256": None,
+               "ours": "invalid", "java": "invalid", "firely": None}
+        decision = {**row, "ours": "valid", "kind": "documented-gap", "reason": "a gap since closed"}
+        self.assertEqual(lane.review(row, {"case": decision})["status"], "stale-review")
+        self.assertEqual(lane.review(row, {})["status"], "agreement")
+        counts = lane.summarize([{**row, "review": lane.review(row, {"case": decision})}], [], [])
+        self.assertEqual(counts["unreviewed"], 1)
+
     def test_missing_firely_is_not_two_engine_agreement(self):
         row = {"ours": "invalid", "java": "valid", "firely": None, "review": {"status": "unreviewed"}}
         counts = lane.summarize([row], [], [])

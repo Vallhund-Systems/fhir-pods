@@ -257,24 +257,27 @@ tests also check extracted values, transformations, content, and reporting.
 Verdict agreement alone does not establish semantic correctness or complete
 compliance.
 
-| Lane | Latest recorded result |
+| Lane | Measured at 0.22.0 (ABI 14) |
 | --- | --- |
-| Release corpus | **1,766/1,766** verdicts agree at v0.15.0 (UK Core and NZ Base examples, six regions' export outputs, the base's binding fixtures); `conformance/reasons.py` puts every error-level issue side by side — three triaged residues on 1,766 files |
-| Published R4 examples | **5,156/5,290** compared verdicts agree; **134** reviewed lenient differences; **2** explicit oracle exclusions out of 5,292 selected inputs; no stricter verdicts |
-| Published validator base tests | **63/84** agree with stored Java outcomes; **13/20** with stored Firely outcomes; differences are reviewed individually |
-| Questionnaire tests | **81 of 96** R4 JSON cases compare (the rest name an SDC package, a launch context or a validator policy option): **74/81** verdicts agree and **73/81** agree on every error-level issue; the 8 reviewed differences are terminology-server, display-name and attachment-integrity families (`conformance/questionnaire.py`) |
-| Supporting-resource tests | **11 of 160** cases compare (the rest are the questionnaire lane's, or need a package, an IG, a validator option, a filter): **9/11** agree, 0 stricter (`conformance/supporting.py`) |
-| HL7 v2 sample messages | **77 of 139** public synthetic messages convert (62 name structures the maps do not cover); every bundle before validator_cli: **77/77** verdicts agree, **74/77** on every error, 0 stricter — and all 77 are invalid on both sides, for reasons the lane lists (`conformance/v2samples.py`) |
-| Mutation lane | **19,067/19,067** derived files agree on the verdict at v0.19.4 — every release-corpus original under nine fixed mutations (drop, code-less and text-only concept, wrong JSON type, empty backbone, bad enum, null primitive, empty string, bad and bare reference, orphan extension), lenient cases first; 0 untriaged (`conformance/mutate.py`) |
-| Gut-path scenario | **71/71** agree at v0.19.4 — a synthetic sixteen-part instrument with its own code systems and value sets, responses held to it, the derived chain (observations, alarm flag, clinician summary, referral, research consent, export bundle, audit event), then lifted and lowered, de-identified and exported for the AU region; judged three ways with the definitions loaded into the oracle as an IG folder (`conformance/gut.py`); `--host-profile` (0.21.0) compiles the scenario's own score profile into a feature build and judges 7 more cases against the oracle given the same definition |
-| Synthea cohort | **14/14** bundles (10 seeded patients + hospital + practitioner, 27.3 MB, 9,482 US Core entries) agree on the verdict and on every error-level issue; the pod validates the whole cohort in 3.96 s (6.9 MB/s; largest bundle 9.7 MB in 1.48 s). Larger cohorts wait on batching the oracle (`conformance/synthea.py`) |
-| Ad-hoc profile tests | **10 of 53** cases compare: **9/10** agree with Java and **7/7** with Firely where available; other cases have compiler, snapshot, or manifest exclusions |
+| Release corpus | **1,778/1,778** verdicts agree at 0.22.0 (UK Core and NZ Base examples, six regions' export outputs, the base's binding fixtures, the probes; `conformance/run.py`); `conformance/reasons.py` puts every error-level issue side by side — three triaged residues on 1,778 files (two errors only the oracle raises, one only the pod), 0 untriaged |
+| Probes | **37/37** agree three ways at 0.22.0 (expectation, oracle, pod) — synthetic fixtures for JSON shapes, primitive limits, extensions, contained resources, unknown profiles, offline references, required coded content and a de-identified age over 89 (`conformance/probes/run.py`) |
+| Narrative | **42/42** agree three ways at 0.22.0 — synthetic `Narrative.div` cases: text ending mid-markup, quoted `>` and unterminated attribute values, what an image's source is checked for (`conformance/narrative/run.py`) |
+| Published R4 examples | **5,155/5,287** compared verdicts agree at 0.22.0; **132** lenient differences, every one reviewed; **0** stricter; out of 5,292 selected inputs, **2** explicit oracle exclusions and **3** order-dependent oracle cases (`StructureDefinition-Parameters`, `-Task`, `-TestReport` — the oracle's own iteration order decides which definition it names), and the allergy extension's order-dependent message accepted only as the mechanism allows; none counted as agreement (`conformance/base.py`) |
+| Published validator base tests | **84** of 492 R4 JSON cases compare at 0.22.0 (408 excluded: terminology service, fetchers, packages, policies, separate lanes): **64/84** agree with stored Java outcomes, **14/20** with stored Firely outcomes; 18 lenient, 2 stricter than the stored Java outcome, 0 stricter than both stored engines — every difference reviewed (`conformance/testcases.py`) |
+| Questionnaire tests | **81 of 96** R4 JSON cases compare at 0.22.0 (the rest name an SDC package, a launch context, a validator policy option or a supporting ValueSet): **74/81** verdicts agree and **73/81** agree on every error-level issue; 7 lenient, 0 stricter on the verdict. The lane exits 1 on `nested-questionnaire-nested-valueset` (invalid on both sides): validator_cli 6.10.4 reports its nine answer codings without a system as warnings ("A code with no system has no defined meaning…"), the pod — since 0.19.4 — as nine errors, so on those findings the pod is stricter than the oracle, a pod defect; the lane fails until the pod is fixed (`conformance/questionnaire.py`) |
+| Supporting-resource tests | **11 of 160** cases compare at 0.22.0 (the rest are the questionnaire lane's, or need a package, an IG, a validator option, a filter): **9/11** agree on the verdict and on every error-level issue; 2 lenient, 0 stricter (`conformance/supporting.py`) |
+| HL7 v2 sample messages | **77 of 139** public synthetic messages convert at 0.22.0 (62 name structures the maps do not cover); every bundle before validator_cli: **77/77** verdicts agree, **74/77** on every error, 0 stricter — and all 77 are invalid on both sides, for reasons the lane lists (`conformance/v2samples.py`) |
+| Mutation lane | **19,067/19,067** derived files agree on the verdict at 0.22.0 — every release-corpus original under nine fixed mutations (drop, code-less and text-only concept, wrong JSON type, empty backbone, bad enum, null primitive, empty string, bad and bare reference, orphan extension); 0 lenient, 0 stricter, 0 untriaged. On 2,291 of them, invalid on both sides, the oracle reports an error path the pod does not — reported, not gated (`conformance/mutate.py`) |
+| Instrument-path scenario | **71/71** verdicts agree at 0.22.0 — one synthetic end-to-end scenario: a sixteen-part questionnaire instrument with its own code systems and value sets (placeholder content, no real instrument), responses held to it, the derived resources (observations, a flag, a summary `Composition`, a referral, a consent, an export bundle, an audit event), each lifted and lowered, de-identified and exported for the AU region; judged three ways with the definitions loaded into the oracle as an IG folder; 70 agree on every error path, one triaged residue (`conformance/instrument.py --chain`). `--host-profile` compiles the scenario's own score profile into a feature build and judges **7/7** more against the oracle given the same definition |
+| Synthea cohort | **14/14** bundles (10 seeded patients + hospital + practitioner, 27.3 MB, 9,482 US Core entries) agree at 0.22.0 on the verdict and on every error-level issue; the pod validates the whole cohort in 4.39 s (6.2 MB/s; largest bundle 9.7 MB in 1.65 s), measured on a loaded machine. The oracle side is one JVM over the 14 bundles; larger cohorts are not measured (`conformance/synthea.py`) |
+| Ad-hoc profile tests | **13 of 53** cases compare at 0.22.0: **12/13** agree with Java and **7/7** with Firely where available; 1 reviewed lenient, 0 stricter; 40 have compiler (28), snapshot, package, policy, SMART Health Card or cross-version exclusions (`conformance/testcases.py --profiles`) |
 
 The broader lanes enforce reviewed baselines: new or changed differences and
-unusable evidence fail. Exclusions are never counted as agreement. The latest
-release records **239 Rust workspace tests** and **18 Python harness
-checks**; the [changelog](CHANGELOG.md) separates released artifacts from
-unreleased corrections. [Conformance commands](conformance/README.md) and
+unusable evidence fail. Exclusions are never counted as agreement; "compare"
+counts the cases put before both sides, "agree" those where they match. At
+0.22.0 the workspace runs **277 Rust tests**, **22 wasm Node tests** and **25
+Python harness checks**, clippy clean; the [changelog](CHANGELOG.md) separates
+released artifacts from unreleased corrections. [Conformance commands](conformance/README.md) and
 [detailed scope](docs/scope.md) describe reproduction and the remaining gaps.
 
 `valid` means no error or fatal finding among the checks that ran. Unknown
@@ -301,7 +304,7 @@ python3 conformance/base.py                 # published R4 regression gate
 target/debug/fhir-pods gate --questionnaire q.json [--options o.json] FILE…   # CI / acceptance gate: verdict and findings by rule id, exit 1 on any error
 JAVA_HOME=<jdk17> python3 conformance/narrative/run.py   # the narrative probes, against the oracle
 JAVA_HOME=<jdk17> python3 conformance/mutate.py   # mutation lane: every original under nine mutations
-JAVA_HOME=<jdk17> python3 conformance/gut.py --chain   # gut-path scenario, end to end
+JAVA_HOME=<jdk17> python3 conformance/instrument.py --chain   # instrument-path scenario, end to end
 ./scripts/gen-profiles.sh                   # regenerate the registry from pinned packages
 ./scripts/smoke-c.sh                        # exercise the C ABI from C
 ./scripts/build-wasm.sh                     # build the WASM artifact
@@ -311,7 +314,7 @@ JAVA_HOME=<jdk17> python3 conformance/gut.py --chain   # gut-path scenario, end 
 
 ### Host profiles
 
-A host's own profiles — a gut-score `Observation`, a programme's
+A host's own profiles — a score `Observation`, a programme's
 `QuestionnaireResponse` constraints — are compiled into the pod at build
 time, the same way the shipped registry is, and selected by declaration
 (`meta.profile`) like any shipped profile:
@@ -334,7 +337,7 @@ invariant keys get stable rule ids (`inv.<key>`) in the host build, as the
 shipped ones do. Host value sets and code systems are not bundled: give them
 to the pod as a terminology table (`tools/compile_valueset.py`) or a
 terminology provider.
-The gut-path lane proves the whole path (`conformance/gut.py
+The instrument-path lane proves the whole path (`conformance/instrument.py
 --host-profile`): a synthetic score profile compiled into a feature build
 and judged against validator_cli with the same definition.
 
