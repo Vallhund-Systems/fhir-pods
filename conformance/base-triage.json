@@ -42,7 +42,7 @@
     "contained-identity": "Additional contained-resource identity checks are not evaluated.",
     "canonical-fragment": "Canonical fragment references are not resolved by the pod.",
     "oracle-unavailable": "Validator_cli 6.10.4 did not produce a usable outcome in prior repeated runs; explicitly excluded before comparison, never counted as agreement.",
-    "oracle-unstable": "Judged alone (one input per validator_cli 6.10.4 JVM), the oracle has given this input more than one verdict: it reuses a constraint key (`inv-1`) that a definition in a package the oracle loads gives another expression, and which one it keeps varies from run to run. Every observed verdict and signature is recorded; an unseen one fails. Not scored: never agreement and never a difference."
+    "oracle-order-dependent": "validator_cli 6.10.4 resolves a definition's constraint key against the FIRST base structure carrying it (`StructureDefinitionValidator.findInvariantInBase` over `ContextUtilities.allBaseStructures()`), and that iteration is a `java.util.HashSet` of proxies without hashCode/equals: identity-hash order, different in each JVM. Where R4 base structures give the key different expressions (`inv-1` on Parameters, Task and TestReport), the outcome is either no finding or `The constraint key \u2026 already exists at the location <partner>` for any such partner. base.py derives the partners from the R4 core package and accepts exactly those outcomes. An order-dependent verdict is never scored."
   },
   "differences": {
     "Bundle-father.json": {
@@ -535,14 +535,15 @@
       "input_sha256": "af3a8bf2977fe03b0165525da73ecb28885155c9c4438e02dec6230dbb12a4f6",
       "ours": "valid",
       "oracle": "invalid",
-      "oracle_signature": "0515772a55fb7fd11a9246e751b386e6a2f2a9cc5222cebbcbf75e1d46018be9",
       "reasons": [
-        "expression-definition"
+        "expression-definition",
+        "oracle-order-dependent"
       ],
-      "oracle_signatures": [
-        "0515772a55fb7fd11a9246e751b386e6a2f2a9cc5222cebbcbf75e1d46018be9",
-        "1d89897e8f512c8cefd60d3ff6f711bf24644172049159ecd6718d11665d5aa9"
-      ]
+      "order_dependent": {
+        "allowed_errors": [
+          "Error in constraint 'inv-1' with expression 'substanceExposureRisk.exists() and code.empty()': Error evaluating FHIRPath expression: The name 'substanceExposureRisk' is not valid"
+        ]
+      }
     },
     "StructureDefinition-catalog.json": {
       "input_sha256": "7b68f681334b546dffcd549c49243b758c66ceb30062c44794006b61bf3cf3ad",
@@ -1260,36 +1261,28 @@
       ]
     }
   },
-  "oracle_unstable": {
+  "oracle_order_dependent": {
+    "StructureDefinition-Parameters.json": {
+      "input_sha256": "2e786663f6bf273db1885cc969d5d6544d19113291eaa29ec3152fd12320e0e5",
+      "ours": "valid",
+      "reasons": [
+        "oracle-order-dependent",
+        "expression-definition"
+      ]
+    },
     "StructureDefinition-Task.json": {
       "input_sha256": "21f393c7dab536276e00efe18dfe4f79cf9306f7de1e56300ee76ce87cc8eb83",
       "ours": "valid",
-      "oracle": [
-        "invalid",
-        "valid"
-      ],
-      "oracle_signatures": [
-        "9703d73f78b979594b3eec9f5f7d5723ea382842585a287d25b65f386add9679",
-        "cfee46eb36a65bc938bd7f0d15604c9a7628b8fe74314b74a919cab75ad9c051"
-      ],
       "reasons": [
-        "oracle-unstable",
+        "oracle-order-dependent",
         "expression-definition"
       ]
     },
     "StructureDefinition-TestReport.json": {
       "input_sha256": "ba77b33c0b1c3f68e33e21ce3d5f910787918e4c1327f25efdb86a38951d813e",
       "ours": "valid",
-      "oracle": [
-        "invalid",
-        "valid"
-      ],
-      "oracle_signatures": [
-        "7b43e53035e4d911059eaa039018ec3d29ddf5d3aa2492d0c70fd9ca32282f92",
-        "cfee46eb36a65bc938bd7f0d15604c9a7628b8fe74314b74a919cab75ad9c051"
-      ],
       "reasons": [
-        "oracle-unstable",
+        "oracle-order-dependent",
         "expression-definition"
       ]
     }

@@ -92,18 +92,49 @@ class BaseGateTests(unittest.TestCase):
             self.assertEqual(json.loads(full.read_text()), "prior full evidence")
             self.assertIn("matched no examples", (root / "evidence-subset.json").read_text())
 
-    def test_definitions_reusing_a_constraint_key_are_judged_alone(self):
-        def sd(key, expression):
-            return {"resourceType": "StructureDefinition",
+    def test_key_partners_are_derived_from_the_base_structures(self):
+        def sd(url, key, expression, derivation="specialization"):
+            return {"resourceType": "StructureDefinition", "url": url, "derivation": derivation,
                     "differential": {"element": [{"constraint": [{"key": key, "expression": expression}]}]}}
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            files = {"a.json": sd("inv-1", "x.exists()"), "b.json": sd("inv-1", "y.exists()"),
-                     "c.json": sd("inv-2", "z.exists()"), "d.json": sd("inv-2", "z.exists()"),
-                     "e.json": {"resourceType": "Patient"}}
-            for name, data in files.items():
-                (root / name).write_text(json.dumps(data))
-            self.assertEqual(base.shared_constraint_keys(sorted(root.glob("*.json"))), {"a.json", "b.json"})
+            core = Path(directory) / "core"
+            core.mkdir()
+            for name, data in {"A": sd("u/A", "inv-1", "a"), "B": sd("u/B", "inv-1", "b"), "C": sd("u/C", "inv-1", "a"),
+                               "P": sd("u/P", "inv-1", "p", derivation="constraint")}.items():
+                (core / f"StructureDefinition-{name}.json").write_text(json.dumps(data))
+            keys = base.base_structure_keys(core)
+            self.assertEqual(set(keys["inv-1"]), {"u/A", "u/B", "u/C"})
+            own = Path(directory) / "A.json"
+            own.write_text(json.dumps(sd("u/A", "inv-1", "a")))
+            self.assertEqual(base.key_partners(own, keys), {("inv-1", "u/B")})
+            ext = Path(directory) / "x.json"
+            ext.write_text(json.dumps(sd("u/X", "inv-1", "x", derivation="constraint")))
+            self.assertEqual(base.key_partners(ext, keys), {("inv-1", "u/A"), ("inv-1", "u/B"), ("inv-1", "u/C")})
+
+    def test_an_order_dependent_case_accepts_exactly_what_its_partners_explain(self):
+        used = "The constraint key 'inv-1' already exists at the location '{}|4.0.1' with a different expression ('x')"
+        partners = [["inv-1", "u/B"]]
+        self.assertTrue(base.order_dependent_outcome_ok([], partners))
+        self.assertTrue(base.order_dependent_outcome_ok([used.format("u/B")], partners))
+        self.assertFalse(base.order_dependent_outcome_ok([used.format("u/Z")], partners))
+        self.assertFalse(base.order_dependent_outcome_ok(["something else"], partners))
+        self.assertTrue(base.order_dependent_outcome_ok(["Error in constraint 'inv-1' x", used.format("u/B")], partners,
+                                                        ["Error in constraint 'inv-1'"]))
+        triage = {"differences": {}, "oracle_exclusions": {}, "oracle_order_dependent": {"Task.json": {
+            "input_sha256": "input", "ours": "valid", "reasons": ["oracle-order-dependent"]}}}
+        row = {"file": "Task.json", "input_sha256": "input", "ours": "valid", "oracle": "invalid",
+               "oracle_errors": [used.format("u/B")], "key_partners": partners}
+        self.assertIsNone(base.assess(row, triage))
+        self.assertIsNone(base.assess(dict(row, oracle="valid", oracle_errors=[]), triage))
+        self.assertIsNotNone(base.assess(dict(row, oracle_errors=[used.format("u/Z")]), triage))
+        self.assertIsNotNone(base.assess(dict(row, ours="invalid"), triage))
+
+    def test_an_outcome_identity_ignores_the_source_path(self):
+        def oo(path):
+            return {"resourceType": "OperationOutcome", "issue": [],
+                    "extension": [{"url": "http://hl7.org/fhir/StructureDefinition/" + base.run.FILE_EXT, "valueString": path}]}
+        self.assertEqual(base.outcome_identity(oo("/a/x.json")), base.outcome_identity(oo("/b/x.json")))
+        self.assertNotEqual(base.json_hash(oo("/a/x.json")), base.json_hash(oo("/b/x.json")))
 
     def test_oracle_drift_is_told_apart_from_a_pod_change(self):
         before = {"resourceType": "OperationOutcome", "issue": []}
@@ -119,22 +150,6 @@ class BaseGateTests(unittest.TestCase):
         self.assertFalse(base.drift_only(dict(changed, ours="invalid"), "reviewed difference changed (ours)", self.triage, drift))
         fresh = {"file": "Patient-example.json", "ours": "valid", "oracle": "invalid"}
         self.assertTrue(base.drift_only(fresh, "new verdict disagreement", {"differences": {}}, drift))
-
-    def test_an_unstable_oracle_case_holds_to_its_recorded_outcomes(self):
-        triage = {"differences": {}, "oracle_exclusions": {}, "oracle_unstable": {"Task.json": {
-            "input_sha256": "input", "ours": "valid", "oracle": ["valid", "invalid"],
-            "oracle_signatures": ["a", "b"], "reasons": ["oracle-unstable"]}}}
-        row = {"file": "Task.json", "input_sha256": "input", "ours": "valid", "oracle": "invalid", "oracle_signature": "b"}
-        self.assertIsNone(base.assess(row, triage))
-        self.assertIsNone(base.assess(dict(row, oracle="valid", oracle_signature="a"), triage))
-        self.assertIsNotNone(base.assess(dict(row, oracle_signature="c"), triage))
-        self.assertIsNotNone(base.assess(dict(row, ours="invalid"), triage))
-
-    def test_a_reviewed_difference_may_name_every_observed_signature(self):
-        triage = copy.deepcopy(self.triage)
-        triage["differences"][self.row["file"]]["oracle_signatures"] = ["oracle", "other"]
-        self.assertIsNone(base.assess(dict(self.row, oracle_signature="other"), triage))
-        self.assertIsNotNone(base.assess(dict(self.row, oracle_signature="third"), triage))
 
 
 if __name__ == "__main__":
