@@ -1,0 +1,56 @@
+{
+  "resourceType": "QuestionnaireResponse",
+  "id": "r",
+  "status": "completed",
+  "item": [
+    {
+      "linkId": "a",
+      "answer": [
+        {
+          "valueCoding": {
+            "display": "Yes"
+          }
+        }
+      ]
+    }
+  ],
+  "questionnaire": "#q",
+  "contained": [
+    {
+      "resourceType": "Questionnaire",
+      "id": "q",
+      "status": "active",
+      "item": [
+        {
+          "linkId": "a",
+          "text": "Answer?",
+          "type": "choice",
+          "required": true,
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "https://example.org/probe/CodeSystem/answers",
+                "code": "yes",
+                "display": "Yes"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "https://example.org/probe/CodeSystem/answers",
+                "code": "no",
+                "display": "No"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "https://example.org/probe/CodeSystem/answers",
+                "code": "unsure",
+                "display": "Unsure"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

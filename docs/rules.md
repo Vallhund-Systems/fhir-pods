@@ -159,6 +159,7 @@ item whose definition is broken. Both were probed against validator_cli
 | `questionnaire.item-shape` | error | items or answers where the item type forbids them: a `display` item with nested items or an answer, a non-group item with `item` outside its answers, a `question` item with answers it cannot hold |
 | `questionnaire.answer-type` | error | an answer of the wrong type for the item |
 | `questionnaire.answer-not-in-set` | error | a coded or constrained answer outside the permitted values |
+| `questionnaire.answer-no-system` | warning | a coded answer with a code but no system, the code in the answer's contained value set: a code with no system has no defined meaning and cannot be validated (no code at all, or a code the set does not hold, is `questionnaire.answer-not-in-set`) |
 | `questionnaire.answer-exclusive` | error | an exclusive option selected with others |
 | `questionnaire.answer-count` | error | fewer or more answers than the item allows |
 | `questionnaire.answer-range` | error | an answer outside its minimum, maximum, length or precision |

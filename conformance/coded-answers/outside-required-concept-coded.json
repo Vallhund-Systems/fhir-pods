@@ -1,0 +1,18 @@
+{
+  "resourceType": "Condition",
+  "id": "c",
+  "clinicalStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "active"
+      }
+    ]
+  },
+  "code": {
+    "text": "Probe"
+  },
+  "subject": {
+    "reference": "Patient/p"
+  }
+}

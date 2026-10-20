@@ -1,0 +1,628 @@
+[
+  {
+    "file": "contained-vs-required-in-set.json",
+    "expect": true,
+    "reason": "The answerValueSet contained in the Questionnaire, loaded by canonical (dom-2 forbids a contained Questionnaire containing one); required item; system and code, the code in the set (control)."
+  },
+  {
+    "file": "contained-vs-required-not-in-set.json",
+    "expect": false,
+    "reason": "The answerValueSet contained in the Questionnaire, loaded by canonical (dom-2 forbids a contained Questionnaire containing one); required item; system and code, the code not in the code system or the set.",
+    "reviewed": {
+      "local": false,
+      "missed": [
+        "QuestionnaireResponse.item.answer.value[x].code"
+      ],
+      "extra": [],
+      "reason": "code system content: the oracle holds the questionnaire's CodeSystem (loaded with the IG folder) and also refuses the code against it ('Unknown code ... in the CodeSystem'); the pod is given value-set expansions, never a host's CodeSystem, so it reports the answer outside its options (the same verdict) but not the code-system finding beside it."
+    }
+  },
+  {
+    "file": "contained-vs-required-other-system.json",
+    "expect": false,
+    "reason": "The answerValueSet contained in the Questionnaire, loaded by canonical (dom-2 forbids a contained Questionnaire containing one); required item; a code from a system the set does not include."
+  },
+  {
+    "file": "contained-vs-required-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet contained in the Questionnaire, loaded by canonical (dom-2 forbids a contained Questionnaire containing one); required item; a code with no system, the code in the set."
+  },
+  {
+    "file": "contained-vs-required-code-only-nonmember.json",
+    "expect": false,
+    "reason": "The answerValueSet contained in the Questionnaire, loaded by canonical (dom-2 forbids a contained Questionnaire containing one); required item; a code with no system, the code not in the set."
+  },
+  {
+    "file": "contained-vs-required-code-only-member-bare.json",
+    "expect": true,
+    "reason": "The answerValueSet contained in the Questionnaire, loaded by canonical (dom-2 forbids a contained Questionnaire containing one); required item; a code with no system (no display), the code in the set."
+  },
+  {
+    "file": "contained-vs-required-display-only.json",
+    "expect": false,
+    "reason": "The answerValueSet contained in the Questionnaire, loaded by canonical (dom-2 forbids a contained Questionnaire containing one); required item; a display alone: no code, no system."
+  },
+  {
+    "file": "contained-vs-required-system-only.json",
+    "expect": false,
+    "reason": "The answerValueSet contained in the Questionnaire, loaded by canonical (dom-2 forbids a contained Questionnaire containing one); required item; a system alone: no code."
+  },
+  {
+    "file": "contained-vs-required-system-display.json",
+    "expect": false,
+    "reason": "The answerValueSet contained in the Questionnaire, loaded by canonical (dom-2 forbids a contained Questionnaire containing one); required item; a system and a display: no code."
+  },
+  {
+    "file": "contained-vs-required-string.json",
+    "expect": true,
+    "reason": "The answerValueSet contained in the Questionnaire, loaded by canonical (dom-2 forbids a contained Questionnaire containing one); required item; a valueString on a choice item.",
+    "reviewed": {
+      "local": false,
+      "missed": [],
+      "extra": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "reason": "a valueString on a choice item with an answerValueSet: the pod refuses it ('answerConstraint is optionsOnly'), pinned to fhir-test-cases' stored outcome for answerconstraint-qr, which a later validator produced; validator_cli 6.10.4 run fresh reports only the information 'Cannot validate string answer option because no option list is provided' (also on answerconstraint-qr itself, probed 2026-10-20). Pre-dates the coded-answer rule; stricter, reported, not changed here."
+    }
+  },
+  {
+    "file": "contained-vs-optional-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet contained in the Questionnaire, loaded by canonical (dom-2 forbids a contained Questionnaire containing one); optional item; a code with no system, the code in the set."
+  },
+  {
+    "file": "contained-vs-optional-display-only.json",
+    "expect": false,
+    "reason": "The answerValueSet contained in the Questionnaire, loaded by canonical (dom-2 forbids a contained Questionnaire containing one); optional item; a display alone: no code, no system."
+  },
+  {
+    "file": "contained-vs-optional-system-only.json",
+    "expect": false,
+    "reason": "The answerValueSet contained in the Questionnaire, loaded by canonical (dom-2 forbids a contained Questionnaire containing one); optional item; a system alone: no code."
+  },
+  {
+    "file": "canonical-vs-required-in-set.json",
+    "expect": true,
+    "reason": "The answerValueSet by canonical, a set including the whole code system; required item; system and code, the code in the set (control)."
+  },
+  {
+    "file": "canonical-vs-required-not-in-set.json",
+    "expect": false,
+    "reason": "The answerValueSet by canonical, a set including the whole code system; required item; system and code, the code not in the code system or the set.",
+    "reviewed": {
+      "local": false,
+      "missed": [
+        "QuestionnaireResponse.item.answer.value[x].code"
+      ],
+      "extra": [],
+      "reason": "code system content: the oracle holds the questionnaire's CodeSystem (loaded with the IG folder) and also refuses the code against it ('Unknown code ... in the CodeSystem'); the pod is given value-set expansions, never a host's CodeSystem, so it reports the answer outside its options (the same verdict) but not the code-system finding beside it."
+    }
+  },
+  {
+    "file": "canonical-vs-required-other-system.json",
+    "expect": false,
+    "reason": "The answerValueSet by canonical, a set including the whole code system; required item; a code from a system the set does not include."
+  },
+  {
+    "file": "canonical-vs-required-code-only-member.json",
+    "expect": false,
+    "reason": "The answerValueSet by canonical, a set including the whole code system; required item; a code with no system, the code in the set."
+  },
+  {
+    "file": "canonical-vs-required-code-only-nonmember.json",
+    "expect": false,
+    "reason": "The answerValueSet by canonical, a set including the whole code system; required item; a code with no system, the code not in the set."
+  },
+  {
+    "file": "canonical-vs-required-code-only-member-bare.json",
+    "expect": false,
+    "reason": "The answerValueSet by canonical, a set including the whole code system; required item; a code with no system (no display), the code in the set."
+  },
+  {
+    "file": "canonical-vs-required-display-only.json",
+    "expect": false,
+    "reason": "The answerValueSet by canonical, a set including the whole code system; required item; a display alone: no code, no system."
+  },
+  {
+    "file": "canonical-vs-required-system-only.json",
+    "expect": false,
+    "reason": "The answerValueSet by canonical, a set including the whole code system; required item; a system alone: no code."
+  },
+  {
+    "file": "canonical-vs-required-system-display.json",
+    "expect": false,
+    "reason": "The answerValueSet by canonical, a set including the whole code system; required item; a system and a display: no code."
+  },
+  {
+    "file": "canonical-vs-required-string.json",
+    "expect": true,
+    "reason": "The answerValueSet by canonical, a set including the whole code system; required item; a valueString on a choice item.",
+    "reviewed": {
+      "local": false,
+      "missed": [],
+      "extra": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "reason": "a valueString on a choice item with an answerValueSet: the pod refuses it ('answerConstraint is optionsOnly'), pinned to fhir-test-cases' stored outcome for answerconstraint-qr, which a later validator produced; validator_cli 6.10.4 run fresh reports only the information 'Cannot validate string answer option because no option list is provided' (also on answerconstraint-qr itself, probed 2026-10-20). Pre-dates the coded-answer rule; stricter, reported, not changed here."
+    }
+  },
+  {
+    "file": "canonical-vs-optional-code-only-member.json",
+    "expect": false,
+    "reason": "The answerValueSet by canonical, a set including the whole code system; optional item; a code with no system, the code in the set."
+  },
+  {
+    "file": "canonical-vs-optional-display-only.json",
+    "expect": false,
+    "reason": "The answerValueSet by canonical, a set including the whole code system; optional item; a display alone: no code, no system."
+  },
+  {
+    "file": "canonical-vs-optional-system-only.json",
+    "expect": false,
+    "reason": "The answerValueSet by canonical, a set including the whole code system; optional item; a system alone: no code."
+  },
+  {
+    "file": "options-required-in-set.json",
+    "expect": true,
+    "reason": "Inline answerOption codings; required item; system and code, the code in the set (control)."
+  },
+  {
+    "file": "options-required-not-in-set.json",
+    "expect": false,
+    "reason": "Inline answerOption codings; required item; system and code, the code not in the code system or the set.",
+    "reviewed": {
+      "local": false,
+      "missed": [
+        "QuestionnaireResponse.item.answer.value[x].code"
+      ],
+      "extra": [],
+      "reason": "code system content: the oracle holds the questionnaire's CodeSystem (loaded with the IG folder) and also refuses the code against it ('Unknown code ... in the CodeSystem'); the pod is given value-set expansions, never a host's CodeSystem, so it reports the answer outside its options (the same verdict) but not the code-system finding beside it."
+    }
+  },
+  {
+    "file": "options-required-other-system.json",
+    "expect": false,
+    "reason": "Inline answerOption codings; required item; a code from a system the set does not include."
+  },
+  {
+    "file": "options-required-code-only-member.json",
+    "expect": false,
+    "reason": "Inline answerOption codings; required item; a code with no system, the code in the set."
+  },
+  {
+    "file": "options-required-code-only-nonmember.json",
+    "expect": false,
+    "reason": "Inline answerOption codings; required item; a code with no system, the code not in the set."
+  },
+  {
+    "file": "options-required-code-only-member-bare.json",
+    "expect": false,
+    "reason": "Inline answerOption codings; required item; a code with no system (no display), the code in the set."
+  },
+  {
+    "file": "options-required-display-only.json",
+    "expect": false,
+    "reason": "Inline answerOption codings; required item; a display alone: no code, no system."
+  },
+  {
+    "file": "options-required-system-only.json",
+    "expect": false,
+    "reason": "Inline answerOption codings; required item; a system alone: no code."
+  },
+  {
+    "file": "options-required-system-display.json",
+    "expect": false,
+    "reason": "Inline answerOption codings; required item; a system and a display: no code."
+  },
+  {
+    "file": "options-required-string.json",
+    "expect": false,
+    "reason": "Inline answerOption codings; required item; a valueString on a choice item.",
+    "reviewed": {
+      "local": false,
+      "missed": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "extra": [
+        "QuestionnaireResponse.item.answer.valueString"
+      ],
+      "reason": "path spelling only: both refuse a string where the options are all codings ('Option list has no option values of type string'); the oracle locates it at the answer, the pod at the answer's valueString. Pre-dates the coded-answer rule."
+    }
+  },
+  {
+    "file": "options-optional-code-only-member.json",
+    "expect": false,
+    "reason": "Inline answerOption codings; optional item; a code with no system, the code in the set."
+  },
+  {
+    "file": "options-optional-display-only.json",
+    "expect": false,
+    "reason": "Inline answerOption codings; optional item; a display alone: no code, no system."
+  },
+  {
+    "file": "options-optional-system-only.json",
+    "expect": false,
+    "reason": "Inline answerOption codings; optional item; a system alone: no code."
+  },
+  {
+    "file": "qr-contained-vs-required-in-set.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; system and code, the code in the set (control)."
+  },
+  {
+    "file": "qr-contained-vs-required-not-in-set.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; system and code, the code not in the code system or the set.",
+    "reviewed": {
+      "local": false,
+      "missed": [
+        "QuestionnaireResponse.item.answer.value[x].code"
+      ],
+      "extra": [],
+      "reason": "code system content: the oracle holds the questionnaire's CodeSystem (loaded with the IG folder) and also refuses the code against it ('Unknown code ... in the CodeSystem'); the pod is given value-set expansions, never a host's CodeSystem, so it reports the answer outside its options (the same verdict) but not the code-system finding beside it."
+    }
+  },
+  {
+    "file": "qr-contained-vs-required-other-system.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; a code from a system the set does not include."
+  },
+  {
+    "file": "qr-contained-vs-required-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; a code with no system, the code in the set."
+  },
+  {
+    "file": "qr-contained-vs-required-code-only-nonmember.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; a code with no system, the code not in the set."
+  },
+  {
+    "file": "qr-contained-vs-required-code-only-member-bare.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; a code with no system (no display), the code in the set."
+  },
+  {
+    "file": "qr-contained-vs-required-display-only.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; a display alone: no code, no system."
+  },
+  {
+    "file": "qr-contained-vs-required-system-only.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; a system alone: no code."
+  },
+  {
+    "file": "qr-contained-vs-required-system-display.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; a system and a display: no code."
+  },
+  {
+    "file": "qr-contained-vs-required-string.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; a valueString on a choice item.",
+    "reviewed": {
+      "local": false,
+      "missed": [],
+      "extra": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "reason": "a valueString on a choice item with an answerValueSet: the pod refuses it ('answerConstraint is optionsOnly'), pinned to fhir-test-cases' stored outcome for answerconstraint-qr, which a later validator produced; validator_cli 6.10.4 run fresh reports only the information 'Cannot validate string answer option because no option list is provided' (also on answerconstraint-qr itself, probed 2026-10-20). Pre-dates the coded-answer rule; stricter, reported, not changed here."
+    }
+  },
+  {
+    "file": "qr-contained-vs-optional-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); optional item; a code with no system, the code in the set."
+  },
+  {
+    "file": "qr-contained-vs-optional-display-only.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); optional item; a display alone: no code, no system."
+  },
+  {
+    "file": "qr-contained-vs-optional-system-only.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); optional item; a system alone: no code."
+  },
+  {
+    "file": "canonical-enumerated-vs-required-in-set.json",
+    "expect": true,
+    "reason": "The answerValueSet by canonical, a set enumerating its codes; required item; system and code, the code in the set (control)."
+  },
+  {
+    "file": "canonical-enumerated-vs-required-not-in-set.json",
+    "expect": false,
+    "reason": "The answerValueSet by canonical, a set enumerating its codes; required item; system and code, the code not in the code system or the set.",
+    "reviewed": {
+      "local": false,
+      "missed": [
+        "QuestionnaireResponse.item.answer.value[x].code"
+      ],
+      "extra": [],
+      "reason": "code system content: the oracle holds the questionnaire's CodeSystem (loaded with the IG folder) and also refuses the code against it ('Unknown code ... in the CodeSystem'); the pod is given value-set expansions, never a host's CodeSystem, so it reports the answer outside its options (the same verdict) but not the code-system finding beside it."
+    }
+  },
+  {
+    "file": "canonical-enumerated-vs-required-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet by canonical, a set enumerating its codes; required item; a code with no system, the code in the set.",
+    "reviewed": {
+      "local": false,
+      "missed": [],
+      "extra": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "reason": "a code with no system under a set reached by canonical: the oracle's verdict turns on the set's definition \u2014 an error where it includes a whole code system (canonical-vs, canonical-unversioned-vs), a warning where it enumerates its codes (this probe). A compiled expansion does not say which, so the pod keeps the error for every canonical set: stricter here, never more lenient than the oracle."
+    }
+  },
+  {
+    "file": "canonical-enumerated-vs-required-code-only-nonmember.json",
+    "expect": false,
+    "reason": "The answerValueSet by canonical, a set enumerating its codes; required item; a code with no system, the code not in the set."
+  },
+  {
+    "file": "canonical-enumerated-vs-required-display-only.json",
+    "expect": false,
+    "reason": "The answerValueSet by canonical, a set enumerating its codes; required item; a display alone: no code, no system."
+  },
+  {
+    "file": "canonical-enumerated-vs-required-system-only.json",
+    "expect": false,
+    "reason": "The answerValueSet by canonical, a set enumerating its codes; required item; a system alone: no code."
+  },
+  {
+    "file": "qr-contained-system-vs-required-in-set.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, including the whole code system; required item; system and code, the code in the set (control)."
+  },
+  {
+    "file": "qr-contained-system-vs-required-not-in-set.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, including the whole code system; required item; system and code, the code not in the code system or the set.",
+    "reviewed": {
+      "local": true,
+      "missed": [
+        "QuestionnaireResponse.item.answer",
+        "QuestionnaireResponse.item.answer.value[x].code"
+      ],
+      "extra": [],
+      "reason": "a set contained beside the questionnaire that includes a whole code system: the pod enumerates only a contained set that lists its codes, so membership of a coded answer with a system is Unknown (warning 'no bundled terminology', binding.unknown) where the oracle, holding the CodeSystem, refuses the code. Pre-dates the coded-answer rule (lenient at 0.22.0 too); the pod is never given a host's CodeSystem."
+    }
+  },
+  {
+    "file": "qr-contained-system-vs-required-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, including the whole code system; required item; a code with no system, the code in the set.",
+    "reviewed": {
+      "local": false,
+      "missed": [],
+      "extra": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "reason": "a code with no system under a contained set that includes a whole code system: the oracle warns (the code is in the system it holds); the pod cannot enumerate the set (it is not given the CodeSystem), so it keeps the error \u2014 stricter here, never more lenient (the same answer with a code the system lacks is an error on both sides)."
+    }
+  },
+  {
+    "file": "qr-contained-system-vs-required-code-only-nonmember.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, including the whole code system; required item; a code with no system, the code not in the set."
+  },
+  {
+    "file": "qr-contained-system-vs-required-display-only.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, including the whole code system; required item; a display alone: no code, no system."
+  },
+  {
+    "file": "qr-contained-system-vs-required-system-only.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, including the whole code system; required item; a system alone: no code."
+  },
+  {
+    "file": "canonical-unversioned-vs-required-in-set.json",
+    "expect": true,
+    "reason": "The answerValueSet by canonical, a set including the whole code system, no version; required item; system and code, the code in the set (control)."
+  },
+  {
+    "file": "canonical-unversioned-vs-required-not-in-set.json",
+    "expect": false,
+    "reason": "The answerValueSet by canonical, a set including the whole code system, no version; required item; system and code, the code not in the code system or the set.",
+    "reviewed": {
+      "local": false,
+      "missed": [
+        "QuestionnaireResponse.item.answer.value[x].code"
+      ],
+      "extra": [],
+      "reason": "code system content: the oracle holds the questionnaire's CodeSystem (loaded with the IG folder) and also refuses the code against it ('Unknown code ... in the CodeSystem'); the pod is given value-set expansions, never a host's CodeSystem, so it reports the answer outside its options (the same verdict) but not the code-system finding beside it."
+    }
+  },
+  {
+    "file": "canonical-unversioned-vs-required-code-only-member.json",
+    "expect": false,
+    "reason": "The answerValueSet by canonical, a set including the whole code system, no version; required item; a code with no system, the code in the set."
+  },
+  {
+    "file": "canonical-unversioned-vs-required-code-only-nonmember.json",
+    "expect": false,
+    "reason": "The answerValueSet by canonical, a set including the whole code system, no version; required item; a code with no system, the code not in the set."
+  },
+  {
+    "file": "canonical-unversioned-vs-required-display-only.json",
+    "expect": false,
+    "reason": "The answerValueSet by canonical, a set including the whole code system, no version; required item; a display alone: no code, no system."
+  },
+  {
+    "file": "canonical-unversioned-vs-required-system-only.json",
+    "expect": false,
+    "reason": "The answerValueSet by canonical, a set including the whole code system, no version; required item; a system alone: no code."
+  },
+  {
+    "file": "qr-contained-vs-name-title-label-not-in-set.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; system and code, the code not in the code system or the set; the contained set labelled by name and title (what the message calls it).",
+    "reviewed": {
+      "local": false,
+      "missed": [
+        "QuestionnaireResponse.item.answer.value[x].code"
+      ],
+      "extra": [],
+      "reason": "code system content: the oracle holds the questionnaire's CodeSystem (loaded with the IG folder) and also refuses the code against it ('Unknown code ... in the CodeSystem'); the pod is given value-set expansions, never a host's CodeSystem, so it reports the answer outside its options (the same verdict) but not the code-system finding beside it."
+    }
+  },
+  {
+    "file": "contained-vs-title-label-not-in-set.json",
+    "expect": false,
+    "reason": "The answerValueSet contained in the Questionnaire, loaded by canonical (dom-2 forbids a contained Questionnaire containing one); required item; system and code, the code not in the code system or the set; the contained set labelled by title (what the message calls it).",
+    "reviewed": {
+      "local": false,
+      "missed": [
+        "QuestionnaireResponse.item.answer.value[x].code"
+      ],
+      "extra": [],
+      "reason": "code system content: the oracle holds the questionnaire's CodeSystem (loaded with the IG folder) and also refuses the code against it ('Unknown code ... in the CodeSystem'); the pod is given value-set expansions, never a host's CodeSystem, so it reports the answer outside its options (the same verdict) but not the code-system finding beside it."
+    }
+  },
+  {
+    "file": "qr-contained-vs-title-label-not-in-set.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; system and code, the code not in the code system or the set; the contained set labelled by title (what the message calls it).",
+    "reviewed": {
+      "local": false,
+      "missed": [
+        "QuestionnaireResponse.item.answer.value[x].code"
+      ],
+      "extra": [],
+      "reason": "code system content: the oracle holds the questionnaire's CodeSystem (loaded with the IG folder) and also refuses the code against it ('Unknown code ... in the CodeSystem'); the pod is given value-set expansions, never a host's CodeSystem, so it reports the answer outside its options (the same verdict) but not the code-system finding beside it."
+    }
+  },
+  {
+    "file": "contained-vs-title-label-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet contained in the Questionnaire, loaded by canonical (dom-2 forbids a contained Questionnaire containing one); required item; a code with no system, the code in the set; the contained set labelled by title (what the message calls it)."
+  },
+  {
+    "file": "qr-contained-vs-title-label-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; a code with no system, the code in the set; the contained set labelled by title (what the message calls it)."
+  },
+  {
+    "file": "contained-vs-url-label-not-in-set.json",
+    "expect": false,
+    "reason": "The answerValueSet contained in the Questionnaire, loaded by canonical (dom-2 forbids a contained Questionnaire containing one); required item; system and code, the code not in the code system or the set; the contained set labelled by url (what the message calls it).",
+    "reviewed": {
+      "local": false,
+      "missed": [
+        "QuestionnaireResponse.item.answer.value[x].code"
+      ],
+      "extra": [],
+      "reason": "code system content: the oracle holds the questionnaire's CodeSystem (loaded with the IG folder) and also refuses the code against it ('Unknown code ... in the CodeSystem'); the pod is given value-set expansions, never a host's CodeSystem, so it reports the answer outside its options (the same verdict) but not the code-system finding beside it."
+    }
+  },
+  {
+    "file": "qr-contained-vs-url-label-not-in-set.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; system and code, the code not in the code system or the set; the contained set labelled by url (what the message calls it).",
+    "reviewed": {
+      "local": false,
+      "missed": [
+        "QuestionnaireResponse.item.answer.value[x].code"
+      ],
+      "extra": [],
+      "reason": "code system content: the oracle holds the questionnaire's CodeSystem (loaded with the IG folder) and also refuses the code against it ('Unknown code ... in the CodeSystem'); the pod is given value-set expansions, never a host's CodeSystem, so it reports the answer outside its options (the same verdict) but not the code-system finding beside it."
+    }
+  },
+  {
+    "file": "contained-vs-url-label-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet contained in the Questionnaire, loaded by canonical (dom-2 forbids a contained Questionnaire containing one); required item; a code with no system, the code in the set; the contained set labelled by url (what the message calls it)."
+  },
+  {
+    "file": "qr-contained-vs-url-label-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; a code with no system, the code in the set; the contained set labelled by url (what the message calls it)."
+  },
+  {
+    "file": "contained-vs-none-label-not-in-set.json",
+    "expect": false,
+    "reason": "The answerValueSet contained in the Questionnaire, loaded by canonical (dom-2 forbids a contained Questionnaire containing one); required item; system and code, the code not in the code system or the set; the contained set labelled by none (what the message calls it).",
+    "reviewed": {
+      "local": false,
+      "missed": [
+        "QuestionnaireResponse.item.answer.value[x].code"
+      ],
+      "extra": [],
+      "reason": "code system content: the oracle holds the questionnaire's CodeSystem (loaded with the IG folder) and also refuses the code against it ('Unknown code ... in the CodeSystem'); the pod is given value-set expansions, never a host's CodeSystem, so it reports the answer outside its options (the same verdict) but not the code-system finding beside it."
+    }
+  },
+  {
+    "file": "qr-contained-vs-none-label-not-in-set.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; system and code, the code not in the code system or the set; the contained set labelled by none (what the message calls it).",
+    "reviewed": {
+      "local": false,
+      "missed": [
+        "QuestionnaireResponse.item.answer.value[x].code"
+      ],
+      "extra": [],
+      "reason": "code system content: the oracle holds the questionnaire's CodeSystem (loaded with the IG folder) and also refuses the code against it ('Unknown code ... in the CodeSystem'); the pod is given value-set expansions, never a host's CodeSystem, so it reports the answer outside its options (the same verdict) but not the code-system finding beside it."
+    }
+  },
+  {
+    "file": "contained-vs-none-label-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet contained in the Questionnaire, loaded by canonical (dom-2 forbids a contained Questionnaire containing one); required item; a code with no system, the code in the set; the contained set labelled by none (what the message calls it)."
+  },
+  {
+    "file": "qr-contained-vs-none-label-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; a code with no system, the code in the set; the contained set labelled by none (what the message calls it)."
+  },
+  {
+    "file": "outside-required-concept-coded.json",
+    "expect": true,
+    "reason": "Outside a questionnaire \u2014 Condition.clinicalStatus, a required CodeableConcept binding: system and code (control)."
+  },
+  {
+    "file": "outside-required-concept-code-only-member.json",
+    "expect": false,
+    "reason": "Outside a questionnaire \u2014 Condition.clinicalStatus, a required CodeableConcept binding: a code with no system, the code in the set.",
+    "reviewed": {
+      "local": true,
+      "missed": [
+        "Condition.clinicalStatus"
+      ],
+      "extra": [],
+      "reason": "outside a questionnaire, the general binding check: a required CodeableConcept whose only coding has a code and no system. The oracle refuses it ('None of the codings provided are in the value set', codes = null#active); the pod matches the code without a system and accepts it. Pre-dates this release (lenient at 0.22.0 too), a different rule path (binding.not-member), reported as its own task."
+    }
+  },
+  {
+    "file": "outside-required-concept-code-only-nonmember.json",
+    "expect": false,
+    "reason": "Outside a questionnaire \u2014 Condition.clinicalStatus, a required CodeableConcept binding: a code with no system, the code not in the set."
+  },
+  {
+    "file": "outside-required-concept-display-only.json",
+    "expect": false,
+    "reason": "Outside a questionnaire \u2014 Condition.clinicalStatus, a required CodeableConcept binding: a display alone: no code, no system."
+  },
+  {
+    "file": "outside-required-coding-code-only-member.json",
+    "expect": true,
+    "reason": "Outside a questionnaire \u2014 Encounter.class, a Coding (extensible binding in R4): a code with no system, the code in the set."
+  },
+  {
+    "file": "outside-required-coding-code-only-nonmember.json",
+    "expect": true,
+    "reason": "Outside a questionnaire \u2014 Encounter.class, a Coding (extensible binding in R4): a code with no system, the code not in the set."
+  },
+  {
+    "file": "outside-example-concept-code-only.json",
+    "expect": true,
+    "reason": "Outside a questionnaire \u2014 Observation.code, an example binding: a code with no system."
+  },
+  {
+    "file": "outside-unbound-concept-code-only.json",
+    "expect": true,
+    "reason": "Outside a questionnaire \u2014 Observation.valueCodeableConcept, no binding: a code with no system."
+  }
+]

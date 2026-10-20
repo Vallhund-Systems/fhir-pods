@@ -1,0 +1,15 @@
+{
+  "resourceType": "ValueSet",
+  "id": "answers",
+  "url": "https://example.org/probe/ValueSet/answers",
+  "version": "1.0.0",
+  "name": "ProbeAnswers",
+  "status": "active",
+  "compose": {
+    "include": [
+      {
+        "system": "https://example.org/probe/CodeSystem/answers"
+      }
+    ]
+  }
+}

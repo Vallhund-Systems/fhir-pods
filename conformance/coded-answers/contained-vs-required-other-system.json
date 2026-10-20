@@ -1,0 +1,19 @@
+{
+  "resourceType": "QuestionnaireResponse",
+  "id": "r",
+  "status": "completed",
+  "item": [
+    {
+      "linkId": "a",
+      "answer": [
+        {
+          "valueCoding": {
+            "system": "https://example.org/probe/CodeSystem/other",
+            "code": "yes"
+          }
+        }
+      ]
+    }
+  ],
+  "questionnaire": "https://example.org/probe/Questionnaire/required-name"
+}

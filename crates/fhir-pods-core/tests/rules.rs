@@ -61,6 +61,7 @@ fn every_rule_id_is_documented_and_every_documented_id_is_real() {
         (IssueType::BusinessRule, "The answer 'x' does not conform to the expected format 'nnn' (regex '[0-9]{3}')"),
         (IssueType::BusinessRule, "The value 3 kg has a unit that is not valid (allowed = [mg])"),
         (IssueType::BusinessRule, "No LinkId, so can't be validated"),
+        (IssueType::CodeInvalid, "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided"),
     ];
     let expected = [
         "parse.json",
@@ -89,6 +90,7 @@ fn every_rule_id_is_documented_and_every_documented_id_is_real() {
         "questionnaire.answer-content",
         "questionnaire.answer-content",
         "questionnaire.linkid-unknown",
+        "questionnaire.answer-no-system",
     ];
     for ((code, message), want) in samples.iter().zip(expected) {
         assert_eq!(rule_id(*code, message), want, "{message}");
@@ -153,6 +155,7 @@ fn every_severity_the_lanes_produce_is_documented() {
         format!("{conformance}/gut/out/cases"),
         format!("{conformance}/probes"),
         format!("{conformance}/narrative"),
+        format!("{conformance}/coded-answers"),
     ];
     if let Ok(classes) = std::fs::read_dir(format!("{conformance}/mutations")) {
         dirs.extend(classes.flatten().filter(|e| e.path().is_dir()).map(|e| e.path().to_string_lossy().into_owned()));

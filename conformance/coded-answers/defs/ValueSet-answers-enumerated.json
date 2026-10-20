@@ -1,0 +1,29 @@
+{
+  "resourceType": "ValueSet",
+  "id": "answers-enumerated",
+  "url": "https://example.org/probe/ValueSet/answers-enumerated",
+  "version": "1.0.0",
+  "name": "ProbeAnswersEnumerated",
+  "status": "active",
+  "compose": {
+    "include": [
+      {
+        "system": "https://example.org/probe/CodeSystem/answers",
+        "concept": [
+          {
+            "code": "yes",
+            "display": "Yes"
+          },
+          {
+            "code": "no",
+            "display": "No"
+          },
+          {
+            "code": "unsure",
+            "display": "Unsure"
+          }
+        ]
+      }
+    ]
+  }
+}

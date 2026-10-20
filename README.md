@@ -300,6 +300,7 @@ JAVA_HOME=<jdk17> python3 conformance/run.py # release conformance gate
 python3 conformance/base.py                 # published R4 regression gate
 target/debug/fhir-pods gate --questionnaire q.json [--options o.json] FILE…   # CI / acceptance gate: verdict and findings by rule id, exit 1 on any error
 JAVA_HOME=<jdk17> python3 conformance/narrative/run.py   # the narrative probes, against the oracle
+JAVA_HOME=<jdk17> python3 conformance/coded-answers/run.py   # coded answers with a part missing, against the oracle
 JAVA_HOME=<jdk17> python3 conformance/mutate.py   # mutation lane: every original under nine mutations
 JAVA_HOME=<jdk17> python3 conformance/gut.py --chain   # gut-path scenario, end to end
 ./scripts/gen-profiles.sh                   # regenerate the registry from pinned packages

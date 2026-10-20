@@ -1,0 +1,34 @@
+{
+  "resourceType": "QuestionnaireResponse",
+  "id": "r",
+  "status": "completed",
+  "item": [
+    {
+      "linkId": "a",
+      "answer": [
+        {
+          "valueCoding": {
+            "system": "https://example.org/probe/CodeSystem/answers"
+          }
+        }
+      ]
+    }
+  ],
+  "questionnaire": "#q",
+  "contained": [
+    {
+      "resourceType": "Questionnaire",
+      "id": "q",
+      "status": "active",
+      "item": [
+        {
+          "linkId": "a",
+          "text": "Answer?",
+          "type": "choice",
+          "required": true,
+          "answerValueSet": "https://example.org/probe/ValueSet/answers"
+        }
+      ]
+    }
+  ]
+}

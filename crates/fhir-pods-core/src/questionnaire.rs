@@ -60,9 +60,28 @@ pub struct Questionnaire {
     items: Vec<Item>,
 }
 
-/// A contained ValueSet: its id, its name, and its (system, code) pairs
-/// when the compose is an enumeration the pod can decide.
-type ContainedSet = (String, Option<String>, Option<Vec<(String, String)>>);
+/// A contained ValueSet: its id, the name the reference validator prints for
+/// it, and its (system, code) pairs when the compose is an enumeration the
+/// pod can decide.
+type ContainedSet = (String, String, Option<Vec<(String, String)>>);
+
+/// The ValueSets `v` contains, as an `answerValueSet` (`#id`) names them.
+/// The printed name is the set's title, else its name, else
+/// `ValueSet[<url>]` — `ValueSet[null]` only for a set with no url either
+/// (validator_cli 6.10.4, measured: `conformance/coded-answers/`).
+fn contained_value_sets(v: &Value<'_>) -> Vec<ContainedSet> {
+    items_of(v, "contained")
+        .into_iter()
+        .filter(|c| text(c, "resourceType") == Some("ValueSet"))
+        .map(|c| {
+            let name = text(c, "title")
+                .or_else(|| text(c, "name"))
+                .map(String::from)
+                .unwrap_or_else(|| format!("ValueSet[{}]", text(c, "url").unwrap_or("null")));
+            (text(c, "id").unwrap_or("").to_string(), name, enumerate(c))
+        })
+        .collect()
+}
 
 #[derive(Debug, Clone, Default)]
 struct Item {
@@ -227,11 +246,7 @@ impl Questionnaire {
             return None;
         }
         let period = member(v, "effectivePeriod");
-        let contained_sets = items_of(v, "contained")
-            .into_iter()
-            .filter(|c| text(c, "resourceType") == Some("ValueSet"))
-            .map(|c| (text(c, "id").unwrap_or("").to_string(), text(c, "name").map(String::from), enumerate(c)))
-            .collect();
+        let contained_sets = contained_value_sets(v);
         Some(Questionnaire {
             url: text(v, "url").map(String::from),
             version: text(v, "version").map(String::from),
@@ -420,7 +435,17 @@ pub(crate) fn check(
             .find(|c| text(c, "resourceType") == Some("Questionnaire") && text(c, "id") == Some(id))
             .and_then(Questionnaire::from_value)
         {
-            Some(q) => {
+            Some(mut q) => {
+                // a questionnaire contained in the response shares the
+                // response's contained resources: an `answerValueSet` of
+                // `#id` finds a ValueSet beside it, as the reference
+                // validator does (a contained resource may not itself
+                // contain one — dom-2 — so this is where such a set lives)
+                for set in contained_value_sets(qr) {
+                    if !q.contained_sets.iter().any(|(id, _, _)| *id == set.0) {
+                        q.contained_sets.push(set);
+                    }
+                }
                 owned = q;
                 &owned
             }
@@ -1068,7 +1093,11 @@ impl<'q, 'v, 'a, 't> Checker<'q, 'v, 'a, 't> {
                     Severity::Error,
                     IssueType::Invariant,
                     at,
-                    format!("The code {system}::{code} is not in the set of permitted values"),
+                    format!(
+                        "The code {}::{} is not in the set of permitted values",
+                        if system.is_empty() { "null" } else { system },
+                        if code.is_empty() { "null" } else { code }
+                    ),
                 ),
             }
         } else if let Some(vs) = &def.answer_value_set {
@@ -1076,19 +1105,43 @@ impl<'q, 'v, 'a, 't> Checker<'q, 'v, 'a, 't> {
             if def.constraint() == "optionsOrType" {
                 return;
             }
-            // a coding with no system (or no code) names nothing the set
-            // could hold: the reference validator's terminology error
+            // a coding missing its system or its code. Measured against
+            // validator_cli 6.10.4 (`conformance/coded-answers/`):
+            //  - a code with no system, the code in a set contained in the
+            //    questionnaire (or beside it in the response) that the pod
+            //    enumerates: a WARNING — the code cannot be validated, but
+            //    the set holds it;
+            //  - the same code under a set reached by canonical: an error
+            //    where the set includes a whole code system, a warning where
+            //    it enumerates its codes — a difference the expansion a host
+            //    compiles does not carry, so the pod keeps the error there,
+            //    never the more lenient reading;
+            //  - no code at all (a display alone, a system alone), or a code
+            //    the set does not hold: the terminology error, always.
             if code.is_empty() || system.is_empty() {
+                let (m, name) = self.membership(vs, system, code);
+                if !code.is_empty() && vs.starts_with('#') && m == Membership::Member {
+                    r.push(
+                        Severity::Warning,
+                        IssueType::CodeInvalid,
+                        at,
+                        "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided".into(),
+                    );
+                    return;
+                }
                 let (c, s) =
                     (if code.is_empty() { "null" } else { code }, if system.is_empty() { "null" } else { system });
-                let (_, name) = self.membership(vs, system, code);
+                let why = if system.is_empty() {
+                    "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided".to_string()
+                } else {
+                    format!("No code provided for CodeSystem '{system}'")
+                };
                 r.push(
                     Severity::Error,
                     IssueType::CodeInvalid,
                     at,
                     format!(
-                        "The code '{c}' in the system '{s}' is not in the options value set ({name}) specified by the questionnaire. Terminology Error: Coding has no {}. A code with no system has no defined meaning, and it cannot be validated",
-                        if system.is_empty() { "system" } else { "code" }
+                        "The code '{c}' in the system '{s}' is not in the options value set ({name}) specified by the questionnaire. Terminology Error: {why}"
                     ),
                 );
                 return;
@@ -1320,9 +1373,10 @@ impl<'q, 'v, 'a, 't> Checker<'q, 'v, 'a, 't> {
                     } else {
                         Membership::NotMember
                     },
-                    name.clone().unwrap_or_else(|| "ValueSet[null]".into()),
+                    name.clone(),
                 ),
-                _ => (Membership::Unknown, "ValueSet[null]".into()),
+                Some((_, name, None)) => (Membership::Unknown, name.clone()),
+                None => (Membership::Unknown, "ValueSet[null]".into()),
             };
         }
         (self.tx.validate_code(vs, system, code), vs.rsplit('/').next().unwrap_or(vs).to_string())

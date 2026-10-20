@@ -1,0 +1,14 @@
+{
+  "resourceType": "ValueSet",
+  "id": "answers-unversioned",
+  "url": "https://example.org/probe/ValueSet/answers-unversioned",
+  "name": "ProbeAnswersUnversioned",
+  "status": "active",
+  "compose": {
+    "include": [
+      {
+        "system": "https://example.org/probe/CodeSystem/answers"
+      }
+    ]
+  }
+}
