@@ -62,7 +62,7 @@
       "extra": [
         "QuestionnaireResponse.item.answer"
       ],
-      "reason": "a valueString on a choice item with an answerValueSet: the pod refuses it ('answerConstraint is optionsOnly'), pinned to fhir-test-cases' stored outcome for answerconstraint-qr, which a later validator produced; validator_cli 6.10.4 run fresh reports only the information 'Cannot validate string answer option because no option list is provided' (also on answerconstraint-qr itself, probed 2026-10-20). Pre-dates the coded-answer rule; stricter, reported, not changed here."
+      "reason": "stricter than the pinned validator, kept on purpose (fail-closed): a valueString on a choice item with an answerValueSet is refused by the pod ('answerConstraint is optionsOnly'), after fhir-test-cases' stored outcome for answerconstraint-qr. That outcome comes from a later validator: the pinned 6.10.4 JAR's Messages.properties has no message for it (no key mentions answerConstraint), and 6.10.4 run fresh reports only the information 'Cannot validate string answer option because no option list is provided'. The entry goes when the pin moves."
     }
   },
   {
@@ -143,7 +143,7 @@
       "extra": [
         "QuestionnaireResponse.item.answer"
       ],
-      "reason": "a valueString on a choice item with an answerValueSet: the pod refuses it ('answerConstraint is optionsOnly'), pinned to fhir-test-cases' stored outcome for answerconstraint-qr, which a later validator produced; validator_cli 6.10.4 run fresh reports only the information 'Cannot validate string answer option because no option list is provided' (also on answerconstraint-qr itself, probed 2026-10-20). Pre-dates the coded-answer rule; stricter, reported, not changed here."
+      "reason": "stricter than the pinned validator, kept on purpose (fail-closed): a valueString on a choice item with an answerValueSet is refused by the pod ('answerConstraint is optionsOnly'), after fhir-test-cases' stored outcome for answerconstraint-qr. That outcome comes from a later validator: the pinned 6.10.4 JAR's Messages.properties has no message for it (no key mentions answerConstraint), and 6.10.4 run fresh reports only the information 'Cannot validate string answer option because no option list is provided'. The entry goes when the pin moves."
     }
   },
   {
@@ -307,7 +307,7 @@
       "extra": [
         "QuestionnaireResponse.item.answer"
       ],
-      "reason": "a valueString on a choice item with an answerValueSet: the pod refuses it ('answerConstraint is optionsOnly'), pinned to fhir-test-cases' stored outcome for answerconstraint-qr, which a later validator produced; validator_cli 6.10.4 run fresh reports only the information 'Cannot validate string answer option because no option list is provided' (also on answerconstraint-qr itself, probed 2026-10-20). Pre-dates the coded-answer rule; stricter, reported, not changed here."
+      "reason": "stricter than the pinned validator, kept on purpose (fail-closed): a valueString on a choice item with an answerValueSet is refused by the pod ('answerConstraint is optionsOnly'), after fhir-test-cases' stored outcome for answerconstraint-qr. That outcome comes from a later validator: the pinned 6.10.4 JAR's Messages.properties has no message for it (no key mentions answerConstraint), and 6.10.4 run fresh reports only the information 'Cannot validate string answer option because no option list is provided'. The entry goes when the pin moves."
     }
   },
   {
@@ -455,6 +455,187 @@
     "file": "canonical-unversioned-vs-required-system-only.json",
     "expect": false,
     "reason": "The answerValueSet by canonical, a set including the whole code system, no version; required item; a system alone: no code."
+  },
+  {
+    "file": "set-one-include-listed-twice-in-set.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose one include listed twice; required item; system and code in the set (control)."
+  },
+  {
+    "file": "set-one-include-listed-twice-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose one include listed twice; required item; a code with no system, the code in the set."
+  },
+  {
+    "file": "set-two-includes-one-system-first-in-set.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two includes one system first; required item; system and code in the set (control)."
+  },
+  {
+    "file": "set-two-includes-one-system-first-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two includes one system first; required item; a code with no system, the code in the set."
+  },
+  {
+    "file": "set-two-includes-one-system-second-in-set.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two includes one system second; required item; system and code in the set (control)."
+  },
+  {
+    "file": "set-two-includes-one-system-second-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two includes one system second; required item; a code with no system, the code in the set."
+  },
+  {
+    "file": "set-two-systems-unique-code-in-set.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two systems unique code; required item; system and code in the set (control)."
+  },
+  {
+    "file": "set-two-systems-unique-code-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two systems unique code; required item; a code with no system, the code in the set."
+  },
+  {
+    "file": "set-two-systems-shared-code-in-set.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two systems shared code; required item; system and code in the set (control)."
+  },
+  {
+    "file": "set-two-systems-shared-code-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two systems shared code; required item; a code with no system, the code in the set."
+  },
+  {
+    "file": "set-two-systems-code-in-second-in-set.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two systems code in second; required item; system and code in the set (control)."
+  },
+  {
+    "file": "set-two-systems-code-in-second-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two systems code in second; required item; a code with no system, the code in the set."
+  },
+  {
+    "file": "set-exclude-in-set.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose exclude; required item; system and code in the set (control)."
+  },
+  {
+    "file": "set-exclude-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose exclude; required item; a code with no system, the code in the set."
+  },
+  {
+    "file": "set-include-valueset-in-set.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose include valueset; required item; system and code in the set (control)."
+  },
+  {
+    "file": "set-include-valueset-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose include valueset; required item; a code with no system, the code in the set.",
+    "reviewed": {
+      "local": false,
+      "missed": [],
+      "extra": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "reason": "a code with no system under a contained set whose one include names another value set (include.valueSet): the oracle warns; the pod does not enumerate an include of another set, so it keeps the error \u2014 stricter, never more lenient (a coding with a system there is not checked: a warning on the pod's side, valid on both)."
+    }
+  },
+  {
+    "file": "set-one-include-listed-twice-unlabelled-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (no url, no name), its compose one include listed twice; required item; a code with no system, the code in the set."
+  },
+  {
+    "file": "set-two-includes-one-system-first-unlabelled-code-only-member.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (no url, no name), its compose two includes one system first; required item; a code with no system, the code in the set."
+  },
+  {
+    "file": "set-two-includes-one-system-second-unlabelled-code-only-member.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (no url, no name), its compose two includes one system second; required item; a code with no system, the code in the set."
+  },
+  {
+    "file": "set-two-systems-unique-code-unlabelled-code-only-member.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (no url, no name), its compose two systems unique code; required item; a code with no system, the code in the set."
+  },
+  {
+    "file": "set-two-systems-shared-code-unlabelled-code-only-member.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (no url, no name), its compose two systems shared code; required item; a code with no system, the code in the set."
+  },
+  {
+    "file": "set-two-systems-code-in-second-unlabelled-code-only-member.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (no url, no name), its compose two systems code in second; required item; a code with no system, the code in the set."
+  },
+  {
+    "file": "set-exclude-unlabelled-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (no url, no name), its compose exclude; required item; a code with no system, the code in the set."
+  },
+  {
+    "file": "set-include-valueset-unlabelled-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (no url, no name), its compose include valueset; required item; a code with no system, the code in the set.",
+    "reviewed": {
+      "local": false,
+      "missed": [],
+      "extra": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "reason": "a code with no system under a contained set whose one include names another value set (include.valueSet): the oracle warns; the pod does not enumerate an include of another set, so it keeps the error \u2014 stricter, never more lenient (a coding with a system there is not checked: a warning on the pod's side, valid on both)."
+    }
+  },
+  {
+    "file": "set-two-includes-one-system-first-url-only-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (a url, no name), its compose two includes one system first; required item; a code with no system, the code in the set."
+  },
+  {
+    "file": "set-two-includes-one-system-first-name-only-code-only-member.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (a name, no url), its compose two includes one system first; required item; a code with no system, the code in the set."
+  },
+  {
+    "file": "set-two-systems-unique-code-url-only-code-only-member.json",
+    "expect": true,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (a url, no name), its compose two systems unique code; required item; a code with no system, the code in the set."
+  },
+  {
+    "file": "set-two-systems-unique-code-name-only-code-only-member.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response (a name, no url), its compose two systems unique code; required item; a code with no system, the code in the set."
+  },
+  {
+    "file": "set-exclude-excluded.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose exclude; required item; system and code, the code excluded."
+  },
+  {
+    "file": "set-exclude-code-only-excluded.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose exclude; required item; a code with no system, the code excluded."
+  },
+  {
+    "file": "set-one-include-listed-twice-whitespace-system.json",
+    "expect": false,
+    "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose one include listed twice; required item; a code whose system is a single space, the code in the set.",
+    "reviewed": {
+      "local": false,
+      "missed": [
+        "QuestionnaireResponse.item.answer.value[x]"
+      ],
+      "extra": [
+        "QuestionnaireResponse.item.answer.valueCoding.system"
+      ],
+      "reason": "a system of a single space: both sides refuse it as a uri and both treat it as no system at the answer (the oracle's 'Coding has no system' warning; the pod's answer-no-system warning). The oracle locates the uri finding at the Coding ('Coding.system must be an absolute reference'), the pod at the system ('\u2026 is not a valid uri'): a path spelling only."
+    }
   },
   {
     "file": "qr-contained-vs-name-title-label-not-in-set.json",

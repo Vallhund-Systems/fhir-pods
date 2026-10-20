@@ -352,3 +352,63 @@ fn a_response_naming_another_version_of_a_loaded_questionnaire_is_warned() {
     assert!(w[0].message.contains("names version 2 but version 1 is loaded"), "{}", w[0].message);
     assert_eq!(w[0].severity, Severity::Warning);
 }
+
+/// The warning for a code with no system is narrower than "the set holds
+/// it": validator_cli 6.10.4 warns where the contained set's compose has
+/// exactly one include or the set has a url, and keeps the error for a set
+/// with no url and two or more includes — even of one system, wherever the
+/// code sits. An enumerated exclude is applied. A system of whitespace is
+/// no system. Each shape probed (`conformance/coded-answers/set-*`).
+#[test]
+fn a_code_with_no_system_warns_only_where_the_oracle_does() {
+    let qr = |label: &str, compose: &str, answer: &str| {
+        format!(
+            r##"{{"resourceType": "QuestionnaireResponse", "status": "completed", "questionnaire": "#q",
+  "contained": [{{"resourceType": "Questionnaire", "id": "q", "status": "active",
+                 "item": [{{"linkId": "a", "type": "choice", "answerValueSet": "#vs"}}]}},
+                {{"resourceType": "ValueSet", "id": "vs", "status": "active"{label}, "compose": {compose}}}],
+  "item": [{{"linkId": "a", "answer": [{{"valueCoding": {answer}}}]}}]}}"##
+        )
+    };
+    let cs = "http://example.org/cs";
+    let other = "http://example.org/other";
+    let one = format!(r#"{{"include": [{{"system": "{cs}", "concept": [{{"code": "y"}}, {{"code": "n"}}]}}]}}"#);
+    let two_one_system = format!(
+        r#"{{"include": [{{"system": "{cs}", "concept": [{{"code": "y"}}]}}, {{"system": "{cs}", "concept": [{{"code": "n"}}]}}]}}"#
+    );
+    let two_systems = format!(
+        r#"{{"include": [{{"system": "{other}", "concept": [{{"code": "o"}}]}}, {{"system": "{cs}", "concept": [{{"code": "y"}}]}}]}}"#
+    );
+    let named = r#", "name": "Beside""#;
+    let url = r#", "url": "http://example.org/ValueSet/beside""#;
+    let v = Validator::new();
+    let verdict = |label: &str, compose: &str, answer: &str| {
+        let r = v.validate(qr(label, compose, answer).as_bytes());
+        let ids: Vec<_> = r.report.issues.iter().filter(|i| i.path.ends_with("answer[0]")).map(|i| i.id).collect();
+        (r.is_valid(), ids)
+    };
+    let code_only = r#"{"code": "y"}"#;
+    // one include: a warning, url or none
+    assert_eq!(verdict(named, &one, code_only), (true, vec!["questionnaire.answer-no-system"]));
+    // two includes and no url: the error, one system or two
+    for compose in [&two_one_system, &two_systems] {
+        assert_eq!(verdict(named, compose, code_only), (false, vec!["questionnaire.answer-not-in-set"]), "{compose}");
+        // the same set with a url: the warning
+        assert_eq!(verdict(url, compose, code_only), (true, vec!["questionnaire.answer-no-system"]), "{compose}");
+        // and a code with its system is a member either way
+        assert!(verdict(named, compose, &format!(r#"{{"system": "{cs}", "code": "y"}}"#)).0, "{compose}");
+    }
+    // an enumerated exclude is applied: the excluded code is not a member, with a system or without
+    let excluded = format!(
+        r#"{{"include": [{{"system": "{cs}", "concept": [{{"code": "y"}}, {{"code": "n"}}]}}], "exclude": [{{"system": "{cs}", "concept": [{{"code": "n"}}]}}]}}"#
+    );
+    assert_eq!(
+        verdict(named, &excluded, &format!(r#"{{"system": "{cs}", "code": "n"}}"#)),
+        (false, vec!["questionnaire.answer-not-in-set"])
+    );
+    assert_eq!(verdict(named, &excluded, r#"{"code": "n"}"#), (false, vec!["questionnaire.answer-not-in-set"]));
+    assert_eq!(verdict(named, &excluded, code_only), (true, vec!["questionnaire.answer-no-system"]));
+    // a system of whitespace is no system at the answer (the uri finding stands beside it)
+    let (_, ids) = verdict(named, &one, r#"{"system": " ", "code": "y"}"#);
+    assert_eq!(ids, ["questionnaire.answer-no-system"]);
+}

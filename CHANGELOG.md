@@ -7,27 +7,35 @@ independent review measured nine errors on fhir-test-cases'
 `nested-questionnaire-nested-valueset` — `The code 'Not-at-all' in the
 system 'null' is not in the options value set (ValueSet[null])` — where
 validator_cli 6.10.4 reports none (the review ran it with `-tx n/a` and with
-its default terminology server; re-run here with `-tx n/a`): for each answer, a coded answer with a `code` and no
-`system`, it gives two **warnings** (`Coding has no system. A code with no
+its default terminology server; re-run here with `-tx n/a`): for each
+answer, a coded answer with a `code` and no `system`, it gives two **warnings** (`Coding has no system. A code with no
 system has no defined meaning, and it cannot be validated. A system should
 be provided` at the answer, and the same sentence at the Coding). The 0.19.4
 rule ("a coded answer with no system is a terminology error") was derived
 from a display with no code, and reached a code with no system too.
 
-Taken to the oracle before the code, on 91 synthetic probes —
+Taken to the oracle before the code, on 122 synthetic probes —
 `conformance/coded-answers/`, a new lane: every answer shape (system and
 code in the set; not in it; another system; a code with no system, in the
 set and not, with and without a display; a display alone; a system alone; a
 system and a display; a `valueString`) under every way a Questionnaire names
 its options (a ValueSet contained in it, one contained beside it in the
 response, one by canonical — including a whole code system, enumerating its
-codes, unversioned — and inline `answerOption`s), required and optional, and
+codes, unversioned — and inline `answerOption`s), required and optional, the
+contained set's compose varied (one include or several, of one system or
+two, an `exclude`, an include of another set, with a url and without), and
 the same Codings outside a questionnaire. What 6.10.4 does, and the pod now:
 
 - **a code with no system that the set holds** is a warning where the set is
-  contained (in the questionnaire, or beside it in the response) — the pod
-  now reports it as `questionnaire.answer-no-system` (a **new rule id**,
-  warning) with the oracle's sentence, and the response is valid;
+  contained (in the questionnaire, or beside it in the response) **and** its
+  compose has exactly one include or the set has a url — measured on the 20
+  compose probes, not read from the validator's source; a contained set
+  with no url and two or more includes keeps the error, even when both
+  include one system. The pod now reports the warning as
+  `questionnaire.answer-no-system` (a **new rule id**) with the oracle's
+  sentence, and the response is valid. (The first cut warned for any
+  contained set holding the code, which an independent review found
+  false-valid on ten multi-include probes; held before release, fixed);
 - **under a set reached by canonical** the oracle's verdict turns on the
   set's own definition: an error where it includes a whole code system, a
   warning where it enumerates its codes. A compiled expansion does not say
@@ -38,6 +46,10 @@ the same Codings outside a questionnaire. What 6.10.4 does, and the pod now:
   (`questionnaire.answer-not-in-set`), every shape and every item — the
   0.19.4 test is kept and now covers all three no-code forms; a system with
   no code now says `No code provided for CodeSystem '…'`, as the oracle does;
+- a contained set's enumerated **`exclude`** is applied (before, a set with
+  any exclude was left undecided, so an excluded code passed), as
+  `tools/compile_valueset.py` applies it; a system of **whitespace** alone
+  is no system at the answer, as the oracle reads it;
 - under `answerOption`s the option's system must match, an error on both
   sides; the message now prints `null` for the missing part
   (`The code null::yes is not in the set of permitted values`).
@@ -54,15 +66,19 @@ The matrix also measured, and the lane records as reviewed differences
 rather than changes here: the oracle refuses an unknown code against a
 CodeSystem it holds, which the pod (given expansions, never a host's
 CodeSystem) does not report beside the same verdict; a contained set that
-includes a whole code system is not enumerated by the pod (an answer with a
-system is not checked there, one with no system stays an error); a
-`valueString` on a choice item with an answerValueSet is refused by the pod
-after the suite's stored outcome for `answerconstraint-qr`, which a later
-validator produced — 6.10.4 reports information — a stricter difference
-that predates this release; and outside a questionnaire, a required
+includes a whole code system or another value set is not enumerated by the
+pod (an answer with a system is not checked there, one with no system stays
+an error), declared in `docs/scope.md`; a `valueString` on a choice item with
+an answerValueSet is refused by the pod after the suite's stored outcome for
+`answerconstraint-qr` — kept on purpose (fail-closed): that outcome comes
+from a later validator, the pinned 6.10.4 JAR has no message for it and
+reports information; the entry goes when the pin moves
+(`conformance/README.md` says which lanes score which). Declared in
+`docs/scope.md`, not changed here: outside a questionnaire, a required
 `CodeableConcept` whose only coding has a code and no system is refused by
 the oracle and accepted by the pod's general binding check — lenient, also
-at 0.22.0, a separate rule path left for its own change.
+at 0.22.0, a separate rule path and its own task; and the oracle's "a code
+with no system" warning on every other `Coding` is not emitted.
 
 `nested-questionnaire-nested-valueset` now differs only by the ValueSet's
 code system canonical (`http://hl7.org/fhir/uv/sdc/CodeSystem/CSPHQ9`), a

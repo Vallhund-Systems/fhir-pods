@@ -29,7 +29,7 @@ def contained_vs(label="name", whole_system=False):
     vs = {"resourceType": "ValueSet", "id": "vs", "status": "active", "compose": {"include": [include]}}
     if label in ("name", "url", "title", "name-title"):
         vs["url"] = f"{BASE}/ValueSet/contained"
-    if label in ("name", "name-title"):
+    if label in ("name", "name-title", "name-only"):
         vs["name"] = "ContainedAnswers"
     if label in ("title", "name-title"):
         vs["title"] = "Contained answers"
@@ -92,6 +92,45 @@ def response(shape, required, answer, label="name"):
         if shape in ("qr-contained-vs", "qr-contained-system-vs"):
             contained.append(contained_vs(label, whole_system=shape == "qr-contained-system-vs"))
         qr["contained"] = contained
+    return qr
+
+
+def concepts(*codes):
+    return [{"code": c, "display": dict(CONCEPTS).get(c, c.title())} for c in codes]
+
+
+# a contained set's compose, varied where the oracle's verdict on a code with
+# no system turns: how many includes (one, or more — even of one system), an
+# exclude, an include of another set
+COMPOSES = {
+    "one-include-listed-twice": {"include": [{"system": CS, "concept": concepts("yes", "yes", "no")}]},
+    "two-includes-one-system-first": {"include": [{"system": CS, "concept": concepts("yes")},
+                                                  {"system": CS, "concept": concepts("no", "unsure")}]},
+    "two-includes-one-system-second": {"include": [{"system": CS, "concept": concepts("no", "unsure")},
+                                                   {"system": CS, "concept": concepts("yes")}]},
+    "two-systems-unique-code": {"include": [{"system": CS, "concept": concepts("yes", "no")},
+                                            {"system": OTHER, "concept": concepts("other")}]},
+    "two-systems-shared-code": {"include": [{"system": CS, "concept": concepts("yes", "no")},
+                                            {"system": OTHER, "concept": concepts("yes")}]},
+    "two-systems-code-in-second": {"include": [{"system": OTHER, "concept": concepts("other")},
+                                               {"system": CS, "concept": concepts("yes", "no")}]},
+    "exclude": {"include": [{"system": CS, "concept": concepts("yes", "no", "unsure")}],
+                "exclude": [{"system": CS, "concept": concepts("unsure")}]},
+    "include-valueset": {"include": [{"valueSet": [VS_ENUM]}]},
+}
+COMPOSE_ANSWERS = {
+    "in-set": {"valueCoding": {"system": CS, "code": "yes"}},
+    "code-only-member": {"valueCoding": {"code": "yes"}},
+    "excluded": {"valueCoding": {"system": CS, "code": "unsure"}},
+    "code-only-excluded": {"valueCoding": {"code": "unsure"}},
+    "whitespace-system": {"valueCoding": {"system": " ", "code": "yes"}},
+}
+
+
+def compose_response(compose, answer, label="name"):
+    qr = response("qr-contained-vs", True, "in-set", label)
+    qr["contained"][1]["compose"] = COMPOSES[compose]
+    qr["item"][0]["answer"] = [COMPOSE_ANSWERS[answer]]
     return qr
 
 
@@ -173,6 +212,19 @@ SHAPE_WORDS = {
 
 def describe(name):
     """What the probe is, in words: the shape, the answer, the label."""
+    if name.startswith("set-"):
+        rest = name[4:]
+        compose = next(c for c in sorted(COMPOSES, key=len, reverse=True) if rest.startswith(c + "-"))
+        answer = rest[len(compose) + 1:]
+        label = next((x for x in ("unlabelled", "url-only", "name-only") if answer.startswith(x + "-")), None)
+        answer = answer.removeprefix(f"{label}-") if label else answer
+        unlabelled = {"unlabelled": " (no url, no name)", "url-only": " (a url, no name)", "name-only": " (a name, no url)"}.get(label, "")
+        words = {"in-set": "system and code in the set (control)", "code-only-member": "a code with no system, the code in the set",
+                 "excluded": "system and code, the code excluded", "code-only-excluded": "a code with no system, the code excluded",
+                 "whitespace-system": "a code whose system is a single space, the code in the set"}[answer]
+        return (f"The answerValueSet contained beside the Questionnaire in the response"
+                f"{unlabelled}, its compose {compose.replace('-', ' ')}; "
+                f"required item; {words}.")
     if name.startswith("outside-"):
         where = {
             "outside-required-concept": "Condition.clinicalStatus, a required CodeableConcept binding",
@@ -211,6 +263,18 @@ def main():
     for shape in ("canonical-enumerated-vs", "qr-contained-system-vs", "canonical-unversioned-vs"):
         for answer in ("in-set", "not-in-set", "code-only-member", "code-only-nonmember", "display-only", "system-only"):
             cases[f"{shape}-required-{answer}"] = response(shape, True, answer)
+    # the compose shapes
+    for compose in COMPOSES:
+        for answer in ("in-set", "code-only-member"):
+            cases[f"set-{compose}-{answer}"] = compose_response(compose, answer)
+    for compose in COMPOSES:
+        cases[f"set-{compose}-unlabelled-code-only-member"] = compose_response(compose, "code-only-member", "none")
+    for compose in ("two-includes-one-system-first", "two-systems-unique-code"):
+        cases[f"set-{compose}-url-only-code-only-member"] = compose_response(compose, "code-only-member", "url")
+        cases[f"set-{compose}-name-only-code-only-member"] = compose_response(compose, "code-only-member", "name-only")
+    for answer in ("excluded", "code-only-excluded"):
+        cases[f"set-exclude-{answer}"] = compose_response("exclude", answer)
+    cases["set-one-include-listed-twice-whitespace-system"] = compose_response("one-include-listed-twice", "whitespace-system")
     # what the message calls a contained set
     cases["qr-contained-vs-name-title-label-not-in-set"] = response("qr-contained-vs", True, "not-in-set", "name-title")
     for label in ("title", "url", "none"):

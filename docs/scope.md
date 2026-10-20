@@ -82,6 +82,8 @@ the current regression lanes track individual cases and evidence hashes.
 | **Reference target types** | (none in corpus) | `subject` must reference a Patient | Enforced as the reference validator enforces it (0.15.0): a target it can reach — a bundle entry, a contained resource — is held to the element's `targetProfile`s (a bundle entry by conformance, "Unable to find a profile match for … among choices"; a `#contained` resource by type only, as the oracle judges it). A `Patient/x` nobody can resolve is not judged by either side (`heartrate-subject-wrong-type` expects *valid* as a guard). |
 | **Default profiles** | — | An undeclared profile means the base resource | Same: no profile claimed; the base resource's own rules (shape, its required elements, one key per choice, `dom-3` / `dom-6`) still apply. A jurisdiction default is opt-in (`Validator::with_default_profile`). |
 | **Attachment fetching** | 1 | "Attachment content cannot be checked … error accessing <url>" | Never: a library does no I/O. |
+| **A coding with no system, against a required binding** | probed (0.22.1) | A required `CodeableConcept` whose only coding carries a code and no system — `Condition.clinicalStatus` `{"code": "active"}` — is refused: "None of the codings provided are in the value set … (codes = null#active)" | **Lenient, declared:** the general binding check matches a code with no system against the set's codes of any system, so the pod accepts it. Not the questionnaire rule (a different path, `binding.not-member`); its own task, to be measured across the mutation lane before it moves (`conformance/coded-answers/outside-*`). |
+| **"A code with no system" warnings** | probed (0.22.1) | Every `Coding` with a code and no system draws a warning — "A code with no system has no defined meaning, and it cannot be validated" at a `Coding` element, "Coding has no system …" at a coding inside a `CodeableConcept` — bound or not | **Not emitted** (a missing warning, never a verdict): the pod's one such warning is the questionnaire answer's, `questionnaire.answer-no-system`. |
 | **must-support** | 0 | Validators do not check must-support | Not an error by spec. Exposed separately: `must_support_gaps(resource)` (and `probe --must-support`) lists the selected profile's must-support elements the resource leaves empty where their parent is present — what a client certifying against the IG must populate when it has the data. Never in the validation report. |
 
 ## The base spec itself: every R4 example (`conformance/base.py`)
@@ -681,14 +683,23 @@ an export mapping, the way `uk`/`ca`/`nz` came in 0.13.0.
   (enumerations) or the terminology provider, under R5's
   `answerConstraint` carried by its cross-version extension. A coded
   answer with a code and no system is a warning where a contained set
-  holds the code (`questionnaire.answer-no-system`), as validator_cli
-  6.10.4 has it; under a set reached by canonical it stays an error,
-  because the oracle's verdict there turns on whether the set enumerates
-  its codes or includes a whole code system, which a compiled expansion
-  does not carry — stricter than the oracle for an enumerated canonical
-  set, never more lenient. A contained set that includes a whole code
-  system is not enumerated here, so membership in it is not checked
-  (`conformance/coded-answers/`, 91 probes, every difference reviewed). The questionnaire is found as a contained resource, a bundle
+  holds the code and that set's compose has exactly one include or the set
+  has a url (`questionnaire.answer-no-system`), as validator_cli 6.10.4 has
+  it — measured on probes, not read from its source; a contained set with
+  no url and two or more includes keeps the error, as there. Under a set
+  reached by canonical it stays an error, because the oracle's verdict
+  there turns on whether the set enumerates its codes or includes a whole
+  code system, which a compiled expansion does not carry — stricter than
+  the oracle for an enumerated canonical set, never more lenient. A
+  contained set's enumerated `exclude` is applied. Declared both ways: a
+  contained set the pod cannot enumerate — one including a whole code
+  system, or another value set (`include.valueSet`), or excluding by
+  filter — leaves a coded answer with a system unchecked (a warning, where
+  the oracle refuses a code it can see is absent: lenient) and keeps the
+  error for one with no system (where the oracle warns: stricter). A system
+  of whitespace alone is no system at the answer, as there.
+  (`conformance/coded-answers/`, 122 probes, every difference reviewed.)
+  The questionnaire is found as a contained resource, a bundle
   entry, or one the host loaded (`Validator::with_questionnaire`,
   `fhir_pods_questionnaire_load`, `loadQuestionnaire`); one that cannot be
   found is a warning (an `example.org` one, information) and nothing is

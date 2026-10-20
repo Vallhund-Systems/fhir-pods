@@ -60,10 +60,22 @@ pub struct Questionnaire {
     items: Vec<Item>,
 }
 
-/// A contained ValueSet: its id, the name the reference validator prints for
-/// it, and its (system, code) pairs when the compose is an enumeration the
-/// pod can decide.
-type ContainedSet = (String, String, Option<Vec<(String, String)>>);
+/// A contained ValueSet, as an `answerValueSet` (`#id`) names it.
+#[derive(Debug, Clone)]
+struct ContainedSet {
+    id: String,
+    /// the name the reference validator prints for it
+    name: String,
+    /// its (system, code) pairs, when the compose is an enumeration the pod
+    /// can decide
+    codes: Option<Vec<(String, String)>>,
+    /// does a code with no system that the set holds only warn? Measured
+    /// against validator_cli 6.10.4 (`conformance/coded-answers/`): where the
+    /// compose has exactly one include, or the set has a url; a set with no
+    /// url and two or more includes keeps the error, even when the includes
+    /// share one system
+    systemless_warns: bool,
+}
 
 /// The ValueSets `v` contains, as an `answerValueSet` (`#id`) names them.
 /// The printed name is the set's title, else its name, else
@@ -78,7 +90,13 @@ fn contained_value_sets(v: &Value<'_>) -> Vec<ContainedSet> {
                 .or_else(|| text(c, "name"))
                 .map(String::from)
                 .unwrap_or_else(|| format!("ValueSet[{}]", text(c, "url").unwrap_or("null")));
-            (text(c, "id").unwrap_or("").to_string(), name, enumerate(c))
+            let includes = member(c, "compose").map_or(0, |compose| items_of(compose, "include").len());
+            ContainedSet {
+                id: text(c, "id").unwrap_or("").to_string(),
+                name,
+                codes: enumerate(c),
+                systemless_warns: includes == 1 || text(c, "url").is_some(),
+            }
         })
         .collect()
 }
@@ -367,9 +385,6 @@ impl Item {
 /// (an `include.concept` list per system, no filters, no nested sets).
 fn enumerate(vs: &Value<'_>) -> Option<Vec<(String, String)>> {
     let compose = member(vs, "compose")?;
-    if !items_of(compose, "exclude").is_empty() {
-        return None;
-    }
     let mut out = Vec::new();
     for inc in items_of(compose, "include") {
         let system = text(inc, "system")?;
@@ -379,6 +394,19 @@ fn enumerate(vs: &Value<'_>) -> Option<Vec<(String, String)>> {
         }
         for c in concepts {
             out.push((system.to_string(), text(c, "code")?.to_string()));
+        }
+    }
+    // an enumerated exclude is applied, as `tools/compile_valueset.py`
+    // applies it; any other (a filter, another set) leaves the set undecided
+    for exc in items_of(compose, "exclude") {
+        let system = text(exc, "system")?;
+        let concepts = items_of(exc, "concept");
+        if concepts.is_empty() || !items_of(exc, "filter").is_empty() || member(exc, "valueSet").is_some() {
+            return None;
+        }
+        for c in concepts {
+            let code = text(c, "code")?;
+            out.retain(|(s, k)| !(s == system && k == code));
         }
     }
     Some(out)
@@ -442,7 +470,7 @@ pub(crate) fn check(
                 // validator does (a contained resource may not itself
                 // contain one — dom-2 — so this is where such a set lives)
                 for set in contained_value_sets(qr) {
-                    if !q.contained_sets.iter().any(|(id, _, _)| *id == set.0) {
+                    if !q.contained_sets.iter().any(|s| s.id == set.id) {
                         q.contained_sets.push(set);
                     }
                 }
@@ -1062,7 +1090,10 @@ impl<'q, 'v, 'a, 't> Checker<'q, 'v, 'a, 't> {
     }
 
     fn coding(&self, def: &Item, value: &Value<'_>, all: &[&Value<'_>], at: &str, r: &mut Report) {
-        let system = text(value, "system").unwrap_or("");
+        // a system of whitespace alone is no system to the reference
+        // validator (it warns "Coding has no system" for it, besides the
+        // uri finding the walk reports)
+        let system = text(value, "system").filter(|s| !s.trim().is_empty()).unwrap_or("");
         let code = text(value, "code").unwrap_or("");
         if !def.options.is_empty() {
             let codings: Vec<&AnswerOption> = def.options.iter().filter(|o| o.key == "valueCoding").collect();
@@ -1106,11 +1137,14 @@ impl<'q, 'v, 'a, 't> Checker<'q, 'v, 'a, 't> {
                 return;
             }
             // a coding missing its system or its code. Measured against
-            // validator_cli 6.10.4 (`conformance/coded-answers/`):
+            // validator_cli 6.10.4 on probes (`conformance/coded-answers/`),
+            // not read from its source:
             //  - a code with no system, the code in a set contained in the
             //    questionnaire (or beside it in the response) that the pod
-            //    enumerates: a WARNING — the code cannot be validated, but
-            //    the set holds it;
+            //    enumerates, where the set's compose has exactly one include
+            //    or the set has a url: a WARNING — the code cannot be
+            //    validated, but the set holds it. A set with no url and two
+            //    or more includes keeps the error, even of one system;
             //  - the same code under a set reached by canonical: an error
             //    where the set includes a whole code system, a warning where
             //    it enumerates its codes — a difference the expansion a host
@@ -1120,7 +1154,7 @@ impl<'q, 'v, 'a, 't> Checker<'q, 'v, 'a, 't> {
             //    the set does not hold: the terminology error, always.
             if code.is_empty() || system.is_empty() {
                 let (m, name) = self.membership(vs, system, code);
-                if !code.is_empty() && vs.starts_with('#') && m == Membership::Member {
+                if !code.is_empty() && m == Membership::Member && self.systemless_warns(vs) {
                     r.push(
                         Severity::Warning,
                         IssueType::CodeInvalid,
@@ -1366,8 +1400,8 @@ impl<'q, 'v, 'a, 't> Checker<'q, 'v, 'a, 't> {
     /// the terminology provider. With the name the reference validator prints.
     fn membership(&self, vs: &str, system: &str, code: &str) -> (Membership, String) {
         if let Some(id) = vs.strip_prefix('#') {
-            return match self.q.contained_sets.iter().find(|(i, _, _)| i == id) {
-                Some((_, name, Some(codes))) => (
+            return match self.q.contained_sets.iter().find(|set| set.id == id) {
+                Some(ContainedSet { name, codes: Some(codes), .. }) => (
                     if codes.iter().any(|(s, c)| c == code && (s == system || system.is_empty())) {
                         Membership::Member
                     } else {
@@ -1375,11 +1409,19 @@ impl<'q, 'v, 'a, 't> Checker<'q, 'v, 'a, 't> {
                     },
                     name.clone(),
                 ),
-                Some((_, name, None)) => (Membership::Unknown, name.clone()),
+                Some(ContainedSet { name, codes: None, .. }) => (Membership::Unknown, name.clone()),
                 None => (Membership::Unknown, "ValueSet[null]".into()),
             };
         }
         (self.tx.validate_code(vs, system, code), vs.rsplit('/').next().unwrap_or(vs).to_string())
+    }
+
+    /// Does a code with no system that the contained set `vs` (`#id`) holds
+    /// only warn? See [`ContainedSet::systemless_warns`].
+    fn systemless_warns(&self, vs: &str) -> bool {
+        vs.strip_prefix('#')
+            .and_then(|id| self.q.contained_sets.iter().find(|set| set.id == id))
+            .is_some_and(|set| set.systemless_warns)
     }
 
     fn missing_severity(&self) -> Severity {

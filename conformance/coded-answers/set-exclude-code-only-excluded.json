@@ -1,0 +1,73 @@
+{
+  "resourceType": "QuestionnaireResponse",
+  "id": "r",
+  "status": "completed",
+  "item": [
+    {
+      "linkId": "a",
+      "answer": [
+        {
+          "valueCoding": {
+            "code": "unsure"
+          }
+        }
+      ]
+    }
+  ],
+  "questionnaire": "#q",
+  "contained": [
+    {
+      "resourceType": "Questionnaire",
+      "id": "q",
+      "status": "active",
+      "item": [
+        {
+          "linkId": "a",
+          "text": "Answer?",
+          "type": "choice",
+          "required": true,
+          "answerValueSet": "#vs"
+        }
+      ]
+    },
+    {
+      "resourceType": "ValueSet",
+      "id": "vs",
+      "status": "active",
+      "compose": {
+        "include": [
+          {
+            "system": "https://example.org/probe/CodeSystem/answers",
+            "concept": [
+              {
+                "code": "yes",
+                "display": "Yes"
+              },
+              {
+                "code": "no",
+                "display": "No"
+              },
+              {
+                "code": "unsure",
+                "display": "Unsure"
+              }
+            ]
+          }
+        ],
+        "exclude": [
+          {
+            "system": "https://example.org/probe/CodeSystem/answers",
+            "concept": [
+              {
+                "code": "unsure",
+                "display": "Unsure"
+              }
+            ]
+          }
+        ]
+      },
+      "url": "https://example.org/probe/ValueSet/contained",
+      "name": "ContainedAnswers"
+    }
+  ]
+}

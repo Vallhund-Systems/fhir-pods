@@ -84,6 +84,18 @@ and Java outcomes, scope exclusions, and evidence failures. Filtered runs
 replace the evidence for that lane, so rerun the unfiltered command before
 recording release numbers. Working review reports live in the planning repo.
 
+## Stored outcomes against the pinned validator
+
+The questionnaire lane (`questionnaire.py`) scores against fhir-test-cases'
+**stored** Java outcomes, and some of those come from a validator later than
+the pinned 6.10.4: `answerconstraint-qr`'s error for a string answer where
+`answerConstraint` is `optionsOnly` has no message in the pinned JAR's
+`Messages.properties`, and 6.10.4 run fresh reports it as information. The
+probe lanes (`probes/`, `narrative/`, `coded-answers/`) run the pinned 6.10.4
+fresh. Where the two disagree the pod keeps the stored outcome's stricter
+finding (fail-closed), and the probe lane names it as a reviewed difference;
+those entries go when the pin moves.
+
 ## Ad-hoc profiles
 
 The 53 R4 JSON cases with a `profile` entry exercise the same Rust profile
