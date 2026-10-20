@@ -31,6 +31,33 @@ import sys
 IMPLICIT = {"id", "extension", "modifierExtension"}
 
 
+def datatype_profile_whole(d):
+    """A datatype profile as the walk applies it — `(url, version, name,
+    type, prohibited, invariants)` — or None when its differential says
+    anything but invariants on the root and `max 0` on elements directly
+    beneath it (the walk applies a profile whole, never in part)."""
+    ty = d["type"]
+    prohibited, invariants = [], []
+    for e in d["differential"]["element"]:
+        path = e["path"]
+        said = {k for k in e if k not in ("id", "path", "definition", "comment", "short", "requirements",
+                                           "mapping", "isSummary", "isModifier", "min", "max", "constraint")}
+        if said or e.get("sliceName"):
+            return None
+        if path == ty:
+            if e.get("min", 0) != 0 or e.get("max", "*") != "*":
+                return None
+            for c in e.get("constraint", []):
+                if not c.get("key") or not c.get("expression"):
+                    return None
+                invariants.append((c["key"], c.get("severity") == "error", c.get("human", ""), c["expression"]))
+        elif path.count(".") == 1 and path.startswith(ty + ".") and e.get("max") == "0" and not e.get("constraint"):
+            prohibited.append(path.split(".", 1)[1])
+        else:
+            return None
+    return (d["url"], d["version"], d["name"], ty, prohibited, invariants)
+
+
 def applicable_datatype_profiles(pkg, datatypes):
     """The package's datatype profiles the shape walk can apply whole —
     `(url, version, name, type, prohibited, invariants)`, sorted by name —
@@ -44,28 +71,9 @@ def applicable_datatype_profiles(pkg, datatypes):
         d = json.load(open(p))
         if d.get("derivation") != "constraint" or d.get("type") not in datatypes or d.get("type") == "Extension":
             continue
-        ty = d["type"]
-        prohibited, invariants, whole = [], [], True
-        for e in d["differential"]["element"]:
-            path = e["path"]
-            said = {k for k in e if k not in ("id", "path", "definition", "comment", "short", "requirements",
-                                               "mapping", "isSummary", "isModifier", "min", "max", "constraint")}
-            if said or e.get("sliceName"):
-                whole = False
-            elif path == ty:
-                if e.get("min", 0) != 0 or e.get("max", "*") != "*":
-                    whole = False
-                for c in e.get("constraint", []):
-                    if not c.get("key") or not c.get("expression"):
-                        whole = False
-                        continue
-                    invariants.append((c["key"], c.get("severity") == "error", c.get("human", ""), c["expression"]))
-            elif path.count(".") == 1 and path.startswith(ty + ".") and e.get("max") == "0" and not e.get("constraint"):
-                prohibited.append(path.split(".", 1)[1])
-            else:
-                whole = False
+        whole = datatype_profile_whole(d)
         if whole:
-            out.append((d["url"], d["version"], d["name"], ty, prohibited, invariants))
+            out.append(whole)
         else:
             skipped.append(d["url"])
     out.sort(key=lambda x: x[2])

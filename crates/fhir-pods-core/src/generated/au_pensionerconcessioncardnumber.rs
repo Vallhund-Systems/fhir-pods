@@ -18,6 +18,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             required_binding: None,
             types: &[],
             patterns: &[],
+            datatype_profiles: &[],
         },
         ElementConstraint {
             path: "Identifier.id",
@@ -27,6 +28,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             required_binding: None,
             types: &[],
             patterns: &[],
+            datatype_profiles: &[],
         },
         ElementConstraint {
             path: "Identifier.period",
@@ -36,6 +38,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             required_binding: None,
             types: &[],
             patterns: &[],
+            datatype_profiles: &[],
         },
         ElementConstraint {
             path: "Identifier.system",
@@ -45,6 +48,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             required_binding: None,
             types: &[],
             patterns: &[],
+            datatype_profiles: &[],
         },
         ElementConstraint {
             path: "Identifier.type",
@@ -54,6 +58,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             required_binding: None,
             types: &[],
             patterns: &[("coding", &[("system", "http://terminology.hl7.org/CodeSystem/v2-0203"), ("code", "PEN")])],
+            datatype_profiles: &[],
         },
         ElementConstraint {
             path: "Identifier.use",
@@ -63,6 +68,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             required_binding: None,
             types: &[],
             patterns: &[],
+            datatype_profiles: &[],
         },
         ElementConstraint {
             path: "Identifier.value",
@@ -72,6 +78,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             required_binding: None,
             types: &[],
             patterns: &[],
+            datatype_profiles: &[],
         },
     ],
     slicings: &[],

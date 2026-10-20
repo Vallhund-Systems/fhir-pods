@@ -10,73 +10,73 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     name: "UK Core Patient",
     resource_type: "Patient",
     elements: &[
-        ElementConstraint { path: "Patient.active", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.address.city", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.address.country", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.address.district", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.address.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.address.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.address.postalCode", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.address.state", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.address.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.address.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.address.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.birthDate", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.birthDate.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.birthDate.value", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.communication.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.communication.language", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/all-languages", kind: BindingKind::CodeableConcept }), types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.communication.preferred", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.contact.address", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.contact.gender", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/administrative-gender|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.contact.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.contact.name", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.contact.organization", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.contact.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.contact.telecom.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.contact.telecom.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.contact.telecom.rank", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.contact.telecom.system", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.contact.telecom.system.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.contact.telecom.system.value", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.contact.telecom.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.contact.telecom.value", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.deceased[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S47, patterns: &[] },
-        ElementConstraint { path: "Patient.gender", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/administrative-gender|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.link.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.link.other", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.link.type", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/link-type|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.managingOrganization", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.maritalStatus", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.multipleBirth[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S48, patterns: &[] },
-        ElementConstraint { path: "Patient.name.family", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.name.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.name.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.name.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.name.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.telecom.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.telecom.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.telecom.rank", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.telecom.system", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.telecom.system.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.telecom.system.value", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.telecom.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.telecom.value", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Patient.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Patient.active", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.address.city", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.address.country", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.address.district", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.address.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.address.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.address.postalCode", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.address.state", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.address.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.address.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.address.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.birthDate", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.birthDate.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.birthDate.value", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.communication.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.communication.language", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/all-languages", kind: BindingKind::CodeableConcept }), types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.communication.preferred", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.contact.address", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.contact.gender", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/administrative-gender|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.contact.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.contact.name", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.contact.organization", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.contact.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.contact.telecom.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.contact.telecom.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.contact.telecom.rank", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.contact.telecom.system", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.contact.telecom.system.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.contact.telecom.system.value", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.contact.telecom.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.contact.telecom.value", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.deceased[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S47, patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.gender", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/administrative-gender|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.link.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.link.other", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.link.type", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/link-type|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.managingOrganization", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.maritalStatus", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.multipleBirth[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S48, patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.name.family", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.name.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.name.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.name.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.name.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.telecom.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.telecom.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.telecom.rank", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.telecom.system", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.telecom.system.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.telecom.system.value", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.telecom.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.telecom.value", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Patient.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
     ],
     slicings: &[
         Slicing { path: "Patient.extension", closed: false, slices: &[
             Slice { name: "birthPlace", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/patient-birthPlace" },
             ], min: 0, max: Max::Bounded(1), elements: &[
-                ElementConstraint { path: "$this.extension", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org/fhir/StructureDefinition/patient-birthPlace"), required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["Address"], patterns: &[] },
+                ElementConstraint { path: "$this.extension", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org/fhir/StructureDefinition/patient-birthPlace"), required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["Address"], patterns: &[], datatype_profiles: &[] },
             ], invariants: &[
             ], profiles: &[
             ], slicings: &[
@@ -91,10 +91,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             Slice { name: "cadavericDonor", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/patient-cadavericDonor" },
             ], min: 0, max: Max::Bounded(1), elements: &[
-                ElementConstraint { path: "$this.extension", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org/fhir/StructureDefinition/patient-cadavericDonor"), required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["boolean"], patterns: &[] },
+                ElementConstraint { path: "$this.extension", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org/fhir/StructureDefinition/patient-cadavericDonor"), required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["boolean"], patterns: &[], datatype_profiles: &[] },
             ], invariants: &[
             ], profiles: &[
             ], slicings: &[
@@ -130,10 +130,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             Slice { name: "patientInterpreterRequired", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/patient-interpreterRequired" },
             ], min: 0, max: Max::Bounded(1), elements: &[
-                ElementConstraint { path: "$this.extension", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org/fhir/StructureDefinition/patient-interpreterRequired"), required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["boolean"], patterns: &[] },
+                ElementConstraint { path: "$this.extension", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org/fhir/StructureDefinition/patient-interpreterRequired"), required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["boolean"], patterns: &[], datatype_profiles: &[] },
             ], invariants: &[
             ], profiles: &[
             ], slicings: &[
@@ -150,13 +150,13 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             Slice { name: "nhsNumber", discriminators: &[
                 Discriminator::Value { path: "$this.system", value: "https://fhir.nhs.uk/Id/nhs-number" },
             ], min: 0, max: Max::Bounded(1), elements: &[
-                ElementConstraint { path: "$this.assigner", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.system", min: 1, max: Max::Bounded(1), fixed: Some("https://fhir.nhs.uk/Id/nhs-number"), required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.value", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.assigner", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.system", min: 1, max: Max::Bounded(1), fixed: Some("https://fhir.nhs.uk/Id/nhs-number"), required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.value", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
             ], invariants: &[
             ], profiles: &[
             ], slicings: &[
@@ -184,10 +184,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             Slice { name: "birthTime", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/patient-birthTime" },
             ], min: 0, max: Max::Bounded(1), elements: &[
-                ElementConstraint { path: "$this.extension", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org/fhir/StructureDefinition/patient-birthTime"), required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["dateTime"], patterns: &[] },
+                ElementConstraint { path: "$this.extension", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org/fhir/StructureDefinition/patient-birthTime"), required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["dateTime"], patterns: &[], datatype_profiles: &[] },
             ], invariants: &[
             ], profiles: &[
             ], slicings: &[
@@ -231,9 +231,9 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             Slice { name: "proficiency", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/patient-proficiency" },
             ], min: 0, max: Max::Bounded(1), elements: &[
-                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org/fhir/StructureDefinition/patient-proficiency"), required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.value[x]", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: super::intern::S83, patterns: &[] },
+                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org/fhir/StructureDefinition/patient-proficiency"), required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.value[x]", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: super::intern::S83, patterns: &[], datatype_profiles: &[] },
             ], invariants: &[
             ], profiles: &[
             ], slicings: &[
@@ -241,10 +241,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                     Slice { name: "level", discriminators: &[
                         Discriminator::Value { path: "$this.url", value: "level" },
                     ], min: 0, max: Max::Bounded(1), elements: &[
-                        ElementConstraint { path: "$this.extension", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: &[], patterns: &[] },
-                        ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-                        ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("level"), required_binding: None, types: &[], patterns: &[] },
-                        ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["Coding"], patterns: &[] },
+                        ElementConstraint { path: "$this.extension", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                        ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                        ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("level"), required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                        ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["Coding"], patterns: &[], datatype_profiles: &[] },
                     ], invariants: &[
                     ], profiles: &[
                     ], slicings: &[
@@ -252,10 +252,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                     Slice { name: "type", discriminators: &[
                         Discriminator::Value { path: "$this.url", value: "type" },
                     ], min: 0, max: Max::Star, elements: &[
-                        ElementConstraint { path: "$this.extension", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: &[], patterns: &[] },
-                        ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-                        ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("type"), required_binding: None, types: &[], patterns: &[] },
-                        ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["Coding"], patterns: &[] },
+                        ElementConstraint { path: "$this.extension", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                        ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                        ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("type"), required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                        ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["Coding"], patterns: &[], datatype_profiles: &[] },
                     ], invariants: &[
                     ], profiles: &[
                     ], slicings: &[

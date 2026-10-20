@@ -10,27 +10,27 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     name: "UKCore FamilyMemberHistory",
     resource_type: "FamilyMemberHistory",
     elements: &[
-        ElementConstraint { path: "FamilyMemberHistory.age[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S239, patterns: &[] },
-        ElementConstraint { path: "FamilyMemberHistory.born[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S240, patterns: &[] },
-        ElementConstraint { path: "FamilyMemberHistory.condition.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "FamilyMemberHistory.condition.contributedToDeath", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "FamilyMemberHistory.condition.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "FamilyMemberHistory.condition.onset[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S241, patterns: &[] },
-        ElementConstraint { path: "FamilyMemberHistory.condition.outcome", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "FamilyMemberHistory.dataAbsentReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "FamilyMemberHistory.date", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "FamilyMemberHistory.deceased[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S242, patterns: &[] },
-        ElementConstraint { path: "FamilyMemberHistory.estimatedAge", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "FamilyMemberHistory.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "FamilyMemberHistory.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "FamilyMemberHistory.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "FamilyMemberHistory.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "FamilyMemberHistory.name", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "FamilyMemberHistory.patient", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "FamilyMemberHistory.relationship", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "FamilyMemberHistory.sex", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "FamilyMemberHistory.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/history-status|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
-        ElementConstraint { path: "FamilyMemberHistory.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "FamilyMemberHistory.age[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S239, patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "FamilyMemberHistory.born[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S240, patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "FamilyMemberHistory.condition.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "FamilyMemberHistory.condition.contributedToDeath", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "FamilyMemberHistory.condition.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "FamilyMemberHistory.condition.onset[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S241, patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "FamilyMemberHistory.condition.outcome", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "FamilyMemberHistory.dataAbsentReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "FamilyMemberHistory.date", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "FamilyMemberHistory.deceased[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S242, patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "FamilyMemberHistory.estimatedAge", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "FamilyMemberHistory.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "FamilyMemberHistory.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "FamilyMemberHistory.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "FamilyMemberHistory.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "FamilyMemberHistory.name", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "FamilyMemberHistory.patient", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "FamilyMemberHistory.relationship", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "FamilyMemberHistory.sex", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "FamilyMemberHistory.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/history-status|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "FamilyMemberHistory.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
     ],
     slicings: &[
         Slicing { path: "FamilyMemberHistory.extension", closed: false, slices: &[
@@ -44,10 +44,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             Slice { name: "participantR5", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/5.0/StructureDefinition/extension-FamilyMemberHistory.participant" },
             ], min: 0, max: Max::Star, elements: &[
-                ElementConstraint { path: "$this.extension", min: 1, max: Max::Star, fixed: None, required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org/fhir/5.0/StructureDefinition/extension-FamilyMemberHistory.participant"), required_binding: None, types: &[], patterns: &[] },
-                ElementConstraint { path: "$this.value[x]", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: super::intern::S83, patterns: &[] },
+                ElementConstraint { path: "$this.extension", min: 1, max: Max::Star, fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org/fhir/5.0/StructureDefinition/extension-FamilyMemberHistory.participant"), required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.value[x]", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: super::intern::S83, patterns: &[], datatype_profiles: &[] },
             ], invariants: &[
             ], profiles: &[
             ], slicings: &[
@@ -55,9 +55,9 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                     Slice { name: "function", discriminators: &[
                         Discriminator::Value { path: "$this.url", value: "function" },
                     ], min: 0, max: Max::Bounded(1), elements: &[
-                        ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-                        ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("function"), required_binding: None, types: &[], patterns: &[] },
-                        ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["CodeableConcept"], patterns: &[] },
+                        ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                        ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("function"), required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                        ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["CodeableConcept"], patterns: &[], datatype_profiles: &[] },
                     ], invariants: &[
                     ], profiles: &[
                     ], slicings: &[
@@ -65,9 +65,9 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                     Slice { name: "actor", discriminators: &[
                         Discriminator::Value { path: "$this.url", value: "actor" },
                     ], min: 1, max: Max::Bounded(1), elements: &[
-                        ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-                        ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("actor"), required_binding: None, types: &[], patterns: &[] },
-                        ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["Reference"], patterns: &[] },
+                        ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                        ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("actor"), required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                        ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["Reference"], patterns: &[], datatype_profiles: &[] },
                     ], invariants: &[
                     ], profiles: &[
                     ], slicings: &[

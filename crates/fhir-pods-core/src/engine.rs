@@ -151,6 +151,9 @@ pub(crate) fn validate_at_with<D: Document>(
         check_element(el, el.path, doc, tx, &mut r);
     }
     let scope = Scope { root, bundle, tx, depth, cache, evaluated };
+    for el in profile.elements {
+        check_datatype_profiles(el, el.path, doc, &scope, &mut r);
+    }
     for slicing in profile.slicings {
         check_slicing(slicing, doc, &scope, "", &mut r);
     }
@@ -546,6 +549,79 @@ fn backbone_copies<D: Document>(backbone: &str, at: &str, doc: &D) -> Vec<String
     }
     copies.remove(0);
     copies
+}
+
+/// The base datatype profiles a compiled profile puts on an element
+/// (`ElementConstraint::datatype_profiles`), applied whole to every instance
+/// of the element of that type, as the shape walk applies the ones the base
+/// itself names: each element the profile prohibits (max 0; present through
+/// its `_` carrier too) is `structure.max`, each of its invariants `inv.<key>`
+/// — the same findings, at the element. A choice element's instances are its
+/// concrete keys of the profiled type (`valueQuantity`).
+fn check_datatype_profiles<D: Document>(
+    el: &ElementConstraint,
+    label: &str,
+    doc: &D,
+    scope: &Scope<'_, D>,
+    r: &mut Report,
+) {
+    for (ty, url) in el.datatype_profiles {
+        let Some((name, versioned, _, prohibited, invariants)) =
+            crate::typemap::DATATYPE_PROFILES.iter().find(|(_, u, ..)| u.split('|').next() == Some(*url))
+        else {
+            continue; // the generator refuses a profile it cannot apply whole
+        };
+        let instances: Vec<(String, D)> = match el.path.rsplit_once('.') {
+            Some((parent, last)) if last.ends_with("[x]") => {
+                let stem = &last[..last.len() - 3];
+                let mut key = String::from(stem);
+                key.push_str(&ty[..1].to_uppercase());
+                key.push_str(&ty[1..]);
+                let at =
+                    format!("{}.{key}", label.strip_suffix(last).map(|l| l.trim_end_matches('.')).unwrap_or(label));
+                doc.instances(parent).iter().flat_map(|p| p.child_instances(&key)).map(|i| (at.clone(), i)).collect()
+            }
+            _ => doc.instances(el.path).into_iter().map(|i| (String::from(label), i)).collect(),
+        };
+        for (at, inst) in instances {
+            for element in *prohibited {
+                let mut p = String::from("$this.");
+                p.push_str(element);
+                let found: usize = inst.child_counts(&p).iter().sum();
+                if found > 0 {
+                    r.push(
+                        Severity::Error,
+                        IssueType::Structure,
+                        &at,
+                        format!(
+                            "{at}.{element} exceeds max 0 (found {found}): {at} is a {name} ({versioned}), which prohibits {ty}.{element}"
+                        ),
+                    );
+                }
+            }
+            for (key, is_error, human, expression) in *invariants {
+                let verdict = match path::parse_invariant(key, expression) {
+                    Ok(e) => path::check_constraint_in(&e, &inst, Some(ty), Some(scope.root), scope.bundle),
+                    Err(_) => Verdict::Unsupported,
+                };
+                match verdict {
+                    Verdict::Pass => {}
+                    Verdict::Fail => r.push(
+                        if *is_error { Severity::Error } else { Severity::Warning },
+                        IssueType::Invariant,
+                        &at,
+                        format!("{key}: {human} ({at} is a {name}, {versioned})"),
+                    ),
+                    Verdict::Unsupported => r.push(
+                        Severity::Warning,
+                        IssueType::NotSupported,
+                        &at,
+                        format!("{key} not evaluated: outside the supported FHIRPath core"),
+                    ),
+                }
+            }
+        }
+    }
 }
 
 /// Cardinality (per parent instance), fixed value, and required binding for
@@ -1532,6 +1608,7 @@ fn check_slicing<D: Document>(slicing: &Slicing, doc: &D, scope: &Scope<'_, D>, 
                     label.push('.');
                     label.push_str(el.path.trim_start_matches("$this."));
                     check_element(el, &label, inst, tx, r);
+                    check_datatype_profiles(el, &label, inst, scope, r);
                 }
                 for inv in slice.invariants {
                     label.truncate(base_len);

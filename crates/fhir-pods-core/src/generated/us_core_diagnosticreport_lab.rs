@@ -10,29 +10,29 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     name: "US Core DiagnosticReport Profile for Laboratory Results Reporting",
     resource_type: "DiagnosticReport",
     elements: &[
-        ElementConstraint { path: "DiagnosticReport.category", min: 1, max: Max::Star, fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "DiagnosticReport.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "DiagnosticReport.conclusion", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "DiagnosticReport.effective[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S41, patterns: &[] },
-        ElementConstraint { path: "DiagnosticReport.encounter", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "DiagnosticReport.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "DiagnosticReport.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "DiagnosticReport.issued", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "DiagnosticReport.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "DiagnosticReport.media.comment", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "DiagnosticReport.media.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "DiagnosticReport.media.link", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "DiagnosticReport.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "DiagnosticReport.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/diagnostic-report-status", kind: BindingKind::Code }), types: &[], patterns: &[] },
-        ElementConstraint { path: "DiagnosticReport.subject", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "DiagnosticReport.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "DiagnosticReport.category", min: 1, max: Max::Star, fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "DiagnosticReport.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "DiagnosticReport.conclusion", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "DiagnosticReport.effective[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S41, patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "DiagnosticReport.encounter", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "DiagnosticReport.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "DiagnosticReport.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "DiagnosticReport.issued", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "DiagnosticReport.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "DiagnosticReport.media.comment", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "DiagnosticReport.media.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "DiagnosticReport.media.link", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "DiagnosticReport.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "DiagnosticReport.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/diagnostic-report-status", kind: BindingKind::Code }), types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "DiagnosticReport.subject", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "DiagnosticReport.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
     ],
     slicings: &[
         Slicing { path: "DiagnosticReport.category", closed: false, slices: &[
             Slice { name: "LaboratorySlice", discriminators: &[
                 Discriminator::Pattern { path: "$this.coding", pairs: &[("system", "http://terminology.hl7.org/CodeSystem/v2-0074"), ("code", "LAB")] },
             ], min: 1, max: Max::Bounded(1), elements: &[
-                ElementConstraint { path: "$this", min: 0, max: Max::Star, fixed: None, required_binding: None, types: &[], patterns: &[("coding", &[("system", "http://terminology.hl7.org/CodeSystem/v2-0074"), ("code", "LAB")])] },
+                ElementConstraint { path: "$this", min: 0, max: Max::Star, fixed: None, required_binding: None, types: &[], patterns: &[("coding", &[("system", "http://terminology.hl7.org/CodeSystem/v2-0074"), ("code", "LAB")])], datatype_profiles: &[] },
             ], invariants: &[
             ], profiles: &[
             ], slicings: &[

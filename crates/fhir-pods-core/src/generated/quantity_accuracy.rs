@@ -18,6 +18,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             required_binding: None,
             types: &[],
             patterns: &[],
+            datatype_profiles: &[],
         },
         ElementConstraint {
             path: "Extension.id",
@@ -27,6 +28,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             required_binding: None,
             types: &[],
             patterns: &[],
+            datatype_profiles: &[],
         },
         ElementConstraint {
             path: "Extension.url",
@@ -36,6 +38,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             required_binding: None,
             types: &[],
             patterns: &[],
+            datatype_profiles: &[],
         },
         ElementConstraint {
             path: "Extension.value[x]",
@@ -45,6 +48,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             required_binding: None,
             types: &["Quantity"],
             patterns: &[],
+            datatype_profiles: &[],
         },
         ElementConstraint {
             path: "Extension.value[x].code",
@@ -54,6 +58,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             required_binding: None,
             types: &[],
             patterns: &[],
+            datatype_profiles: &[],
         },
         ElementConstraint {
             path: "Extension.value[x].comparator",
@@ -63,6 +68,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             required_binding: None,
             types: &[],
             patterns: &[],
+            datatype_profiles: &[],
         },
         ElementConstraint {
             path: "Extension.value[x].id",
@@ -72,6 +78,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             required_binding: None,
             types: &[],
             patterns: &[],
+            datatype_profiles: &[],
         },
         ElementConstraint {
             path: "Extension.value[x].system",
@@ -81,6 +88,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             required_binding: None,
             types: &[],
             patterns: &[],
+            datatype_profiles: &[],
         },
         ElementConstraint {
             path: "Extension.value[x].unit",
@@ -90,6 +98,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             required_binding: None,
             types: &[],
             patterns: &[],
+            datatype_profiles: &[],
         },
         ElementConstraint {
             path: "Extension.value[x].value",
@@ -99,6 +108,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             required_binding: None,
             types: &[],
             patterns: &[],
+            datatype_profiles: &[],
         },
     ],
     slicings: &[],

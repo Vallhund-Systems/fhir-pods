@@ -1729,3 +1729,37 @@ fn an_element_the_base_types_simple_quantity_refuses_a_comparator() {
     assert!(got.contains(&"structure.max | Observation.referenceRange[0].low".to_string()), "{got:?}");
     assert!(got.contains(&"inv.sqty-1 | Observation.referenceRange[0].low".to_string()), "{got:?}");
 }
+
+#[test]
+fn a_compiled_profile_carries_a_base_datatype_profile_the_base_element_does_not_name() {
+    use fhir_pods_core::validate::Severity;
+    // the one shipped profile that puts SimpleQuantity where the base does
+    // not: an extension's value[x] (hl7.fhir.uv.extensions.r4)
+    let carrying: Vec<(&str, &str)> = fhir_pods_core::REGISTRY
+        .iter()
+        .flat_map(|p| p.elements.iter().filter(|e| !e.datatype_profiles.is_empty()).map(move |e| (p.url, e.path)))
+        .collect();
+    assert_eq!(
+        carrying,
+        [("http://hl7.org/fhir/StructureDefinition/medicationdispense-quantityRemaining", "Extension.value[x]")]
+    );
+    let dispense = |c: &str| {
+        format!(
+            r#"{{"resourceType":"MedicationDispense","status":"completed","medicationCodeableConcept":{{"text":"m"}},"extension":[{{"url":"http://hl7.org/fhir/StructureDefinition/medicationdispense-quantityRemaining","valueQuantity":{{"value":20,{c}"unit":"tablet","system":"http://unitsofmeasure.org","code":"{{tbl}}"}}}}]}}"#
+        )
+    };
+    let errors = |json: &str| -> Vec<String> {
+        let mut v: Vec<String> = fhir_pods_core::validate_bytes(json.as_bytes())
+            .report
+            .issues
+            .iter()
+            .filter(|i| i.severity == Severity::Error)
+            .map(|i| i.id.to_string())
+            .collect();
+        v.sort();
+        v
+    };
+    assert!(errors(&dispense("")).is_empty(), "{:?}", errors(&dispense("")));
+    // probed, validator_cli 6.10.4: max 0 + sqty-1 at the extension's value
+    assert_eq!(errors(&dispense(r#""comparator":"<","#)), ["inv.sqty-1", "structure.max"]);
+}

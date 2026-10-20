@@ -18,6 +18,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             required_binding: None,
             types: &[],
             patterns: &[],
+            datatype_profiles: &[],
         },
         ElementConstraint {
             path: "Extension.url",
@@ -27,6 +28,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             required_binding: None,
             types: &[],
             patterns: &[],
+            datatype_profiles: &[],
         },
         ElementConstraint {
             path: "Extension.value[x]",
@@ -36,6 +38,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             required_binding: None,
             types: super::intern::S83,
             patterns: &[],
+            datatype_profiles: &[],
         },
     ],
     slicings: &[Slicing {
@@ -59,6 +62,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                         required_binding: None,
                         types: &[],
                         patterns: &[],
+                        datatype_profiles: &[],
                     },
                     ElementConstraint {
                         path: "$this.id",
@@ -68,6 +72,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                         required_binding: None,
                         types: &[],
                         patterns: &[],
+                        datatype_profiles: &[],
                     },
                     ElementConstraint {
                         path: "$this.url",
@@ -77,6 +82,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                         required_binding: None,
                         types: &[],
                         patterns: &[],
+                        datatype_profiles: &[],
                     },
                     ElementConstraint {
                         path: "$this.value[x]",
@@ -86,6 +92,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                         required_binding: None,
                         types: &["string"],
                         patterns: &[],
+                        datatype_profiles: &[],
                     },
                 ],
                 invariants: &[],
@@ -107,6 +114,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                         required_binding: None,
                         types: &[],
                         patterns: &[],
+                        datatype_profiles: &[],
                     },
                     ElementConstraint {
                         path: "$this.id",
@@ -116,6 +124,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                         required_binding: None,
                         types: &[],
                         patterns: &[],
+                        datatype_profiles: &[],
                     },
                     ElementConstraint {
                         path: "$this.url",
@@ -125,6 +134,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                         required_binding: None,
                         types: &[],
                         patterns: &[],
+                        datatype_profiles: &[],
                     },
                     ElementConstraint {
                         path: "$this.value[x]",
@@ -134,6 +144,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                         required_binding: None,
                         types: &["CodeableConcept"],
                         patterns: &[],
+                        datatype_profiles: &[],
                     },
                 ],
                 invariants: &[],
@@ -155,6 +166,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                         required_binding: None,
                         types: &[],
                         patterns: &[],
+                        datatype_profiles: &[],
                     },
                     ElementConstraint {
                         path: "$this.id",
@@ -164,6 +176,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                         required_binding: None,
                         types: &[],
                         patterns: &[],
+                        datatype_profiles: &[],
                     },
                     ElementConstraint {
                         path: "$this.url",
@@ -173,6 +186,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                         required_binding: None,
                         types: &[],
                         patterns: &[],
+                        datatype_profiles: &[],
                     },
                     ElementConstraint {
                         path: "$this.value[x]",
@@ -182,6 +196,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                         required_binding: None,
                         types: &["Reference"],
                         patterns: &[],
+                        datatype_profiles: &[],
                     },
                 ],
                 invariants: &[],

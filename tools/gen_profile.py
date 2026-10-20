@@ -85,6 +85,58 @@ def index_datatype_bindings(load):
                 DATATYPE_BINDINGS[e["path"]] = b["valueSet"].split("|")[0]
 
 
+# The base package's own datatype profiles (`SimpleQuantity`, `MoneyQuantity`)
+# that a profile puts on an element the base definition does not: carried
+# onto the element (`ElementConstraint::datatype_profiles`) and applied whole
+# by the engine, from `typemap::DATATYPE_PROFILES` — an extension's
+# `value[x]` typed `Quantity` / `SimpleQuantity`
+# (`medicationdispense-quantityRemaining`). One the base element already
+# names is the shape walk's (`typemap::ELEMENT_PROFILES`), so it is not
+# carried twice. A base datatype profile that cannot be applied whole stops
+# the generator; an IG's own datatype profile (`au-address`) is not one of
+# these and is not applied (docs/scope.md). Set by `emit` from its resolver.
+LOAD = None
+BASE_ELEMENT_TYPE_PROFILES = {}
+
+
+def datatype_profiles_of(e):
+    if LOAD is None:
+        return ()
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from gen_typemap import datatype_profile_whole  # noqa: E402
+    out = []
+    for t in e.get("type", []):
+        code = t.get("code")
+        for prof in t.get("profile", []):
+            url = prof.split("|")[0]
+            if code == "Extension" or not url.startswith(DATATYPE_URL):
+                continue
+            sd = LOAD(url)
+            if not sd or sd.get("derivation") != "constraint" or sd.get("kind") != "complex-type" or sd.get("type") == "Extension":
+                continue
+            if not datatype_profile_whole(sd):
+                sys.exit(f"{e.get('id')}: base datatype profile {url} cannot be applied whole")
+            base_path = (e.get("base") or {}).get("path", "")
+            if (code, url) in base_type_profiles(base_path):
+                continue
+            out.append((code, url))
+    return tuple(dict.fromkeys(out))
+
+
+def base_type_profiles(base_path):
+    """`(type code, profile url)` the base definition puts on `base_path`."""
+    if base_path not in BASE_ELEMENT_TYPE_PROFILES:
+        found = set()
+        sd = LOAD(DATATYPE_URL + base_path.split(".")[0]) if base_path else None
+        for be in ((sd or {}).get("snapshot") or {}).get("element", []):
+            if be.get("path") == base_path:
+                for t in be.get("type", []):
+                    for prof in t.get("profile", []):
+                        found.add((t.get("code"), prof.split("|")[0]))
+        BASE_ELEMENT_TYPE_PROFILES[base_path] = found
+    return BASE_ELEMENT_TYPE_PROFILES[base_path]
+
+
 def binding_of(e):
     """`(value_set, kind)` for a required binding on a coded element; the kind
     says how the engine reads the instance (`code` / `Coding` / `CodeableConcept`)."""
@@ -110,6 +162,7 @@ class Rule:
     binding: tuple | None = None
     types: tuple = ()               # a choice element's allowed types
     patterns: tuple = ()            # a pattern / fixed object: [(anchor, [(rel, value)])] every instance must carry
+    datatype_profiles: tuple = ()   # [(type code, base datatype profile url)] the base does not already name here
 
     @staticmethod
     def of(e):
@@ -125,6 +178,7 @@ class Rule:
             fixed=scalar_fixed(e),
             binding=binding_of(e),
             types=types,
+            datatype_profiles=datatype_profiles_of(e),
         )
 
     def enforceable(self):
@@ -135,6 +189,7 @@ class Rule:
             or self.binding is not None
             or bool(self.types)
             or bool(self.patterns)
+            or bool(self.datatype_profiles)
         )
 
     def merge(self, other):
@@ -150,6 +205,8 @@ class Rule:
             self.types = other.types
         if other.patterns:
             self.patterns = tuple(dict.fromkeys(self.patterns + other.patterns))
+        if other.datatype_profiles:
+            self.datatype_profiles = tuple(dict.fromkeys(self.datatype_profiles + other.datatype_profiles))
 
 
 @dataclass
@@ -706,6 +763,10 @@ def collect(sd):
         # (AU Core's AMT / PBS codings, US Core's category slices)
         if rule.binding:
             sl.subs.setdefault("", Rule()).binding = rule.binding
+        # a base datatype profile on the slice's own type (a `value[x]:valueQuantity`
+        # slice typed SimpleQuantity): applied to the slice's instances
+        if rule.datatype_profiles:
+            sl.subs.setdefault("", Rule()).datatype_profiles = rule.datatype_profiles
         sl.invariants += slice_invariants(e, "")
 
     def sub_element(sl, e, rel, eid):
@@ -965,7 +1026,9 @@ def el_line(path, r, indent):
     return (
         " " * indent
         + f"ElementConstraint {{ path: {rs(path)}, min: {r.min}, max: {max_rs(r.max)}, fixed: {fx}, required_binding: {bd}, "
-        f"types: {ty}, patterns: &[{pats}] }},"
+        f"types: {ty}, patterns: &[{pats}], datatype_profiles: &["
+        + ", ".join(f"({rs(c)}, {rs(u)})" for c, u in r.datatype_profiles)
+        + "] },"
     )
 
 
@@ -1075,6 +1138,8 @@ def deferred_slices(deferred):
 
 
 def emit(sd, provenance, load=None):
+    global LOAD
+    LOAD = load
     if load and not DATATYPE_BINDINGS:
         index_datatype_bindings(load)
     """The Rust source for the profile, and `(elements, slices, deferred)` counts."""

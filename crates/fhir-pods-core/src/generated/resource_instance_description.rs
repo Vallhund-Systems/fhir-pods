@@ -10,10 +10,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     name: "Resource instance description",
     resource_type: "Extension",
     elements: &[
-        ElementConstraint { path: "Extension.extension", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Extension.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Extension.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org/fhir/StructureDefinition/resource-instance-description"), required_binding: None, types: &[], patterns: &[] },
-        ElementConstraint { path: "Extension.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["markdown"], patterns: &[] },
+        ElementConstraint { path: "Extension.extension", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Extension.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Extension.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org/fhir/StructureDefinition/resource-instance-description"), required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Extension.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["markdown"], patterns: &[], datatype_profiles: &[] },
     ],
     slicings: &[
     ],

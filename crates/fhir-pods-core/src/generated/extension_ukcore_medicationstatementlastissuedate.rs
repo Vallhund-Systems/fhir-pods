@@ -18,6 +18,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             required_binding: None,
             types: &[],
             patterns: &[],
+            datatype_profiles: &[],
         },
         ElementConstraint {
             path: "Extension.url",
@@ -29,6 +30,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             required_binding: None,
             types: &[],
             patterns: &[],
+            datatype_profiles: &[],
         },
         ElementConstraint {
             path: "Extension.value[x]",
@@ -38,6 +40,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             required_binding: None,
             types: &["dateTime"],
             patterns: &[],
+            datatype_profiles: &[],
         },
     ],
     slicings: &[],
