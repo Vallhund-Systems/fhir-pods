@@ -677,9 +677,18 @@ an export mapping, the way `uk`/`ca`/`nz` came in 0.13.0.
   `referenceResource`, quantity `unitOption` / `unitValueSet` and the SDC
   min/max quantity; `answerOption` membership per type with
   `optionExclusive`, `answerValueSet` membership through a value set
-  contained in the questionnaire (enumerations) or the terminology
-  provider, under R5's `answerConstraint` carried by its cross-version
-  extension. The questionnaire is found as a contained resource, a bundle
+  contained in the questionnaire or beside it in the response
+  (enumerations) or the terminology provider, under R5's
+  `answerConstraint` carried by its cross-version extension. A coded
+  answer with a code and no system is a warning where a contained set
+  holds the code (`questionnaire.answer-no-system`), as validator_cli
+  6.10.4 has it; under a set reached by canonical it stays an error,
+  because the oracle's verdict there turns on whether the set enumerates
+  its codes or includes a whole code system, which a compiled expansion
+  does not carry — stricter than the oracle for an enumerated canonical
+  set, never more lenient. A contained set that includes a whole code
+  system is not enumerated here, so membership in it is not checked
+  (`conformance/coded-answers/`, 91 probes, every difference reviewed). The questionnaire is found as a contained resource, a bundle
   entry, or one the host loaded (`Validator::with_questionnaire`,
   `fhir_pods_questionnaire_load`, `loadQuestionnaire`); one that cannot be
   found is a warning (an `example.org` one, information) and nothing is
@@ -691,7 +700,8 @@ an export mapping, the way `uk`/`ca`/`nz` came in 0.13.0.
   agree, 73/81 agree on every error-level issue, 0 stricter; the eight
   reviewed differences (`questionnaire-triage.json`) are the stored
   outcomes' terminology server (SNOMED, a filter-defined jurisdiction set),
-  display names, attachment size integrity, and an SDC extension. Not
+  display names, attachment size integrity, and an SDC code system the
+  pod holds no definition for. Not
   taken: SDC `enableWhenExpression` / variables / launch contexts, the
   derivation checks on a `Questionnaire`, `answerExpression`. Both base
   definitions are compiled as lowerable profiles (0.19.0): a host lowers a
