@@ -26,6 +26,10 @@ BASE = HERE / "corpus-base"
 TRIAGE = HERE / "base-triage.json"
 MAX_BYTES = 1_000_000
 CHUNK = 600
+# One JVM batch's bound. The default suits a quiet machine (a batch loads its
+# packages in under a minute and validates in a few); on a loaded one,
+# package loading alone has been measured at 18 minutes, so it can be raised.
+BATCH_TIMEOUT = int(os.environ.get("BASE_ORACLE_TIMEOUT", "900"))
 
 
 def ensure_examples():
@@ -68,14 +72,15 @@ def check_inventory(triage, inputs, config):
         raise ValueError("triage configuration changed; review the package/JAR/IG pins")
     if triage.get("inventory") != {"count": len(inputs), "sha256": json_hash(inputs)}:
         raise ValueError("published-example inventory changed; review input bytes and selection")
-    for group in ("differences", "oracle_exclusions"):
-        for name, entry in triage[group].items():
+    for group in ("differences", "oracle_exclusions", "oracle_unstable"):
+        for name, entry in triage.get(group, {}).items():
             if entry.get("input_sha256") != inputs.get(name) or not entry.get("reasons"):
                 raise ValueError(f"invalid {group} entry: {name}")
             if any(reason not in triage["reasons"] for reason in entry["reasons"]):
                 raise ValueError(f"unknown triage reason: {name}")
-    if triage["differences"].keys() & triage["oracle_exclusions"].keys():
-        raise ValueError("a case cannot be both a difference and an oracle exclusion")
+    groups = [set(triage.get(g, {})) for g in ("differences", "oracle_exclusions", "oracle_unstable")]
+    if any(groups[i] & groups[j] for i in range(3) for j in range(i + 1, 3)):
+        raise ValueError("a case can be in only one of differences, oracle exclusions and unstable oracle cases")
 
 
 def read_oracle(bundle, requested):
@@ -116,11 +121,64 @@ def oracle_batch(paths, batch):
     args = [run.JAVA, "-Xmx6g", "-jar", run.JAR, *map(str, paths), "-version", "4.0",
             *[arg for ig in BASE_IGS for arg in ("-ig", ig)], "-tx", "n/a",
             "-allow-example-urls", "true", "-output", str(output)]
-    proc = subprocess.run(args, capture_output=True, text=True, timeout=900)
+    proc = subprocess.run(args, capture_output=True, text=True, timeout=BATCH_TIMEOUT)
     (BASE / f"oracle-{batch}.log").write_text(proc.stdout + proc.stderr)
     if proc.returncode not in (0, 1):
         raise ValueError(f"oracle batch {batch} execution failed: exit {proc.returncode}")
     return read_oracle(json.loads(output.read_bytes()), {p.name for p in paths})
+
+
+def shared_constraint_keys(paths):
+    """StructureDefinitions that give one constraint key different expressions.
+
+    validator_cli registers a definition's constraint keys as it loads the
+    batch, and a second definition reusing a key with another expression is
+    rejected (`The constraint key 'inv-1' already exists at …`) — so which of
+    them fails depends on what else shares the JVM. Each one is judged in a
+    batch of its own, so its verdict is its own and not the batch's."""
+    seen = {}
+    for path in paths:
+        data = json.loads(path.read_bytes())
+        if data.get("resourceType") != "StructureDefinition":
+            continue
+        for part in ("snapshot", "differential"):
+            for element in (data.get(part) or {}).get("element", []):
+                for constraint in element.get("constraint") or []:
+                    key, expression = constraint.get("key"), constraint.get("expression")
+                    if key and expression:
+                        seen.setdefault(key, {}).setdefault(expression, set()).add(path.name)
+    return {name for by_expression in seen.values() if len(by_expression) > 1
+            for names in by_expression.values() for name in names}
+
+
+def oracle_drift(previous, config, oracle):
+    """Outcomes that differ from the previous full oracle cache (same configuration)."""
+    if not isinstance(previous, dict) or previous.get("configuration") != config:
+        return None  # no comparable previous run
+    drift = {}
+    for name, outcome in oracle.items():
+        row = (previous.get("results") or {}).get(name)
+        if isinstance(row, dict) and row.get("outcome_sha256") != json_hash(outcome):
+            try:
+                before = java_verdict(row.get("outcome"))[0]
+            except (TypeError, ValueError, AttributeError):
+                before = None
+            drift[name] = {"previous_outcome_sha256": row.get("outcome_sha256"),
+                           "outcome_sha256": json_hash(outcome), "previous_oracle": before}
+    return drift
+
+
+def drift_only(row, error, triage, drift):
+    """An assessment failure caused by the oracle moving, not by the pod: the
+    oracle's outcome for the file changed since the previous run, and the pod
+    still says what was reviewed (or what the oracle said before)."""
+    moved = (drift or {}).get(row["file"])
+    if not moved or row["ours"] not in ("valid", "invalid"):
+        return False
+    expected = triage["differences"].get(row["file"])
+    if expected:
+        return expected.get("ours") == row["ours"] and error.startswith("reviewed difference changed (oracle")
+    return error == "new verdict disagreement" and moved["previous_oracle"] == row["ours"]
 
 
 def cached_outcomes(cache, config, inputs):
@@ -160,11 +218,23 @@ def assess(row, triage):
         return None
     if row["oracle"] not in ("valid", "invalid"):
         return "oracle execution/evidence failure"
+    unstable = triage.get("oracle_unstable", {}).get(name)
+    if unstable:
+        # validator_cli has given this input more than one verdict, judged
+        # alone: each observed outcome is recorded, and an unseen one fails
+        if row["input_sha256"] != unstable["input_sha256"] or row["ours"] != unstable["ours"]:
+            return "changed unstable-oracle case"
+        if row["oracle"] not in unstable["oracle"] or row.get("oracle_signature") not in unstable["oracle_signatures"]:
+            return "unstable oracle case gave an unrecorded outcome; review before updating triage"
+        return None
     expected = triage["differences"].get(name)
     if expected:
-        for key in ("input_sha256", "ours", "oracle", "oracle_signature"):
+        for key in ("input_sha256", "ours", "oracle"):
             if row.get(key) != expected.get(key):
                 return f"reviewed difference changed ({key}); review before updating triage"
+        # one signature, or every one the oracle has been observed to give
+        if row.get("oracle_signature") not in expected.get("oracle_signatures", [expected.get("oracle_signature")]):
+            return "reviewed difference changed (oracle_signature); review before updating triage"
     elif row["ours"] != row["oracle"]:
         return "new verdict disagreement"
     return None
@@ -182,11 +252,16 @@ def main(argv=None):
     parser.add_argument("--limit", type=positive_int)
     parser.add_argument("--filter")
     parser.add_argument("--reuse-oracle", action="store_true")
+    parser.add_argument("--refresh-alone", action="store_true",
+                        help="rejudge only the definitions that share a constraint key, one JVM each, "
+                             "into the full oracle cache; everything else is reused from it")
     args = parser.parse_args(argv)
     BASE.mkdir(exist_ok=True)
     partial = args.limit is not None or args.filter is not None
     evidence_path = BASE / ("evidence-subset.json" if partial else "evidence.json")
-    evidence = {"format": 1, "package": PACKAGE, "selection": vars(args), "results": [], "errors": []}
+    evidence = {"format": 1, "package": PACKAGE, "selection": vars(args), "results": [], "errors": [], "drift_errors": []}
+    drift = None
+    triage = {}
     try:
         ensure_examples()
         all_paths = select()
@@ -202,7 +277,31 @@ def main(argv=None):
                         source_dirty=bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=run.ROOT)))
         scored = [p for p in paths if p.name not in triage["oracle_exclusions"]]
         cache_path = BASE / ("oracle-cache-subset.json" if partial else "oracle-cache.json")
-        if args.reuse_oracle:
+        if args.refresh_alone and not partial:
+            # The full cache, with the shared-key definitions rejudged alone:
+            # what a fresh run would now record for them, without rerunning
+            # the other five thousand.
+            full_cache = BASE / "oracle-cache.json"
+            cache = json.loads(full_cache.read_bytes())
+            cached_outcomes(cache, config, {p.name: inputs[p.name] for p in scored})  # the rest must be usable
+            banner = subprocess.run([run.JAVA, "-jar", run.JAR], capture_output=True, text=True, timeout=60)
+            if f"Version {run.JAR_VERSION}" not in banner.stdout + banner.stderr:
+                raise ValueError("oracle version banner does not match the pinned JAR")
+            shared = shared_constraint_keys(scored)
+            alone = sorted(p for p in scored if p.name in shared)
+            fresh = {}
+            for path in alone:
+                print(f"oracle: {path.name} alone (it shares a constraint key)", flush=True)
+                fresh.update(oracle_batch([path], f"alone-{path.stem}"))
+            drift = oracle_drift(cache, config, fresh)
+            for name, outcome in fresh.items():
+                cache["results"][name] = {"input_sha256": inputs[name], "outcome_sha256": json_hash(outcome),
+                                          "outcome": outcome}
+            full_cache.write_text(json.dumps(cache, indent=1) + "\n")
+            evidence["oracle_alone"] = [p.name for p in alone]
+            oracle = cached_outcomes(cache, config, {p.name: inputs[p.name] for p in scored})
+            evidence["oracle_cache_sha256"] = digest(full_cache.read_bytes())
+        elif args.reuse_oracle or args.refresh_alone:
             # Subsets reuse the full cache, never replace it with partial evidence.
             cache = json.loads((BASE / "oracle-cache.json").read_bytes())
             oracle = cached_outcomes(cache, config, {p.name: inputs[p.name] for p in scored})
@@ -212,14 +311,24 @@ def main(argv=None):
             if f"Version {run.JAR_VERSION}" not in banner.stdout + banner.stderr:
                 raise ValueError("oracle version banner does not match the pinned JAR")
             oracle = {}
-            for i in range(0, len(scored), CHUNK):
-                chunk = scored[i:i + CHUNK]
-                print(f"oracle: {i + 1}..{i + len(chunk)} / {len(scored)}", flush=True)
+            alone = shared_constraint_keys(scored)
+            batched = [p for p in scored if p.name not in alone]
+            for i in range(0, len(batched), CHUNK):
+                chunk = batched[i:i + CHUNK]
+                print(f"oracle: {i + 1}..{i + len(chunk)} / {len(batched)}", flush=True)
                 oracle.update(oracle_batch(chunk, i // CHUNK))
+            for path in sorted(p for p in scored if p.name in alone):
+                print(f"oracle: {path.name} alone (it shares a constraint key)", flush=True)
+                oracle.update(oracle_batch([path], f"alone-{path.stem}"))
+            evidence["oracle_alone"] = sorted(alone)
+            previous_path = BASE / "oracle-cache.json"
+            if not partial and previous_path.exists():
+                drift = oracle_drift(json.loads(previous_path.read_bytes()), config, oracle)
             cache_path.write_text(json.dumps({"format": 1, "configuration": config,
                 "results": {name: {"input_sha256": inputs[name], "outcome_sha256": json_hash(outcome),
                                    "outcome": outcome} for name, outcome in oracle.items()}}, indent=1) + "\n")
             evidence["oracle_cache_sha256"] = digest(cache_path.read_bytes())
+        evidence["oracle_drift"] = drift
         target = Path(run.ROOT) / "target" / "base-lane"
         subprocess.run(["cargo", "build", "-q", "--release", "-j", "2", "-p", "fhir-pods-core",
                         "--example", "probe", "--target-dir", str(target)], cwd=run.ROOT, check=True)
@@ -243,7 +352,9 @@ def main(argv=None):
                 row["native_error"] = str(error)
             row["agree"] = row["ours"] == row["oracle"] and row["ours"] in ("valid", "invalid")
             error = assess(row, triage)
-            if error:
+            if error and drift_only(row, error, triage, drift):
+                evidence["drift_errors"].append({"file": name, "error": error, **drift[name]})
+            elif error:
                 evidence["errors"].append({"file": name, "error": error})
             evidence["results"].append(row)
             if (i + 1) % 500 == 0:
@@ -253,15 +364,23 @@ def main(argv=None):
     except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
         evidence["errors"].append({"error": str(error)})
     rows = evidence["results"]
-    kinds = Counter((r["ours"], r["oracle"]) for r in rows)
-    evidence["summary"] = {"selected": len(rows), "compared": sum(r["oracle"] in ("valid", "invalid") for r in rows),
-        "agree": sum(r["agree"] for r in rows), "oracle_excluded": sum(r["oracle"] == "excluded" for r in rows),
-        "lenient": kinds[("valid", "invalid")], "stricter": kinds[("invalid", "valid")], "failures": len(evidence["errors"])}
+    unstable_names = set(triage.get("oracle_unstable", {})) if isinstance(triage, dict) else set()
+    scored_rows = [r for r in rows if r["file"] not in unstable_names]
+    kinds = Counter((r["ours"], r["oracle"]) for r in scored_rows)
+    evidence["summary"] = {"selected": len(rows), "compared": sum(r["oracle"] in ("valid", "invalid") for r in scored_rows),
+        "agree": sum(r["agree"] for r in scored_rows), "oracle_excluded": sum(r["oracle"] == "excluded" for r in rows),
+        "oracle_unstable": len(rows) - len(scored_rows),
+        "lenient": kinds[("valid", "invalid")], "stricter": kinds[("invalid", "valid")], "failures": len(evidence["errors"]),
+        "oracle_drift": len(drift) if drift is not None else None, "drift_failures": len(evidence["drift_errors"])}
     evidence_path.write_text(json.dumps(evidence, indent=1) + "\n")
     print(json.dumps(evidence["summary"]))
     for error in evidence["errors"][:30]:
         print(error, file=sys.stderr)
-    return 1 if evidence["errors"] else 0
+    for error in evidence["drift_errors"][:30]:
+        print("oracle drift:", error, file=sys.stderr)
+    # 1: the pod or the evidence; 2: only the oracle moved since the previous
+    # fresh run (review it; `--reuse-oracle` stays the pod-side gate)
+    return 1 if evidence["errors"] else (2 if evidence["drift_errors"] else 0)
 
 
 if __name__ == "__main__":

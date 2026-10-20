@@ -92,6 +92,50 @@ class BaseGateTests(unittest.TestCase):
             self.assertEqual(json.loads(full.read_text()), "prior full evidence")
             self.assertIn("matched no examples", (root / "evidence-subset.json").read_text())
 
+    def test_definitions_reusing_a_constraint_key_are_judged_alone(self):
+        def sd(key, expression):
+            return {"resourceType": "StructureDefinition",
+                    "differential": {"element": [{"constraint": [{"key": key, "expression": expression}]}]}}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            files = {"a.json": sd("inv-1", "x.exists()"), "b.json": sd("inv-1", "y.exists()"),
+                     "c.json": sd("inv-2", "z.exists()"), "d.json": sd("inv-2", "z.exists()"),
+                     "e.json": {"resourceType": "Patient"}}
+            for name, data in files.items():
+                (root / name).write_text(json.dumps(data))
+            self.assertEqual(base.shared_constraint_keys(sorted(root.glob("*.json"))), {"a.json", "b.json"})
+
+    def test_oracle_drift_is_told_apart_from_a_pod_change(self):
+        before = {"resourceType": "OperationOutcome", "issue": []}
+        after = {"resourceType": "OperationOutcome", "issue": [{"severity": "error", "code": "invalid"}]}
+        previous = {"configuration": {}, "results": {"Patient-example.json": {
+            "outcome_sha256": base.json_hash(before), "outcome": before}}}
+        drift = base.oracle_drift(previous, {}, {"Patient-example.json": after})
+        self.assertEqual(drift["Patient-example.json"]["previous_oracle"], "valid")
+        self.assertIsNone(base.oracle_drift(previous, {"other": 1}, {"Patient-example.json": after}))
+        changed = dict(self.row, oracle_signature="moved")
+        self.assertTrue(base.drift_only(changed, "reviewed difference changed (oracle_signature); review", self.triage, drift))
+        self.assertFalse(base.drift_only(changed, "reviewed difference changed (oracle_signature); review", self.triage, {}))
+        self.assertFalse(base.drift_only(dict(changed, ours="invalid"), "reviewed difference changed (ours)", self.triage, drift))
+        fresh = {"file": "Patient-example.json", "ours": "valid", "oracle": "invalid"}
+        self.assertTrue(base.drift_only(fresh, "new verdict disagreement", {"differences": {}}, drift))
+
+    def test_an_unstable_oracle_case_holds_to_its_recorded_outcomes(self):
+        triage = {"differences": {}, "oracle_exclusions": {}, "oracle_unstable": {"Task.json": {
+            "input_sha256": "input", "ours": "valid", "oracle": ["valid", "invalid"],
+            "oracle_signatures": ["a", "b"], "reasons": ["oracle-unstable"]}}}
+        row = {"file": "Task.json", "input_sha256": "input", "ours": "valid", "oracle": "invalid", "oracle_signature": "b"}
+        self.assertIsNone(base.assess(row, triage))
+        self.assertIsNone(base.assess(dict(row, oracle="valid", oracle_signature="a"), triage))
+        self.assertIsNotNone(base.assess(dict(row, oracle_signature="c"), triage))
+        self.assertIsNotNone(base.assess(dict(row, ours="invalid"), triage))
+
+    def test_a_reviewed_difference_may_name_every_observed_signature(self):
+        triage = copy.deepcopy(self.triage)
+        triage["differences"][self.row["file"]]["oracle_signatures"] = ["oracle", "other"]
+        self.assertIsNone(base.assess(dict(self.row, oracle_signature="other"), triage))
+        self.assertIsNotNone(base.assess(dict(self.row, oracle_signature="third"), triage))
+
 
 if __name__ == "__main__":
     unittest.main()
