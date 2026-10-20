@@ -1,6 +1,6 @@
 {
-  "recorded_at": "2026-10-20T20:53:14.651799+00:00",
-  "source_revision": "ebc302d3fb92801f51b73354505a47d5a70aa593",
+  "recorded_at": "2026-10-20T22:34:23.307846+00:00",
+  "source_revision": "a38047397c5db96461878d253c55405de5b8bcf9",
   "source_dirty": false,
   "oracle_version": "6.10.4",
   "oracle_sha256": "1106b9d58f9e363e47bea7c4fc065841e5fc91fe9d062775c3bfdd212bd653cc",
@@ -17,10 +17,10 @@
   "oracle_exit_code": 0,
   "note": "Verdict and error-path parity; every issue on both sides retained (severity, code, the pod's rule id, text, paths).",
   "counts": {
-    "total": 91,
-    "pass": 91,
+    "total": 122,
+    "pass": 122,
     "fail": 0,
-    "reviewed": 21
+    "reviewed": 24
   },
   "probes": [
     {
@@ -552,7 +552,7 @@
         "extra": [
           "QuestionnaireResponse.item.answer"
         ],
-        "reason": "a valueString on a choice item with an answerValueSet: the pod refuses it ('answerConstraint is optionsOnly'), pinned to fhir-test-cases' stored outcome for answerconstraint-qr, which a later validator produced; validator_cli 6.10.4 run fresh reports only the information 'Cannot validate string answer option because no option list is provided' (also on answerconstraint-qr itself, probed 2026-10-20). Pre-dates the coded-answer rule; stricter, reported, not changed here."
+        "reason": "stricter than the pinned validator, kept on purpose (fail-closed): a valueString on a choice item with an answerValueSet is refused by the pod ('answerConstraint is optionsOnly'), after fhir-test-cases' stored outcome for answerconstraint-qr. That outcome comes from a later validator: the pinned 6.10.4 JAR's Messages.properties has no message for it (no key mentions answerConstraint), and 6.10.4 run fresh reports only the information 'Cannot validate string answer option because no option list is provided'. The entry goes when the pin moves."
       },
       "sha256": "0b4d6e311a4cb69726e02fa9b0bddf0d87a4886ac72f8c9d32b218fa6defdcaf",
       "oracle_valid": true,
@@ -1395,7 +1395,7 @@
         "extra": [
           "QuestionnaireResponse.item.answer"
         ],
-        "reason": "a valueString on a choice item with an answerValueSet: the pod refuses it ('answerConstraint is optionsOnly'), pinned to fhir-test-cases' stored outcome for answerconstraint-qr, which a later validator produced; validator_cli 6.10.4 run fresh reports only the information 'Cannot validate string answer option because no option list is provided' (also on answerconstraint-qr itself, probed 2026-10-20). Pre-dates the coded-answer rule; stricter, reported, not changed here."
+        "reason": "stricter than the pinned validator, kept on purpose (fail-closed): a valueString on a choice item with an answerValueSet is refused by the pod ('answerConstraint is optionsOnly'), after fhir-test-cases' stored outcome for answerconstraint-qr. That outcome comes from a later validator: the pinned 6.10.4 JAR's Messages.properties has no message for it (no key mentions answerConstraint), and 6.10.4 run fresh reports only the information 'Cannot validate string answer option because no option list is provided'. The entry goes when the pin moves."
       },
       "sha256": "5cdd059643be1cc9ae9ff3ec52088d5132002f42c37d5b3293988d0fa8290f7c",
       "oracle_valid": true,
@@ -3319,7 +3319,7 @@
         "extra": [
           "QuestionnaireResponse.item.answer"
         ],
-        "reason": "a valueString on a choice item with an answerValueSet: the pod refuses it ('answerConstraint is optionsOnly'), pinned to fhir-test-cases' stored outcome for answerconstraint-qr, which a later validator produced; validator_cli 6.10.4 run fresh reports only the information 'Cannot validate string answer option because no option list is provided' (also on answerconstraint-qr itself, probed 2026-10-20). Pre-dates the coded-answer rule; stricter, reported, not changed here."
+        "reason": "stricter than the pinned validator, kept on purpose (fail-closed): a valueString on a choice item with an answerValueSet is refused by the pod ('answerConstraint is optionsOnly'), after fhir-test-cases' stored outcome for answerconstraint-qr. That outcome comes from a later validator: the pinned 6.10.4 JAR's Messages.properties has no message for it (no key mentions answerConstraint), and 6.10.4 run fresh reports only the information 'Cannot validate string answer option because no option list is provided'. The entry goes when the pin moves."
       },
       "sha256": "c52b168e9d47c6736063e23c162ded2d2060c056ae019ed6a79d37a52500f871",
       "oracle_valid": true,
@@ -4990,6 +4990,2795 @@
         }
       ],
       "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-one-include-listed-twice-in-set.json",
+      "expect": true,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose one include listed twice; required item; system and code in the set (control).",
+      "sha256": "edceed032e13d0e9c2d4f0252ecdc20422d38b88c327cffeaf12c2626beaa5ae",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-one-include-listed-twice-code-only-member.json",
+      "expect": true,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose one include listed twice; required item; a code with no system, the code in the set.",
+      "sha256": "3f646ec8d2174f226c9c2856e7dbae31fe93ca89a0d4ce03576760732e7dd0f8",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": "questionnaire.answer-no-system",
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-two-includes-one-system-first-in-set.json",
+      "expect": true,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two includes one system first; required item; system and code in the set (control).",
+      "sha256": "d5b8cd3af78c05b9406918ca400c8a9d461395f8a0492b7758283e115b095fe3",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[1]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-two-includes-one-system-first-code-only-member.json",
+      "expect": true,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two includes one system first; required item; a code with no system, the code in the set.",
+      "sha256": "27d1687604a1693fcbb6ebc323a8785e70d1b73cec811980f03ff5602aad2fbb",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[1]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": "questionnaire.answer-no-system",
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-two-includes-one-system-second-in-set.json",
+      "expect": true,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two includes one system second; required item; system and code in the set (control).",
+      "sha256": "d58f9470df1c213438af3e836dcc2ea9ba1e40884d49413fbcd9784fa0d4be4e",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[1]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-two-includes-one-system-second-code-only-member.json",
+      "expect": true,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two includes one system second; required item; a code with no system, the code in the set.",
+      "sha256": "00bbd7369da70258cb0a24974534518fbd529602a83fc55a0548f18c6162db38",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[1]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": "questionnaire.answer-no-system",
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-two-systems-unique-code-in-set.json",
+      "expect": true,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two systems unique code; required item; system and code in the set (control).",
+      "sha256": "b5312b0f37499fb06c7e883f1a60f7a614366ffc8114c6f341be61e3ed1839d5",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[1]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-two-systems-unique-code-code-only-member.json",
+      "expect": true,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two systems unique code; required item; a code with no system, the code in the set.",
+      "sha256": "3ae461fefa630efea969e7bf5508cf8a837371df9af61e4ce6cc10d3501590e3",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[1]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": "questionnaire.answer-no-system",
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-two-systems-shared-code-in-set.json",
+      "expect": true,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two systems shared code; required item; system and code in the set (control).",
+      "sha256": "f80a8eefc051f36f87259be95903e57991baa2c5e192b6f101ce3376f60d5a76",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[1]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-two-systems-shared-code-code-only-member.json",
+      "expect": true,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two systems shared code; required item; a code with no system, the code in the set.",
+      "sha256": "8b526ad1e6e9aafea60f407995591f1fa8ad0a233c8ef878fdc2593c4c1e33d3",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[1]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": "questionnaire.answer-no-system",
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-two-systems-code-in-second-in-set.json",
+      "expect": true,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two systems code in second; required item; system and code in the set (control).",
+      "sha256": "a3f06d34df32f077bb79e81c9bafe9f62549a672d9dd3689ee35ed929d03c736",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[1]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-two-systems-code-in-second-code-only-member.json",
+      "expect": true,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two systems code in second; required item; a code with no system, the code in the set.",
+      "sha256": "0bc8d29d795337bb0547338a1c8602f7bd0884fef705384302a0367201b2756d",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[1]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": "questionnaire.answer-no-system",
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-exclude-in-set.json",
+      "expect": true,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose exclude; required item; system and code in the set (control).",
+      "sha256": "fe22fdbee3b7a694687f62a0c6f9d9c729a9dfe8b8fb597bb3908487de0925b8",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.exclude[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-exclude-code-only-member.json",
+      "expect": true,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose exclude; required item; a code with no system, the code in the set.",
+      "sha256": "2796f7f3c4b4db10998a1e05e731360b568afdaea1a7243603623ccdaa1dd370",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.exclude[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": "questionnaire.answer-no-system",
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-include-valueset-in-set.json",
+      "expect": true,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose include valueset; required item; system and code in the set (control).",
+      "sha256": "ba121b3c62873d8fe69be0a3c99564f6ce7126ab978b7c752e33bcb1fda2c276",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "not-supported",
+          "rule": "binding.unknown",
+          "text": "no bundled terminology for #vs; 'yes' not checked",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-include-valueset-code-only-member.json",
+      "expect": true,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose include valueset; required item; a code with no system, the code in the set.",
+      "reviewed": {
+        "local": false,
+        "missed": [],
+        "extra": [
+          "QuestionnaireResponse.item.answer"
+        ],
+        "reason": "a code with no system under a contained set whose one include names another value set (include.valueSet): the oracle warns; the pod does not enumerate an include of another set, so it keeps the error \u2014 stricter, never more lenient (a coding with a system there is not checked: a warning on the pod's side, valid on both)."
+      },
+      "sha256": "cdf8a755eed5b9abadf93b3d6f261f0f0c0fb1ff7b7780d6ffa1ce4fed785c14",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        }
+      ],
+      "local_valid": false,
+      "local_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": "questionnaire.answer-not-in-set",
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "reviewed",
+      "agrees": true
+    },
+    {
+      "file": "set-one-include-listed-twice-unlabelled-code-only-member.json",
+      "expect": true,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response (no url, no name), its compose one include listed twice; required item; a code with no system, the code in the set.",
+      "sha256": "424a85289e8b870e2e92ce41a0ebfe226cbba8c8d0867b580d04d81870298ea9",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": "questionnaire.answer-no-system",
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-two-includes-one-system-first-unlabelled-code-only-member.json",
+      "expect": false,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response (no url, no name), its compose two includes one system first; required item; a code with no system, the code in the set.",
+      "sha256": "732cf0b9fa5c7789e6d29c68762e3ba733aacd7fb7f2690eb453f7afd92b5645",
+      "oracle_valid": false,
+      "oracle_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[1]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ValueSet[null]) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#yes' was not found in the value set '(unidentified)'",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        }
+      ],
+      "local_valid": false,
+      "local_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": "questionnaire.answer-not-in-set",
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ValueSet[null]) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-two-includes-one-system-second-unlabelled-code-only-member.json",
+      "expect": false,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response (no url, no name), its compose two includes one system second; required item; a code with no system, the code in the set.",
+      "sha256": "8775157b9dd6d9ccaafd6c0ab34dbce0329f96593ae447cb8a08f7156f76c17a",
+      "oracle_valid": false,
+      "oracle_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[1]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ValueSet[null]) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#yes' was not found in the value set '(unidentified)'",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        }
+      ],
+      "local_valid": false,
+      "local_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": "questionnaire.answer-not-in-set",
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ValueSet[null]) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-two-systems-unique-code-unlabelled-code-only-member.json",
+      "expect": false,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response (no url, no name), its compose two systems unique code; required item; a code with no system, the code in the set.",
+      "sha256": "1be2e6b5db8d96cff810f3900d61e3338526381f5aae1001c7bf3cbc6494cf3f",
+      "oracle_valid": false,
+      "oracle_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[1]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ValueSet[null]) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#yes' was not found in the value set '(unidentified)'",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        }
+      ],
+      "local_valid": false,
+      "local_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": "questionnaire.answer-not-in-set",
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ValueSet[null]) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-two-systems-shared-code-unlabelled-code-only-member.json",
+      "expect": false,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response (no url, no name), its compose two systems shared code; required item; a code with no system, the code in the set.",
+      "sha256": "476512a6d2f9f6bbb340e1e971938358cc6d2b3d9d7de63102cab89e127d8434",
+      "oracle_valid": false,
+      "oracle_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[1]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ValueSet[null]) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#yes' was not found in the value set '(unidentified)'",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        }
+      ],
+      "local_valid": false,
+      "local_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": "questionnaire.answer-not-in-set",
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ValueSet[null]) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-two-systems-code-in-second-unlabelled-code-only-member.json",
+      "expect": false,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response (no url, no name), its compose two systems code in second; required item; a code with no system, the code in the set.",
+      "sha256": "66d84361a4e1f91403f177f810b056ff4928d5cd606ed2e87b6231f9fc4f2372",
+      "oracle_valid": false,
+      "oracle_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[1]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ValueSet[null]) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#yes' was not found in the value set '(unidentified)'",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        }
+      ],
+      "local_valid": false,
+      "local_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": "questionnaire.answer-not-in-set",
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ValueSet[null]) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-exclude-unlabelled-code-only-member.json",
+      "expect": true,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response (no url, no name), its compose exclude; required item; a code with no system, the code in the set.",
+      "sha256": "5a5965bfac14db09ccad4011b2b06707aad97b7d33cf89448ecfe26fa71c1da2",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.exclude[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": "questionnaire.answer-no-system",
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-include-valueset-unlabelled-code-only-member.json",
+      "expect": true,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response (no url, no name), its compose include valueset; required item; a code with no system, the code in the set.",
+      "reviewed": {
+        "local": false,
+        "missed": [],
+        "extra": [
+          "QuestionnaireResponse.item.answer"
+        ],
+        "reason": "a code with no system under a contained set whose one include names another value set (include.valueSet): the oracle warns; the pod does not enumerate an include of another set, so it keeps the error \u2014 stricter, never more lenient (a coding with a system there is not checked: a warning on the pod's side, valid on both)."
+      },
+      "sha256": "3ee690b4d45df270d441066a0e1d87ce935bed161d07bd2f6113ac6d12dee6b8",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        }
+      ],
+      "local_valid": false,
+      "local_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": "questionnaire.answer-not-in-set",
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ValueSet[null]) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "reviewed",
+      "agrees": true
+    },
+    {
+      "file": "set-two-includes-one-system-first-url-only-code-only-member.json",
+      "expect": true,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response (a url, no name), its compose two includes one system first; required item; a code with no system, the code in the set.",
+      "sha256": "1b55a73a682f1838f0cfe1ac137131c0b7108915d19c93a016e5f2945ef5815e",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[1]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": "questionnaire.answer-no-system",
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-two-includes-one-system-first-name-only-code-only-member.json",
+      "expect": false,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response (a name, no url), its compose two includes one system first; required item; a code with no system, the code in the set.",
+      "sha256": "2208901ae33c5e54a3ca8e13e7665cca039c8b57ffb17c61da6a83cec766c180",
+      "oracle_valid": false,
+      "oracle_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[1]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#yes' was not found in the value set '(unidentified)'",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        }
+      ],
+      "local_valid": false,
+      "local_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": "questionnaire.answer-not-in-set",
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-two-systems-unique-code-url-only-code-only-member.json",
+      "expect": true,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response (a url, no name), its compose two systems unique code; required item; a code with no system, the code in the set.",
+      "sha256": "ea02a65753c55d81ffb1f5d59d34a8932f12ece0624e6cb16ebde734af292d51",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[1]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": "questionnaire.answer-no-system",
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-two-systems-unique-code-name-only-code-only-member.json",
+      "expect": false,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response (a name, no url), its compose two systems unique code; required item; a code with no system, the code in the set.",
+      "sha256": "ea9195edbbba624b5fcdb684443496d84402982d7536767a2205e7536a12b1da",
+      "oracle_valid": false,
+      "oracle_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[1]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#yes' was not found in the value set '(unidentified)'",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        }
+      ],
+      "local_valid": false,
+      "local_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": "questionnaire.answer-not-in-set",
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-exclude-excluded.json",
+      "expect": false,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose exclude; required item; system and code, the code excluded.",
+      "sha256": "de1ab04c92894805195a5f1c8bbf14af140ebb20741d445ff81e00cb3eb29417",
+      "oracle_valid": false,
+      "oracle_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.exclude[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "The code 'unsure' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: The provided code 'https://example.org/probe/CodeSystem/answers#unsure' was not found in the value set 'https://example.org/probe/ValueSet/contained'",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        }
+      ],
+      "local_valid": false,
+      "local_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": "questionnaire.answer-not-in-set",
+          "text": "The code 'unsure' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: The provided code 'https://example.org/probe/CodeSystem/answers#unsure' was not found in the value set '#vs'",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-exclude-code-only-excluded.json",
+      "expect": false,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose exclude; required item; a code with no system, the code excluded.",
+      "sha256": "ff66ec87a2b764763625731aef9171e14725b26724954ddd39ff11a98e188433",
+      "oracle_valid": false,
+      "oracle_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.exclude[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "The code 'unsure' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#unsure' was not found in the value set 'https://example.org/probe/ValueSet/contained'",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        }
+      ],
+      "local_valid": false,
+      "local_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": "questionnaire.answer-not-in-set",
+          "text": "The code 'unsure' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "set-one-include-listed-twice-whitespace-system.json",
+      "expect": false,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose one include listed twice; required item; a code whose system is a single space, the code in the set.",
+      "reviewed": {
+        "local": false,
+        "missed": [
+          "QuestionnaireResponse.item.answer.value[x]"
+        ],
+        "extra": [
+          "QuestionnaireResponse.item.answer.valueCoding.system"
+        ],
+        "reason": "a system of a single space: both sides refuse it as a uri and both treat it as no system at the answer (the oracle's 'Coding has no system' warning; the pod's answer-no-system warning). The oracle locates the uri finding at the Coding ('Coding.system must be an absolute reference'), the pod at the system ('\u2026 is not a valid uri'): a path spelling only."
+      },
+      "sha256": "5cec8aa2b5fb57a517277aea714d5778d19bff6a5d7f81dbf78bc7eb6c7e0482",
+      "oracle_valid": false,
+      "oracle_errors": [
+        "QuestionnaireResponse.item.answer.value[x]"
+      ],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "Coding.system must be an absolute reference, not a local reference",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "rule": null,
+          "text": "Primitive types should not only be whitespace",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding).system"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        }
+      ],
+      "local_valid": false,
+      "local_errors": [
+        "QuestionnaireResponse.item.answer.valueCoding.system"
+      ],
+      "local_issues": [
+        {
+          "severity": "error",
+          "code": "value",
+          "rule": "value.invalid",
+          "text": "QuestionnaireResponse.item.answer.valueCoding.system is not a valid uri",
+          "paths": [
+            "QuestionnaireResponse.item.answer.valueCoding.system"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": "questionnaire.answer-no-system",
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "reviewed",
       "agrees": true
     },
     {
