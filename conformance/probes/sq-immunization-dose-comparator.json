@@ -1,0 +1,28 @@
+{
+  "resourceType": "Immunization",
+  "id": "sq-imm",
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Probe</p></div>"
+  },
+  "status": "completed",
+  "vaccineCode": {
+    "coding": [
+      {
+        "system": "http://example.org/vaccines",
+        "code": "probe"
+      }
+    ]
+  },
+  "patient": {
+    "reference": "Patient/example"
+  },
+  "occurrenceDateTime": "2026-10-01",
+  "doseQuantity": {
+    "value": 0.5,
+    "comparator": ">=",
+    "unit": "mL",
+    "system": "http://unitsofmeasure.org",
+    "code": "mL"
+  }
+}

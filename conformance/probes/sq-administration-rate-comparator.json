@@ -1,0 +1,30 @@
+{
+  "resourceType": "MedicationAdministration",
+  "id": "sq-madmin",
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Probe</p></div>"
+  },
+  "status": "completed",
+  "medicationCodeableConcept": {
+    "coding": [
+      {
+        "system": "http://example.org/medications",
+        "code": "probe"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/example"
+  },
+  "effectiveDateTime": "2026-10-01",
+  "dosage": {
+    "rateQuantity": {
+      "value": 10,
+      "comparator": "<",
+      "unit": "mL/h",
+      "system": "http://unitsofmeasure.org",
+      "code": "mL/h"
+    }
+  }
+}

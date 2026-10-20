@@ -1,0 +1,45 @@
+{
+  "resourceType": "Observation",
+  "id": "sq-rr-ext",
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Probe</p></div>"
+  },
+  "status": "final",
+  "code": {
+    "coding": [
+      {
+        "system": "http://example.org/observations",
+        "code": "probe"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/example"
+  },
+  "effectiveDateTime": "2026-10-01",
+  "valueQuantity": {
+    "value": 5,
+    "unit": "mmol/L",
+    "system": "http://unitsofmeasure.org",
+    "code": "mmol/L"
+  },
+  "referenceRange": [
+    {
+      "low": {
+        "value": 3,
+        "_comparator": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+              "valueCode": "unknown"
+            }
+          ]
+        },
+        "unit": "mmol/L",
+        "system": "http://unitsofmeasure.org",
+        "code": "mmol/L"
+      }
+    }
+  ]
+}

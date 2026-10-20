@@ -1,0 +1,17 @@
+{
+  "resourceType": "Specimen",
+  "id": "sq-specimen",
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Probe</p></div>"
+  },
+  "collection": {
+    "quantity": {
+      "value": 2,
+      "comparator": "<=",
+      "unit": "mL",
+      "system": "http://unitsofmeasure.org",
+      "code": "mL"
+    }
+  }
+}

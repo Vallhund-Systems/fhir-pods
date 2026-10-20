@@ -1,0 +1,27 @@
+{
+  "resourceType": "MedicationKnowledge",
+  "id": "sq-mk",
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Probe</p></div>"
+  },
+  "kinetics": [
+    {
+      "areaUnderCurve": [
+        {
+          "value": 1,
+          "unit": "mg.h/L",
+          "system": "http://unitsofmeasure.org",
+          "code": "mg.h/L"
+        },
+        {
+          "value": 2,
+          "comparator": ">",
+          "unit": "mg.h/L",
+          "system": "http://unitsofmeasure.org",
+          "code": "mg.h/L"
+        }
+      ]
+    }
+  ]
+}

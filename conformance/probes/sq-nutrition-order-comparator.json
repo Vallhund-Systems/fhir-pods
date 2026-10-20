@@ -1,0 +1,23 @@
+{
+  "resourceType": "NutritionOrder",
+  "id": "sq-nutrition",
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Probe</p></div>"
+  },
+  "status": "active",
+  "intent": "order",
+  "patient": {
+    "reference": "Patient/example"
+  },
+  "dateTime": "2026-10-01",
+  "enteralFormula": {
+    "maxVolumeToDeliver": {
+      "value": 1500,
+      "comparator": "<",
+      "unit": "mL",
+      "system": "http://unitsofmeasure.org",
+      "code": "mL"
+    }
+  }
+}

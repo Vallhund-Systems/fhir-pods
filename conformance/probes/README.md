@@ -1,9 +1,10 @@
 # Adversarial validation probes
 
-These 37 synthetic fixtures cover valid controls, JSON shapes, primitive limits,
+These 53 synthetic fixtures cover valid controls, JSON shapes, primitive limits,
 extensions, contained resources, unknown profiles, offline references, required
-coded content, recursive content-reference validation, and the shape a
-de-identified age over 89 goes out as.
+coded content, recursive content-reference validation, the shape a
+de-identified age over 89 goes out as, and the datatype profile R4 puts on
+an element (`sq-*`: a `SimpleQuantity` with and without a comparator).
 `manifest.json` records an expected verdict and reason for each fixture. The
 shared corpus builder automatically includes them as `probe-*` cases.
 
@@ -40,6 +41,13 @@ Two expectations are deliberately narrower than a reader might assume:
 - An `Age` or `Quantity` carrying `comparator: ">="` with `value: 90` is
   valid — the form the `collapse-age` de-identification rule writes, so a
   collapsed age is conformant where the host names the element.
+- A comparator is refused only on an element the base types `SimpleQuantity`
+  (`type.profile`) — 55 of them, among them `Observation.referenceRange.low`,
+  `Range.low` wherever a Range sits, `Dosage.doseAndRate.doseQuantity` — with
+  two errors at that element: `Quantity.comparator: max allowed = 0, but
+  found 1 (from …/SimpleQuantity|4.0.1)` and `sqty-1`. A comparator present
+  only through its `_comparator` carrier counts; a contained resource, a
+  Bundle entry and a declared profile change nothing.
 
 References: [R4 JSON representation](https://hl7.org/fhir/R4/json.html),
 [R4 datatypes](https://hl7.org/fhir/R4/datatypes.html),

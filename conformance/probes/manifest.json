@@ -219,6 +219,102 @@
     "file": "age-collapsed-quantity.json",
     "profile": null,
     "expect": true,
-    "reason": "The comparator form is valid on a plain Quantity too, recorded because the pod deliberately does not write it there: the base definitions constrain many Quantity elements to SimpleQuantity, which refuses a comparator, and the element-type table records the type code and not that profile (docs/scope.md)."
+    "reason": "The comparator form is valid on a plain Quantity (Observation.valueQuantity): only the elements the base types SimpleQuantity refuse one, which the shape walk applies by element (typemap ELEMENT_PROFILES). The collapse-age rule still writes the bare value on every Quantity."
+  },
+  {
+    "file": "sq-referencerange-low-comparator.json",
+    "profile": null,
+    "expect": false,
+    "reason": "Observation.referenceRange.low is a SimpleQuantity in R4 (type.profile): a comparator there is refused (comparator max 0, sqty-1)."
+  },
+  {
+    "file": "sq-referencerange-low-plain.json",
+    "profile": null,
+    "expect": true,
+    "reason": "Control: the same SimpleQuantity elements without a comparator are valid, and the plain Quantity value beside them may carry one."
+  },
+  {
+    "file": "sq-referencerange-comparator-extension-only.json",
+    "profile": null,
+    "expect": false,
+    "reason": "A comparator present only through its extension carrier (`_comparator`) is still the element: max 0 and sqty-1 both refuse it, beside the required binding's missing code."
+  },
+  {
+    "file": "sq-dose-quantity-comparator.json",
+    "profile": null,
+    "expect": false,
+    "reason": "Dosage.doseAndRate.dose[x]'s Quantity alternative is a SimpleQuantity (a datatype's element, reached through MedicationRequest.dosageInstruction)."
+  },
+  {
+    "file": "sq-dispense-quantity-comparator.json",
+    "profile": null,
+    "expect": false,
+    "reason": "MedicationRequest.dispenseRequest.quantity is a SimpleQuantity: a comparator is refused."
+  },
+  {
+    "file": "sq-medication-request-plain.json",
+    "profile": null,
+    "expect": true,
+    "reason": "Control: dose and dispense quantities without a comparator are valid."
+  },
+  {
+    "file": "sq-specimen-collection-quantity-comparator.json",
+    "profile": null,
+    "expect": false,
+    "reason": "Specimen.collection.quantity is a SimpleQuantity: a comparator is refused."
+  },
+  {
+    "file": "sq-nutrition-order-comparator.json",
+    "profile": null,
+    "expect": false,
+    "reason": "NutritionOrder.enteralFormula.maxVolumeToDeliver is a SimpleQuantity: a comparator is refused."
+  },
+  {
+    "file": "sq-immunization-dose-comparator.json",
+    "profile": null,
+    "expect": false,
+    "reason": "Immunization.doseQuantity is a SimpleQuantity: a comparator is refused."
+  },
+  {
+    "file": "sq-administration-rate-comparator.json",
+    "profile": null,
+    "expect": false,
+    "reason": "MedicationAdministration.dosage.rate[x]'s Quantity alternative (rateQuantity) is a SimpleQuantity: a comparator is refused."
+  },
+  {
+    "file": "sq-range-low-comparator.json",
+    "profile": null,
+    "expect": false,
+    "reason": "Range.low is a SimpleQuantity wherever a Range sits (here Observation.valueRange): a comparator is refused."
+  },
+  {
+    "file": "sq-sampleddata-origin-comparator.json",
+    "profile": null,
+    "expect": false,
+    "reason": "SampledData.origin is a SimpleQuantity: a comparator is refused."
+  },
+  {
+    "file": "sq-repeating-comparator.json",
+    "profile": null,
+    "expect": false,
+    "reason": "MedicationKnowledge.kinetics.areaUnderCurve repeats and is a SimpleQuantity: a comparator on the second item is refused there."
+  },
+  {
+    "file": "sq-contained-comparator.json",
+    "profile": null,
+    "expect": false,
+    "reason": "A SimpleQuantity inside a contained resource (Observation.referenceRange.high): a comparator is refused."
+  },
+  {
+    "file": "sq-bundle-entry-comparator.json",
+    "profile": null,
+    "expect": false,
+    "reason": "A SimpleQuantity inside a Bundle entry's resource: a comparator is refused."
+  },
+  {
+    "file": "sq-profiled-bodyweight-comparator.json",
+    "profile": "http://hl7.org/fhir/StructureDefinition/bodyweight",
+    "expect": false,
+    "reason": "Under a declared compiled profile (base body weight): the base's SimpleQuantity on referenceRange.low still refuses a comparator."
   }
 ]

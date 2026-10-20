@@ -1,0 +1,58 @@
+{
+  "resourceType": "DiagnosticReport",
+  "id": "sq-contained",
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Probe</p></div>"
+  },
+  "contained": [
+    {
+      "resourceType": "Observation",
+      "id": "inner",
+      "status": "final",
+      "code": {
+        "coding": [
+          {
+            "system": "http://example.org/observations",
+            "code": "probe"
+          }
+        ]
+      },
+      "subject": {
+        "reference": "Patient/example"
+      },
+      "effectiveDateTime": "2026-10-01",
+      "referenceRange": [
+        {
+          "high": {
+            "value": 6,
+            "comparator": "<=",
+            "unit": "mmol/L",
+            "system": "http://unitsofmeasure.org",
+            "code": "mmol/L"
+          }
+        }
+      ],
+      "valueQuantity": {
+        "value": 5,
+        "unit": "mmol/L",
+        "system": "http://unitsofmeasure.org",
+        "code": "mmol/L"
+      }
+    }
+  ],
+  "status": "final",
+  "code": {
+    "coding": [
+      {
+        "system": "http://example.org/reports",
+        "code": "probe"
+      }
+    ]
+  },
+  "result": [
+    {
+      "reference": "#inner"
+    }
+  ]
+}
