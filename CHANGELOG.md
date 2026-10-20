@@ -23,8 +23,8 @@ and artifacts are unchanged.
   table rewritten from the measurement, each row stamped at 0.22.0, with rows
   added for the probe and narrative lanes. Release corpus **1,778/1,778**,
   three triaged residues; probes **37/37**; narrative **42/42**; base
-  **5,156/5,288** (132 lenient, every one reviewed; 0 stricter; 2 excluded;
-  2 unstable oracle cases unscored); validator base tests **64/84** Java,
+  **5,155/5,287** (132 lenient, every one reviewed; 0 stricter; 2 excluded;
+  3 order-dependent oracle cases unscored); validator base tests **64/84** Java,
   **14/20** Firely (18 lenient; 2 stricter than stored Java, 0 than both);
   questionnaire **74/81** verdicts, **73/81** every error (7
   lenient, 0 stricter, 15 excluded); supporting **9/11** of 11 compared (2
@@ -63,29 +63,31 @@ and artifacts are unchanged.
   `q-enablewhen-me-wrong`, `mni-patientOverview-bundle-example1b`,
   `pat-dob-ext`, `nested-questionnaire-nested-valueset`, `encounter-period`,
   `ext-ccuk`. Figures unchanged.
-- `conformance/base.py` judges each definition that gives one constraint key
-  different expressions in a JVM of its own. validator_cli registers keys as
-  it loads a batch and rejects a later definition reusing one, so in a shared
-  batch the verdict followed the batch's composition: at this pin `inv-1` and
-  `inv-2` across `StructureDefinition-Event`, `-Parameters`, `-Task`,
-  `-TestReport` and `-allergyintolerance-substanceExposureRisk`. Judged alone
-  (nine runs each): `Parameters` is valid and `Event` invalid on both sides
-  every time; the allergy extension is invalid every time (a reviewed lenient
-  difference) with one of two messages — its `inv-1` collides with the `Task`
-  or the `TestReport` of the examples package the oracle itself loads, and
-  its expression names an element FHIRPath cannot resolve; `Task` and
-  `TestReport` were valid in eight runs and invalid in one, on the same
-  collision. Those two are recorded as unstable oracle cases
-  (`base-triage.json` `oracle_unstable`: each observed verdict and
-  signature, an unseen one fails, never scored), the allergy entry names
-  both observed signatures, and `Task`/`TestReport` leave the reviewed
-  differences: compared 5,290 → 5,288, lenient 134 → 132, agreements
-  unchanged at 5,156. A fresh run also compares every outcome with the
-  previous `oracle-cache.json` and reports a failure caused only by the
-  oracle moving as drift, exit 2 (exit 1 is the pod or the evidence);
-  `--refresh-alone` rejudges the single-definition set into the cache;
+- Some base-lane oracle outcomes are decided by validator_cli's own
+  iteration order. 6.10.4 checks a definition's constraint key against the
+  first base structure carrying it (`findInvariantInBase` over
+  `ContextUtilities.allBaseStructures()`, a `java.util.HashSet` of proxies
+  without hashCode/equals: identity-hash order, different in each JVM), and
+  R4's base structures give `inv-1` three expressions — Parameters, Task,
+  TestReport. Validating any of them, or a definition with its own `inv-1`
+  (the `allergyintolerance-substanceExposureRisk` extension), yields no
+  finding or "The constraint key 'inv-1' already exists at the location …"
+  naming any one of the others; batch composition plays no part, and judging
+  one definition per JVM changes nothing. `conformance/base.py` derives those
+  partners from the R4 core package and accepts exactly the outcomes they
+  explain: Parameters, Task and TestReport are order-dependent oracle cases
+  (`oracle_order_dependent` in `base-triage.json`, never scored), and the
+  allergy extension stays a reviewed lenient difference whose message may name
+  any partner beside its recorded FHIRPath error. Compared 5,290 → 5,287,
+  agreements 5,156 → 5,155 (Parameters leaves them), lenient 134 → 132.
+  A fresh run also compares every outcome with the previous
+  `oracle-cache.json`, ignoring the source-file extension (an absolute path,
+  so another checkout's outcomes compare), and reports a failure caused only
+  by the oracle moving as drift, exit 2; exit 1 is the pod or the evidence.
   `BASE_ORACLE_TIMEOUT` raises the per-batch bound (900 s) on a loaded
   machine.
+- The README's Synthea row stated planned work; it now states the measured
+  limit (one oracle JVM over the 14 bundles; larger cohorts not measured).
 
 ## 0.22.0 — 2026-10-14
 

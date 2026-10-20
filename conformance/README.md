@@ -17,7 +17,6 @@ reviewed exception stale. Changes require review, not automatic rebaselining.
 ```sh
 JAVA_HOME=/opt/homebrew/opt/openjdk@17 CARGO_BUILD_JOBS=2 python3 conformance/base.py
 CARGO_BUILD_JOBS=2 python3 conformance/base.py --reuse-oracle
-JAVA_HOME=/opt/homebrew/opt/openjdk@17 CARGO_BUILD_JOBS=2 python3 conformance/base.py --refresh-alone
 python3 conformance/base.py --reuse-oracle --filter Patient-
 python3 -m unittest discover -s conformance -p test_base.py
 ```
@@ -43,25 +42,32 @@ gate adoption caught four such changes around `inv-1` (including a swap of
 which definition was rejected). Those were reviewed explicitly; future oracle
 drift still fails and must be investigated before changing the baseline.
 
-The definitions that give one constraint key different expressions (found
-from the selected inputs; at this pin `inv-1` and `inv-2` across five
-StructureDefinitions) are each judged by validator_cli in a JVM of their own:
-it registers keys as it loads a batch and rejects the second definition to
-reuse one, so in a shared batch a definition's verdict depends on what else
-the batch holds. Judged alone, two of them (`StructureDefinition-Task`,
-`-TestReport`) have still had both verdicts, because their `inv-1` collides
-with a definition in a package the oracle loads and which one it keeps
-varies: they are listed under `oracle_unstable` in `base-triage.json` with
-every observed verdict and signature, an unseen outcome fails, and they are
-never scored. A reviewed difference may likewise name every signature
-observed for it (`oracle_signatures`). A fresh run also compares every oracle outcome with the
-previous full `oracle-cache.json`; a failure caused only by the oracle moving
-(the pod still says what was reviewed, or what the oracle said before) is
-reported as oracle drift and exits **2**, not 1. Exit 1 is the pod or the
-evidence; `--reuse-oracle` is the pod-side gate. `--refresh-alone` rejudges
-only the single-definition set into the full cache, and
-`BASE_ORACLE_TIMEOUT` (seconds, default 900) raises the per-batch bound on a
-loaded machine, where package loading alone has taken 18 minutes.
+Some outcomes are decided by the oracle's own iteration order. validator_cli
+6.10.4 checks a definition's constraint key against the first base structure
+carrying it (`StructureDefinitionValidator.findInvariantInBase` over
+`ContextUtilities.allBaseStructures()`); that walk is over a
+`java.util.HashSet` of resource proxies with no hashCode/equals, so its order
+is the JVM's identity-hash order and differs from run to run, whatever the
+batch. R4's base structures give `inv-1` three expressions (Parameters, Task,
+TestReport), so validating any of those definitions — or a definition with an
+`inv-1` of its own, such as the `allergyintolerance-substanceExposureRisk`
+extension — yields either no finding or "The constraint key 'inv-1' already
+exists at the location …" naming any one of the others. `base.py` derives
+those partners from the R4 core package and accepts exactly the outcomes they
+explain: Parameters, Task and TestReport are listed under
+`oracle_order_dependent` in `base-triage.json` and never scored; the allergy
+extension, invalid on the oracle side in every run, stays a reviewed
+difference whose message may name any partner beside its recorded FHIRPath
+error. Any other outcome fails.
+
+A fresh run also compares every oracle outcome with the previous full
+`oracle-cache.json`, ignoring the source-file extension (an absolute path, so
+two checkouts compare); a failure caused only by the oracle moving (the pod
+still says what was reviewed, or what the oracle said before) is reported as
+oracle drift and exits **2**, not 1. Exit 1 is the pod or the evidence;
+`--reuse-oracle` is the pod-side gate. `BASE_ORACLE_TIMEOUT` (seconds, default
+900) raises the per-batch bound on a loaded machine, where package loading
+alone has taken 18 minutes.
 
 Full results are `corpus-base/evidence.json`; filtered/limited runs write
 `evidence-subset.json` and cannot replace the full oracle cache. The summary
