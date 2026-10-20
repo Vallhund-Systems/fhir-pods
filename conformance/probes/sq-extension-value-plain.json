@@ -1,0 +1,31 @@
+{
+  "resourceType": "MedicationDispense",
+  "id": "sq-ext-plain",
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Probe</p></div>"
+  },
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/medicationdispense-quantityRemaining",
+      "valueQuantity": {
+        "value": 20,
+        "unit": "tablet",
+        "system": "http://unitsofmeasure.org",
+        "code": "{tbl}"
+      }
+    }
+  ],
+  "status": "completed",
+  "medicationCodeableConcept": {
+    "coding": [
+      {
+        "system": "http://example.org/medications",
+        "code": "probe"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/example"
+  }
+}

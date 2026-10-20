@@ -316,5 +316,17 @@
     "profile": "http://hl7.org/fhir/StructureDefinition/bodyweight",
     "expect": false,
     "reason": "Under a declared compiled profile (base body weight): the base's SimpleQuantity on referenceRange.low still refuses a comparator."
+  },
+  {
+    "file": "sq-extension-value-comparator.json",
+    "profile": null,
+    "expect": false,
+    "reason": "An extension profile (hl7.fhir.uv.extensions.r4 medicationdispense-quantityRemaining) types its value[x] Quantity with SimpleQuantity, where the base Extension.value[x] names no profile: a comparator on valueQuantity is refused there (max 0, sqty-1)."
+  },
+  {
+    "file": "sq-extension-value-plain.json",
+    "profile": null,
+    "expect": true,
+    "reason": "Control: the same extension value without a comparator is valid."
   }
 ]

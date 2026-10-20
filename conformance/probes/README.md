@@ -1,6 +1,6 @@
 # Adversarial validation probes
 
-These 53 synthetic fixtures cover valid controls, JSON shapes, primitive limits,
+These 55 synthetic fixtures cover valid controls, JSON shapes, primitive limits,
 extensions, contained resources, unknown profiles, offline references, required
 coded content, recursive content-reference validation, the shape a
 de-identified age over 89 goes out as, and the datatype profile R4 puts on
@@ -48,6 +48,9 @@ Two expectations are deliberately narrower than a reader might assume:
   found 1 (from …/SimpleQuantity|4.0.1)` and `sqty-1`. A comparator present
   only through its `_comparator` carrier counts; a contained resource, a
   Bundle entry and a declared profile change nothing.
+- The same two errors where a compiled extension profile, not the base, types
+  its `value[x]` `Quantity` with `SimpleQuantity`
+  (`medicationdispense-quantityRemaining`): `sq-extension-value-*`.
 
 References: [R4 JSON representation](https://hl7.org/fhir/R4/json.html),
 [R4 datatypes](https://hl7.org/fhir/R4/datatypes.html),
