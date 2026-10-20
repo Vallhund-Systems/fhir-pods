@@ -129,6 +129,32 @@ class BaseGateTests(unittest.TestCase):
         self.assertIsNotNone(base.assess(dict(row, oracle_errors=[used.format("u/Z")]), triage))
         self.assertIsNotNone(base.assess(dict(row, ours="invalid"), triage))
 
+    def test_a_reviewed_difference_with_an_order_dependent_message_needs_its_own_error(self):
+        used = "The constraint key 'inv-1' already exists at the location '{}|4.0.1' with a different expression ('x')"
+        own = "Error in constraint 'inv-1' with expression 'e'"
+        triage = {"oracle_exclusions": {}, "differences": {"Ext.json": {
+            "input_sha256": "input", "ours": "valid", "oracle": "invalid", "reasons": ["oracle-order-dependent"],
+            "order_dependent": {"own_errors": [own]}}}}
+        row = {"file": "Ext.json", "input_sha256": "input", "ours": "valid", "oracle": "invalid",
+               "oracle_signature": "any", "key_partners": [["inv-1", "u/B"], ["inv-1", "u/C"]],
+               "oracle_errors": [used.format("u/B"), own + ": FHIRPath error"]}
+        self.assertIsNone(base.assess(row, triage))
+        self.assertIsNone(base.assess(dict(row, oracle_errors=[used.format("u/C"), own + ": x"]), triage))
+        # the own error must be there, and nothing unexplained beside it
+        self.assertIsNotNone(base.assess(dict(row, oracle_errors=[used.format("u/B")]), triage))
+        self.assertIsNotNone(base.assess(dict(row, oracle_errors=[used.format("u/Z"), own]), triage))
+        self.assertIsNotNone(base.assess(dict(row, oracle_errors=[own, "another error"]), triage))
+
+    def test_drift_compares_outcomes_without_their_source_path(self):
+        def oo(path, issues):
+            return {"resourceType": "OperationOutcome", "issue": issues,
+                    "extension": [{"url": "http://hl7.org/fhir/StructureDefinition/" + base.run.FILE_EXT, "valueString": path}]}
+        before = oo("/checkout-a/x.json", [])
+        previous = {"configuration": {}, "results": {"x.json": {"outcome_sha256": base.json_hash(before), "outcome": before}}}
+        self.assertEqual(base.oracle_drift(previous, {}, {"x.json": oo("/checkout-b/x.json", [])}), {})
+        moved = base.oracle_drift(previous, {}, {"x.json": oo("/checkout-b/x.json", [{"severity": "error", "code": "invalid"}])})
+        self.assertEqual(set(moved), {"x.json"})
+
     def test_an_outcome_identity_ignores_the_source_path(self):
         def oo(path):
             return {"resourceType": "OperationOutcome", "issue": [],

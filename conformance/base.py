@@ -178,18 +178,19 @@ def key_partners(path, base_keys):
 KEY_USED = re.compile(r"The constraint key '([^']+)' already exists at the location '([^'|]+)(?:\|[^']*)?' with a different expression")
 
 
-def order_dependent_outcome_ok(errors, partners, allowed=()):
+def order_dependent_outcome_ok(errors, partners, own=()):
     """Every error is the key-reuse finding naming a derived partner, or one
-    of the case's own recorded, order-independent errors."""
+    of the case's own recorded, order-independent errors — and each of those
+    own errors is present, so the reviewed reason stays exact."""
     partners = {tuple(p) for p in partners}
     for text in errors:
         m = KEY_USED.match(text)
         if m and (m.group(1), m.group(2)) in partners:
             continue
-        if any(text.startswith(prefix) for prefix in allowed):
+        if any(text.startswith(prefix) for prefix in own):
             continue
         return False
-    return True
+    return all(any(text.startswith(prefix) for text in errors) for prefix in own)
 
 
 def outcome_identity(outcome):
@@ -280,7 +281,7 @@ def assess(row, triage):
         if row["input_sha256"] != order["input_sha256"] or row["ours"] != order["ours"]:
             return "changed order-dependent oracle case"
         if not order_dependent_outcome_ok(row.get("oracle_errors", []), row.get("key_partners", set()),
-                                          order.get("allowed_errors", [])):
+                                          order.get("own_errors", [])):
             return "order-dependent oracle case gave an outcome its key partners do not explain"
         return None
     expected = triage["differences"].get(name)
@@ -291,7 +292,7 @@ def assess(row, triage):
         if "order_dependent" in expected:
             # the verdict is stable, the message names an order-dependent partner
             if not order_dependent_outcome_ok(row.get("oracle_errors", []), row.get("key_partners", set()),
-                                              expected["order_dependent"].get("allowed_errors", [])):
+                                              expected["order_dependent"].get("own_errors", [])):
                 return "reviewed difference changed (oracle errors); review before updating triage"
         elif row.get("oracle_signature") != expected.get("oracle_signature"):
             return "reviewed difference changed (oracle_signature); review before updating triage"
@@ -387,6 +388,8 @@ def main(argv=None):
             except (OSError, ValueError, subprocess.TimeoutExpired) as error:
                 row["native_error"] = str(error)
             row["agree"] = row["ours"] == row["oracle"] and row["ours"] in ("valid", "invalid")
+            if name in triage.get("oracle_order_dependent", {}):
+                row["agree"] = None  # never scored: neither agreement nor difference
             error = assess(row, triage)
             if error and drift_only(row, error, triage, drift):
                 evidence["drift_errors"].append({"file": name, "error": error, **drift[name]})
@@ -407,7 +410,8 @@ def main(argv=None):
         "agree": sum(r["agree"] for r in scored_rows), "oracle_excluded": sum(r["oracle"] == "excluded" for r in rows),
         "oracle_order_dependent": len(rows) - len(scored_rows),
         "lenient": kinds[("valid", "invalid")], "stricter": kinds[("invalid", "valid")], "failures": len(evidence["errors"]),
-        "oracle_drift": len(drift) if drift is not None else None, "drift_failures": len(evidence["drift_errors"])}
+        "oracle_drift": (len(drift) if drift is not None else
+                         "not compared (--reuse-oracle)" if args.reuse_oracle else "no previous cache"), "drift_failures": len(evidence["drift_errors"])}
     evidence_path.write_text(json.dumps(evidence, indent=1) + "\n")
     print(json.dumps(evidence["summary"]))
     for error in evidence["errors"][:30]:

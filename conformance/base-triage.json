@@ -540,7 +540,7 @@
         "oracle-order-dependent"
       ],
       "order_dependent": {
-        "allowed_errors": [
+        "own_errors": [
           "Error in constraint 'inv-1' with expression 'substanceExposureRisk.exists() and code.empty()': Error evaluating FHIRPath expression: The name 'substanceExposureRisk' is not valid"
         ]
       }

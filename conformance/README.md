@@ -57,8 +57,9 @@ those partners from the R4 core package and accepts exactly the outcomes they
 explain: Parameters, Task and TestReport are listed under
 `oracle_order_dependent` in `base-triage.json` and never scored; the allergy
 extension, invalid on the oracle side in every run, stays a reviewed
-difference whose message may name any partner beside its recorded FHIRPath
-error. Any other outcome fails.
+difference whose message may name any partner and must carry its recorded
+FHIRPath error. Any other outcome fails; order-dependent rows carry
+`agree: null` in the evidence.
 
 A fresh run also compares every oracle outcome with the previous full
 `oracle-cache.json`, ignoring the source-file extension (an absolute path, so

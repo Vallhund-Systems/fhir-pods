@@ -33,7 +33,7 @@ and artifacts are unchanged.
   **74/77** every error, 0 stricter; Synthea **14/14** (4.39 s, 6.2 MB/s on a
   loaded machine); mutation **19,067/19,067** (0 lenient, 0 stricter, 0
   untriaged); instrument path **71/71** + **7/7** host-profile. 277 Rust
-  tests, 22 wasm Node tests, 23 Python harness checks, clippy clean.
+  tests, 22 wasm Node tests, 25 Python harness checks, clippy clean.
 - The README had carried older figures: validator base tests 63/84 and 13/20
   (`pat-dob-ext` agrees with both engines since 0.18.0 refused extensions no
   package defines), ad-hoc profiles 10 compared and 9/10 (binding-
@@ -72,13 +72,16 @@ and artifacts are unchanged.
   TestReport. Validating any of them, or a definition with its own `inv-1`
   (the `allergyintolerance-substanceExposureRisk` extension), yields no
   finding or "The constraint key 'inv-1' already exists at the location …"
-  naming any one of the others; batch composition plays no part, and judging
-  one definition per JVM changes nothing. `conformance/base.py` derives those
+  naming any one of the others (`StructureDefinition-Event`, a logical model,
+  never reaches that check: it fails `sdf-4` alone, an agreement); batch
+  composition plays no part, and judging one definition per JVM changes
+  nothing. `conformance/base.py` derives those
   partners from the R4 core package and accepts exactly the outcomes they
   explain: Parameters, Task and TestReport are order-dependent oracle cases
   (`oracle_order_dependent` in `base-triage.json`, never scored), and the
   allergy extension stays a reviewed lenient difference whose message may name
-  any partner beside its recorded FHIRPath error. Compared 5,290 → 5,287,
+  any partner and must carry its recorded FHIRPath error. Order-dependent rows
+  carry `agree: null` in the evidence. Compared 5,290 → 5,287,
   agreements 5,156 → 5,155 (Parameters leaves them), lenient 134 → 132.
   A fresh run also compares every outcome with the previous
   `oracle-cache.json`, ignoring the source-file extension (an absolute path,

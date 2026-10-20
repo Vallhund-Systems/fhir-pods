@@ -275,7 +275,7 @@ compliance.
 The broader lanes enforce reviewed baselines: new or changed differences and
 unusable evidence fail. Exclusions are never counted as agreement; "compare"
 counts the cases put before both sides, "agree" those where they match. At
-0.22.0 the workspace runs **277 Rust tests**, **22 wasm Node tests** and **23
+0.22.0 the workspace runs **277 Rust tests**, **22 wasm Node tests** and **25
 Python harness checks**, clippy clean; the [changelog](CHANGELOG.md) separates
 released artifacts from unreleased corrections. [Conformance commands](conformance/README.md) and
 [detailed scope](docs/scope.md) describe reproduction and the remaining gaps.
