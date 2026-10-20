@@ -1,6 +1,6 @@
 {
-  "recorded_at": "2026-10-14T21:54:50.121280+00:00",
-  "source_revision": "73c0c3b58649e116180e5304822edb9435c994c3",
+  "recorded_at": "2026-10-20T21:55:28.982567+00:00",
+  "source_revision": "478e70ed0b106bf714db4e1e98e821d5043dc78f",
   "source_dirty": false,
   "oracle_version": "6.10.4",
   "oracle_sha256": "1106b9d58f9e363e47bea7c4fc065841e5fc91fe9d062775c3bfdd212bd653cc",
@@ -17,8 +17,8 @@
   "oracle_exit_code": 0,
   "note": "Terminology service disabled; the oracle may still resolve unknown profile URLs. Verdict parity only; issues retained for inspection.",
   "counts": {
-    "total": 37,
-    "agree": 37,
+    "total": 53,
+    "agree": 53,
     "differ": 0
   },
   "probes": [
@@ -1835,7 +1835,7 @@
       "file": "age-collapsed-quantity.json",
       "profile": null,
       "expect": true,
-      "reason": "The comparator form is valid on a plain Quantity too, recorded because the pod deliberately does not write it there: the base definitions constrain many Quantity elements to SimpleQuantity, which refuses a comparator, and the element-type table records the type code and not that profile (docs/scope.md).",
+      "reason": "The comparator form is valid on a plain Quantity (Observation.valueQuantity): only the elements the base types SimpleQuantity refuse one, which the shape walk applies by element (typemap ELEMENT_PROFILES). The collapse-age rule still writes the bare value on every Quantity.",
       "sha256": "d7791296b3687fb5cae0da079147da22dcac938c6ee0b717a2a7f14b8101371a",
       "oracle_valid": true,
       "oracle_issues": [
@@ -1868,6 +1868,1134 @@
         "resourceType": "Observation",
         "valid": true,
         "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "sq-referencerange-low-comparator.json",
+      "profile": null,
+      "expect": false,
+      "reason": "Observation.referenceRange.low is a SimpleQuantity in R4 (type.profile): a comparator there is refused (comparator max 0, sqty-1).",
+      "sha256": "47d1d9b88f36614bab6e451848e92eb1e6ca0e0f74bb07f6594891ce3bc5bb5c",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "text": "A definition for CodeSystem 'http://example.org/observations' could not be found, so the code cannot be validated",
+          "paths": [
+            "Observation.code.coding[0].system"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mmol/L' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "Observation.value.ofType(Quantity)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mmol/L' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "Observation.referenceRange[0].low"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Quantity.comparator: max allowed = 0, but found 1 (from http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)",
+          "paths": [
+            "Observation.referenceRange[0].low"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: sqty-1: 'The comparator is not used on a SimpleQuantity'",
+          "paths": [
+            "Observation.referenceRange[0].low"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "text": "Best Practice Recommendation: In general, all observations should have a performer",
+          "paths": [
+            "Observation"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Observation",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.max",
+            "path": "Observation.referenceRange[0].low",
+            "message": "Observation.referenceRange[0].low.comparator exceeds max 0 (found 1): Observation.referenceRange[0].low is a SimpleQuantity (http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1), which prohibits Quantity.comparator"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.sqty-1",
+            "path": "Observation.referenceRange[0].low",
+            "message": "sqty-1: The comparator is not used on a SimpleQuantity (Observation.referenceRange[0].low is a SimpleQuantity, http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "sq-referencerange-low-plain.json",
+      "profile": null,
+      "expect": true,
+      "reason": "Control: the same SimpleQuantity elements without a comparator are valid, and the plain Quantity value beside them may carry one.",
+      "sha256": "d5c3aff33838ecb63aa0a18e86e6cfe2b49475102d8b57ab465cc424ecfe58cb",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "text": "A definition for CodeSystem 'http://example.org/observations' could not be found, so the code cannot be validated",
+          "paths": [
+            "Observation.code.coding[0].system"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mmol/L' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "Observation.value.ofType(Quantity)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mmol/L' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "Observation.referenceRange[0].low"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mmol/L' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "Observation.referenceRange[0].high"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "text": "Best Practice Recommendation: In general, all observations should have a performer",
+          "paths": [
+            "Observation"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Observation",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "sq-referencerange-comparator-extension-only.json",
+      "profile": null,
+      "expect": false,
+      "reason": "A comparator present only through its extension carrier (`_comparator`) is still the element: max 0 and sqty-1 both refuse it, beside the required binding's missing code.",
+      "sha256": "4cf278bbddef8ea15e261215cdd393b2d7a11e899dc3573c86f0708d17e8d316",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "text": "A definition for CodeSystem 'http://example.org/observations' could not be found, so the code cannot be validated",
+          "paths": [
+            "Observation.code.coding[0].system"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mmol/L' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "Observation.value.ofType(Quantity)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mmol/L' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "Observation.referenceRange[0].low"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Quantity.comparator: max allowed = 0, but found 1 (from http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)",
+          "paths": [
+            "Observation.referenceRange[0].low"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "text": "No code provided, and a code is required from the value set",
+          "paths": [
+            "Observation.referenceRange[0].low.comparator"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: sqty-1: 'The comparator is not used on a SimpleQuantity'",
+          "paths": [
+            "Observation.referenceRange[0].low"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "text": "Best Practice Recommendation: In general, all observations should have a performer",
+          "paths": [
+            "Observation"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Observation",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.max",
+            "path": "Observation.referenceRange[0].low",
+            "message": "Observation.referenceRange[0].low.comparator exceeds max 0 (found 1): Observation.referenceRange[0].low is a SimpleQuantity (http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1), which prohibits Quantity.comparator"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.sqty-1",
+            "path": "Observation.referenceRange[0].low",
+            "message": "sqty-1: The comparator is not used on a SimpleQuantity (Observation.referenceRange[0].low is a SimpleQuantity, http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)"
+          },
+          {
+            "severity": "error",
+            "code": "code-invalid",
+            "id": "binding.no-code",
+            "path": "Observation.referenceRange[0].low.comparator",
+            "message": "No code provided, and a code is required from the value set http://hl7.org/fhir/ValueSet/quantity-comparator"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "sq-dose-quantity-comparator.json",
+      "profile": null,
+      "expect": false,
+      "reason": "Dosage.doseAndRate.dose[x]'s Quantity alternative is a SimpleQuantity (a datatype's element, reached through MedicationRequest.dosageInstruction).",
+      "sha256": "a346a0515564c993327b87a4ae733d8c82025e2844da8396170dfa5c48cd1e19",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "text": "A definition for CodeSystem 'http://example.org/medications' could not be found, so the code cannot be validated",
+          "paths": [
+            "MedicationRequest.medication.ofType(CodeableConcept).coding[0].system"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mg' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "MedicationRequest.dosageInstruction[0].doseAndRate[0].dose.ofType(Quantity)"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Quantity.comparator: max allowed = 0, but found 1 (from http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)",
+          "paths": [
+            "MedicationRequest.dosageInstruction[0].doseAndRate[0].dose.ofType(Quantity)"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: sqty-1: 'The comparator is not used on a SimpleQuantity'",
+          "paths": [
+            "MedicationRequest.dosageInstruction[0].doseAndRate[0].dose.ofType(Quantity)"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "MedicationRequest",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.max",
+            "path": "MedicationRequest.dosageInstruction[0].doseAndRate[0].doseQuantity",
+            "message": "MedicationRequest.dosageInstruction[0].doseAndRate[0].doseQuantity.comparator exceeds max 0 (found 1): MedicationRequest.dosageInstruction[0].doseAndRate[0].doseQuantity is a SimpleQuantity (http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1), which prohibits Quantity.comparator"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.sqty-1",
+            "path": "MedicationRequest.dosageInstruction[0].doseAndRate[0].doseQuantity",
+            "message": "sqty-1: The comparator is not used on a SimpleQuantity (MedicationRequest.dosageInstruction[0].doseAndRate[0].doseQuantity is a SimpleQuantity, http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "sq-dispense-quantity-comparator.json",
+      "profile": null,
+      "expect": false,
+      "reason": "MedicationRequest.dispenseRequest.quantity is a SimpleQuantity: a comparator is refused.",
+      "sha256": "5dae803fd5ae6947bd33ca1d0dcca6cfcff9e3cad647bbaa8012e313a58768fd",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "text": "A definition for CodeSystem 'http://example.org/medications' could not be found, so the code cannot be validated",
+          "paths": [
+            "MedicationRequest.medication.ofType(CodeableConcept).coding[0].system"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mg' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "MedicationRequest.dispenseRequest.quantity"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Quantity.comparator: max allowed = 0, but found 1 (from http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)",
+          "paths": [
+            "MedicationRequest.dispenseRequest.quantity"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: sqty-1: 'The comparator is not used on a SimpleQuantity'",
+          "paths": [
+            "MedicationRequest.dispenseRequest.quantity"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "MedicationRequest",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.max",
+            "path": "MedicationRequest.dispenseRequest.quantity",
+            "message": "MedicationRequest.dispenseRequest.quantity.comparator exceeds max 0 (found 1): MedicationRequest.dispenseRequest.quantity is a SimpleQuantity (http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1), which prohibits Quantity.comparator"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.sqty-1",
+            "path": "MedicationRequest.dispenseRequest.quantity",
+            "message": "sqty-1: The comparator is not used on a SimpleQuantity (MedicationRequest.dispenseRequest.quantity is a SimpleQuantity, http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "sq-medication-request-plain.json",
+      "profile": null,
+      "expect": true,
+      "reason": "Control: dose and dispense quantities without a comparator are valid.",
+      "sha256": "9890c432dbf267fe66df912a46c5ec5c44e85d3ba60815c086a9820384112c27",
+      "oracle_valid": true,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "text": "A definition for CodeSystem 'http://example.org/medications' could not be found, so the code cannot be validated",
+          "paths": [
+            "MedicationRequest.medication.ofType(CodeableConcept).coding[0].system"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mg' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "MedicationRequest.dosageInstruction[0].doseAndRate[0].dose.ofType(Quantity)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mg' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "MedicationRequest.dispenseRequest.quantity"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "MedicationRequest",
+        "valid": true,
+        "issues": []
+      },
+      "agrees": true
+    },
+    {
+      "file": "sq-specimen-collection-quantity-comparator.json",
+      "profile": null,
+      "expect": false,
+      "reason": "Specimen.collection.quantity is a SimpleQuantity: a comparator is refused.",
+      "sha256": "846122993c2bd397282ef1acd43ab62399f6c1259612f657547a535ab407c258",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mL' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "Specimen.collection.quantity"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Quantity.comparator: max allowed = 0, but found 1 (from http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)",
+          "paths": [
+            "Specimen.collection.quantity"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: sqty-1: 'The comparator is not used on a SimpleQuantity'",
+          "paths": [
+            "Specimen.collection.quantity"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Specimen",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.max",
+            "path": "Specimen.collection.quantity",
+            "message": "Specimen.collection.quantity.comparator exceeds max 0 (found 1): Specimen.collection.quantity is a SimpleQuantity (http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1), which prohibits Quantity.comparator"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.sqty-1",
+            "path": "Specimen.collection.quantity",
+            "message": "sqty-1: The comparator is not used on a SimpleQuantity (Specimen.collection.quantity is a SimpleQuantity, http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "sq-nutrition-order-comparator.json",
+      "profile": null,
+      "expect": false,
+      "reason": "NutritionOrder.enteralFormula.maxVolumeToDeliver is a SimpleQuantity: a comparator is refused.",
+      "sha256": "315a03a5fb57194d2e0a201071c209996b4ca19361bff32e045139fca3707ea8",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mL' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "NutritionOrder.enteralFormula.maxVolumeToDeliver"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Quantity.comparator: max allowed = 0, but found 1 (from http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)",
+          "paths": [
+            "NutritionOrder.enteralFormula.maxVolumeToDeliver"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: sqty-1: 'The comparator is not used on a SimpleQuantity'",
+          "paths": [
+            "NutritionOrder.enteralFormula.maxVolumeToDeliver"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "NutritionOrder",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.max",
+            "path": "NutritionOrder.enteralFormula.maxVolumeToDeliver",
+            "message": "NutritionOrder.enteralFormula.maxVolumeToDeliver.comparator exceeds max 0 (found 1): NutritionOrder.enteralFormula.maxVolumeToDeliver is a SimpleQuantity (http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1), which prohibits Quantity.comparator"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.sqty-1",
+            "path": "NutritionOrder.enteralFormula.maxVolumeToDeliver",
+            "message": "sqty-1: The comparator is not used on a SimpleQuantity (NutritionOrder.enteralFormula.maxVolumeToDeliver is a SimpleQuantity, http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "sq-immunization-dose-comparator.json",
+      "profile": null,
+      "expect": false,
+      "reason": "Immunization.doseQuantity is a SimpleQuantity: a comparator is refused.",
+      "sha256": "f17091999abe6719d9bfd5e513b0fd195d411a1e6cee9343dc35e9275269cd20",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "text": "A definition for CodeSystem 'http://example.org/vaccines' could not be found, so the code cannot be validated",
+          "paths": [
+            "Immunization.vaccineCode.coding[0].system"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mL' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "Immunization.doseQuantity"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Quantity.comparator: max allowed = 0, but found 1 (from http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)",
+          "paths": [
+            "Immunization.doseQuantity"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: sqty-1: 'The comparator is not used on a SimpleQuantity'",
+          "paths": [
+            "Immunization.doseQuantity"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Immunization",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.max",
+            "path": "Immunization.doseQuantity",
+            "message": "Immunization.doseQuantity.comparator exceeds max 0 (found 1): Immunization.doseQuantity is a SimpleQuantity (http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1), which prohibits Quantity.comparator"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.sqty-1",
+            "path": "Immunization.doseQuantity",
+            "message": "sqty-1: The comparator is not used on a SimpleQuantity (Immunization.doseQuantity is a SimpleQuantity, http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "sq-administration-rate-comparator.json",
+      "profile": null,
+      "expect": false,
+      "reason": "MedicationAdministration.dosage.rate[x]'s Quantity alternative (rateQuantity) is a SimpleQuantity: a comparator is refused.",
+      "sha256": "b56757353eca0524fbb7e16527c3058bfcec5f8d7251350531126fbcae3a5027",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "text": "A definition for CodeSystem 'http://example.org/medications' could not be found, so the code cannot be validated",
+          "paths": [
+            "MedicationAdministration.medication.ofType(CodeableConcept).coding[0].system"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mL/h' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "MedicationAdministration.dosage.rate.ofType(Quantity)"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Quantity.comparator: max allowed = 0, but found 1 (from http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)",
+          "paths": [
+            "MedicationAdministration.dosage.rate.ofType(Quantity)"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: sqty-1: 'The comparator is not used on a SimpleQuantity'",
+          "paths": [
+            "MedicationAdministration.dosage.rate.ofType(Quantity)"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "MedicationAdministration",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.max",
+            "path": "MedicationAdministration.dosage.rateQuantity",
+            "message": "MedicationAdministration.dosage.rateQuantity.comparator exceeds max 0 (found 1): MedicationAdministration.dosage.rateQuantity is a SimpleQuantity (http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1), which prohibits Quantity.comparator"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.sqty-1",
+            "path": "MedicationAdministration.dosage.rateQuantity",
+            "message": "sqty-1: The comparator is not used on a SimpleQuantity (MedicationAdministration.dosage.rateQuantity is a SimpleQuantity, http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "sq-range-low-comparator.json",
+      "profile": null,
+      "expect": false,
+      "reason": "Range.low is a SimpleQuantity wherever a Range sits (here Observation.valueRange): a comparator is refused.",
+      "sha256": "a2aab50665355a338041958191a99d88553990cea741a9db71bc1f0c9e86d4f6",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "text": "A definition for CodeSystem 'http://example.org/observations' could not be found, so the code cannot be validated",
+          "paths": [
+            "Observation.code.coding[0].system"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mmol/L' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "Observation.value.ofType(Range).low"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Quantity.comparator: max allowed = 0, but found 1 (from http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)",
+          "paths": [
+            "Observation.value.ofType(Range).low"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: sqty-1: 'The comparator is not used on a SimpleQuantity'",
+          "paths": [
+            "Observation.value.ofType(Range).low"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mmol/L' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "Observation.value.ofType(Range).high"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "text": "Best Practice Recommendation: In general, all observations should have a performer",
+          "paths": [
+            "Observation"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Observation",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.max",
+            "path": "Observation.valueRange.low",
+            "message": "Observation.valueRange.low.comparator exceeds max 0 (found 1): Observation.valueRange.low is a SimpleQuantity (http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1), which prohibits Quantity.comparator"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.sqty-1",
+            "path": "Observation.valueRange.low",
+            "message": "sqty-1: The comparator is not used on a SimpleQuantity (Observation.valueRange.low is a SimpleQuantity, http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)"
+          },
+          {
+            "severity": "warning",
+            "code": "not-supported",
+            "id": "not-supported.fhirpath",
+            "path": "Observation.valueRange",
+            "message": "rng-2 not evaluated: outside the supported FHIRPath core"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "sq-sampleddata-origin-comparator.json",
+      "profile": null,
+      "expect": false,
+      "reason": "SampledData.origin is a SimpleQuantity: a comparator is refused.",
+      "sha256": "e2dacef9286230c7ca84f97d9ae0ec69cacc4a752ee967f976cb84db7aeaf5fb",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "text": "A definition for CodeSystem 'http://example.org/observations' could not be found, so the code cannot be validated",
+          "paths": [
+            "Observation.code.coding[0].system"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mV' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "Observation.value.ofType(SampledData).origin"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Quantity.comparator: max allowed = 0, but found 1 (from http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)",
+          "paths": [
+            "Observation.value.ofType(SampledData).origin"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: sqty-1: 'The comparator is not used on a SimpleQuantity'",
+          "paths": [
+            "Observation.value.ofType(SampledData).origin"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "text": "Best Practice Recommendation: In general, all observations should have a performer",
+          "paths": [
+            "Observation"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Observation",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.max",
+            "path": "Observation.valueSampledData.origin",
+            "message": "Observation.valueSampledData.origin.comparator exceeds max 0 (found 1): Observation.valueSampledData.origin is a SimpleQuantity (http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1), which prohibits Quantity.comparator"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.sqty-1",
+            "path": "Observation.valueSampledData.origin",
+            "message": "sqty-1: The comparator is not used on a SimpleQuantity (Observation.valueSampledData.origin is a SimpleQuantity, http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "sq-repeating-comparator.json",
+      "profile": null,
+      "expect": false,
+      "reason": "MedicationKnowledge.kinetics.areaUnderCurve repeats and is a SimpleQuantity: a comparator on the second item is refused there.",
+      "sha256": "d366a190ba5e3e45e61466509bf622f77f66e918eabfce2c035a7a6ddfb24e66",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mg.h/L' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "MedicationKnowledge.kinetics[0].areaUnderCurve[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mg.h/L' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "MedicationKnowledge.kinetics[0].areaUnderCurve[1]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Quantity.comparator: max allowed = 0, but found 1 (from http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)",
+          "paths": [
+            "MedicationKnowledge.kinetics[0].areaUnderCurve[1]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: sqty-1: 'The comparator is not used on a SimpleQuantity'",
+          "paths": [
+            "MedicationKnowledge.kinetics[0].areaUnderCurve[1]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "MedicationKnowledge",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.max",
+            "path": "MedicationKnowledge.kinetics[0].areaUnderCurve[1]",
+            "message": "MedicationKnowledge.kinetics[0].areaUnderCurve[1].comparator exceeds max 0 (found 1): MedicationKnowledge.kinetics[0].areaUnderCurve[1] is a SimpleQuantity (http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1), which prohibits Quantity.comparator"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.sqty-1",
+            "path": "MedicationKnowledge.kinetics[0].areaUnderCurve[1]",
+            "message": "sqty-1: The comparator is not used on a SimpleQuantity (MedicationKnowledge.kinetics[0].areaUnderCurve[1] is a SimpleQuantity, http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "sq-contained-comparator.json",
+      "profile": null,
+      "expect": false,
+      "reason": "A SimpleQuantity inside a contained resource (Observation.referenceRange.high): a comparator is refused.",
+      "sha256": "1192552dee7e5d8ebfafb72b218f731f27bef49311be90f92ffea31cd5bc4cf7",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "text": "Best Practice Recommendation: In general, all observations should have a performer",
+          "paths": [
+            "DiagnosticReport.contained[0]/*Observation/inner*/"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "text": "A definition for CodeSystem 'http://example.org/observations' could not be found, so the code cannot be validated",
+          "paths": [
+            "DiagnosticReport.contained[0]/*Observation/inner*/.code.coding[0].system"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mmol/L' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "DiagnosticReport.contained[0]/*Observation/inner*/.value.ofType(Quantity)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mmol/L' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "DiagnosticReport.contained[0]/*Observation/inner*/.referenceRange[0].high"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Quantity.comparator: max allowed = 0, but found 1 (from http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)",
+          "paths": [
+            "DiagnosticReport.contained[0]/*Observation/inner*/.referenceRange[0].high"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: sqty-1: 'The comparator is not used on a SimpleQuantity'",
+          "paths": [
+            "DiagnosticReport.contained[0]/*Observation/inner*/.referenceRange[0].high"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "text": "A definition for CodeSystem 'http://example.org/reports' could not be found, so the code cannot be validated",
+          "paths": [
+            "DiagnosticReport.code.coding[0].system"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "structure",
+          "text": "Details for #inner matching against profile http://hl7.org/fhir/StructureDefinition/Observation|4.0.1",
+          "paths": [
+            "DiagnosticReport.result[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "DiagnosticReport",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.max",
+            "path": "DiagnosticReport.contained[0].Observation.referenceRange[0].high",
+            "message": "DiagnosticReport.contained[0].Observation.referenceRange[0].high.comparator exceeds max 0 (found 1): DiagnosticReport.contained[0].Observation.referenceRange[0].high is a SimpleQuantity (http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1), which prohibits Quantity.comparator"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.sqty-1",
+            "path": "DiagnosticReport.contained[0].Observation.referenceRange[0].high",
+            "message": "sqty-1: The comparator is not used on a SimpleQuantity (DiagnosticReport.contained[0].Observation.referenceRange[0].high is a SimpleQuantity, http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "DiagnosticReport.contained[0].Observation",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "sq-bundle-entry-comparator.json",
+      "profile": null,
+      "expect": false,
+      "reason": "A SimpleQuantity inside a Bundle entry's resource: a comparator is refused.",
+      "sha256": "6a32f4c062d562ad6388fc4c1603dfab5634629d8af2b8fee580f3b0404ff34e",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "text": "Best Practice Recommendation: In general, all observations should have a performer",
+          "paths": [
+            "Bundle.entry[0].resource/*Observation/sq-entry*/"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "text": "A definition for CodeSystem 'http://example.org/observations' could not be found, so the code cannot be validated",
+          "paths": [
+            "Bundle.entry[0].resource/*Observation/sq-entry*/.code.coding[0].system"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mmol/L' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "Bundle.entry[0].resource/*Observation/sq-entry*/.value.ofType(Quantity)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mmol/L' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "Bundle.entry[0].resource/*Observation/sq-entry*/.referenceRange[0].low"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Quantity.comparator: max allowed = 0, but found 1 (from http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)",
+          "paths": [
+            "Bundle.entry[0].resource/*Observation/sq-entry*/.referenceRange[0].low"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: sqty-1: 'The comparator is not used on a SimpleQuantity'",
+          "paths": [
+            "Bundle.entry[0].resource/*Observation/sq-entry*/.referenceRange[0].low"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Bundle",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.max",
+            "path": "Bundle.entry[0].resource.Observation.referenceRange[0].low",
+            "message": "Bundle.entry[0].resource.Observation.referenceRange[0].low.comparator exceeds max 0 (found 1): Bundle.entry[0].resource.Observation.referenceRange[0].low is a SimpleQuantity (http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1), which prohibits Quantity.comparator"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.sqty-1",
+            "path": "Bundle.entry[0].resource.Observation.referenceRange[0].low",
+            "message": "sqty-1: The comparator is not used on a SimpleQuantity (Bundle.entry[0].resource.Observation.referenceRange[0].low is a SimpleQuantity, http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)"
+          }
+        ]
+      },
+      "agrees": true
+    },
+    {
+      "file": "sq-profiled-bodyweight-comparator.json",
+      "profile": "http://hl7.org/fhir/StructureDefinition/bodyweight",
+      "expect": false,
+      "reason": "Under a declared compiled profile (base body weight): the base's SimpleQuantity on referenceRange.low still refuses a comparator.",
+      "sha256": "7d92e59f9cac848fe428c4b05aa04467c1339fd1813424dd5cf56bc48a153ccd",
+      "oracle_valid": false,
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'kg' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "Observation.value.ofType(Quantity)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'kg' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "Observation.referenceRange[0].low"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Quantity.comparator: max allowed = 0, but found 1 (from http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)",
+          "paths": [
+            "Observation.referenceRange[0].low"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: sqty-1: 'The comparator is not used on a SimpleQuantity'",
+          "paths": [
+            "Observation.referenceRange[0].low"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "Validate Observation against the Body weight profile (http://hl7.org/fhir/StructureDefinition/bodyweight) which is required by the FHIR specification because the LOINC code 29463-7 was found",
+          "paths": [
+            "Observation"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "code-invalid",
+          "text": "Could not confirm that the codes provided are from the extensible value set http://hl7.org/fhir/ValueSet/observation-vitalsignresult|4.0.1 because there is no terminology service",
+          "paths": [
+            "Observation.code"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "informational",
+          "text": "Unable to validate code without using server because: Resolved system http://unitsofmeasure.org (v3.0.1), but the definition doesn't include any codes, so the code has not been validated",
+          "paths": [
+            "Observation.value.ofType(Quantity).code"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "text": "Best Practice Recommendation: In general, all observations should have a performer",
+          "paths": [
+            "Observation"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Observation",
+        "profile": "Observation Body Weight Profile",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.max",
+            "path": "Observation.referenceRange[0].low",
+            "message": "Observation.referenceRange[0].low.comparator exceeds max 0 (found 1): Observation.referenceRange[0].low is a SimpleQuantity (http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1), which prohibits Quantity.comparator"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.sqty-1",
+            "path": "Observation.referenceRange[0].low",
+            "message": "sqty-1: The comparator is not used on a SimpleQuantity (Observation.referenceRange[0].low is a SimpleQuantity, http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)"
+          }
+        ]
       },
       "agrees": true
     }
