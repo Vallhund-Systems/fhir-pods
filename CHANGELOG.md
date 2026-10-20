@@ -12,25 +12,28 @@ and artifacts are unchanged.
   follow. It is described by its FHIR shape — one synthetic sixteen-part
   questionnaire instrument with its own code systems and value sets, its
   derived chain, lift/lower, de-identification and a regional export — as one
-  scenario among the lanes. The fixtures' own identifiers are unchanged, so
-  the oracle judges the same bytes: 71/71 with `--chain`, 7/7 more with
-  `--host-profile`, and the same one triaged residue (the oracle's extra
-  code-system finding on `qr-answer-not-in-set`).
+  scenario among the lanes, and its fixtures are neutral placeholders
+  (`example.org/instrument` canonicals, a 1–7 ordinal grade, generic parts,
+  condition codes and safety-screen items; no real instrument). Re-judged by
+  the oracle: 71/71 with `--chain`, 7/7 more with `--host-profile`, and the
+  same one triaged residue (the oracle's extra code-system finding on
+  `qr-answer-not-in-set`).
 - Every lane re-run at 0.22.0 (ABI 14; `dist/0.22.0/fhir_pods-0.22.0.wasm`
   sha256 `77ab6c73…7679`, the wasm the Node tests load) and the README lane
   table rewritten from the measurement, each row stamped at 0.22.0, with rows
   added for the probe and narrative lanes. Release corpus **1,778/1,778**,
   three triaged residues; probes **37/37**; narrative **42/42**; base
-  **5,156/5,290** (134 lenient, 0 stricter, 2 excluded); validator base tests
-  **64/84** Java, **14/20** Firely (18 lenient; 2 stricter than stored Java,
-  0 than both); questionnaire **74/81** verdicts, **73/81** every error (7
+  **5,156/5,288** (132 lenient, every one reviewed; 0 stricter; 2 excluded;
+  2 unstable oracle cases unscored); validator base tests **64/84** Java,
+  **14/20** Firely (18 lenient; 2 stricter than stored Java, 0 than both);
+  questionnaire **74/81** verdicts, **73/81** every error (7
   lenient, 0 stricter, 15 excluded); supporting **9/11** of 11 compared (2
   lenient, 0 stricter, 149 excluded); ad-hoc profiles **12/13** Java, **7/7**
   Firely (1 lenient, 0 stricter, 40 excluded); v2 samples **77/77** verdicts,
   **74/77** every error, 0 stricter; Synthea **14/14** (4.39 s, 6.2 MB/s on a
   loaded machine); mutation **19,067/19,067** (0 lenient, 0 stricter, 0
   untriaged); instrument path **71/71** + **7/7** host-profile. 277 Rust
-  tests, 22 wasm Node tests, 18 Python harness checks, clippy clean.
+  tests, 22 wasm Node tests, 23 Python harness checks, clippy clean.
 - The README had carried older figures: validator base tests 63/84 and 13/20
   (`pat-dob-ext` agrees with both engines since 0.18.0 refused extensions no
   package defines), ad-hoc profiles 10 compared and 9/10 (binding-
@@ -39,17 +42,50 @@ and artifacts are unchanged.
   `AuditEvent-slice23-second` out of the compiler-gap exclusions, all three
   agreeing), the release corpus at 1,766, and test counts of 239 and 18.
   Measured against each tag's tree; no verdict moved in 0.22.0.
-- Two lanes exit 1 at 0.22.0 and are left for review, not rebaselined. The
-  base gate: four definition-validation diagnostics moved on the oracle side
-  (`inv-1` reused across published definitions; which one validator_cli
-  rejects follows its load order, so `StructureDefinition-Task` now passes
-  there and `StructureDefinition-Parameters` fails), totals and every pod
-  verdict unchanged. The questionnaire lane: since 0.19.4 (a coded answer
-  with no system is an error) the pod reports nine answer-option errors on
-  `nested-questionnaire-nested-valueset` that the stored Java outcome does
-  not, so the reviewed reason no longer matches; the verdict is invalid on
-  both sides, and whether the oracle reports them in this configuration is
-  not yet probed.
+- The questionnaire lane exits 1 on `nested-questionnaire-nested-valueset`,
+  and has since 0.19.4. validator_cli 6.10.4 (with `-tx n/a` and with its
+  default terminology server) reports that response's nine answer codings
+  without a system as warnings — "A code with no system has no defined
+  meaning…", twice each — beside the one questionnaireAdaptive-extension
+  error; the pod reports them as nine errors, `… in the system 'null' is not
+  in the options value set (ValueSet[null])`. The 0.19.4 rule (a coded answer
+  with no system is an error) came from a case with a display and no code
+  and over-reaches to a code without a system: on those findings the pod is
+  stricter than the oracle, a pod defect, and the stored Java outcome is
+  current. `ValueSet[null]` names nothing, although the contained ValueSet
+  has a url. The lane fails until the pod is fixed. `scripts/release.sh`
+  runs no conformance lane, and the released 0.19.4 line "every lane as
+  0.19.3" was true of the figures but not of this lane's exit status.
+- `conformance/testcases.py` fails on a reviewed difference that no longer
+  differs (as `questionnaire.py` already did). Seven such entries in
+  `testcases-triage.json` recorded `ours: valid` with gap reasons no longer
+  true and are removed: `questionnaire-enableWhen-dw`,
+  `q-enablewhen-me-wrong`, `mni-patientOverview-bundle-example1b`,
+  `pat-dob-ext`, `nested-questionnaire-nested-valueset`, `encounter-period`,
+  `ext-ccuk`. Figures unchanged.
+- `conformance/base.py` judges each definition that gives one constraint key
+  different expressions in a JVM of its own. validator_cli registers keys as
+  it loads a batch and rejects a later definition reusing one, so in a shared
+  batch the verdict followed the batch's composition: at this pin `inv-1` and
+  `inv-2` across `StructureDefinition-Event`, `-Parameters`, `-Task`,
+  `-TestReport` and `-allergyintolerance-substanceExposureRisk`. Judged alone
+  (nine runs each): `Parameters` is valid and `Event` invalid on both sides
+  every time; the allergy extension is invalid every time (a reviewed lenient
+  difference) with one of two messages — its `inv-1` collides with the `Task`
+  or the `TestReport` of the examples package the oracle itself loads, and
+  its expression names an element FHIRPath cannot resolve; `Task` and
+  `TestReport` were valid in eight runs and invalid in one, on the same
+  collision. Those two are recorded as unstable oracle cases
+  (`base-triage.json` `oracle_unstable`: each observed verdict and
+  signature, an unseen one fails, never scored), the allergy entry names
+  both observed signatures, and `Task`/`TestReport` leave the reviewed
+  differences: compared 5,290 → 5,288, lenient 134 → 132, agreements
+  unchanged at 5,156. A fresh run also compares every outcome with the
+  previous `oracle-cache.json` and reports a failure caused only by the
+  oracle moving as drift, exit 2 (exit 1 is the pod or the evidence);
+  `--refresh-alone` rejudges the single-definition set into the cache;
+  `BASE_ORACLE_TIMEOUT` raises the per-batch bound (900 s) on a loaded
+  machine.
 
 ## 0.22.0 — 2026-10-14
 
