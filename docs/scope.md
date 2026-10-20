@@ -624,9 +624,29 @@ an export mapping, the way `uk`/`ca`/`nz` came in 0.13.0.
   **no** base element in R4, so nothing fires for it; the package's third
   datatype profile, `elementdefinition-de`, slices its extensions, is named by
   no element, and is listed as not applicable rather than applied in part.
-  What this does not cover: a datatype profile a *compiled IG profile* puts
-  on an element outside a slice (the ad-hoc profile lane lists it as a
-  compiler exclusion), which stays unapplied.
+  A compiled profile that puts one of these base datatype profiles on an
+  element whose base definition does not is held to it the same way, with
+  the same ids (`ElementConstraint::datatype_profiles`): in the shipped
+  registry that is one element, `Extension.value[x]` of
+  `medicationdispense-quantityRemaining` (`hl7.fhir.uv.extensions.r4`), typed
+  `Quantity` / `SimpleQuantity` — probed, the oracle's two errors at the
+  extension's value, and valid here before (`conformance/probes/sq-extension-value-*`).
+  What stays unapplied is an IG's *own* datatype profile on an element
+  outside a slice — `au-address`, the AU identifier profiles, `au-dosage`,
+  `NzAddress`, `NzContactpoint`, `CodeableConcept-uv-ips`. Measured against
+  validator_cli 6.10.4 (`-ig` the guide's package): an NZ Base Patient whose
+  address carries two `suburb` extensions (`NzAddress` slices it `max 1`) is
+  `error Address.extension:suburb: max allowed = 1, but found 2 (from
+  http://hl7.org.nz/fhir/StructureDefinition/NzAddress|1.0.0)` there and
+  valid here, and two `cp-purpose` extensions on a telecom (`NzContactpoint`)
+  are the same error there and valid here — a **lenient** difference; an AU
+  Core Patient address breaking every `au-address` rule (no line or text, a
+  five-digit postcode, country `NZ`) is valid on **both** sides, because AU
+  Core types `Patient.address` `Address` or `au-address` and the oracle
+  accepts conformance to either. `au-dosage` and `CodeableConcept-uv-ips`
+  carry nothing enforceable beyond the base — preferred bindings,
+  obligations, open slices with no cardinality — which is read from their
+  differentials, not probed; the AU identifier profiles were not probed.
 - **A Bundle entry with a resource carries a `fullUrl`** (0.8.3), as the
   reference validator requires — except a transaction's or batch's create,
   whose resource has no identity yet.

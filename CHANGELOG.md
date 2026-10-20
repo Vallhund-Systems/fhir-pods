@@ -30,25 +30,46 @@ answers every one with `Quantity.comparator: max allowed = 0, but found 1
 (from …/SimpleQuantity|4.0.1)` and `Constraint failed: sqty-1`, both errors
 at the element, and passes both controls without one. The pod before called
 thirteen of the fourteen valid (the fourteenth failed only for its carrier's
-missing code); probes now **53/53**. The `collapse-age` rule still writes
+missing code).
+
+A compiled profile can name such a profile where the base does not, and the
+compiler dropped it without a trace: `hl7.fhir.uv.extensions.r4`
+`medicationdispense-quantityRemaining` types its `Extension.value[x]`
+`Quantity` / `SimpleQuantity`, compiled as `types: ["Quantity"]`, "0
+deferred" — a comparator there two errors to the oracle (max 0 and `sqty-1`
+at the extension's value) and valid to the pod. `ElementConstraint` now
+carries `datatype_profiles` — a base datatype profile the profile puts on a
+type of the element where the element's base definition does not (one the
+base names stays the walk's, so nothing is said twice) — and the engine
+applies it whole with the same ids, a choice by its concrete key, a slice's
+elements too; the generator stops on one it cannot apply whole. In the
+shipped registry that element is the only one (two more probes,
+`sq-extension-value-*`; probes now **55/55**). Every generated constraint
+gains the field, which grows the wasm artefact from 3,102,273 to 3,219,080
+bytes. An IG's own datatype profile on an element outside a slice is still
+not applied: measured, `NzAddress` and `NzContactpoint`'s `max 1` extension
+slices are errors to the oracle and pass here (lenient), while an address
+breaking every `au-address` rule passes on both sides, AU Core allowing
+`Address` or `au-address` (`docs/scope.md`). The `collapse-age` rule still writes
 the bare value on every `Quantity` (by type), and its copy now passes the
 walk that refuses the comparator.
 
 This is a **verdict-changing** change — stricter on a comparator where the
 base says SimpleQuantity — and **not an ABI change** (ABI 14, no entrypoint
-or shape moved). Lanes re-measured: release gate **1,794/1,794** (1,778 + the
-sixteen probes), reasons 0 untriaged on 1,794 (3 triaged), published R4
+or shape moved). Lanes re-measured: release gate **1,796/1,796** (1,778 + the
+eighteen probes), reasons 0 untriaged on 1,796 (3 triaged), published R4
 examples **5,156/5,290**, 134 lenient, 0 stricter — the pod's verdict on all
 5,292 inputs is unchanged, and **no `base-triage.json` entry retires**: no
 R4 example puts a comparator on a SimpleQuantity element, and the oracle
 reports no SimpleQuantity finding on any of them, so the expected triage
-movement does not exist (the fresh run's four failures are oracle drift on
-shared-key StructureDefinitions, the pod's verdict unchanged on each);
+movement does not exist (one fresh run here failed four shared-key
+StructureDefinitions on intermittent oracle drift, the pod's verdict
+unchanged on each; the next fresh run had none);
 narrative 42/42; questionnaire 74/81 (the lane exits 1 on one stale review, the same at
 0.22.0 core); supporting 9/11; validator test cases Java 64/84, Firely 14/20;
 ad-hoc profiles Java 12/13, Firely 7/7; v2 samples 77/77; Synthea 14/14;
-the instrument scenario 71/71 (`--chain`) and 40/40 (`--host-profile`);
-mutation lane 19,067/19,067, 0 untriaged. 280 tests.
+the gut-path scenario (`conformance/gut.py`) 71/71 (`--chain`) and 40/40
+(`--host-profile`); mutation lane 19,067/19,067, 0 untriaged. 281 tests.
 
 ## 0.22.0 — 2026-10-14
 
