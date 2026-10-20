@@ -417,10 +417,11 @@ Two limits worth stating plainly:
   exactly, `{"value": 90, "comparator": ">="}` in its own unit (each probed,
   `conformance/probes/age-collapsed-onset.json`). A plain `Quantity` takes the
   bare `90`: the base definitions constrain many `Quantity` elements to
-  `SimpleQuantity`, which refuses a comparator, and the element-type table
-  cannot tell those from a free one (the limit above) — so the pod writes the
-  value the walk's own `Age` clamp has always written rather than a form that
-  is invalid on some elements. A rule naming an element no age can be read
+  `SimpleQuantity`, which refuses a comparator (the walk refuses it there
+  too — see the shape rules below), and the rule is held to the element's
+  type, not to which element it is — so the pod writes the value the walk's
+  own `Age` clamp has always written rather than a form that is invalid on
+  some elements. A rule naming an element no age can be read
   from leaves it alone and says so in `residual`.
 
 The gut-path lane's chain stage de-identifies the whole derived record and
@@ -598,24 +599,34 @@ an export mapping, the way `uk`/`ca`/`nz` came in 0.13.0.
   every R4 resource type and datatype; a node under a `resourceType` the
   spec doesn't define has no type, and such an expression is skipped — and
   reported as an `information` issue naming the invariant.
-- **A datatype profile the base definitions put on an element**
-  (`SimpleQuantity`; `MoneyQuantity` prospectively — it constrains no base
-  element in R4) is not applied. The element-type table records an element's
-  type *code*, and R4 writes these as
-  `{"code": "Quantity", "profile": [".../SimpleQuantity"]}` — on **55** base
-  elements, among them `Observation.referenceRange.low`,
-  `MedicationAdministration.dosage.dose` and `Claim.item.quantity`. So the pod
-  reads them as a plain `Quantity` and does not enforce `comparator` max 0 or
-  `sqty-1` ("The comparator is not used on a SimpleQuantity"), where the
-  reference validator does. Probed 2026-10-14, on both elements:
-  `error Quantity.comparator: max allowed = 0, but found 1 (from
-  http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)` and
-  `error Constraint failed: sqty-1: 'The comparator is not used on a
-  SimpleQuantity'`. Closing it needs the element→datatype-profile data in the
-  generated tables and a walk that applies it; until then nothing the pod
-  *writes* relies on the leniency — `collapse-age` writes no comparator on a
-  `Quantity` for exactly this reason (see
-  [De-identification](#de-identification-a-rule-set-not-a-determination)).
+- **A datatype profile the base definitions put on an element is applied
+  by the walk** (after 0.22.0). R4 spells such an element
+  `{"code": "Quantity", "profile": [".../SimpleQuantity"]}`; the generator
+  (`tools/gen_typemap.py`) reads every `type[].profile` of every resource and
+  datatype in `hl7.fhir.r4.core` 4.0.1 and finds **55** such elements, every
+  one `SimpleQuantity` — among them `Observation.referenceRange.low`,
+  `Range.low` / `.high` wherever a Range sits, `SampledData.origin`,
+  `Dosage.doseAndRate.doseQuantity` / `rateQuantity`,
+  `MedicationRequest.dispenseRequest.quantity` and `Claim.item.quantity`
+  (`typemap::ELEMENT_PROFILES`). Where the walk meets one it applies the
+  profile's differential whole: `comparator`, which it prohibits (max 0), is
+  `structure.max` — present through its `_comparator` carrier alone too — and
+  `sqty-1` is `inv.sqty-1`, both errors at the element, a resource's own or a
+  datatype's, inside a contained resource or a Bundle entry, profile or none.
+  Probed against validator_cli 6.10.4 on fourteen such elements and two
+  controls (`conformance/probes/sq-*`): `error Quantity.comparator: max
+  allowed = 0, but found 1 (from
+  http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)` and `error
+  Constraint failed: sqty-1: 'The comparator is not used on a
+  SimpleQuantity'`, both located at the element, on every one; a plain
+  `Quantity` (`Observation.valueQuantity`) keeps its comparator on both
+  sides. `MoneyQuantity` (`mqty-1`) is carried the same way and constrains
+  **no** base element in R4, so nothing fires for it; the package's third
+  datatype profile, `elementdefinition-de`, slices its extensions, is named by
+  no element, and is listed as not applicable rather than applied in part.
+  What this does not cover: a datatype profile a *compiled IG profile* puts
+  on an element outside a slice (the ad-hoc profile lane lists it as a
+  compiler exclusion), which stays unapplied.
 - **A Bundle entry with a resource carries a `fullUrl`** (0.8.3), as the
   reference validator requires — except a transaction's or batch's create,
   whose resource has no identity yet.
