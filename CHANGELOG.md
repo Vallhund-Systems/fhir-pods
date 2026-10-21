@@ -1,5 +1,92 @@
 # Changelog
 
+## 0.23.0 — 2026-10-20
+
+**Stricter on a comparator where the base says `SimpleQuantity`.** A
+verdict-changing release; the ABI is unchanged (14) — no entrypoint, option or
+report shape moved. Two behaviours move, each probed against validator_cli
+6.10.4 first: a `comparator` on any of the 55 base elements R4 types
+`SimpleQuantity` is now an error (`structure.max` and `inv.sqty-1`, where it
+was valid), and so is one on the value of the
+`medicationdispense-quantityRemaining` extension, whose profile names
+`SimpleQuantity` where the base does not.
+
+**The datatype profile R4 puts on an element is applied.** R4 types 55 base
+elements `{"code": "Quantity", "profile": [".../SimpleQuantity"]}` —
+`Observation.referenceRange.low`, `Range.low` / `.high` wherever a Range sits,
+`SampledData.origin`, `Dosage.doseAndRate.doseQuantity`,
+`MedicationRequest.dispenseRequest.quantity`, `Claim.item.quantity` … — and
+the element-type table recorded the type code only, so the walk read them as
+a plain `Quantity` and accepted a `comparator` there (the lenient gap 0.22.0
+declared in `docs/scope.md`). `tools/gen_typemap.py` now emits, beside the
+specialization tables, the package's datatype profiles the walk can apply
+whole (`DATATYPE_PROFILES`: `SimpleQuantity`, `MoneyQuantity`; the third,
+`elementdefinition-de`, slices its extensions and is listed as not
+applicable) and every base element whose type names one (`ELEMENT_PROFILES`
+— **55**, counted from every `type[].profile` in the package, all
+`SimpleQuantity`; a profile the walk cannot apply whole is a generator error,
+never dropped). A regeneration on a clean tree is byte-identical. Where the
+walk meets such an element it applies the differential: `comparator`
+(max 0, present through its `_comparator` carrier alone too) is
+`structure.max` at the element, and the profile's invariant is
+**`inv.sqty-1`** — new ids in the invariant table with **`inv.mqty-1`**,
+which nothing can raise yet, since no R4 base element names `MoneyQuantity`.
+Both are errors, as measured: sixteen new probes (`conformance/probes/sq-*`)
+put a comparator on fourteen such elements — a resource's own, a datatype's,
+a repeating one, inside a contained resource, a Bundle entry, under a
+declared profile, through the carrier alone — and validator_cli 6.10.4
+answers every one with `Quantity.comparator: max allowed = 0, but found 1
+(from …/SimpleQuantity|4.0.1)` and `Constraint failed: sqty-1`, both errors
+at the element, and passes both controls without one. The pod before called
+thirteen of the fourteen valid (the fourteenth failed only for its carrier's
+missing code).
+
+A compiled profile can name such a profile where the base does not, and the
+compiler dropped it without a trace: `hl7.fhir.uv.extensions.r4`
+`medicationdispense-quantityRemaining` types its `Extension.value[x]`
+`Quantity` / `SimpleQuantity`, compiled as `types: ["Quantity"]`, "0
+deferred" — a comparator there two errors to the oracle (max 0 and `sqty-1`
+at the extension's value) and valid to the pod. The generator now lists, in
+a sparse registry table (`DATATYPE_PROFILE_ELEMENTS`: profile, slice label,
+element, type, datatype profile), every element a profile holds to a base
+datatype profile its base definition does not name (one the base names stays
+the walk's, so nothing is said twice), and the engine applies each whole
+with the same ids — a choice by its concrete key, a slice's elements too;
+the generator stops on one it cannot apply whole. The shipped table has one
+row, that extension's value (two more probes, `sq-extension-value-*`;
+probes now **55/55**). A field on every one of the 17,493 compiled element
+constraints would have cost the wasm artefact 116,807 bytes for that one
+row; with the table, 0.23.0's artifact is 3,110,336 bytes, 10,607 over
+0.22.1's 3,099,729. An IG's own datatype profile on an element outside a slice is still
+not applied: measured, `NzAddress` and `NzContactpoint`'s `max 1` extension
+slices are errors to the oracle and pass here (lenient), while an address
+breaking every `au-address` rule passes on both sides, AU Core allowing
+`Address` or `au-address` (`docs/scope.md`). The `collapse-age` rule still writes
+the bare value on every `Quantity` (by type), and its copy now passes the
+walk that refuses the comparator.
+
+Lanes, measured on this release's tree after merging 0.22.1: release gate
+**1,796/1,796** (1,778 + the eighteen probes), reasons 0 untriaged on 1,796
+(3 triaged); probes **55/55**; coded answers **123/123**; narrative
+**42/42**; published R4 examples (`--reuse-oracle`) **5,155/5,287**, 132
+lenient, 0 stricter, 3 order-dependent oracle cases unscored — the pod's
+verdict on all 5,292 inputs is the one 0.22.0 gave, and **no
+`base-triage.json` entry retires**: no R4 example puts a comparator on a
+SimpleQuantity element, and the oracle reports no SimpleQuantity finding on
+any of them, so the triage movement the task expected does not exist (fresh
+oracle runs during the work: one failed four shared-key StructureDefinitions
+on intermittent oracle drift, the pod's verdict unchanged on each; the next
+had none); questionnaire **74/81** verdicts, 73/81 every error, exit 0;
+supporting **9/11**; validator test cases Java **64/84**, Firely **14/20**;
+ad-hoc profiles Java **12/13**, Firely **7/7**; v2 samples **77/77** and
+Synthea **14/14** (cached oracle, before the 0.22.1 merge); the
+instrument-path scenario (`conformance/instrument.py`) **71** with
+`--chain` (70 agree, the one triaged residue) and **40** with
+`--host-profile`; mutation lane (`--reuse-oracle`, pod re-judged)
+19,067 derived files, 0 untriaged. 285 tests, clippy clean (and with
+`host-profiles`), 29 Python harness checks, 22 wasm Node tests, the C ABI
+smoke and the no-std build.
+
 ## 0.22.1 — 2026-10-20
 
 **A code with no system is not the same finding as no code.** An
@@ -109,79 +196,6 @@ the C ABI smoke and the no-std build. ABI unchanged (14): no entrypoint, no
 option. Released as 0.22.1 (ABI 14); the pods' packed artifacts carry it.
 
 ## Unreleased (now in 0.22.1)
-
-**The datatype profile R4 puts on an element is applied.** R4 types 55 base
-elements `{"code": "Quantity", "profile": [".../SimpleQuantity"]}` —
-`Observation.referenceRange.low`, `Range.low` / `.high` wherever a Range sits,
-`SampledData.origin`, `Dosage.doseAndRate.doseQuantity`,
-`MedicationRequest.dispenseRequest.quantity`, `Claim.item.quantity` … — and
-the element-type table recorded the type code only, so the walk read them as
-a plain `Quantity` and accepted a `comparator` there (the lenient gap 0.22.0
-declared in `docs/scope.md`). `tools/gen_typemap.py` now emits, beside the
-specialization tables, the package's datatype profiles the walk can apply
-whole (`DATATYPE_PROFILES`: `SimpleQuantity`, `MoneyQuantity`; the third,
-`elementdefinition-de`, slices its extensions and is listed as not
-applicable) and every base element whose type names one (`ELEMENT_PROFILES`
-— **55**, counted from every `type[].profile` in the package, all
-`SimpleQuantity`; a profile the walk cannot apply whole is a generator error,
-never dropped). A regeneration on a clean tree is byte-identical. Where the
-walk meets such an element it applies the differential: `comparator`
-(max 0, present through its `_comparator` carrier alone too) is
-`structure.max` at the element, and the profile's invariant is
-**`inv.sqty-1`** — new ids in the invariant table with **`inv.mqty-1`**,
-which nothing can raise yet, since no R4 base element names `MoneyQuantity`.
-Both are errors, as measured: sixteen new probes (`conformance/probes/sq-*`)
-put a comparator on fourteen such elements — a resource's own, a datatype's,
-a repeating one, inside a contained resource, a Bundle entry, under a
-declared profile, through the carrier alone — and validator_cli 6.10.4
-answers every one with `Quantity.comparator: max allowed = 0, but found 1
-(from …/SimpleQuantity|4.0.1)` and `Constraint failed: sqty-1`, both errors
-at the element, and passes both controls without one. The pod before called
-thirteen of the fourteen valid (the fourteenth failed only for its carrier's
-missing code).
-
-A compiled profile can name such a profile where the base does not, and the
-compiler dropped it without a trace: `hl7.fhir.uv.extensions.r4`
-`medicationdispense-quantityRemaining` types its `Extension.value[x]`
-`Quantity` / `SimpleQuantity`, compiled as `types: ["Quantity"]`, "0
-deferred" — a comparator there two errors to the oracle (max 0 and `sqty-1`
-at the extension's value) and valid to the pod. The generator now lists, in
-a sparse registry table (`DATATYPE_PROFILE_ELEMENTS`: profile, slice label,
-element, type, datatype profile), every element a profile holds to a base
-datatype profile its base definition does not name (one the base names stays
-the walk's, so nothing is said twice), and the engine applies each whole
-with the same ids — a choice by its concrete key, a slice's elements too;
-the generator stops on one it cannot apply whole. The shipped table has one
-row, that extension's value (two more probes, `sq-extension-value-*`;
-probes now **55/55**). A field on every one of the 17,493 compiled element
-constraints would have cost the wasm artefact 116,807 bytes for that one
-row; the table and its engine code cost 10,607 over `main`'s 3,097,227
-(3,107,834 bytes). An IG's own datatype profile on an element outside a slice is still
-not applied: measured, `NzAddress` and `NzContactpoint`'s `max 1` extension
-slices are errors to the oracle and pass here (lenient), while an address
-breaking every `au-address` rule passes on both sides, AU Core allowing
-`Address` or `au-address` (`docs/scope.md`). The `collapse-age` rule still writes
-the bare value on every `Quantity` (by type), and its copy now passes the
-walk that refuses the comparator.
-
-This is a **verdict-changing** change — stricter on a comparator where the
-base says SimpleQuantity — and **not an ABI change** (ABI 14, no entrypoint
-or shape moved). Lanes re-measured: release gate **1,796/1,796** (1,778 + the
-eighteen probes), reasons 0 untriaged on 1,796 (3 triaged), published R4
-examples **5,155/5,287**, 132 lenient, 0 stricter, 3 order-dependent oracle
-cases unscored (the base lane as it stands since the lane corrections below;
-5,156/5,290 and 134 before them) — the pod's verdict on all
-5,292 inputs is unchanged, and **no `base-triage.json` entry retires**: no
-R4 example puts a comparator on a SimpleQuantity element, and the oracle
-reports no SimpleQuantity finding on any of them, so the expected triage
-movement does not exist (one fresh run here failed four shared-key
-StructureDefinitions on intermittent oracle drift, the pod's verdict
-unchanged on each; the next fresh run had none);
-narrative 42/42; questionnaire 74/81 (the lane exits 1 on one stale review, the same at
-0.22.0 core); supporting 9/11; validator test cases Java 64/84, Firely 14/20;
-ad-hoc profiles Java 12/13, Firely 7/7; v2 samples 77/77; Synthea 14/14;
-the instrument-path scenario (`conformance/instrument.py`) 71/71 (`--chain`)
-and 40/40 (`--host-profile`); mutation lane 19,067/19,067, 0 untriaged. 281 tests.
 
 Corrections to the released 0.22.0 documentation and lanes; the shipped code
 and artifacts are unchanged.
