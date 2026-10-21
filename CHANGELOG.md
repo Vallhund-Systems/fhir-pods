@@ -14,7 +14,7 @@ be provided` at the answer, and the same sentence at the Coding). The 0.19.4
 rule ("a coded answer with no system is a terminology error") was derived
 from a display with no code, and reached a code with no system too.
 
-Taken to the oracle before the code, on 122 synthetic probes —
+Taken to the oracle before the code, on 123 synthetic probes —
 `conformance/coded-answers/`, a new lane: every answer shape (system and
 code in the set; not in it; another system; a code with no system, in the
 set and not, with and without a display; a display alone; a system alone; a
@@ -28,14 +28,21 @@ the same Codings outside a questionnaire. What 6.10.4 does, and the pod now:
 
 - **a code with no system that the set holds** is a warning where the set is
   contained (in the questionnaire, or beside it in the response) **and** its
-  compose has exactly one include or the set has a url — measured on the 20
-  compose probes, not read from the validator's source; a contained set
-  with no url and two or more includes keeps the error, even when both
-  include one system. The pod now reports the warning as
+  compose has exactly one include; two or more includes keep the error, even
+  of one system, url or none. The pod now reports the warning as
   `questionnaire.answer-no-system` (a **new rule id**) with the oracle's
-  sentence, and the response is valid. (The first cut warned for any
-  contained set holding the code, which an independent review found
-  false-valid on ten multi-include probes; held before release, fixed);
+  sentence, and the response is valid. Measured on a 96-cell matrix with a
+  url unique to every set, and on solo runs, with no counterexample; the
+  exact condition in the validator's source is not traced (system inference
+  alone would not explain it). Held twice before release by independent
+  review: the first cut warned for any contained set holding the code
+  (false-valid on ten multi-include probes); the second also warned for a
+  url-bearing set of several includes — which was the oracle's **cache**,
+  not its rule: it keys a url-bearing ValueSet's results by url and version,
+  not content, and the lane had given one url to ten composes, so eight
+  probes recorded whichever set was judged first. Every contained set in the
+  lane now has a url of its own, and the probe lanes refuse a fixture set
+  that gives one url two definitions (`conformance/canonical_guard.py`);
 - **under a set reached by canonical** the oracle's verdict turns on the
   set's own definition: an error where it includes a whole code system, a
   warning where it enumerates its codes. A compiled expansion does not say
@@ -48,8 +55,7 @@ the same Codings outside a questionnaire. What 6.10.4 does, and the pod now:
   no code now says `No code provided for CodeSystem '…'`, as the oracle does;
 - a contained set's enumerated **`exclude`** is applied (before, a set with
   any exclude was left undecided, so an excluded code passed), as
-  `tools/compile_valueset.py` applies it; a system of **whitespace** alone
-  is no system at the answer, as the oracle reads it;
+  `tools/compile_valueset.py` applies it;
 - under `answerOption`s the option's system must match, an error on both
   sides; the message now prints `null` for the missing part
   (`The code null::yes is not in the set of permitted values`).

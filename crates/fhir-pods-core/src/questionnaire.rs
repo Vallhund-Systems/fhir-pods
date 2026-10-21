@@ -69,11 +69,13 @@ struct ContainedSet {
     /// its (system, code) pairs, when the compose is an enumeration the pod
     /// can decide
     codes: Option<Vec<(String, String)>>,
-    /// does a code with no system that the set holds only warn? Measured
-    /// against validator_cli 6.10.4 (`conformance/coded-answers/`): where the
-    /// compose has exactly one include, or the set has a url; a set with no
-    /// url and two or more includes keeps the error, even when the includes
-    /// share one system
+    /// does a code with no system that the set holds only warn? Only where
+    /// the compose has exactly one include: validator_cli 6.10.4 keeps the
+    /// error for two or more, even of one system, url or none. Measured on a
+    /// 96-cell matrix with a url unique to every set (the oracle caches a
+    /// url-bearing set's results by url, not content) and on solo runs, with
+    /// no counterexample; the condition in the validator's source is not
+    /// traced (system inference alone would not explain it)
     systemless_warns: bool,
 }
 
@@ -95,7 +97,7 @@ fn contained_value_sets(v: &Value<'_>) -> Vec<ContainedSet> {
                 id: text(c, "id").unwrap_or("").to_string(),
                 name,
                 codes: enumerate(c),
-                systemless_warns: includes == 1 || text(c, "url").is_some(),
+                systemless_warns: includes == 1,
             }
         })
         .collect()
@@ -1090,10 +1092,7 @@ impl<'q, 'v, 'a, 't> Checker<'q, 'v, 'a, 't> {
     }
 
     fn coding(&self, def: &Item, value: &Value<'_>, all: &[&Value<'_>], at: &str, r: &mut Report) {
-        // a system of whitespace alone is no system to the reference
-        // validator (it warns "Coding has no system" for it, besides the
-        // uri finding the walk reports)
-        let system = text(value, "system").filter(|s| !s.trim().is_empty()).unwrap_or("");
+        let system = text(value, "system").unwrap_or("");
         let code = text(value, "code").unwrap_or("");
         if !def.options.is_empty() {
             let codings: Vec<&AnswerOption> = def.options.iter().filter(|o| o.key == "valueCoding").collect();
@@ -1141,10 +1140,13 @@ impl<'q, 'v, 'a, 't> Checker<'q, 'v, 'a, 't> {
             // not read from its source:
             //  - a code with no system, the code in a set contained in the
             //    questionnaire (or beside it in the response) that the pod
-            //    enumerates, where the set's compose has exactly one include
-            //    or the set has a url: a WARNING — the code cannot be
-            //    validated, but the set holds it. A set with no url and two
-            //    or more includes keeps the error, even of one system;
+            //    enumerates, where the set's compose has exactly one include:
+            //    a WARNING — the code cannot be validated, but the set holds
+            //    it. Two or more includes keep the error, even of one system,
+            //    url or none (the exact condition in the validator's source
+            //    is not traced);
+            //  - a system of whitespace alone: the error, the system printed
+            //    as given, for the reason that the coding has no system;
             //  - the same code under a set reached by canonical: an error
             //    where the set includes a whole code system, a warning where
             //    it enumerates its codes — a difference the expansion a host
@@ -1152,9 +1154,10 @@ impl<'q, 'v, 'a, 't> Checker<'q, 'v, 'a, 't> {
             //    never the more lenient reading;
             //  - no code at all (a display alone, a system alone), or a code
             //    the set does not hold: the terminology error, always.
-            if code.is_empty() || system.is_empty() {
+            let blank = system.trim().is_empty();
+            if code.is_empty() || blank {
                 let (m, name) = self.membership(vs, system, code);
-                if !code.is_empty() && m == Membership::Member && self.systemless_warns(vs) {
+                if !code.is_empty() && system.is_empty() && m == Membership::Member && self.systemless_warns(vs) {
                     r.push(
                         Severity::Warning,
                         IssueType::CodeInvalid,
@@ -1165,7 +1168,7 @@ impl<'q, 'v, 'a, 't> Checker<'q, 'v, 'a, 't> {
                 }
                 let (c, s) =
                     (if code.is_empty() { "null" } else { code }, if system.is_empty() { "null" } else { system });
-                let why = if system.is_empty() {
+                let why = if blank {
                     "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided".to_string()
                 } else {
                     format!("No code provided for CodeSystem '{system}'")

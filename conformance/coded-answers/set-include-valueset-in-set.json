@@ -44,7 +44,7 @@
           }
         ]
       },
-      "url": "https://example.org/probe/ValueSet/contained",
+      "url": "https://example.org/probe/ValueSet/contained-set-include-valueset-in-set",
       "name": "ContainedAnswers"
     }
   ]

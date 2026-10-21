@@ -38,6 +38,7 @@ ROOT = HERE.parents[1]
 DEFS = HERE / "defs"
 VERSION = "6.10.4"
 sys.path.insert(0, str(HERE.parent))
+import canonical_guard  # noqa: E402
 import reasons  # noqa: E402
 import run as gate  # noqa: E402
 
@@ -77,6 +78,9 @@ def main():
     on_disk = {p.name for p in HERE.glob("*.json")} - {"manifest.json", "evidence.json"}
     if on_disk != set(files):
         raise SystemExit(f"Manifest and fixtures disagree: {sorted(on_disk ^ set(files))}")
+    # the oracle caches a url-bearing ValueSet by url and version, not content:
+    # two fixtures sharing a url would both be judged by whichever came first
+    canonical_guard.refuse_shared_canonicals([HERE / f for f in files] + sorted(DEFS.glob("*.json")))
     jar = ROOT / "conformance/validator_cli.jar"
     with zipfile.ZipFile(jar) as archive:
         metadata = archive.read("META-INF/maven/ca.uhn.hapi.fhir/org.hl7.fhir.validation.cli/pom.properties").decode()

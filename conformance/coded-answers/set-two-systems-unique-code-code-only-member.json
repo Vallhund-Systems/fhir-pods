@@ -60,7 +60,7 @@
           }
         ]
       },
-      "url": "https://example.org/probe/ValueSet/contained",
+      "url": "https://example.org/probe/ValueSet/contained-set-two-systems-unique-code-code-only-member",
       "name": "ContainedAnswers"
     }
   ]

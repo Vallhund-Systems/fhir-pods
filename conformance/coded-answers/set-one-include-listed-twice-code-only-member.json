@@ -55,7 +55,7 @@
           }
         ]
       },
-      "url": "https://example.org/probe/ValueSet/contained",
+      "url": "https://example.org/probe/ValueSet/contained-set-one-include-listed-twice-code-only-member",
       "name": "ContainedAnswers"
     }
   ]

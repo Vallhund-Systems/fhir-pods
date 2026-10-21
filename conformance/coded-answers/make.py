@@ -20,6 +20,17 @@ VS_UNVERSIONED = f"{BASE}/ValueSet/answers-unversioned"
 CONCEPTS = [("yes", "Yes"), ("no", "No"), ("unsure", "Unsure")]
 
 
+def unique_urls(resource, owner):
+    """A contained ValueSet's url, unique to the file that carries it: the
+    oracle caches a url-bearing set's validation results by url and version,
+    not by content, so two fixtures sharing a url would be judged by
+    whichever was read first (`run.py` refuses such a fixture set)."""
+    for c in resource.get("contained", []):
+        if c.get("resourceType") == "ValueSet" and "url" in c:
+            c["url"] = f"{BASE}/ValueSet/contained-{owner}"
+    return resource
+
+
 def write(path, resource):
     path.write_text(json.dumps(resource, indent=2) + "\n")
 
@@ -124,6 +135,7 @@ COMPOSE_ANSWERS = {
     "excluded": {"valueCoding": {"system": CS, "code": "unsure"}},
     "code-only-excluded": {"valueCoding": {"code": "unsure"}},
     "whitespace-system": {"valueCoding": {"system": " ", "code": "yes"}},
+    "whitespace-system-tab-newline": {"valueCoding": {"system": "\t\n", "code": "yes"}},
 }
 
 
@@ -153,7 +165,7 @@ def defs():
         url = loaded_url(required, label)
         name = url.rsplit("/", 1)[1]
         q.update({"id": name, "url": url, "version": "1.0.0"})
-        write(DEFS / f"Questionnaire-{name}.json", q)
+        write(DEFS / f"Questionnaire-{name}.json", unique_urls(q, f"questionnaire-{name}"))
 
 
 def outside():
@@ -221,7 +233,8 @@ def describe(name):
         unlabelled = {"unlabelled": " (no url, no name)", "url-only": " (a url, no name)", "name-only": " (a name, no url)"}.get(label, "")
         words = {"in-set": "system and code in the set (control)", "code-only-member": "a code with no system, the code in the set",
                  "excluded": "system and code, the code excluded", "code-only-excluded": "a code with no system, the code excluded",
-                 "whitespace-system": "a code whose system is a single space, the code in the set"}[answer]
+                 "whitespace-system": "a code whose system is a single space, the code in the set",
+                 "whitespace-system-tab-newline": "a code whose system is a tab and a newline, the code in the set"}[answer]
         return (f"The answerValueSet contained beside the Questionnaire in the response"
                 f"{unlabelled}, its compose {compose.replace('-', ' ')}; "
                 f"required item; {words}.")
@@ -275,6 +288,8 @@ def main():
     for answer in ("excluded", "code-only-excluded"):
         cases[f"set-exclude-{answer}"] = compose_response("exclude", answer)
     cases["set-one-include-listed-twice-whitespace-system"] = compose_response("one-include-listed-twice", "whitespace-system")
+    cases["set-one-include-listed-twice-whitespace-system-tab-newline"] = compose_response(
+        "one-include-listed-twice", "whitespace-system-tab-newline")
     # what the message calls a contained set
     cases["qr-contained-vs-name-title-label-not-in-set"] = response("qr-contained-vs", True, "not-in-set", "name-title")
     for label in ("title", "url", "none"):
@@ -283,7 +298,7 @@ def main():
             cases[f"qr-contained-vs-{label}-label-{answer}"] = response("qr-contained-vs", True, answer, label)
     cases.update(outside())
     for name, resource in cases.items():
-        write(HERE / f"{name}.json", resource)
+        write(HERE / f"{name}.json", unique_urls(resource, name))
     manifest_path = HERE / "manifest.json"
     old = {m["file"]: m for m in json.loads(manifest_path.read_text())} if manifest_path.exists() else {}
     manifest = []

@@ -96,6 +96,18 @@ fresh. Where the two disagree the pod keeps the stored outcome's stricter
 finding (fail-closed), and the probe lane names it as a reviewed difference;
 those entries go when the pin moves.
 
+## Probe fixtures: one definition per canonical url
+
+The oracle's validation cache keys url-bearing ValueSets by url+version, not
+content — fixtures must never reuse a url across different definitions. Within
+one JVM run, the first fixture judged under a url decides the cached answer
+for every later set sharing it, whatever its compose says; only a set with no
+url is keyed by its compose. A coded-answer lane that gave one url to ten
+composes recorded eight verdicts from the cache before review caught it. The
+probe lanes refuse such a fixture set before starting the oracle
+(`canonical_guard.py`, the same for a CodeSystem url with two contents;
+`test_canonical_guard.py`).
+
 ## Ad-hoc profiles
 
 The 53 R4 JSON cases with a `profile` entry exercise the same Rust profile

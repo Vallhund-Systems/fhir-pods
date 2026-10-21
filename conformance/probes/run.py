@@ -12,10 +12,13 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import sys
 import zipfile
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
+sys.path.insert(0, str(HERE.parent))
+import canonical_guard  # noqa: E402
 VERSION = "6.10.4"
 
 
@@ -29,6 +32,8 @@ def main():
     parser.add_argument("--oracle-only", action="store_true")
     args = parser.parse_args()
     manifest = json.loads((HERE / "manifest.json").read_text())
+    # the oracle caches a url-bearing ValueSet by its url: never two definitions under one
+    canonical_guard.refuse_shared_canonicals([HERE / item["file"] for item in manifest])
     jar = ROOT / "conformance/validator_cli.jar"
     with zipfile.ZipFile(jar) as archive:
         metadata = archive.read("META-INF/maven/ca.uhn.hapi.fhir/org.hl7.fhir.validation.cli/pom.properties").decode()

@@ -354,11 +354,13 @@ fn a_response_naming_another_version_of_a_loaded_questionnaire_is_warned() {
 }
 
 /// The warning for a code with no system is narrower than "the set holds
-/// it": validator_cli 6.10.4 warns where the contained set's compose has
-/// exactly one include or the set has a url, and keeps the error for a set
-/// with no url and two or more includes — even of one system, wherever the
-/// code sits. An enumerated exclude is applied. A system of whitespace is
-/// no system. Each shape probed (`conformance/coded-answers/set-*`).
+/// it": validator_cli 6.10.4 warns only where the contained set's compose
+/// has exactly one include, and keeps the error for two or more — even of
+/// one system, wherever the code sits, url or none. An enumerated exclude is
+/// applied. A system of whitespace is the error. Measured with a url unique
+/// to every set (`conformance/coded-answers/set-*`; the oracle caches a
+/// url-bearing set by its url, so a shared url once made two-include sets
+/// look like warnings).
 #[test]
 fn a_code_with_no_system_warns_only_where_the_oracle_does() {
     let qr = |label: &str, compose: &str, answer: &str| {
@@ -390,11 +392,11 @@ fn a_code_with_no_system_warns_only_where_the_oracle_does() {
     let code_only = r#"{"code": "y"}"#;
     // one include: a warning, url or none
     assert_eq!(verdict(named, &one, code_only), (true, vec!["questionnaire.answer-no-system"]));
-    // two includes and no url: the error, one system or two
+    assert_eq!(verdict(url, &one, code_only), (true, vec!["questionnaire.answer-no-system"]));
+    // two includes: the error, one system or two, url or none
     for compose in [&two_one_system, &two_systems] {
         assert_eq!(verdict(named, compose, code_only), (false, vec!["questionnaire.answer-not-in-set"]), "{compose}");
-        // the same set with a url: the warning
-        assert_eq!(verdict(url, compose, code_only), (true, vec!["questionnaire.answer-no-system"]), "{compose}");
+        assert_eq!(verdict(url, compose, code_only), (false, vec!["questionnaire.answer-not-in-set"]), "{compose}");
         // and a code with its system is a member either way
         assert!(verdict(named, compose, &format!(r#"{{"system": "{cs}", "code": "y"}}"#)).0, "{compose}");
     }
@@ -408,7 +410,16 @@ fn a_code_with_no_system_warns_only_where_the_oracle_does() {
     );
     assert_eq!(verdict(named, &excluded, r#"{"code": "n"}"#), (false, vec!["questionnaire.answer-not-in-set"]));
     assert_eq!(verdict(named, &excluded, code_only), (true, vec!["questionnaire.answer-no-system"]));
-    // a system of whitespace is no system at the answer (the uri finding stands beside it)
-    let (_, ids) = verdict(named, &one, r#"{"system": " ", "code": "y"}"#);
-    assert_eq!(ids, ["questionnaire.answer-no-system"]);
+    // a system of whitespace: the error at the answer, the system as given,
+    // the reason that the coding has no system
+    let r = v.validate(qr(named, &one, r#"{"system": " ", "code": "y"}"#).as_bytes());
+    let at: Vec<_> = r.report.issues.iter().filter(|i| i.path.ends_with("answer[0]")).collect();
+    assert_eq!(at.len(), 1, "{:?}", r.report.issues);
+    assert_eq!((at[0].severity, at[0].id), (Severity::Error, "questionnaire.answer-not-in-set"));
+    assert!(
+        at[0].message.starts_with("The code 'y' in the system ' ' is not in the options value set (Beside)"),
+        "{}",
+        at[0].message
+    );
+    assert!(at[0].message.contains("Terminology Error: Coding has no system."), "{}", at[0].message);
 }
