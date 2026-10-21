@@ -96,16 +96,15 @@ extensions — and its reason rewritten to what was measured.
 
 Lanes re-measured at this change: questionnaire **74/81** verdicts, **73/81**
 every error (exit 0; it exited 1 at 0.22.0 on this case); coded answers
-**122/122** (24 reviewed); probes **37/37**; narrative **42/42**; release gate
+**123/123** (24 reviewed, recorded cache-clean); probes **37/37**; narrative **42/42**; release gate
 **1,778/1,778**, `reasons.py` 3 triaged / 0 untriaged; the instrument scenario
 **71** cases with `--chain` (70 agree, the one triaged residue) and 40 with
 `--host-profile` (39, the same residue); validator test cases Java
-**64/84**; supporting **9/11**. Measured on the first cut (before the
-review's corrections, which touch only contained answer sets): mutation lane
-19,067 derived files, 0 untriaged lenient or stricter; base 5,156/5,290, 134
-lenient, 0 stricter, the pod's outcome unchanged on every file — its four
-failures are the oracle's own definition-validation output moving between
-runs on four StructureDefinitions, not this change. 281 tests, clippy clean, 22 wasm Node tests, the C ABI smoke and the no-std
+**64/84**; supporting **9/11**; base (`--reuse-oracle`, the runner merged
+from the 0.22.0 corrections) **5,155/5,287**, 132 lenient, 0 stricter, 3
+order-dependent, 0 failures. The mutation lane was measured on the first
+cut only (19,067 derived files, 0 untriaged lenient or stricter); the
+review's corrections touch only contained answer sets. 281 tests, clippy clean, 22 wasm Node tests, the C ABI smoke and the no-std
 build. ABI unchanged (14): no entrypoint, no option. Pending: tagged after
 review.
 

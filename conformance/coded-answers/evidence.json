@@ -1,6 +1,6 @@
 {
-  "recorded_at": "2026-10-20T22:34:23.307846+00:00",
-  "source_revision": "a38047397c5db96461878d253c55405de5b8bcf9",
+  "recorded_at": "2026-10-21T00:08:20.755983+00:00",
+  "source_revision": "4d78d408eed999a25aa2e6282a6e0c5e97604d54",
   "source_dirty": false,
   "oracle_version": "6.10.4",
   "oracle_sha256": "1106b9d58f9e363e47bea7c4fc065841e5fc91fe9d062775c3bfdd212bd653cc",
@@ -17,8 +17,8 @@
   "oracle_exit_code": 0,
   "note": "Verdict and error-path parity; every issue on both sides retained (severity, code, the pod's rule id, text, paths).",
   "counts": {
-    "total": 122,
-    "pass": 122,
+    "total": 123,
+    "pass": 123,
     "fail": 0,
     "reviewed": 24
   },
@@ -98,7 +98,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'maybe' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: The provided code 'https://example.org/probe/CodeSystem/answers#maybe' was not found in the value set 'https://example.org/probe/ValueSet/contained'; Unknown code 'maybe' in the CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'",
+          "text": "The code 'maybe' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: The provided code 'https://example.org/probe/CodeSystem/answers#maybe' was not found in the value set 'https://example.org/probe/ValueSet/contained-questionnaire-required-name'; Unknown code 'maybe' in the CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -154,7 +154,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'yes' in the system 'https://example.org/probe/CodeSystem/other' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: A definition for CodeSystem 'https://example.org/probe/CodeSystem/other' could not be found, so the code cannot be validated; The provided code 'https://example.org/probe/CodeSystem/other#yes' was not found in the value set 'https://example.org/probe/ValueSet/contained'",
+          "text": "The code 'yes' in the system 'https://example.org/probe/CodeSystem/other' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: A definition for CodeSystem 'https://example.org/probe/CodeSystem/other' could not be found, so the code cannot be validated; The provided code 'https://example.org/probe/CodeSystem/other#yes' was not found in the value set 'https://example.org/probe/ValueSet/contained-questionnaire-required-name'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -280,7 +280,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'maybe' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#maybe' was not found in the value set 'https://example.org/probe/ValueSet/contained'",
+          "text": "The code 'maybe' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#maybe' was not found in the value set 'https://example.org/probe/ValueSet/contained-questionnaire-required-name'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -397,7 +397,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'null' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#null: 'Yes'' was not found in the value set 'https://example.org/probe/ValueSet/contained'",
+          "text": "The code 'null' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#null: 'Yes'' was not found in the value set 'https://example.org/probe/ValueSet/contained-questionnaire-required-name'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -453,7 +453,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'null' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: No code provided for CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'; The provided code 'https://example.org/probe/CodeSystem/answers#null' was not found in the value set 'https://example.org/probe/ValueSet/contained'",
+          "text": "The code 'null' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: No code provided for CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'; The provided code 'https://example.org/probe/CodeSystem/answers#null' was not found in the value set 'https://example.org/probe/ValueSet/contained-questionnaire-required-name'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -509,7 +509,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'null' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: No code provided for CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'; The provided code 'https://example.org/probe/CodeSystem/answers#null: 'Yes'' was not found in the value set 'https://example.org/probe/ValueSet/contained'",
+          "text": "The code 'null' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: No code provided for CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'; The provided code 'https://example.org/probe/CodeSystem/answers#null: 'Yes'' was not found in the value set 'https://example.org/probe/ValueSet/contained-questionnaire-required-name'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -688,7 +688,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'null' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#null: 'Yes'' was not found in the value set 'https://example.org/probe/ValueSet/contained'",
+          "text": "The code 'null' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#null: 'Yes'' was not found in the value set 'https://example.org/probe/ValueSet/contained-questionnaire-optional-name'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -744,7 +744,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'null' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: No code provided for CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'; The provided code 'https://example.org/probe/CodeSystem/answers#null' was not found in the value set 'https://example.org/probe/ValueSet/contained'",
+          "text": "The code 'null' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: No code provided for CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'; The provided code 'https://example.org/probe/CodeSystem/answers#null' was not found in the value set 'https://example.org/probe/ValueSet/contained-questionnaire-optional-name'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -2551,7 +2551,7 @@
       "file": "qr-contained-vs-required-in-set.json",
       "expect": true,
       "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; system and code, the code in the set (control).",
-      "sha256": "7bfbf4a3dad02275b5ec8ec8236915b82424c62e153cf112bc1c099b408cdd6f",
+      "sha256": "1a05a5e888c51b856ce2a013446261fc6a556f5f287fb5faea3368ae556a0971",
       "oracle_valid": true,
       "oracle_errors": [],
       "oracle_issues": [
@@ -2620,7 +2620,7 @@
         "extra": [],
         "reason": "code system content: the oracle holds the questionnaire's CodeSystem (loaded with the IG folder) and also refuses the code against it ('Unknown code ... in the CodeSystem'); the pod is given value-set expansions, never a host's CodeSystem, so it reports the answer outside its options (the same verdict) but not the code-system finding beside it."
       },
-      "sha256": "a6b5978fd0ada8774e46fbccf214f0ce9ebba351ab364bede7c07e105aa2bb2c",
+      "sha256": "565f425f96668ffbeae070528edc47bc817441877ae564d2414fcb9e73ec2a27",
       "oracle_valid": false,
       "oracle_errors": [
         "QuestionnaireResponse.item.answer",
@@ -2658,7 +2658,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'maybe' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: The provided code 'https://example.org/probe/CodeSystem/answers#maybe' was not found in the value set 'https://example.org/probe/ValueSet/contained'; Unknown code 'maybe' in the CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'",
+          "text": "The code 'maybe' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: The provided code 'https://example.org/probe/CodeSystem/answers#maybe' was not found in the value set 'https://example.org/probe/ValueSet/contained-qr-contained-vs-required-not-in-set'; Unknown code 'maybe' in the CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -2713,7 +2713,7 @@
       "file": "qr-contained-vs-required-other-system.json",
       "expect": false,
       "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; a code from a system the set does not include.",
-      "sha256": "4bce78a634aee010b2aba1a883d4cda4dfb4a77806ee16ae829d53e4372403cf",
+      "sha256": "4edc702f6a303e599f5a03b3cc815ba3b82eb4a0d9efab8eaf2f98ba1d997c06",
       "oracle_valid": false,
       "oracle_errors": [
         "QuestionnaireResponse.item.answer"
@@ -2741,7 +2741,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'yes' in the system 'https://example.org/probe/CodeSystem/other' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: A definition for CodeSystem 'https://example.org/probe/CodeSystem/other' could not be found, so the code cannot be validated; The provided code 'https://example.org/probe/CodeSystem/other#yes' was not found in the value set 'https://example.org/probe/ValueSet/contained'",
+          "text": "The code 'yes' in the system 'https://example.org/probe/CodeSystem/other' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: A definition for CodeSystem 'https://example.org/probe/CodeSystem/other' could not be found, so the code cannot be validated; The provided code 'https://example.org/probe/CodeSystem/other#yes' was not found in the value set 'https://example.org/probe/ValueSet/contained-qr-contained-vs-required-other-system'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -2796,7 +2796,7 @@
       "file": "qr-contained-vs-required-code-only-member.json",
       "expect": true,
       "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; a code with no system, the code in the set.",
-      "sha256": "9a092f4daa230d0d2fb0528d9c80430efb61edde9637cef6c89c645a5f0266d8",
+      "sha256": "444477fda9ff4cb2deabc6a1df8d92c26b53fa936a28db648d818f5dcd784288",
       "oracle_valid": true,
       "oracle_errors": [],
       "oracle_issues": [
@@ -2884,7 +2884,7 @@
       "file": "qr-contained-vs-required-code-only-nonmember.json",
       "expect": false,
       "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; a code with no system, the code not in the set.",
-      "sha256": "b0e0af63e2901ac1ac90fbbe3426ff3e8ccaa1a3392f6b921a53cd30de233a04",
+      "sha256": "c8134271251e8743e5623f6de33f2746f7f07a140028759415d2b518f35eb224",
       "oracle_valid": false,
       "oracle_errors": [
         "QuestionnaireResponse.item.answer"
@@ -2921,7 +2921,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'maybe' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#maybe' was not found in the value set 'https://example.org/probe/ValueSet/contained'",
+          "text": "The code 'maybe' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#maybe' was not found in the value set 'https://example.org/probe/ValueSet/contained-qr-contained-vs-required-code-only-nonmember'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -2976,7 +2976,7 @@
       "file": "qr-contained-vs-required-code-only-member-bare.json",
       "expect": true,
       "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; a code with no system (no display), the code in the set.",
-      "sha256": "3e358b85abbd05d66dd37eec2ed7271713fd97675fc739ba272cc0d0c5c6887a",
+      "sha256": "8ec87481781835507eed8fee4d92c8116e799f4ddf6368aa20f9e92a0ead168e",
       "oracle_valid": true,
       "oracle_errors": [],
       "oracle_issues": [
@@ -3064,7 +3064,7 @@
       "file": "qr-contained-vs-required-display-only.json",
       "expect": false,
       "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; a display alone: no code, no system.",
-      "sha256": "b3cb553146c3eeacca281f53f6c2232ef282b3cfff0f9e49907b1026b98b3a42",
+      "sha256": "d8f2fad35805866f520e209f7729a28fd94de2df14243d4bfabd3b373f8ca613",
       "oracle_valid": false,
       "oracle_errors": [
         "QuestionnaireResponse.item.answer"
@@ -3092,7 +3092,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'null' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#null: 'Yes'' was not found in the value set 'https://example.org/probe/ValueSet/contained'",
+          "text": "The code 'null' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#null: 'Yes'' was not found in the value set 'https://example.org/probe/ValueSet/contained-qr-contained-vs-required-display-only'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -3147,7 +3147,7 @@
       "file": "qr-contained-vs-required-system-only.json",
       "expect": false,
       "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; a system alone: no code.",
-      "sha256": "6cfb5c040a5e8e87203c841ed32795f2d1f4b59a5a7bc675d983fc5bf542cb75",
+      "sha256": "e380a9c0ba813149bc05b520128ad8b60067925bf77c569a7cb694f885fd9e03",
       "oracle_valid": false,
       "oracle_errors": [
         "QuestionnaireResponse.item.answer"
@@ -3175,7 +3175,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'null' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: No code provided for CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'; The provided code 'https://example.org/probe/CodeSystem/answers#null' was not found in the value set 'https://example.org/probe/ValueSet/contained'",
+          "text": "The code 'null' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: No code provided for CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'; The provided code 'https://example.org/probe/CodeSystem/answers#null' was not found in the value set 'https://example.org/probe/ValueSet/contained-qr-contained-vs-required-system-only'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -3230,7 +3230,7 @@
       "file": "qr-contained-vs-required-system-display.json",
       "expect": false,
       "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; a system and a display: no code.",
-      "sha256": "096812797af058c1bb3f62c4a64c9c3f60a7f52461b8962441ac0d31739dd0aa",
+      "sha256": "e33701ded6842dbec3490e8e7d610b4c648ae327a4b227533b07a23e4780c8ed",
       "oracle_valid": false,
       "oracle_errors": [
         "QuestionnaireResponse.item.answer"
@@ -3258,7 +3258,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'null' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: No code provided for CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'; The provided code 'https://example.org/probe/CodeSystem/answers#null: 'Yes'' was not found in the value set 'https://example.org/probe/ValueSet/contained'",
+          "text": "The code 'null' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: No code provided for CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'; The provided code 'https://example.org/probe/CodeSystem/answers#null: 'Yes'' was not found in the value set 'https://example.org/probe/ValueSet/contained-qr-contained-vs-required-system-display'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -3321,7 +3321,7 @@
         ],
         "reason": "stricter than the pinned validator, kept on purpose (fail-closed): a valueString on a choice item with an answerValueSet is refused by the pod ('answerConstraint is optionsOnly'), after fhir-test-cases' stored outcome for answerconstraint-qr. That outcome comes from a later validator: the pinned 6.10.4 JAR's Messages.properties has no message for it (no key mentions answerConstraint), and 6.10.4 run fresh reports only the information 'Cannot validate string answer option because no option list is provided'. The entry goes when the pin moves."
       },
-      "sha256": "c52b168e9d47c6736063e23c162ded2d2060c056ae019ed6a79d37a52500f871",
+      "sha256": "6f0aaa9fc9428618a511820ff7fa2bf775ed309adc7939cdaafc59ef91c9f3f5",
       "oracle_valid": true,
       "oracle_errors": [],
       "oracle_issues": [
@@ -3402,7 +3402,7 @@
       "file": "qr-contained-vs-optional-code-only-member.json",
       "expect": true,
       "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); optional item; a code with no system, the code in the set.",
-      "sha256": "a69b127e5f91c680387622e55b4435860ac17285726c3a429c0261b4dc541f55",
+      "sha256": "c0b34f8300605d580ddf2dff3b179651f425336b2c0ada66bdfc1320befbd72e",
       "oracle_valid": true,
       "oracle_errors": [],
       "oracle_issues": [
@@ -3490,7 +3490,7 @@
       "file": "qr-contained-vs-optional-display-only.json",
       "expect": false,
       "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); optional item; a display alone: no code, no system.",
-      "sha256": "b97194d2056648b70c200dede0a4f4f91da1b7a9b364b8552b268015201ff077",
+      "sha256": "94465e8f0b7924e0d7d46e23f2d2c8b1333e43b90d3b92467ee6cd3abc9c4baa",
       "oracle_valid": false,
       "oracle_errors": [
         "QuestionnaireResponse.item.answer"
@@ -3518,7 +3518,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'null' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#null: 'Yes'' was not found in the value set 'https://example.org/probe/ValueSet/contained'",
+          "text": "The code 'null' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#null: 'Yes'' was not found in the value set 'https://example.org/probe/ValueSet/contained-qr-contained-vs-optional-display-only'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -3573,7 +3573,7 @@
       "file": "qr-contained-vs-optional-system-only.json",
       "expect": false,
       "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); optional item; a system alone: no code.",
-      "sha256": "8208b965b8fda1660c4e3b1d938bcf217f887c627eac03a590336d5aa023886c",
+      "sha256": "caf96812fd196829296d03971a569be38b4c54eee88391761a595ecbfe2514f2",
       "oracle_valid": false,
       "oracle_errors": [
         "QuestionnaireResponse.item.answer"
@@ -3601,7 +3601,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'null' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: No code provided for CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'; The provided code 'https://example.org/probe/CodeSystem/answers#null' was not found in the value set 'https://example.org/probe/ValueSet/contained'",
+          "text": "The code 'null' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: No code provided for CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'; The provided code 'https://example.org/probe/CodeSystem/answers#null' was not found in the value set 'https://example.org/probe/ValueSet/contained-qr-contained-vs-optional-system-only'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -4066,7 +4066,7 @@
       "file": "qr-contained-system-vs-required-in-set.json",
       "expect": true,
       "reason": "The answerValueSet contained beside the Questionnaire in the response, including the whole code system; required item; system and code, the code in the set (control).",
-      "sha256": "f94e35a5690c5f74d0dcd7a222cedffff9bc8416d0cb8d2a8a3795623dcaba6a",
+      "sha256": "168275b1f8ecd7691747e44d8bfb9e26d1de7a1c193427808fc2ded62f169076",
       "oracle_valid": true,
       "oracle_errors": [],
       "oracle_issues": [
@@ -4145,7 +4145,7 @@
         "extra": [],
         "reason": "a set contained beside the questionnaire that includes a whole code system: the pod enumerates only a contained set that lists its codes, so membership of a coded answer with a system is Unknown (warning 'no bundled terminology', binding.unknown) where the oracle, holding the CodeSystem, refuses the code. Pre-dates the coded-answer rule (lenient at 0.22.0 too); the pod is never given a host's CodeSystem."
       },
-      "sha256": "5826feb4eaef4cf46f5d4707c9a23766a291810c24056d95fe3efca587db8c64",
+      "sha256": "24f3c1934ce176cf29acb99558253453fef3afede188e37606f983c068e9df43",
       "oracle_valid": false,
       "oracle_errors": [
         "QuestionnaireResponse.item.answer",
@@ -4183,7 +4183,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'maybe' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: The provided code 'https://example.org/probe/CodeSystem/answers#maybe' was not found in the value set 'https://example.org/probe/ValueSet/contained'; Unknown code 'maybe' in the CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'",
+          "text": "The code 'maybe' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: The provided code 'https://example.org/probe/CodeSystem/answers#maybe' was not found in the value set 'https://example.org/probe/ValueSet/contained-qr-contained-system-vs-required-not-in-set'; Unknown code 'maybe' in the CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -4234,19 +4234,13 @@
     },
     {
       "file": "qr-contained-system-vs-required-code-only-member.json",
-      "expect": true,
+      "expect": false,
       "reason": "The answerValueSet contained beside the Questionnaire in the response, including the whole code system; required item; a code with no system, the code in the set.",
-      "reviewed": {
-        "local": false,
-        "missed": [],
-        "extra": [
-          "QuestionnaireResponse.item.answer"
-        ],
-        "reason": "a code with no system under a contained set that includes a whole code system: the oracle warns (the code is in the system it holds); the pod cannot enumerate the set (it is not given the CodeSystem), so it keeps the error \u2014 stricter here, never more lenient (the same answer with a code the system lacks is an error on both sides)."
-      },
-      "sha256": "f5c8904c868ba83f0f7c158acd39e10dd31a81a6d9a7b5b4d7771d0eefb74a97",
-      "oracle_valid": true,
-      "oracle_errors": [],
+      "sha256": "7f9029ac1e928728e23bece925d46418350ceaa270c712213645c9a7ea504f04",
+      "oracle_valid": false,
+      "oracle_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
       "oracle_issues": [
         {
           "severity": "information",
@@ -4276,10 +4270,10 @@
           ]
         },
         {
-          "severity": "warning",
+          "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#yes: 'Yes'' was not found in the value set 'https://example.org/probe/ValueSet/contained-qr-contained-system-vs-required-code-only-member'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -4327,14 +4321,14 @@
           ]
         }
       ],
-      "review": "reviewed",
+      "review": "agreement",
       "agrees": true
     },
     {
       "file": "qr-contained-system-vs-required-code-only-nonmember.json",
       "expect": false,
       "reason": "The answerValueSet contained beside the Questionnaire in the response, including the whole code system; required item; a code with no system, the code not in the set.",
-      "sha256": "83bf86f3df34b0466a42d258bf19c3c0128a957a36deb9f656633b3f7e94d842",
+      "sha256": "718c7a04bcc28a731c2889e62d6a676fdf44ea27b5836706bb50c482094709fe",
       "oracle_valid": false,
       "oracle_errors": [
         "QuestionnaireResponse.item.answer"
@@ -4371,7 +4365,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'maybe' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#maybe' was not found in the value set 'https://example.org/probe/ValueSet/contained'",
+          "text": "The code 'maybe' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#maybe' was not found in the value set 'https://example.org/probe/ValueSet/contained-qr-contained-system-vs-required-code-only-nonmember'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -4426,7 +4420,7 @@
       "file": "qr-contained-system-vs-required-display-only.json",
       "expect": false,
       "reason": "The answerValueSet contained beside the Questionnaire in the response, including the whole code system; required item; a display alone: no code, no system.",
-      "sha256": "8380c48f20939e76bba96d39bfb7fddf9e076c724849ab334f50a3840fe09688",
+      "sha256": "a3890cba3ef1f1ce73fc9b15a5f157939ca7c95775d893728a7a83e8857a1172",
       "oracle_valid": false,
       "oracle_errors": [
         "QuestionnaireResponse.item.answer"
@@ -4454,7 +4448,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'null' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#null: 'Yes'' was not found in the value set 'https://example.org/probe/ValueSet/contained'",
+          "text": "The code 'null' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#null: 'Yes'' was not found in the value set 'https://example.org/probe/ValueSet/contained-qr-contained-system-vs-required-display-only'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -4509,7 +4503,7 @@
       "file": "qr-contained-system-vs-required-system-only.json",
       "expect": false,
       "reason": "The answerValueSet contained beside the Questionnaire in the response, including the whole code system; required item; a system alone: no code.",
-      "sha256": "e2007ec29cf48afd09a5bf19f690fc7d788467ca1395b9da0b67e4b50ab0631c",
+      "sha256": "fbc4a868f5c408c66c54e5f8e8af0b7f2cd2f14cd79a7564a73aece573d1a248",
       "oracle_valid": false,
       "oracle_errors": [
         "QuestionnaireResponse.item.answer"
@@ -4537,7 +4531,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'null' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: No code provided for CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'; The provided code 'https://example.org/probe/CodeSystem/answers#null' was not found in the value set 'https://example.org/probe/ValueSet/contained'",
+          "text": "The code 'null' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: No code provided for CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'; The provided code 'https://example.org/probe/CodeSystem/answers#null' was not found in the value set 'https://example.org/probe/ValueSet/contained-qr-contained-system-vs-required-system-only'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -4996,7 +4990,7 @@
       "file": "set-one-include-listed-twice-in-set.json",
       "expect": true,
       "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose one include listed twice; required item; system and code in the set (control).",
-      "sha256": "edceed032e13d0e9c2d4f0252ecdc20422d38b88c327cffeaf12c2626beaa5ae",
+      "sha256": "7efd9668fd0d5f3e7fdaceab0acf38832a1eb463ff1bfdd42f953805963f219d",
       "oracle_valid": true,
       "oracle_errors": [],
       "oracle_issues": [
@@ -5057,7 +5051,7 @@
       "file": "set-one-include-listed-twice-code-only-member.json",
       "expect": true,
       "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose one include listed twice; required item; a code with no system, the code in the set.",
-      "sha256": "3f646ec8d2174f226c9c2856e7dbae31fe93ca89a0d4ce03576760732e7dd0f8",
+      "sha256": "7c5ce724eaccd96c44160ce4f6d813e8e5984ef43562c59d5ce566146012b020",
       "oracle_valid": true,
       "oracle_errors": [],
       "oracle_issues": [
@@ -5145,7 +5139,7 @@
       "file": "set-two-includes-one-system-first-in-set.json",
       "expect": true,
       "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two includes one system first; required item; system and code in the set (control).",
-      "sha256": "d5b8cd3af78c05b9406918ca400c8a9d461395f8a0492b7758283e115b095fe3",
+      "sha256": "27f536c4ba39676e344211920ad065046d1bdc524efd8fb0a65f006f4a5d5304",
       "oracle_valid": true,
       "oracle_errors": [],
       "oracle_issues": [
@@ -5213,11 +5207,13 @@
     },
     {
       "file": "set-two-includes-one-system-first-code-only-member.json",
-      "expect": true,
+      "expect": false,
       "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two includes one system first; required item; a code with no system, the code in the set.",
-      "sha256": "27d1687604a1693fcbb6ebc323a8785e70d1b73cec811980f03ff5602aad2fbb",
-      "oracle_valid": true,
-      "oracle_errors": [],
+      "sha256": "7b678a2e7dfb5ae51920657a117e683e503dd6ac1ca782bdcbb6b99afeeb0e33",
+      "oracle_valid": false,
+      "oracle_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
       "oracle_issues": [
         {
           "severity": "information",
@@ -5256,17 +5252,19 @@
           ]
         },
         {
-          "severity": "warning",
+          "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#yes' was not found in the value set 'https://example.org/probe/ValueSet/contained-set-two-includes-one-system-first-code-only-member'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
         }
       ],
-      "local_valid": true,
-      "local_errors": [],
+      "local_valid": false,
+      "local_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
       "local_issues": [
         {
           "severity": "warning",
@@ -5278,10 +5276,10 @@
           ]
         },
         {
-          "severity": "warning",
+          "severity": "error",
           "code": "code-invalid",
-          "rule": "questionnaire.answer-no-system",
-          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "rule": "questionnaire.answer-not-in-set",
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -5312,7 +5310,7 @@
       "file": "set-two-includes-one-system-second-in-set.json",
       "expect": true,
       "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two includes one system second; required item; system and code in the set (control).",
-      "sha256": "d58f9470df1c213438af3e836dcc2ea9ba1e40884d49413fbcd9784fa0d4be4e",
+      "sha256": "cf57b1a9b428d5d38e7ca27a412dc2ec29e289dbf75853a91a020ef75298cec2",
       "oracle_valid": true,
       "oracle_errors": [],
       "oracle_issues": [
@@ -5380,11 +5378,13 @@
     },
     {
       "file": "set-two-includes-one-system-second-code-only-member.json",
-      "expect": true,
+      "expect": false,
       "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two includes one system second; required item; a code with no system, the code in the set.",
-      "sha256": "00bbd7369da70258cb0a24974534518fbd529602a83fc55a0548f18c6162db38",
-      "oracle_valid": true,
-      "oracle_errors": [],
+      "sha256": "cdea7a9340e88051682f72d7376fa75faafb092f8b62876259acbf4907244e3a",
+      "oracle_valid": false,
+      "oracle_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
       "oracle_issues": [
         {
           "severity": "information",
@@ -5423,17 +5423,19 @@
           ]
         },
         {
-          "severity": "warning",
+          "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#yes' was not found in the value set 'https://example.org/probe/ValueSet/contained-set-two-includes-one-system-second-code-only-member'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
         }
       ],
-      "local_valid": true,
-      "local_errors": [],
+      "local_valid": false,
+      "local_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
       "local_issues": [
         {
           "severity": "warning",
@@ -5445,10 +5447,10 @@
           ]
         },
         {
-          "severity": "warning",
+          "severity": "error",
           "code": "code-invalid",
-          "rule": "questionnaire.answer-no-system",
-          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "rule": "questionnaire.answer-not-in-set",
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -5479,7 +5481,7 @@
       "file": "set-two-systems-unique-code-in-set.json",
       "expect": true,
       "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two systems unique code; required item; system and code in the set (control).",
-      "sha256": "b5312b0f37499fb06c7e883f1a60f7a614366ffc8114c6f341be61e3ed1839d5",
+      "sha256": "46c6aa7c0f38050ee2f243587c141c56d62a5c2b27d0ce1fb2a7a90e4ccb6d80",
       "oracle_valid": true,
       "oracle_errors": [],
       "oracle_issues": [
@@ -5547,11 +5549,13 @@
     },
     {
       "file": "set-two-systems-unique-code-code-only-member.json",
-      "expect": true,
+      "expect": false,
       "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two systems unique code; required item; a code with no system, the code in the set.",
-      "sha256": "3ae461fefa630efea969e7bf5508cf8a837371df9af61e4ce6cc10d3501590e3",
-      "oracle_valid": true,
-      "oracle_errors": [],
+      "sha256": "cb58991ab3f564e9bbfc3c83212a0c137e07cd92dcd1f632e2dcbb9d70c4d756",
+      "oracle_valid": false,
+      "oracle_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
       "oracle_issues": [
         {
           "severity": "information",
@@ -5590,17 +5594,19 @@
           ]
         },
         {
-          "severity": "warning",
+          "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#yes' was not found in the value set 'https://example.org/probe/ValueSet/contained-set-two-systems-unique-code-code-only-member'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
         }
       ],
-      "local_valid": true,
-      "local_errors": [],
+      "local_valid": false,
+      "local_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
       "local_issues": [
         {
           "severity": "warning",
@@ -5612,10 +5618,10 @@
           ]
         },
         {
-          "severity": "warning",
+          "severity": "error",
           "code": "code-invalid",
-          "rule": "questionnaire.answer-no-system",
-          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "rule": "questionnaire.answer-not-in-set",
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -5646,7 +5652,7 @@
       "file": "set-two-systems-shared-code-in-set.json",
       "expect": true,
       "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two systems shared code; required item; system and code in the set (control).",
-      "sha256": "f80a8eefc051f36f87259be95903e57991baa2c5e192b6f101ce3376f60d5a76",
+      "sha256": "038e68c972f52ca586a0f297a45a86caca3af0f132f1b843107a15302d1e62af",
       "oracle_valid": true,
       "oracle_errors": [],
       "oracle_issues": [
@@ -5714,11 +5720,13 @@
     },
     {
       "file": "set-two-systems-shared-code-code-only-member.json",
-      "expect": true,
+      "expect": false,
       "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two systems shared code; required item; a code with no system, the code in the set.",
-      "sha256": "8b526ad1e6e9aafea60f407995591f1fa8ad0a233c8ef878fdc2593c4c1e33d3",
-      "oracle_valid": true,
-      "oracle_errors": [],
+      "sha256": "6760887a843784b6c23a26e72f20f77d368aab65ed004b639737c6d69e783f32",
+      "oracle_valid": false,
+      "oracle_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
       "oracle_issues": [
         {
           "severity": "information",
@@ -5757,17 +5765,19 @@
           ]
         },
         {
-          "severity": "warning",
+          "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#yes' was not found in the value set 'https://example.org/probe/ValueSet/contained-set-two-systems-shared-code-code-only-member'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
         }
       ],
-      "local_valid": true,
-      "local_errors": [],
+      "local_valid": false,
+      "local_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
       "local_issues": [
         {
           "severity": "warning",
@@ -5779,10 +5789,10 @@
           ]
         },
         {
-          "severity": "warning",
+          "severity": "error",
           "code": "code-invalid",
-          "rule": "questionnaire.answer-no-system",
-          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "rule": "questionnaire.answer-not-in-set",
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -5813,7 +5823,7 @@
       "file": "set-two-systems-code-in-second-in-set.json",
       "expect": true,
       "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two systems code in second; required item; system and code in the set (control).",
-      "sha256": "a3f06d34df32f077bb79e81c9bafe9f62549a672d9dd3689ee35ed929d03c736",
+      "sha256": "35c7dc9e625a09bb5195acc227b97f8ab0932b7189cdf42834998b3f0f96ac79",
       "oracle_valid": true,
       "oracle_errors": [],
       "oracle_issues": [
@@ -5881,11 +5891,13 @@
     },
     {
       "file": "set-two-systems-code-in-second-code-only-member.json",
-      "expect": true,
+      "expect": false,
       "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose two systems code in second; required item; a code with no system, the code in the set.",
-      "sha256": "0bc8d29d795337bb0547338a1c8602f7bd0884fef705384302a0367201b2756d",
-      "oracle_valid": true,
-      "oracle_errors": [],
+      "sha256": "30371d6991d91ee621c389954360a8f402d56f50c39198425704d021108af4cc",
+      "oracle_valid": false,
+      "oracle_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
       "oracle_issues": [
         {
           "severity": "information",
@@ -5924,17 +5936,19 @@
           ]
         },
         {
-          "severity": "warning",
+          "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#yes' was not found in the value set 'https://example.org/probe/ValueSet/contained-set-two-systems-code-in-second-code-only-member'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
         }
       ],
-      "local_valid": true,
-      "local_errors": [],
+      "local_valid": false,
+      "local_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
       "local_issues": [
         {
           "severity": "warning",
@@ -5946,10 +5960,10 @@
           ]
         },
         {
-          "severity": "warning",
+          "severity": "error",
           "code": "code-invalid",
-          "rule": "questionnaire.answer-no-system",
-          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "rule": "questionnaire.answer-not-in-set",
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -5980,7 +5994,7 @@
       "file": "set-exclude-in-set.json",
       "expect": true,
       "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose exclude; required item; system and code in the set (control).",
-      "sha256": "fe22fdbee3b7a694687f62a0c6f9d9c729a9dfe8b8fb597bb3908487de0925b8",
+      "sha256": "0c0e4cd118080db0532f19cc7fda9d9745a10b935fae969dfd2a9340b237d113",
       "oracle_valid": true,
       "oracle_errors": [],
       "oracle_issues": [
@@ -6050,7 +6064,7 @@
       "file": "set-exclude-code-only-member.json",
       "expect": true,
       "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose exclude; required item; a code with no system, the code in the set.",
-      "sha256": "2796f7f3c4b4db10998a1e05e731360b568afdaea1a7243603623ccdaa1dd370",
+      "sha256": "8f6050688b54abfa14a72d7d4b51ba9562ad8249649771b97916c89b39dcf3be",
       "oracle_valid": true,
       "oracle_errors": [],
       "oracle_issues": [
@@ -6147,7 +6161,7 @@
       "file": "set-include-valueset-in-set.json",
       "expect": true,
       "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose include valueset; required item; system and code in the set (control).",
-      "sha256": "ba121b3c62873d8fe69be0a3c99564f6ce7126ab978b7c752e33bcb1fda2c276",
+      "sha256": "ac74d17fda146a24e9c8ebbf3165e7b8505ec04bb4b16bf4b43d000b3019618d",
       "oracle_valid": true,
       "oracle_errors": [],
       "oracle_issues": [
@@ -6216,7 +6230,7 @@
         ],
         "reason": "a code with no system under a contained set whose one include names another value set (include.valueSet): the oracle warns; the pod does not enumerate an include of another set, so it keeps the error \u2014 stricter, never more lenient (a coding with a system there is not checked: a warning on the pod's side, valid on both)."
       },
-      "sha256": "cdf8a755eed5b9abadf93b3d6f261f0f0c0fb1ff7b7780d6ffa1ce4fed785c14",
+      "sha256": "756711582499900e60000004c9c796e9511d13c0155962699dec8f563f3571d2",
       "oracle_valid": true,
       "oracle_errors": [],
       "oracle_issues": [
@@ -7074,11 +7088,13 @@
     },
     {
       "file": "set-two-includes-one-system-first-url-only-code-only-member.json",
-      "expect": true,
+      "expect": false,
       "reason": "The answerValueSet contained beside the Questionnaire in the response (a url, no name), its compose two includes one system first; required item; a code with no system, the code in the set.",
-      "sha256": "1b55a73a682f1838f0cfe1ac137131c0b7108915d19c93a016e5f2945ef5815e",
-      "oracle_valid": true,
-      "oracle_errors": [],
+      "sha256": "f0f199dd0cec6ba9a91e1ed2426a719a5bb800df774943ea0f96b7844f680fb6",
+      "oracle_valid": false,
+      "oracle_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
       "oracle_issues": [
         {
           "severity": "information",
@@ -7117,17 +7133,19 @@
           ]
         },
         {
-          "severity": "warning",
+          "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ValueSet[https://example.org/probe/ValueSet/contained-set-two-includes-one-system-first-url-only-code-only-member]) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#yes' was not found in the value set 'https://example.org/probe/ValueSet/contained-set-two-includes-one-system-first-url-only-code-only-member'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
         }
       ],
-      "local_valid": true,
-      "local_errors": [],
+      "local_valid": false,
+      "local_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
       "local_issues": [
         {
           "severity": "warning",
@@ -7139,10 +7157,10 @@
           ]
         },
         {
-          "severity": "warning",
+          "severity": "error",
           "code": "code-invalid",
-          "rule": "questionnaire.answer-no-system",
-          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "rule": "questionnaire.answer-not-in-set",
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ValueSet[https://example.org/probe/ValueSet/contained-set-two-includes-one-system-first-url-only-code-only-member]) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -7272,11 +7290,13 @@
     },
     {
       "file": "set-two-systems-unique-code-url-only-code-only-member.json",
-      "expect": true,
+      "expect": false,
       "reason": "The answerValueSet contained beside the Questionnaire in the response (a url, no name), its compose two systems unique code; required item; a code with no system, the code in the set.",
-      "sha256": "ea02a65753c55d81ffb1f5d59d34a8932f12ece0624e6cb16ebde734af292d51",
-      "oracle_valid": true,
-      "oracle_errors": [],
+      "sha256": "c3a0b300b7433a02834b39977285f0c9cbbe807fe58f5791c52019bd442070db",
+      "oracle_valid": false,
+      "oracle_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
       "oracle_issues": [
         {
           "severity": "information",
@@ -7315,17 +7335,19 @@
           ]
         },
         {
-          "severity": "warning",
+          "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ValueSet[https://example.org/probe/ValueSet/contained-set-two-systems-unique-code-url-only-code-only-member]) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#yes' was not found in the value set 'https://example.org/probe/ValueSet/contained-set-two-systems-unique-code-url-only-code-only-member'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
         }
       ],
-      "local_valid": true,
-      "local_errors": [],
+      "local_valid": false,
+      "local_errors": [
+        "QuestionnaireResponse.item.answer"
+      ],
       "local_issues": [
         {
           "severity": "warning",
@@ -7337,10 +7359,10 @@
           ]
         },
         {
-          "severity": "warning",
+          "severity": "error",
           "code": "code-invalid",
-          "rule": "questionnaire.answer-no-system",
-          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "rule": "questionnaire.answer-not-in-set",
+          "text": "The code 'yes' in the system 'null' is not in the options value set (ValueSet[https://example.org/probe/ValueSet/contained-set-two-systems-unique-code-url-only-code-only-member]) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -7472,7 +7494,7 @@
       "file": "set-exclude-excluded.json",
       "expect": false,
       "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose exclude; required item; system and code, the code excluded.",
-      "sha256": "de1ab04c92894805195a5f1c8bbf14af140ebb20741d445ff81e00cb3eb29417",
+      "sha256": "a58bd89b8e24e03c26e09e88f90c0ab8a9305fe6e582b27c4e48b94e3dafc8ce",
       "oracle_valid": false,
       "oracle_errors": [
         "QuestionnaireResponse.item.answer"
@@ -7509,7 +7531,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'unsure' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: The provided code 'https://example.org/probe/CodeSystem/answers#unsure' was not found in the value set 'https://example.org/probe/ValueSet/contained'",
+          "text": "The code 'unsure' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: The provided code 'https://example.org/probe/CodeSystem/answers#unsure' was not found in the value set 'https://example.org/probe/ValueSet/contained-set-exclude-excluded'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -7564,7 +7586,7 @@
       "file": "set-exclude-code-only-excluded.json",
       "expect": false,
       "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose exclude; required item; a code with no system, the code excluded.",
-      "sha256": "ff66ec87a2b764763625731aef9171e14725b26724954ddd39ff11a98e188433",
+      "sha256": "334832cca1bf9c920defa1513d4ba91a7e10dbe6d53c894b7d2a3d354a3c0b3f",
       "oracle_valid": false,
       "oracle_errors": [
         "QuestionnaireResponse.item.answer"
@@ -7610,7 +7632,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'unsure' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#unsure' was not found in the value set 'https://example.org/probe/ValueSet/contained'",
+          "text": "The code 'unsure' in the system 'null' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#unsure' was not found in the value set 'https://example.org/probe/ValueSet/contained-set-exclude-code-only-excluded'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -7673,11 +7695,12 @@
         "extra": [
           "QuestionnaireResponse.item.answer.valueCoding.system"
         ],
-        "reason": "a system of a single space: both sides refuse it as a uri and both treat it as no system at the answer (the oracle's 'Coding has no system' warning; the pod's answer-no-system warning). The oracle locates the uri finding at the Coding ('Coding.system must be an absolute reference'), the pod at the system ('\u2026 is not a valid uri'): a path spelling only."
+        "reason": "a system of whitespace alone (a space; a tab and a newline): both sides refuse the answer \u2014 the oracle 'The code 'yes' in the system ' ' is not in the options value set \u2026 Coding has no system', the pod the same error with the system as given \u2014 and both refuse the uri. The oracle locates the uri finding at the Coding ('Coding.system must be an absolute reference'), the pod at the system ('\u2026 is not a valid uri'): a path spelling only."
       },
-      "sha256": "5cec8aa2b5fb57a517277aea714d5778d19bff6a5d7f81dbf78bc7eb6c7e0482",
+      "sha256": "919d9ff93818e8e387c5b83e7ddf0431a78d5b2d3225ab20b964f1e87424806e",
       "oracle_valid": false,
       "oracle_errors": [
+        "QuestionnaireResponse.item.answer",
         "QuestionnaireResponse.item.answer.value[x]"
       ],
       "oracle_issues": [
@@ -7718,10 +7741,10 @@
           ]
         },
         {
-          "severity": "warning",
+          "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "text": "The code 'yes' in the system ' ' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#yes' was not found in the value set 'https://example.org/probe/ValueSet/contained-set-one-include-listed-twice-whitespace-system'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -7729,6 +7752,7 @@
       ],
       "local_valid": false,
       "local_errors": [
+        "QuestionnaireResponse.item.answer",
         "QuestionnaireResponse.item.answer.valueCoding.system"
       ],
       "local_issues": [
@@ -7751,10 +7775,132 @@
           ]
         },
         {
-          "severity": "warning",
+          "severity": "error",
           "code": "code-invalid",
-          "rule": "questionnaire.answer-no-system",
-          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "rule": "questionnaire.answer-not-in-set",
+          "text": "The code 'yes' in the system ' ' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[0].Questionnaire"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse.contained[1].ValueSet"
+          ]
+        }
+      ],
+      "review": "reviewed",
+      "agrees": true
+    },
+    {
+      "file": "set-one-include-listed-twice-whitespace-system-tab-newline.json",
+      "expect": false,
+      "reason": "The answerValueSet contained beside the Questionnaire in the response, its compose one include listed twice; required item; a code whose system is a tab and a newline, the code in the set.",
+      "reviewed": {
+        "local": false,
+        "missed": [
+          "QuestionnaireResponse.item.answer.value[x]"
+        ],
+        "extra": [
+          "QuestionnaireResponse.item.answer.valueCoding.system"
+        ],
+        "reason": "a system of whitespace alone (a space; a tab and a newline): both sides refuse the answer \u2014 the oracle 'The code 'yes' in the system ' ' is not in the options value set \u2026 Coding has no system', the pod the same error with the system as given \u2014 and both refuse the uri. The oracle locates the uri finding at the Coding ('Coding.system must be an absolute reference'), the pod at the system ('\u2026 is not a valid uri'): a path spelling only."
+      },
+      "sha256": "840464a1a15c838154e7ed8664c873feb05a39919072ca42a1d679d71bf0360d",
+      "oracle_valid": false,
+      "oracle_errors": [
+        "QuestionnaireResponse.item.answer",
+        "QuestionnaireResponse.item.answer.value[x]"
+      ],
+      "oracle_issues": [
+        {
+          "severity": "information",
+          "code": "business-rule",
+          "rule": null,
+          "text": "The concepts in the value set include have not been validated because there is no terminology server",
+          "paths": [
+            "QuestionnaireResponse.contained[1]/*ValueSet/vs*/.compose.include[0]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "Coding.system must be an absolute reference, not a local reference",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "rule": null,
+          "text": "Primitive types should not only be whitespace",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0].value.ofType(Coding).system"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "The code 'yes' in the system '\t\n' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided; The provided code '#yes' was not found in the value set 'https://example.org/probe/ValueSet/contained-set-one-include-listed-twice-whitespace-system-tab-newline'",
+          "paths": [
+            "QuestionnaireResponse.item[0].answer[0]"
+          ]
+        }
+      ],
+      "local_valid": false,
+      "local_errors": [
+        "QuestionnaireResponse.item.answer",
+        "QuestionnaireResponse.item.answer.valueCoding.system"
+      ],
+      "local_issues": [
+        {
+          "severity": "error",
+          "code": "value",
+          "rule": "value.invalid",
+          "text": "QuestionnaireResponse.item.answer.valueCoding.system is not a valid uri",
+          "paths": [
+            "QuestionnaireResponse.item.answer.valueCoding.system"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": "questionnaire.answer-not-in-set",
+          "text": "The code 'yes' in the system '\t\n' is not in the options value set (ContainedAnswers) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -7793,7 +7939,7 @@
         "extra": [],
         "reason": "code system content: the oracle holds the questionnaire's CodeSystem (loaded with the IG folder) and also refuses the code against it ('Unknown code ... in the CodeSystem'); the pod is given value-set expansions, never a host's CodeSystem, so it reports the answer outside its options (the same verdict) but not the code-system finding beside it."
       },
-      "sha256": "e93fac7cbb723a1fda8e221a1774e31491a20e754b893205cdbdb58aef1cafcb",
+      "sha256": "f69ac93669cd79933ba639ab3a87d89518ff8d64ca681868c8040cfad8f689aa",
       "oracle_valid": false,
       "oracle_errors": [
         "QuestionnaireResponse.item.answer",
@@ -7831,7 +7977,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'maybe' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (Contained answers) specified by the questionnaire. Terminology Error: The provided code 'https://example.org/probe/CodeSystem/answers#maybe' was not found in the value set 'https://example.org/probe/ValueSet/contained'; Unknown code 'maybe' in the CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'",
+          "text": "The code 'maybe' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (Contained answers) specified by the questionnaire. Terminology Error: The provided code 'https://example.org/probe/CodeSystem/answers#maybe' was not found in the value set 'https://example.org/probe/ValueSet/contained-qr-contained-vs-name-title-label-not-in-set'; Unknown code 'maybe' in the CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -7923,7 +8069,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'maybe' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (Contained answers) specified by the questionnaire. Terminology Error: The provided code 'https://example.org/probe/CodeSystem/answers#maybe' was not found in the value set 'https://example.org/probe/ValueSet/contained'; Unknown code 'maybe' in the CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'",
+          "text": "The code 'maybe' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (Contained answers) specified by the questionnaire. Terminology Error: The provided code 'https://example.org/probe/CodeSystem/answers#maybe' was not found in the value set 'https://example.org/probe/ValueSet/contained-questionnaire-required-title'; Unknown code 'maybe' in the CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -7968,7 +8114,7 @@
         "extra": [],
         "reason": "code system content: the oracle holds the questionnaire's CodeSystem (loaded with the IG folder) and also refuses the code against it ('Unknown code ... in the CodeSystem'); the pod is given value-set expansions, never a host's CodeSystem, so it reports the answer outside its options (the same verdict) but not the code-system finding beside it."
       },
-      "sha256": "7f8881919bfdec8499f86cbb30354b987eead53baf8c308387d6dab122391355",
+      "sha256": "f7f48e82221ec6bbc29c6cae0f2f45a47c3c4f29282425d7d775edd93fc6ffba",
       "oracle_valid": false,
       "oracle_errors": [
         "QuestionnaireResponse.item.answer",
@@ -8006,7 +8152,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'maybe' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (Contained answers) specified by the questionnaire. Terminology Error: The provided code 'https://example.org/probe/CodeSystem/answers#maybe' was not found in the value set 'https://example.org/probe/ValueSet/contained'; Unknown code 'maybe' in the CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'",
+          "text": "The code 'maybe' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (Contained answers) specified by the questionnaire. Terminology Error: The provided code 'https://example.org/probe/CodeSystem/answers#maybe' was not found in the value set 'https://example.org/probe/ValueSet/contained-qr-contained-vs-title-label-not-in-set'; Unknown code 'maybe' in the CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -8122,7 +8268,7 @@
       "file": "qr-contained-vs-title-label-code-only-member.json",
       "expect": true,
       "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; a code with no system, the code in the set; the contained set labelled by title (what the message calls it).",
-      "sha256": "3c063e925e66b1a0dc73234586a730632fb68f8d16ade4c317ce4866dd13a4d6",
+      "sha256": "6fc20a4e0ec44979120de73682b2515c13fd5612e010c1da930f1225c4fad690",
       "oracle_valid": true,
       "oracle_errors": [],
       "oracle_issues": [
@@ -8247,7 +8393,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'maybe' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ValueSet[https://example.org/probe/ValueSet/contained]) specified by the questionnaire. Terminology Error: The provided code 'https://example.org/probe/CodeSystem/answers#maybe' was not found in the value set 'https://example.org/probe/ValueSet/contained'; Unknown code 'maybe' in the CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'",
+          "text": "The code 'maybe' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ValueSet[https://example.org/probe/ValueSet/contained-questionnaire-required-url]) specified by the questionnaire. Terminology Error: The provided code 'https://example.org/probe/CodeSystem/answers#maybe' was not found in the value set 'https://example.org/probe/ValueSet/contained-questionnaire-required-url'; Unknown code 'maybe' in the CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -8271,7 +8417,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": "questionnaire.answer-not-in-set",
-          "text": "The code 'maybe' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ValueSet[https://example.org/probe/ValueSet/contained]) specified by the questionnaire. Terminology Error: The provided code 'https://example.org/probe/CodeSystem/answers#maybe' was not found in the value set '#vs'",
+          "text": "The code 'maybe' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ValueSet[https://example.org/probe/ValueSet/contained-questionnaire-required-url]) specified by the questionnaire. Terminology Error: The provided code 'https://example.org/probe/CodeSystem/answers#maybe' was not found in the value set '#vs'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -8292,7 +8438,7 @@
         "extra": [],
         "reason": "code system content: the oracle holds the questionnaire's CodeSystem (loaded with the IG folder) and also refuses the code against it ('Unknown code ... in the CodeSystem'); the pod is given value-set expansions, never a host's CodeSystem, so it reports the answer outside its options (the same verdict) but not the code-system finding beside it."
       },
-      "sha256": "a79fd246e6f8375f086c3484ee63e7bc34dd5b61193d0bb9b647e0505a54a4a4",
+      "sha256": "58078c31f6555f8e9250cf459c8a83ba8b802381e9df4467888e00d192d9d156",
       "oracle_valid": false,
       "oracle_errors": [
         "QuestionnaireResponse.item.answer",
@@ -8330,7 +8476,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": null,
-          "text": "The code 'maybe' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ValueSet[https://example.org/probe/ValueSet/contained]) specified by the questionnaire. Terminology Error: The provided code 'https://example.org/probe/CodeSystem/answers#maybe' was not found in the value set 'https://example.org/probe/ValueSet/contained'; Unknown code 'maybe' in the CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'",
+          "text": "The code 'maybe' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ValueSet[https://example.org/probe/ValueSet/contained-qr-contained-vs-url-label-not-in-set]) specified by the questionnaire. Terminology Error: The provided code 'https://example.org/probe/CodeSystem/answers#maybe' was not found in the value set 'https://example.org/probe/ValueSet/contained-qr-contained-vs-url-label-not-in-set'; Unknown code 'maybe' in the CodeSystem 'https://example.org/probe/CodeSystem/answers' version '1.0.0'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -8354,7 +8500,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": "questionnaire.answer-not-in-set",
-          "text": "The code 'maybe' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ValueSet[https://example.org/probe/ValueSet/contained]) specified by the questionnaire. Terminology Error: The provided code 'https://example.org/probe/CodeSystem/answers#maybe' was not found in the value set '#vs'",
+          "text": "The code 'maybe' in the system 'https://example.org/probe/CodeSystem/answers' is not in the options value set (ValueSet[https://example.org/probe/ValueSet/contained-qr-contained-vs-url-label-not-in-set]) specified by the questionnaire. Terminology Error: The provided code 'https://example.org/probe/CodeSystem/answers#maybe' was not found in the value set '#vs'",
           "paths": [
             "QuestionnaireResponse.item[0].answer[0]"
           ]
@@ -8446,7 +8592,7 @@
       "file": "qr-contained-vs-url-label-code-only-member.json",
       "expect": true,
       "reason": "The answerValueSet contained beside the Questionnaire in the response (fhir-test-cases' nested-questionnaire-nested-valueset shape); required item; a code with no system, the code in the set; the contained set labelled by url (what the message calls it).",
-      "sha256": "577966afc62b6b974695f6859fb99f5be3ce0f85c2c0560635b9451f1d4f76d9",
+      "sha256": "baef9ae2958fb1dec21bdd6d931e56871a53ad7fa3c71cec4db7e49bf793594d",
       "oracle_valid": true,
       "oracle_errors": [],
       "oracle_issues": [
