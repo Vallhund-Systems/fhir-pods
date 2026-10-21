@@ -176,7 +176,9 @@ def build(features=False):
 def review(row, adjudications):
     decision = adjudications.get(row["name"])
     if row["ours"] == row["java"]:
-        return {"status": "agreement"}
+        # a reviewed difference that no longer differs is a triage entry left
+        # behind: it fails the lane until it is removed, as in questionnaire.py
+        return {"status": "stale-review", "changed": "agreement"} if decision is not None else {"status": "agreement"}
     if decision is None:
         return {"status": "unreviewed"}
     for key in ("input_sha256", "java_sha256", "firely_sha256", "ours", "java", "firely"):
@@ -284,7 +286,7 @@ def finish(lane, args, manifest, r4, selected, rows, skipped, errors, probe=None
     for reason, count in sorted(summary["out_of_scope_reasons"].items()):
         print(f"  excluded {count}: {reason}")
     for row in rows:
-        if row["ours"] != row["java"]:
+        if row["ours"] != row["java"] or row["review"]["status"] != "agreement":
             print(f"  {row['name']}: {row['ours']}/{row['java']} firely={row['firely']} [{row['review']['status']}]")
     for row in errors:
         print(f"  evidence error: {row['name']}: {row['error']}")

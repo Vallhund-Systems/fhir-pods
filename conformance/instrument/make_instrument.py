@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""The gut-path scenario: a synthetic clinical instrument shaped like a
-sixteen-part gut-health questionnaire, and the resource chain a host builds
+"""The instrument-path scenario: a synthetic sixteen-part questionnaire
+instrument, and the resource chain a host builds
 around it — the questionnaire as a FHIR `Questionnaire` with its own code
 systems and value sets, `QuestionnaireResponse`s held to it, the score /
-stool-form / severity `Observation`s derived from a response, a `Flag` for a
+ordinal-grade / severity `Observation`s derived from a response, a `Flag` for a
 positive alarm item, a clinician-summary `Composition`, a referral
 `ServiceRequest`, the research-export `Consent`, the de-identified export
 `Bundle`, and the `AuditEvent` that records the export.
@@ -12,14 +12,14 @@ Everything here is synthetic. Nothing is copied from any vendor material or
 any real instrument: the parts, items, codes and wording are placeholders
 with the *shape* of such an instrument (nested groups, enableWhen, required
 items, repeating groups, coded answers from a local value set, integer and
-decimal scales, a Bristol-style 1–7 choice, an eleven-item boolean safety
+decimal scales, a 1–7 ordinal choice, an eleven-item boolean safety
 screen), so the pod's handling of that shape can be measured end to end.
 
-    python3 conformance/gut/make_gut.py        # writes conformance/gut/out/
+    python3 conformance/instrument/make_instrument.py   # writes conformance/instrument/out/
 
 `out/defs/` holds the definitions the oracle is given as an extra IG folder
 (CodeSystem, ValueSets, Questionnaire); `out/cases/` the instances with a
-`manifest.json` of expectations; `out/gut.terminology.txt` the compiled
+`manifest.json` of expectations; `out/instrument.terminology.txt` the compiled
 table the pod loads for the local value sets.
 """
 import json
@@ -31,35 +31,35 @@ OUT = os.path.join(HERE, "out")
 DEFS = os.path.join(OUT, "defs")
 CASES = os.path.join(OUT, "cases")
 
-BASE = "https://example.org/gut"
+BASE = "https://example.org/instrument"
 CS_ITEMS = f"{BASE}/CodeSystem/answers"
 CS_OBS = f"{BASE}/CodeSystem/observations"
-Q_URL = f"{BASE}/Questionnaire/gut-instrument"
+Q_URL = f"{BASE}/Questionnaire/synthetic-instrument"
 Q_VERSION = "1.0.0"
 VS = {
     "scale04": f"{BASE}/ValueSet/scale-0-4",
-    "bristol": f"{BASE}/ValueSet/bristol-1-7",
+    "ordinal": f"{BASE}/ValueSet/ordinal-1-7",
     "site": f"{BASE}/ValueSet/pain-site",
     "sex": f"{BASE}/ValueSet/sex-at-birth",
-    "birthmode": f"{BASE}/ValueSet/birth-mode",
+    "exposure": f"{BASE}/ValueSet/exposure-level",
     "medclass": f"{BASE}/ValueSet/medication-class",
     "condition": f"{BASE}/ValueSet/history-condition",
     "relation": f"{BASE}/ValueSet/relation",
 }
 ANSWERS = {
     "scale04": [(str(i), f"Level {i}") for i in range(5)],
-    "bristol": [(f"type-{i}", f"Bristol type {i}") for i in range(1, 8)],
-    "site": [("epigastric", "Epigastric"), ("periumbilical", "Periumbilical"), ("lower-left", "Lower left"),
+    "ordinal": [(f"grade-{i}", f"Grade {i}") for i in range(1, 8)],
+    "site": [("upper", "Upper"), ("central", "Central"), ("lower-left", "Lower left"),
              ("lower-right", "Lower right"), ("diffuse", "Diffuse")],
     "sex": [("female", "Female"), ("male", "Male"), ("intersex", "Intersex")],
-    "birthmode": [("vaginal", "Vaginal"), ("caesarean", "Caesarean"), ("unknown", "Unknown")],
-    "medclass": [("ppi", "Proton-pump inhibitor"), ("nsaid", "NSAID"), ("antibiotic", "Antibiotic"),
+    "exposure": [("none", "None"), ("occasional", "Occasional"), ("unknown", "Unknown")],
+    "medclass": [("analgesic", "Analgesic"), ("nsaid", "NSAID"), ("antibiotic", "Antibiotic"),
                  ("opioid", "Opioid"), ("other", "Other")],
-    "condition": [("ibs", "Irritable bowel syndrome"), ("ibd", "Inflammatory bowel disease"),
-                  ("coeliac", "Coeliac disease"), ("gord", "Gastro-oesophageal reflux"), ("other", "Other")],
+    "condition": [("condition-a", "Condition A"), ("condition-b", "Condition B"),
+                  ("condition-c", "Condition C"), ("condition-d", "Condition D"), ("other", "Other")],
     "relation": [("parent", "Parent"), ("sibling", "Sibling"), ("child", "Child")],
 }
-OBS_CODES = [("triage-score", "Triage composite score"), ("stool-form", "Stool form, Bristol scale"),
+OBS_CODES = [("triage-score", "Triage composite score"), ("ordinal-grade", "Ordinal grade, 1 to 7"),
              ("symptom-severity", "Symptom severity, 0 to 10"), ("alarm-item", "Positive alarm item")]
 
 
@@ -101,8 +101,8 @@ def group(link, text, items, required=False, repeats=False, enable=None):
 
 
 def questionnaire():
-    alarm = ["blood-in-stool", "black-stools", "weight-loss", "dysphagia", "vomiting", "worsening-pain",
-             "fever", "nocturnal-diarrhoea", "bowel-habit-change", "dehydration", "family-history-gi-cancer"]
+    alarm = ["unexplained-bleeding", "night-sweats", "weight-loss", "new-weakness", "persistent-vomiting",
+             "worsening-pain", "fever", "chest-pain", "rapid-change", "dehydration", "family-history-cancer"]
     parts = [
         group("p1", "Introduction and consent", [
             item("p1.consent", "Consent to the module", "boolean", required=True),
@@ -110,52 +110,52 @@ def questionnaire():
             choice("p1.sex", "Sex at birth", "sex", required=True),
         ], required=True),
         group("p2", "Triage screen", [
-            choice("p2.q1", "Overall gut health, self-rated", "scale04", required=True),
+            choice("p2.q1", "Overall wellbeing, self-rated", "scale04", required=True),
             choice("p2.q2", "Symptom frequency", "scale04", required=True),
             item("p2.q3", "Duration of symptoms in months", "integer", required=True),
             item("p2.q4", "Severity, 0 to 10", "integer", required=True),
             choice("p2.q5", "Functional impact", "scale04", required=True),
-            choice("p2.q6", "Stool form, usual", "bristol", required=True),
-            choice("p2.q7", "Abdominal pain and reflux", "scale04", required=True),
+            choice("p2.q6", "Usual grade", "ordinal", required=True),
+            choice("p2.q7", "Pain and discomfort", "scale04", required=True),
             item("p2.q8", "Onset narrative", "string"),
         ], required=True),
-        group("p3", "Abdominal pain", [
+        group("p3", "Pain", [
             choice("p3.site", "Site", "site"),
             item("p3.intensity", "Intensity, 0 to 10", "integer"),
             item("p3.nocturnal", "Wakes from sleep", "boolean"),
         ]),
-        group("p4", "Bowel health", [
-            choice("p4.bristol", "Stool form over the last fortnight", "bristol"),
-            item("p4.motions", "Motions per week", "integer"),
-            item("p4.straining", "Straining", "boolean"),
-            item("p4.blood", "Visible blood", "boolean"),
+        group("p4", "Symptom pattern", [
+            choice("p4.grade", "Grade over the last fortnight", "ordinal"),
+            item("p4.episodes", "Episodes per week", "integer"),
+            item("p4.effort", "Effort required", "boolean"),
+            item("p4.bleeding", "Visible bleeding", "boolean"),
         ]),
-        group("p5", "Reflux and upper GI", [
-            choice("p5.heartburn", "Heartburn frequency", "scale04"),
-            item("p5.dysphagia", "Difficulty swallowing", "boolean"),
-            item("p5.ppi", "Acid-suppression use in days", "integer"),
+        group("p5", "Secondary symptoms", [
+            choice("p5.frequency", "Secondary symptom frequency", "scale04"),
+            item("p5.difficulty", "Difficulty with daily tasks", "boolean"),
+            item("p5.medication-days", "Days of symptomatic medication", "integer"),
         ]),
-        group("p6", "Food and digestive response", [
-            item("p6.triggers", "Trigger foods", "string", repeats=True),
+        group("p6", "Triggers and response", [
+            item("p6.triggers", "Trigger exposures", "string", repeats=True),
             item("p6.latency", "Symptom latency in minutes", "integer"),
             item("p6.reproducible", "Reproducible", "boolean"),
         ]),
-        group("p7", "Dietary diversity", [
-            item("p7.plants", "Distinct plants per week", "integer"),
-            item("p7.fermented", "Fermented foods per week", "integer"),
-            item("p7.upf", "Ultra-processed share, 0 to 1", "decimal"),
+        group("p7", "Lifestyle", [
+            item("p7.activity", "Active days per week", "integer"),
+            item("p7.social", "Social contacts per week", "integer"),
+            item("p7.sedentary", "Sedentary share, 0 to 1", "decimal"),
         ]),
-        group("p8", "Microbiome influences", [
-            item("p8.antibiotics", "Antibiotic courses, last twelve months", "integer"),
-            choice("p8.birth", "Birth mode", "birthmode"),
-            item("p8.travel", "Travel-associated infection", "boolean"),
+        group("p8", "Exposures", [
+            item("p8.courses", "Medication courses, last twelve months", "integer"),
+            choice("p8.exposure", "Environmental exposure", "exposure"),
+            item("p8.travel", "Travel-associated illness", "boolean"),
         ]),
         group("p9", "Medication and supplement review", [
             item("p9.name", "Medicine or supplement", "string", required=True),
             choice("p9.class", "Class", "medclass", required=True),
             item("p9.duration", "Duration in days", "integer"),
         ], repeats=True),
-        group("p10", "Gut-brain axis", [
+        group("p10", "Stress and coping", [
             item("p10.stress", "Perceived stress, 0 to 10", "integer"),
             choice("p10.coupling", "Symptom-to-stress coupling", "scale04"),
             item("p10.avoidance", "Avoidance behaviour", "boolean"),
@@ -171,12 +171,12 @@ def questionnaire():
             item("p12.pregnant", "Currently pregnant", "boolean"),
         ], enable=[{"question": "p1.sex", "operator": "=",
                     "answerCoding": coding(CS_ITEMS, "female")}]),
-        group("p13", "Gut-skin axis", [
-            item("p13.skinflag", "Skin condition present", "boolean"),
-            group("p13.detail", "Skin detail", [
+        group("p13", "Related conditions", [
+            item("p13.related", "Related condition present", "boolean"),
+            group("p13.detail", "Related detail", [
                 choice("p13.flares", "Flare frequency", "scale04"),
-                item("p13.concordance", "Flares track gut symptoms", "boolean"),
-            ], enable=[{"question": "p13.skinflag", "operator": "=", "answerBoolean": True}]),
+                item("p13.concordance", "Flares track the main symptoms", "boolean"),
+            ], enable=[{"question": "p13.related", "operator": "=", "answerBoolean": True}]),
         ]),
         group("p14", "Medical history", [
             choice("p14.condition", "Condition", "condition", required=True),
@@ -193,11 +193,11 @@ def questionnaire():
     ]
     return {
         "resourceType": "Questionnaire",
-        "id": "gut-instrument",
+        "id": "synthetic-instrument",
         "url": Q_URL,
         "version": Q_VERSION,
-        "name": "GutInstrument",
-        "title": "Synthetic gut-health instrument",
+        "name": "SyntheticInstrument",
+        "title": "Synthetic sixteen-part instrument",
         "status": "active",
         "subjectType": ["Patient"],
         "date": "2026-10-09",
@@ -214,24 +214,24 @@ def code_system():
                 seen.add(code)
                 concepts.append({"code": code, "display": display})
     return {
-        "resourceType": "CodeSystem", "id": "gut-answers", "url": CS_ITEMS, "version": "1.0.0",
-        "name": "GutAnswers", "status": "active", "content": "complete", "caseSensitive": True,
+        "resourceType": "CodeSystem", "id": "instrument-answers", "url": CS_ITEMS, "version": "1.0.0",
+        "name": "InstrumentAnswers", "status": "active", "content": "complete", "caseSensitive": True,
         "concept": concepts,
     }
 
 
 def obs_code_system():
     return {
-        "resourceType": "CodeSystem", "id": "gut-observations", "url": CS_OBS, "version": "1.0.0",
-        "name": "GutObservations", "status": "active", "content": "complete", "caseSensitive": True,
+        "resourceType": "CodeSystem", "id": "instrument-observations", "url": CS_OBS, "version": "1.0.0",
+        "name": "InstrumentObservations", "status": "active", "content": "complete", "caseSensitive": True,
         "concept": [{"code": c, "display": d} for c, d in OBS_CODES],
     }
 
 
 def value_set(key):
     return {
-        "resourceType": "ValueSet", "id": f"gut-{key}", "url": VS[key], "version": "1.0.0",
-        "name": "Gut" + key.capitalize(), "status": "active",
+        "resourceType": "ValueSet", "id": f"instrument-{key}", "url": VS[key], "version": "1.0.0",
+        "name": "Instrument" + key.capitalize(), "status": "active",
         "compose": {"include": [{"system": CS_ITEMS, "concept": [{"code": c, "display": d} for c, d in ANSWERS[key]]}]},
     }
 
@@ -266,8 +266,8 @@ def qg(link, items):
 
 
 def safety(positive=None):
-    alarm = ["blood-in-stool", "black-stools", "weight-loss", "dysphagia", "vomiting", "worsening-pain",
-             "fever", "nocturnal-diarrhoea", "bowel-habit-change", "dehydration", "family-history-gi-cancer"]
+    alarm = ["unexplained-bleeding", "night-sweats", "weight-loss", "new-weakness", "persistent-vomiting",
+             "worsening-pain", "fever", "chest-pain", "rapid-change", "dehydration", "family-history-cancer"]
     return qg("p16", [qi(f"p16.{a}", {"valueBoolean": a == positive}) for a in alarm])
 
 
@@ -277,23 +277,23 @@ def response_full(sex="female", positive=None, status="completed"):
                   qi("p1.sex", ans_coding("sex", sex))]),
         qg("p2", [qi("p2.q1", ans_coding("scale04", "2")), qi("p2.q2", ans_coding("scale04", "3")),
                   qi("p2.q3", {"valueInteger": 18}), qi("p2.q4", {"valueInteger": 6}),
-                  qi("p2.q5", ans_coding("scale04", "2")), qi("p2.q6", ans_coding("bristol", "type-6")),
-                  qi("p2.q7", ans_coding("scale04", "3")), qi("p2.q8", {"valueString": "After a course of antibiotics."})]),
+                  qi("p2.q5", ans_coding("scale04", "2")), qi("p2.q6", ans_coding("ordinal", "grade-6")),
+                  qi("p2.q7", ans_coding("scale04", "3")), qi("p2.q8", {"valueString": "After a period of stress."})]),
         qg("p3", [qi("p3.site", ans_coding("site", "lower-left")), qi("p3.intensity", {"valueInteger": 5}),
                   qi("p3.nocturnal", {"valueBoolean": False})]),
-        qg("p4", [qi("p4.bristol", ans_coding("bristol", "type-6")), qi("p4.motions", {"valueInteger": 14}),
-                  qi("p4.straining", {"valueBoolean": False}), qi("p4.blood", {"valueBoolean": False})]),
-        qg("p5", [qi("p5.heartburn", ans_coding("scale04", "1")), qi("p5.dysphagia", {"valueBoolean": False}),
-                  qi("p5.ppi", {"valueInteger": 0})]),
-        qg("p6", [qi("p6.triggers", {"valueString": "Onions"}, {"valueString": "Wheat"}),
+        qg("p4", [qi("p4.grade", ans_coding("ordinal", "grade-6")), qi("p4.episodes", {"valueInteger": 14}),
+                  qi("p4.effort", {"valueBoolean": False}), qi("p4.bleeding", {"valueBoolean": False})]),
+        qg("p5", [qi("p5.frequency", ans_coding("scale04", "1")), qi("p5.difficulty", {"valueBoolean": False}),
+                  qi("p5.medication-days", {"valueInteger": 0})]),
+        qg("p6", [qi("p6.triggers", {"valueString": "Cold weather"}, {"valueString": "Exertion"}),
                   qi("p6.latency", {"valueInteger": 90}), qi("p6.reproducible", {"valueBoolean": True})]),
-        qg("p7", [qi("p7.plants", {"valueInteger": 18}), qi("p7.fermented", {"valueInteger": 2}),
-                  qi("p7.upf", {"valueDecimal": 0.35})]),
-        qg("p8", [qi("p8.antibiotics", {"valueInteger": 1}), qi("p8.birth", ans_coding("birthmode", "vaginal")),
+        qg("p7", [qi("p7.activity", {"valueInteger": 4}), qi("p7.social", {"valueInteger": 2}),
+                  qi("p7.sedentary", {"valueDecimal": 0.35})]),
+        qg("p8", [qi("p8.courses", {"valueInteger": 1}), qi("p8.exposure", ans_coding("exposure", "occasional")),
                   qi("p8.travel", {"valueBoolean": False})]),
-        qg("p9", [qi("p9.name", {"valueString": "Omeprazole"}), qi("p9.class", ans_coding("medclass", "ppi")),
+        qg("p9", [qi("p9.name", {"valueString": "Paracetamol"}), qi("p9.class", ans_coding("medclass", "analgesic")),
                   qi("p9.duration", {"valueInteger": 120})]),
-        qg("p9", [qi("p9.name", {"valueString": "Probiotic"}), qi("p9.class", ans_coding("medclass", "other"))]),
+        qg("p9", [qi("p9.name", {"valueString": "Supplement"}), qi("p9.class", ans_coding("medclass", "other"))]),
         qg("p10", [qi("p10.stress", {"valueInteger": 7}), qi("p10.coupling", ans_coding("scale04", "3")),
                    qi("p10.avoidance", {"valueBoolean": True})]),
         qg("p11", [qi("p11.quality", ans_coding("scale04", "2")), qi("p11.hours", {"valueDecimal": 6.5}),
@@ -303,12 +303,12 @@ def response_full(sex="female", positive=None, status="completed"):
         items.append(qg("p12", [qi("p12.cycleday", {"valueInteger": 12}), qi("p12.phase-severity", {"valueInteger": 4}),
                                 qi("p12.pregnant", {"valueBoolean": False})]))
     items += [
-        qg("p13", [qi("p13.skinflag", {"valueBoolean": True}),
+        qg("p13", [qi("p13.related", {"valueBoolean": True}),
                    qg("p13.detail", [qi("p13.flares", ans_coding("scale04", "2")),
                                      qi("p13.concordance", {"valueBoolean": True})])]),
-        qg("p14", [qi("p14.condition", ans_coding("condition", "ibs")), qi("p14.date", {"valueDate": "2021-03"})]),
+        qg("p14", [qi("p14.condition", ans_coding("condition", "condition-a")), qi("p14.date", {"valueDate": "2021-03"})]),
         qg("p15", [qi("p15.relation", ans_coding("relation", "parent")),
-                   qi("p15.condition", ans_coding("condition", "coeliac")), qi("p15.age", {"valueInteger": 52})]),
+                   qi("p15.condition", ans_coding("condition", "condition-c")), qi("p15.age", {"valueInteger": 52})]),
         safety(positive),
     ]
     return {
@@ -329,7 +329,7 @@ def response_minimal():
                       qi("p1.sex", ans_coding("sex", "male"))]),
             qg("p2", [qi("p2.q1", ans_coding("scale04", "4")), qi("p2.q2", ans_coding("scale04", "0")),
                       qi("p2.q3", {"valueInteger": 0}), qi("p2.q4", {"valueInteger": 0}),
-                      qi("p2.q5", ans_coding("scale04", "0")), qi("p2.q6", ans_coding("bristol", "type-4")),
+                      qi("p2.q5", ans_coding("scale04", "0")), qi("p2.q6", ans_coding("ordinal", "grade-4")),
                       qi("p2.q7", ans_coding("scale04", "0"))]),
             safety(),
         ],
@@ -351,12 +351,12 @@ def observation(oid, code, value, derived="QuestionnaireResponse/qr-full"):
 
 PKG = os.path.join(OUT, "pkg", "package")
 HOST_CASES = os.path.join(OUT, "host-cases")
-PROFILE_URL = f"{BASE}/StructureDefinition/gut-triage-score"
+PROFILE_URL = f"{BASE}/StructureDefinition/instrument-triage-score"
 R4_OBSERVATION = os.path.join(HERE, "..", "package-r4", "package", "StructureDefinition-Observation.json")
 
 
 def host_profile():
-    """The host's own profile on the score: a gut-score Observation carries
+    """The host's own profile on the score: a score Observation carries
     the score code, an integer value, a member and the module that computed
     it. Compiled into the pod at build time (scripts/gen-host-profiles.sh)
     and given to the oracle as an IG definition — the snapshot is R4's
@@ -381,8 +381,8 @@ def host_profile():
             if k not in ("id", "path"):
                 e[k] = v
     return {
-        "resourceType": "StructureDefinition", "id": "gut-triage-score", "url": PROFILE_URL, "version": "1.0.0",
-        "name": "GutTriageScore", "title": "Gut triage score", "status": "active", "fhirVersion": "4.0.1",
+        "resourceType": "StructureDefinition", "id": "instrument-triage-score", "url": PROFILE_URL, "version": "1.0.0",
+        "name": "InstrumentTriageScore", "title": "Instrument triage score", "status": "active", "fhirVersion": "4.0.1",
         "kind": "resource", "abstract": False, "type": "Observation",
         "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Observation", "derivation": "constraint",
         "differential": {"element": diff}, "snapshot": {"element": snapshot},
@@ -394,7 +394,7 @@ def host_cases():
     def scored(oid, **changes):
         o = observation(oid, "triage-score", {"valueInteger": 19})
         o["meta"] = {"profile": [PROFILE_URL]}
-        o["device"] = {"reference": "Device/gut-module"}
+        o["device"] = {"reference": "Device/instrument-module"}
         for k, v in changes.items():
             if v is None:
                 o.pop(k, None)
@@ -403,14 +403,14 @@ def host_cases():
         return o
     cases = [
         ("host-score-ok", scored("hs-1"), True, "the score as the host profile requires it"),
-        ("host-score-wrong-code", scored("hs-2", code={"coding": [coding(CS_OBS, "stool-form", "Stool form, Bristol scale")]}),
+        ("host-score-wrong-code", scored("hs-2", code={"coding": [coding(CS_OBS, "ordinal-grade", "Ordinal grade, 1 to 7")]}),
          False, "the profile fixes the code to the score"),
         ("host-score-string-value", scored("hs-3", valueInteger=None, valueString="19"), False, "the profile allows only an integer value"),
         ("host-score-no-device", scored("hs-4", device=None), False, "the profile requires the module as the device"),
         ("host-score-no-subject", scored("hs-5", subject=None), False, "the profile requires the member"),
         ("host-score-no-derivation", scored("hs-6", derivedFrom=None), False, "the profile requires the response it derives from"),
     ]
-    undeclared = observation("hs-7", "stool-form", {"valueString": "x"})
+    undeclared = observation("hs-7", "ordinal-grade", {"valueString": "x"})
     cases.append(("host-score-undeclared", undeclared, True, "without the declaration the base Observation applies"))
     return cases
 
@@ -420,7 +420,7 @@ def patient():
         "resourceType": "Patient", "id": "p1",
         "meta": {"profile": ["http://hl7.org/fhir/StructureDefinition/Patient"]},
         "identifier": [{"type": {"coding": [coding("http://terminology.hl7.org/CodeSystem/v2-0203", "MR")]},
-                        "system": f"{BASE}/member-id", "value": "GUT-000001"}],
+                        "system": f"{BASE}/member-id", "value": "SYN-000001"}],
         "name": [{"family": "Synthetic", "given": ["Case"]}], "gender": "female", "birthDate": "1985-04-12",
         "address": [{"city": "Sydney", "state": "NSW", "postalCode": "2000", "country": "AU"}],
     }
@@ -428,10 +428,10 @@ def patient():
 
 def device():
     return {
-        "resourceType": "Device", "id": "gut-module",
+        "resourceType": "Device", "id": "instrument-module",
         "meta": {"profile": ["http://hl7.org/fhir/StructureDefinition/Device"]},
         "status": "active", "manufacturer": "Synthetic",
-        "deviceName": [{"name": "Gut module", "type": "user-friendly-name"}],
+        "deviceName": [{"name": "Instrument module", "type": "user-friendly-name"}],
         "type": {"coding": [coding("http://snomed.info/sct", "706689003")]},
         "version": [{"value": Q_VERSION}],
     }
@@ -441,7 +441,7 @@ def flag():
     return {
         "resourceType": "Flag", "id": "alarm-1", "status": "active",
         "category": [{"coding": [coding("http://terminology.hl7.org/CodeSystem/flag-category", "clinical")]}],
-        "code": {"coding": [coding(CS_OBS, "alarm-item", "Positive alarm item")], "text": "Blood in the stool"},
+        "code": {"coding": [coding(CS_OBS, "alarm-item", "Positive alarm item")], "text": "Unexplained bleeding"},
         "subject": {"reference": "Patient/p1"}, "period": {"start": "2026-10-09T09:30:00+10:00"},
     }
 
@@ -451,7 +451,7 @@ def composition():
         "resourceType": "Composition", "id": "summary-1", "status": "final",
         "type": {"coding": [coding("http://loinc.org", "34133-9", "Summary of episode note")]},
         "subject": {"reference": "Patient/p1"}, "date": "2026-10-09T10:00:00+10:00",
-        "author": [{"reference": "Device/gut-module"}], "title": "Gut module clinician summary",
+        "author": [{"reference": "Device/instrument-module"}], "title": "Instrument clinician summary",
         "section": [
             {"title": "Triage", "entry": [{"reference": "Observation/score-1"}, {"reference": "Observation/severity-1"}]},
             {"title": "Alarm items", "entry": [{"reference": "Flag/alarm-1"}]},
@@ -498,8 +498,8 @@ def audit_event():
         "type": coding("http://terminology.hl7.org/CodeSystem/audit-event-type", "rest"),
         "subtype": [coding("http://hl7.org/fhir/restful-interaction", "create")],
         "action": "E", "recorded": "2026-10-09T10:05:00+10:00", "outcome": "0",
-        "agent": [{"who": {"reference": "Device/gut-module"}, "requestor": True}],
-        "source": {"observer": {"reference": "Device/gut-module"}},
+        "agent": [{"who": {"reference": "Device/instrument-module"}, "requestor": True}],
+        "source": {"observer": {"reference": "Device/instrument-module"}},
         "entity": [{"what": {"reference": "Bundle/export-1"},
                     "type": coding("http://terminology.hl7.org/CodeSystem/audit-entity-type", "4")}],
     }
@@ -521,7 +521,7 @@ def main():
                            capture_output=True, text=True)
     if table.returncode != 0:
         raise SystemExit(f"compile_valueset.py refused the definitions: {table.stderr.strip()}")
-    open(os.path.join(OUT, "gut.terminology.txt"), "w").write(table.stdout)
+    open(os.path.join(OUT, "instrument.terminology.txt"), "w").write(table.stdout)
     # the same sets and members as the hand-written table, whatever the order
     def parsed(text):
         sets, current = {}, None
@@ -548,7 +548,7 @@ def main():
     add("qr-full", full, True, "a complete response, every part answered as the instrument allows")
     add("qr-minimal", response_minimal(), True, "required parts only; disabled and optional groups absent")
     add("qr-male", response_full(sex="male"), True, "hormonal part absent where enableWhen disables it")
-    add("qr-alarm", response_full(positive="blood-in-stool"), True, "a positive alarm item is a valid answer")
+    add("qr-alarm", response_full(positive="unexplained-bleeding"), True, "a positive alarm item is a valid answer")
     add("qr-in-progress", response_full(status="in-progress"), True, "an in-progress response")
 
     # invalid responses, one defect each
@@ -562,7 +562,7 @@ def main():
     r["item"][0]["item"][1] = qi("p1.age", {"valueString": "forty-one"})
     add("qr-wrong-type", r, False, "a string answer to an integer item")
     r = response_full()
-    r["item"][1]["item"][5] = qi("p2.q6", {"valueCoding": coding(CS_ITEMS, "type-9", "Bristol type 9")})
+    r["item"][1]["item"][5] = qi("p2.q6", {"valueCoding": coding(CS_ITEMS, "grade-9", "Grade 9")})
     add("qr-answer-not-in-set", r, False, "a coded answer outside the item's value set")
     r = response_full()
     r["item"][1]["item"][3] = qi("p2.q4", {"valueInteger": 6}, {"valueInteger": 7})
@@ -595,11 +595,11 @@ def main():
 
     # the derived chain
     score = observation("score-1", "triage-score", {"valueInteger": 19})
-    stool = observation("stool-1", "stool-form", {"valueCodeableConcept": {"coding": [coding(CS_ITEMS, "type-6", "Bristol type 6")]}})
+    ordinal = observation("ordinal-1", "ordinal-grade", {"valueCodeableConcept": {"coding": [coding(CS_ITEMS, "grade-6", "Grade 6")]}})
     severity = observation("severity-1", "symptom-severity", {"valueInteger": 6})
     alarm = observation("alarm-1", "alarm-item", {"valueBoolean": True})
-    alarm["code"]["text"] = "Blood in the stool"
-    for o in (score, stool, severity, alarm):
+    alarm["code"]["text"] = "Unexplained bleeding"
+    for o in (score, ordinal, severity, alarm):
         add(f"obs-{o['id']}", o, True, "a derived observation", False)
     bad = observation("score-bad", "triage-score", {"valueInteger": 19})
     bad["status"] = "scored"
@@ -611,18 +611,19 @@ def main():
     add("composition-summary", composition(), True, "a clinician summary", False)
     add("servicerequest-referral", service_request(), True, "an urgent referral", False)
     add("consent-research", consent(), True, "research-export consent", False)
-    add("bundle-export", export_bundle(full, [score, stool, severity]), True, "the research export collection")
+    add("bundle-export", export_bundle(full, [score, ordinal, severity]), True, "the research export collection")
     add("auditevent-export", audit_event(), True, "the export audit record", False)
     json.dump(cases, open(os.path.join(CASES, "manifest.json"), "w"), indent=1)
     # the host's profile: a package dir for the pod's build, a definition for the oracle
     os.makedirs(PKG, exist_ok=True)
     os.makedirs(HOST_CASES, exist_ok=True)
-    for f in os.listdir(HOST_CASES):
-        os.remove(os.path.join(HOST_CASES, f))
+    for d in (PKG, HOST_CASES):
+        for f in os.listdir(d):
+            os.remove(os.path.join(d, f))
     sd = host_profile()
-    json.dump(sd, open(os.path.join(PKG, "StructureDefinition-gut-triage-score.json"), "w"), indent=1)
-    json.dump(sd, open(os.path.join(DEFS, "StructureDefinition-gut-triage-score.json"), "w"), indent=1)
-    json.dump({"name": "example.gut.module", "version": "1.0.0", "fhirVersions": ["4.0.1"],
+    json.dump(sd, open(os.path.join(PKG, "StructureDefinition-instrument-triage-score.json"), "w"), indent=1)
+    json.dump(sd, open(os.path.join(DEFS, "StructureDefinition-instrument-triage-score.json"), "w"), indent=1)
+    json.dump({"name": "example.instrument.module", "version": "1.0.0", "fhirVersions": ["4.0.1"],
                "dependencies": {"hl7.fhir.r4.core": "4.0.1"}}, open(os.path.join(PKG, "package.json"), "w"), indent=1)
     hosts = []
     for name, resource, expect, why in host_cases():

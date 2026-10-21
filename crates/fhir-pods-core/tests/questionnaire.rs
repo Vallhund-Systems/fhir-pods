@@ -214,7 +214,7 @@ fn a_questionnaires_own_enable_when_wiring_is_checked() {
 
 /// A coded answer with no system (a display alone) names nothing a value
 /// set could hold: the reference validator's terminology error, not a pass.
-/// Found by the gut-path lane.
+/// Found by the instrument-path lane.
 #[test]
 fn a_coded_answer_without_a_system_is_a_terminology_error() {
     let v = validator();

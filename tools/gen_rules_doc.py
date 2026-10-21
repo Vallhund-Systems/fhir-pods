@@ -33,7 +33,7 @@ out = [
     "  for every key the base definitions and the compiled profiles carry;",
     "- `other.<type>` is the fallback for a finding no family claims — a defect",
     "  of the table, which the core's tests hold to zero over the release",
-    "  corpus, the mutation files and the gut-path scenario.", "",
+    "  corpus, the mutation files and the instrument-path scenario.", "",
     "The ids are derived from the finding's type and message family in",
     "`crates/fhir-pods-core/src/rules.rs`; the table there is the source of this",
     "page (`tools/gen_rules_doc.py`) and a test holds the two together — both",

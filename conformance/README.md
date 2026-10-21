@@ -42,11 +42,71 @@ gate adoption caught four such changes around `inv-1` (including a swap of
 which definition was rejected). Those were reviewed explicitly; future oracle
 drift still fails and must be investigated before changing the baseline.
 
+Some outcomes are decided by the oracle's own iteration order. validator_cli
+6.10.4 checks a definition's constraint key against the first base structure
+carrying it (`StructureDefinitionValidator.findInvariantInBase` over
+`ContextUtilities.allBaseStructures()`); that walk is over a
+`java.util.HashSet` of resource proxies with no hashCode/equals, so its order
+is the JVM's identity-hash order and differs from run to run, whatever the
+batch. R4's base structures give `inv-1` three expressions (Parameters, Task,
+TestReport), so validating any of those definitions — or a definition with an
+`inv-1` of its own, such as the `allergyintolerance-substanceExposureRisk`
+extension — yields either no finding or "The constraint key 'inv-1' already
+exists at the location …" naming any one of the others. `base.py` derives
+those partners from the R4 core package and accepts exactly the outcomes they
+explain: Parameters, Task and TestReport are listed under
+`oracle_order_dependent` in `base-triage.json` and never scored; the allergy
+extension, invalid on the oracle side in every run, stays a reviewed
+difference whose message may name any partner and must carry its recorded
+FHIRPath error. Any other outcome fails; order-dependent rows carry
+`agree: null` in the evidence.
+
+A fresh run also compares every oracle outcome with the previous full
+`oracle-cache.json`, ignoring the source-file extension (an absolute path, so
+two checkouts compare); a failure caused only by the oracle moving (the pod
+still says what was reviewed, or what the oracle said before) is reported as
+oracle drift and exits **2**, not 1. Exit 1 is the pod or the evidence;
+`--reuse-oracle` is the pod-side gate. `BASE_ORACLE_TIMEOUT` (seconds, default
+900) raises the per-batch bound on a loaded machine, where package loading
+alone has taken 18 minutes.
+
 Full results are `corpus-base/evidence.json`; filtered/limited runs write
 `evidence-subset.json` and cannot replace the full oracle cache. The summary
 separates selected, compared, agreed, lenient, stricter, excluded and failed
 cases. A passing gate means the reviewed baseline is unchanged, not that
 unimplemented rules were checked or every example agrees.
+
+## Instrument-path scenario
+
+`instrument.py` is one synthetic end-to-end scenario among the lanes, not a
+focus of the runtime: a sixteen-part questionnaire instrument with its own
+code systems and value sets (`instrument/make_instrument.py`), responses held
+to it, and the resources derived from them, each judged three ways — the
+scenario's expectation, the pod (given the instrument and a compiled
+terminology table, as a host gives them) and the oracle with the same
+definitions loaded as an IG folder.
+
+The fixtures are synthetic and clinical-sounding on purpose: generic parts
+(symptom pattern, pain, lifestyle, exposures, medication and family history,
+a safety screen), placeholder codes (`grade-1`…`grade-7`, `condition-a`…),
+and `example.org` canonicals. They reproduce no real instrument and belong to
+no clinical area; what they exercise is the shape — nested and repeating
+groups, `enableWhen`, required items, coded answers from a local value set,
+integer and decimal scales, a 1–7 ordinal choice, an eleven-item boolean
+screen.
+
+```sh
+JAVA_HOME=/opt/homebrew/opt/openjdk@17 CARGO_BUILD_JOBS=2 python3 conformance/instrument.py --chain
+JAVA_HOME=/opt/homebrew/opt/openjdk@17 CARGO_BUILD_JOBS=2 python3 conformance/instrument.py --chain --host-profile
+python3 conformance/instrument.py --reuse-oracle
+```
+
+`--chain` adds lifted-and-lowered and de-identified copies of every valid
+case and the record's AU export; `--host-profile` compiles the scenario's own
+score profile into a feature build (its own target dir, the stub registry
+restored afterwards) and judges seven more cases. Reviewed differences are
+named in `instrument-triage.json`; anything else fails. Outputs stay in the
+ignored `instrument/out/`.
 
 ## Published validator test cases
 
