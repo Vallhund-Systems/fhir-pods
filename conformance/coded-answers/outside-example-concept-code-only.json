@@ -1,0 +1,15 @@
+{
+  "resourceType": "Observation",
+  "id": "o",
+  "status": "final",
+  "code": {
+    "coding": [
+      {
+        "code": "1234-5"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/p"
+  }
+}

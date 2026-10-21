@@ -1,0 +1,23 @@
+{
+  "resourceType": "CodeSystem",
+  "id": "answers",
+  "url": "https://example.org/probe/CodeSystem/answers",
+  "version": "1.0.0",
+  "name": "ProbeAnswers",
+  "status": "active",
+  "content": "complete",
+  "concept": [
+    {
+      "code": "yes",
+      "display": "Yes"
+    },
+    {
+      "code": "no",
+      "display": "No"
+    },
+    {
+      "code": "unsure",
+      "display": "Unsure"
+    }
+  ]
+}

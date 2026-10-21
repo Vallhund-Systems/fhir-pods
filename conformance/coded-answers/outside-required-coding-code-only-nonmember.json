@@ -1,0 +1,11 @@
+{
+  "resourceType": "Encounter",
+  "id": "e",
+  "status": "finished",
+  "class": {
+    "code": "bogus"
+  },
+  "subject": {
+    "reference": "Patient/p"
+  }
+}

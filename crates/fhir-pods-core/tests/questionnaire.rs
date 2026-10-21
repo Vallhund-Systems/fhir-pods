@@ -224,6 +224,117 @@ fn a_coded_answer_without_a_system_is_a_terminology_error() {
     );
     let e = errors(&v, &response(&items, "completed"));
     assert!(e.iter().any(|x| x.contains("Coding has no system")), "{e:?}");
+    // a display alone, a system alone: no code — the error, under every shape
+    for answer in [
+        r#"{"display": "No"}"#,
+        r#"{"system": "http://example.org/cs"}"#,
+        r#"{"system": "http://example.org/cs", "display": "No"}"#,
+    ] {
+        let items = GOOD.replace(r#"{"system": "http://example.org/cs", "code": "n"}}]}"#, &format!("{answer}}}]}}"));
+        let r = v.validate(response(&items, "completed").as_bytes());
+        let i: Vec<_> =
+            r.report.issues.iter().filter(|i| i.path == "QuestionnaireResponse.item[3].answer[0]").collect();
+        assert_eq!(i.len(), 1, "{answer}: {:?}", r.report.issues);
+        assert_eq!((i[0].severity, i[0].id), (Severity::Error, "questionnaire.answer-not-in-set"), "{answer}");
+    }
+}
+
+/// A code with no system is not the same finding as no code at all. Where
+/// the set is contained (in the questionnaire, or beside it in the response)
+/// and holds the code, validator_cli 6.10.4 only warns — the code has no
+/// defined meaning and cannot be validated — and the response is valid; a
+/// code the set does not hold is still the error. Measured with
+/// `conformance/coded-answers/` (the fhir-test-cases case
+/// `nested-questionnaire-nested-valueset` is this shape).
+#[test]
+fn a_code_with_no_system_in_a_contained_set_is_a_warning() {
+    let v = validator();
+    let member = GOOD.replace(r#""system": "http://example.org/cs", "code": "n""#, r#""code": "n""#);
+    let r = v.validate(response(&member, "completed").as_bytes());
+    assert!(r.is_valid(), "{}", fhir_pods_core::wire::report(&r));
+    let w: Vec<_> = r.report.issues.iter().filter(|i| i.id == "questionnaire.answer-no-system").collect();
+    assert_eq!(w.len(), 1, "{:?}", r.report.issues);
+    assert_eq!(w[0].severity, Severity::Warning);
+    assert_eq!(w[0].path, "QuestionnaireResponse.item[3].answer[0]");
+    assert_eq!(
+        w[0].message,
+        "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided"
+    );
+    let stranger = GOOD.replace(r#""system": "http://example.org/cs", "code": "n""#, r#""code": "maybe""#);
+    let e = errors(&v, &response(&stranger, "completed"));
+    assert_eq!(e, ["QuestionnaireResponse.item[3].answer[0] | The code 'maybe' in the system 'null' is not in the options value set (ValueSet[null]) specified by the questionnaire. Terminology Error: Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided"]);
+    // under inline answerOptions the option's system must match: an error, as the oracle has it
+    let options = GOOD.replace(
+        r#"{"linkId": "smoker", "answer": [{"valueCoding": {"system": "http://example.org/cs", "code": "y"}}]}"#,
+        r#"{"linkId": "smoker", "answer": [{"valueCoding": {"code": "y"}}]}"#,
+    );
+    let e = errors(&v, &response(&options, "completed"));
+    assert!(e.iter().any(|x| x.ends_with("The code null::y is not in the set of permitted values")), "{e:?}");
+}
+
+/// Under a set reached by canonical the reference validator's verdict on a
+/// code with no system turns on the set's definition (an error where it
+/// includes a whole code system, a warning where it enumerates codes); the
+/// expansion a host compiles does not say which, so the pod keeps the error
+/// — never the more lenient reading.
+#[test]
+fn a_code_with_no_system_under_a_canonical_set_stays_an_error() {
+    let q = Q.replace(r##""answerValueSet": "#yn""##, r#""answerValueSet": "http://example.org/ValueSet/yn""#);
+    let table = fhir_pods_core::terminology::Expansions::parse(
+        "fhir-pods-terminology 1\n= http://example.org/ValueSet/yn\nhttp://example.org/cs\ty\tYes\nhttp://example.org/cs\tn\tNo\n",
+    )
+    .expect("table");
+    let v = Validator::new().with_questionnaire(q.as_bytes());
+    assert!(v.validate_with(response(GOOD, "completed").as_bytes(), &table).is_valid());
+    let member = GOOD.replace(r#""system": "http://example.org/cs", "code": "n""#, r#""code": "n""#);
+    let e: Vec<String> = v
+        .validate_with(response(&member, "completed").as_bytes(), &table)
+        .report
+        .issues
+        .iter()
+        .filter(|i| i.severity == Severity::Error)
+        .map(|i| format!("{} | {}", i.path, i.message))
+        .collect();
+    assert_eq!(e.len(), 1, "{e:?}");
+    assert!(e[0].starts_with("QuestionnaireResponse.item[3].answer[0] | The code 'n' in the system 'null' is not in the options value set (yn)"), "{e:?}");
+}
+
+/// A questionnaire contained in the response finds an `answerValueSet` of
+/// `#id` beside it, among the response's contained resources (a contained
+/// questionnaire may not itself contain one, dom-2), and the set is named
+/// as the reference validator names it: title, else name, else its url.
+#[test]
+fn a_set_beside_a_contained_questionnaire_decides_membership_and_is_named() {
+    let qr = |vs: &str, answer: &str| {
+        format!(
+            r##"{{"resourceType": "QuestionnaireResponse", "status": "completed", "questionnaire": "#q",
+  "contained": [{{"resourceType": "Questionnaire", "id": "q", "status": "active",
+                 "item": [{{"linkId": "a", "type": "choice", "answerValueSet": "#vs"}}]}}, {vs}],
+  "item": [{{"linkId": "a", "answer": [{{"valueCoding": {answer}}}]}}]}}"##
+        )
+    };
+    let set = |label: &str| {
+        format!(
+            r#"{{"resourceType": "ValueSet", "id": "vs", "status": "active"{label},
+  "compose": {{"include": [{{"system": "http://example.org/cs", "concept": [{{"code": "y"}}, {{"code": "n"}}]}}]}}}}"#
+        )
+    };
+    let v = Validator::new();
+    let named = set(r#", "url": "http://example.org/ValueSet/beside", "name": "Beside""#);
+    assert!(v.validate(qr(&named, r#"{"system": "http://example.org/cs", "code": "y"}"#).as_bytes()).is_valid());
+    let r = v.validate(qr(&named, r#"{"code": "y"}"#).as_bytes());
+    assert!(r.is_valid(), "{}", fhir_pods_core::wire::report(&r));
+    assert!(r.report.issues.iter().any(|i| i.id == "questionnaire.answer-no-system"), "{:?}", r.report.issues);
+    for (label, printed) in [
+        (r#", "url": "http://example.org/ValueSet/beside", "name": "Beside", "title": "Beside us""#, "Beside us"),
+        (r#", "url": "http://example.org/ValueSet/beside", "name": "Beside""#, "Beside"),
+        (r#", "url": "http://example.org/ValueSet/beside""#, "ValueSet[http://example.org/ValueSet/beside]"),
+        ("", "ValueSet[null]"),
+    ] {
+        let e = errors(&v, &qr(&set(label), r#"{"system": "http://example.org/cs", "code": "maybe"}"#));
+        assert_eq!(e.len(), 1, "{e:?}");
+        assert!(e[0].contains(&format!("is not in the options value set ({printed}) specified")), "{label}: {e:?}");
+    }
 }
 
 /// A response naming a version of a loaded questionnaire other than the one
@@ -240,4 +351,75 @@ fn a_response_naming_another_version_of_a_loaded_questionnaire_is_warned() {
     assert_eq!(w.len(), 1, "{:?}", report.report.issues);
     assert!(w[0].message.contains("names version 2 but version 1 is loaded"), "{}", w[0].message);
     assert_eq!(w[0].severity, Severity::Warning);
+}
+
+/// The warning for a code with no system is narrower than "the set holds
+/// it": validator_cli 6.10.4 warns only where the contained set's compose
+/// has exactly one include, and keeps the error for two or more — even of
+/// one system, wherever the code sits, url or none. An enumerated exclude is
+/// applied. A system of whitespace is the error. Measured with a url unique
+/// to every set (`conformance/coded-answers/set-*`; the oracle caches a
+/// url-bearing set by its url, so a shared url once made two-include sets
+/// look like warnings).
+#[test]
+fn a_code_with_no_system_warns_only_where_the_oracle_does() {
+    let qr = |label: &str, compose: &str, answer: &str| {
+        format!(
+            r##"{{"resourceType": "QuestionnaireResponse", "status": "completed", "questionnaire": "#q",
+  "contained": [{{"resourceType": "Questionnaire", "id": "q", "status": "active",
+                 "item": [{{"linkId": "a", "type": "choice", "answerValueSet": "#vs"}}]}},
+                {{"resourceType": "ValueSet", "id": "vs", "status": "active"{label}, "compose": {compose}}}],
+  "item": [{{"linkId": "a", "answer": [{{"valueCoding": {answer}}}]}}]}}"##
+        )
+    };
+    let cs = "http://example.org/cs";
+    let other = "http://example.org/other";
+    let one = format!(r#"{{"include": [{{"system": "{cs}", "concept": [{{"code": "y"}}, {{"code": "n"}}]}}]}}"#);
+    let two_one_system = format!(
+        r#"{{"include": [{{"system": "{cs}", "concept": [{{"code": "y"}}]}}, {{"system": "{cs}", "concept": [{{"code": "n"}}]}}]}}"#
+    );
+    let two_systems = format!(
+        r#"{{"include": [{{"system": "{other}", "concept": [{{"code": "o"}}]}}, {{"system": "{cs}", "concept": [{{"code": "y"}}]}}]}}"#
+    );
+    let named = r#", "name": "Beside""#;
+    let url = r#", "url": "http://example.org/ValueSet/beside""#;
+    let v = Validator::new();
+    let verdict = |label: &str, compose: &str, answer: &str| {
+        let r = v.validate(qr(label, compose, answer).as_bytes());
+        let ids: Vec<_> = r.report.issues.iter().filter(|i| i.path.ends_with("answer[0]")).map(|i| i.id).collect();
+        (r.is_valid(), ids)
+    };
+    let code_only = r#"{"code": "y"}"#;
+    // one include: a warning, url or none
+    assert_eq!(verdict(named, &one, code_only), (true, vec!["questionnaire.answer-no-system"]));
+    assert_eq!(verdict(url, &one, code_only), (true, vec!["questionnaire.answer-no-system"]));
+    // two includes: the error, one system or two, url or none
+    for compose in [&two_one_system, &two_systems] {
+        assert_eq!(verdict(named, compose, code_only), (false, vec!["questionnaire.answer-not-in-set"]), "{compose}");
+        assert_eq!(verdict(url, compose, code_only), (false, vec!["questionnaire.answer-not-in-set"]), "{compose}");
+        // and a code with its system is a member either way
+        assert!(verdict(named, compose, &format!(r#"{{"system": "{cs}", "code": "y"}}"#)).0, "{compose}");
+    }
+    // an enumerated exclude is applied: the excluded code is not a member, with a system or without
+    let excluded = format!(
+        r#"{{"include": [{{"system": "{cs}", "concept": [{{"code": "y"}}, {{"code": "n"}}]}}], "exclude": [{{"system": "{cs}", "concept": [{{"code": "n"}}]}}]}}"#
+    );
+    assert_eq!(
+        verdict(named, &excluded, &format!(r#"{{"system": "{cs}", "code": "n"}}"#)),
+        (false, vec!["questionnaire.answer-not-in-set"])
+    );
+    assert_eq!(verdict(named, &excluded, r#"{"code": "n"}"#), (false, vec!["questionnaire.answer-not-in-set"]));
+    assert_eq!(verdict(named, &excluded, code_only), (true, vec!["questionnaire.answer-no-system"]));
+    // a system of whitespace: the error at the answer, the system as given,
+    // the reason that the coding has no system
+    let r = v.validate(qr(named, &one, r#"{"system": " ", "code": "y"}"#).as_bytes());
+    let at: Vec<_> = r.report.issues.iter().filter(|i| i.path.ends_with("answer[0]")).collect();
+    assert_eq!(at.len(), 1, "{:?}", r.report.issues);
+    assert_eq!((at[0].severity, at[0].id), (Severity::Error, "questionnaire.answer-not-in-set"));
+    assert!(
+        at[0].message.starts_with("The code 'y' in the system ' ' is not in the options value set (Beside)"),
+        "{}",
+        at[0].message
+    );
+    assert!(at[0].message.contains("Terminology Error: Coding has no system."), "{}", at[0].message);
 }

@@ -1,0 +1,18 @@
+{
+  "resourceType": "Observation",
+  "id": "o",
+  "status": "final",
+  "code": {
+    "text": "Probe"
+  },
+  "subject": {
+    "reference": "Patient/p"
+  },
+  "valueCodeableConcept": {
+    "coding": [
+      {
+        "code": "yes"
+      }
+    ]
+  }
+}

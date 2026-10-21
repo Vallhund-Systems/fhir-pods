@@ -228,7 +228,7 @@ does not infer a jurisdiction or supply a complete regional compliance regime.
 
 | Surface | Delivery |
 | --- | --- |
-| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.22.0 artifact is 3,097,227 bytes (805,078 bytes gzip-9). [Guide](pods/wasm/README.md) |
+| **WebAssembly** | Dependency-free JS wrapper for browser, edge, Node, Bun, and Deno; v0.22.1 artifact is 3,099,729 bytes (805,779 bytes gzip-9). [Guide](pods/wasm/README.md) |
 | **Expo** | Native iOS XCFramework and Android jniLibs behind the Expo Modules API. [Guide](pods/expo/README.md) |
 | **Rust / C** | `fhir_pods_core` directly or the shared [ABI 14 header](crates/fhir-pods-ffi/include/fhir_pods.h) |
 | **CLI** | Local JSON/ER7 input, structured output, and exit codes for scripting. [Guide](crates/fhir-pods-cli/README.md) |
@@ -303,6 +303,7 @@ JAVA_HOME=<jdk17> python3 conformance/run.py # release conformance gate
 python3 conformance/base.py                 # published R4 regression gate
 target/debug/fhir-pods gate --questionnaire q.json [--options o.json] FILE…   # CI / acceptance gate: verdict and findings by rule id, exit 1 on any error
 JAVA_HOME=<jdk17> python3 conformance/narrative/run.py   # the narrative probes, against the oracle
+JAVA_HOME=<jdk17> python3 conformance/coded-answers/run.py   # coded answers with a part missing, against the oracle
 JAVA_HOME=<jdk17> python3 conformance/mutate.py   # mutation lane: every original under nine mutations
 JAVA_HOME=<jdk17> python3 conformance/instrument.py --chain   # instrument-path scenario, end to end
 ./scripts/gen-profiles.sh                   # regenerate the registry from pinned packages

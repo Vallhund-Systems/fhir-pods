@@ -11,13 +11,11 @@
   "nested-questionnaire-nested-valueset": {
     "ours": "invalid",
     "java": "invalid",
-    "missed": [
-      "QuestionnaireResponse.contained.extension"
-    ],
+    "missed": [],
     "extra": [
       "QuestionnaireResponse.contained.compose.include.system"
     ],
-    "reason": "definition resolution: the SDC package (hl7.fhir.uv.sdc) is not carried, so its questionnaireAdaptive extension is not found on our side (the oracle had the package) and its CodeSystem canonical under http://hl7.org/fhir/uv/sdc is, on our side, a URL in HL7's space that names no definition we hold. The verdict agrees (invalid) \u2014 the pod's finding is the mirror image of the oracle's."
+    "reason": "definition resolution: the ValueSet beside the questionnaire includes http://hl7.org/fhir/uv/sdc/CodeSystem/CSPHQ9, a URL in HL7's space that names no definition the pod holds (the SDC package is not carried), so the pod reports it; validator_cli 6.10.4 knows it as a published SDC definition and does not, though it refuses http://hl7.org/fhir/uv/sdc/CodeSystem/nope the same way the pod does (probed 2026-10-20, -tx n/a, no SDC package). Both sides report the questionnaireAdaptive extension as not found. The nine coded answers (a code, no system, in the contained set) are warnings on both sides since 0.22.1 (conformance/coded-answers/)."
   },
   "attachment-inconsistent-size-qr": {
     "ours": "valid",
