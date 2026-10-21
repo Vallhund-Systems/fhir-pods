@@ -102,11 +102,11 @@ every error (exit 0; it exited 1 at 0.22.0 on this case); coded answers
 `--host-profile` (39, the same residue); validator test cases Java
 **64/84**; supporting **9/11**; base (`--reuse-oracle`, the runner merged
 from the 0.22.0 corrections) **5,155/5,287**, 132 lenient, 0 stricter, 3
-order-dependent, 0 failures. The mutation lane was measured on the first
-cut only (19,067 derived files, 0 untriaged lenient or stricter); the
-review's corrections touch only contained answer sets. 281 tests, clippy clean, 22 wasm Node tests, the C ABI smoke and the no-std
-build. ABI unchanged (14): no entrypoint, no option. Pending: tagged after
-review.
+order-dependent, 0 failures; mutation lane (fresh oracle, by the reviewer,
+at the approved head) 19,067 derived files across nine classes, 0
+untriaged lenient or stricter. 281 tests, clippy clean, 22 wasm Node tests,
+the C ABI smoke and the no-std build. ABI unchanged (14): no entrypoint, no
+option. Released as 0.22.1 (ABI 14); the pods' packed artifacts carry it.
 
 ## Unreleased (now in 0.22.1)
 
