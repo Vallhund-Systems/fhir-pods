@@ -37,16 +37,18 @@ compiler dropped it without a trace: `hl7.fhir.uv.extensions.r4`
 `medicationdispense-quantityRemaining` types its `Extension.value[x]`
 `Quantity` / `SimpleQuantity`, compiled as `types: ["Quantity"]`, "0
 deferred" — a comparator there two errors to the oracle (max 0 and `sqty-1`
-at the extension's value) and valid to the pod. `ElementConstraint` now
-carries `datatype_profiles` — a base datatype profile the profile puts on a
-type of the element where the element's base definition does not (one the
-base names stays the walk's, so nothing is said twice) — and the engine
-applies it whole with the same ids, a choice by its concrete key, a slice's
-elements too; the generator stops on one it cannot apply whole. In the
-shipped registry that element is the only one (two more probes,
-`sq-extension-value-*`; probes now **55/55**). Every generated constraint
-gains the field, which grows the wasm artefact from 3,102,273 to 3,219,080
-bytes. An IG's own datatype profile on an element outside a slice is still
+at the extension's value) and valid to the pod. The generator now lists, in
+a sparse registry table (`DATATYPE_PROFILE_ELEMENTS`: profile, slice label,
+element, type, datatype profile), every element a profile holds to a base
+datatype profile its base definition does not name (one the base names stays
+the walk's, so nothing is said twice), and the engine applies each whole
+with the same ids — a choice by its concrete key, a slice's elements too;
+the generator stops on one it cannot apply whole. The shipped table has one
+row, that extension's value (two more probes, `sq-extension-value-*`;
+probes now **55/55**). A field on every one of the 17,493 compiled element
+constraints would have cost the wasm artefact 116,807 bytes for that one
+row; the table and its engine code cost 10,607 over `main`'s 3,097,227
+(3,107,834 bytes). An IG's own datatype profile on an element outside a slice is still
 not applied: measured, `NzAddress` and `NzContactpoint`'s `max 1` extension
 slices are errors to the oracle and pass here (lenient), while an address
 breaking every `au-address` rule passes on both sides, AU Core allowing

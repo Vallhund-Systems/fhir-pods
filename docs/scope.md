@@ -627,7 +627,7 @@ an export mapping, the way `uk`/`ca`/`nz` came in 0.13.0.
   no element, and is listed as not applicable rather than applied in part.
   A compiled profile that puts one of these base datatype profiles on an
   element whose base definition does not is held to it the same way, with
-  the same ids (`ElementConstraint::datatype_profiles`): in the shipped
+  the same ids (the registry's `DATATYPE_PROFILE_ELEMENTS`): in the shipped
   registry that is one element, `Extension.value[x]` of
   `medicationdispense-quantityRemaining` (`hl7.fhir.uv.extensions.r4`), typed
   `Quantity` / `SimpleQuantity` — probed, the oracle's two errors at the

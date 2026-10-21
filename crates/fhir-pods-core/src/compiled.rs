@@ -28,13 +28,6 @@ pub struct ElementConstraint {
     /// the element itself) must carry every pair. A `patternCodeableConcept`
     /// with one coding is one group anchored at `coding`.
     pub patterns: &'static [(&'static str, &'static [(&'static str, &'static str)])],
-    /// A base datatype profile the profile puts on one of the element's
-    /// types where the base definition of the element does not (an
-    /// extension's `value[x]` typed `Quantity` with `SimpleQuantity`):
-    /// (type code, canonical), each applied whole from
-    /// `typemap::DATATYPE_PROFILES`. One the base already names is the
-    /// shape walk's (`typemap::ELEMENT_PROFILES`), and is not listed here.
-    pub datatype_profiles: &'static [(&'static str, &'static str)],
 }
 
 /// How a binding reads the instance: a `code` is the code itself (the

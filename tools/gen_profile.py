@@ -87,7 +87,7 @@ def index_datatype_bindings(load):
 
 # The base package's own datatype profiles (`SimpleQuantity`, `MoneyQuantity`)
 # that a profile puts on an element the base definition does not: carried
-# onto the element (`ElementConstraint::datatype_profiles`) and applied whole
+# onto the element's rule (`Rule.datatype_profiles`) and applied whole
 # by the engine, from `typemap::DATATYPE_PROFILES` — an extension's
 # `value[x]` typed `Quantity` / `SimpleQuantity`
 # (`medicationdispense-quantityRemaining`). One the base element already
@@ -95,7 +95,13 @@ def index_datatype_bindings(load):
 # carried twice. A base datatype profile that cannot be applied whole stops
 # the generator; an IG's own datatype profile (`au-address`) is not one of
 # these and is not applied (docs/scope.md). Set by `emit` from its resolver.
+# Carried sparsely: `DATATYPE_ROWS` gathers one row per such element across
+# every profile `emit` writes — (profile url, slice label or "", element
+# path, type code, profile canonical) — and gen_all.py writes them to the
+# registry's `DATATYPE_PROFILE_ELEMENTS` (one row in the shipped registry; a
+# field on every constraint cost the wasm artefact ~117 KB).
 LOAD = None
+DATATYPE_ROWS = []
 BASE_ELEMENT_TYPE_PROFILES = {}
 
 
@@ -1026,9 +1032,7 @@ def el_line(path, r, indent):
     return (
         " " * indent
         + f"ElementConstraint {{ path: {rs(path)}, min: {r.min}, max: {max_rs(r.max)}, fixed: {fx}, required_binding: {bd}, "
-        f"types: {ty}, patterns: &[{pats}], datatype_profiles: &["
-        + ", ".join(f"({rs(c)}, {rs(u)})" for c, u in r.datatype_profiles)
-        + "] },"
+        f"types: {ty}, patterns: &[{pats}] }},"
     )
 
 
@@ -1137,6 +1141,32 @@ def deferred_slices(deferred):
     return uniq
 
 
+def datatype_profile_rows(url, c):
+    """`DATATYPE_ROWS` for one compiled profile: its elements', and every
+    slice's sub-elements' (nested to any depth), each slice named by the label
+    the engine reports it at (`Extension.extension:part`, `Outer:a.inner:b`)."""
+    rows = []
+    for path in sorted(c.elements):
+        for code, u in c.elements[path].datatype_profiles:
+            rows.append((url, "", path, code, u))
+
+    def walk(sliced, slices, prefix):
+        base = sliced if not prefix else f"{prefix}.{sliced[len('$this.'):] if sliced.startswith('$this.') else sliced}"
+        for sname, sl, _ in slices:
+            label = f"{base}:{sname}"
+            for rel in sorted(sl.subs):
+                path = "$this." + rel
+                path = path[:-1] if path.endswith("$this.") else path
+                for code, u in sl.subs[rel].datatype_profiles:
+                    rows.append((url, label, path, code, u))
+            for rel, _, nslices in sl.compiled_slicings:
+                walk("$this." + rel, nslices, label)
+
+    for sliced_path, _, slices in c.slicings:
+        walk(sliced_path, slices, "")
+    return rows
+
+
 def emit(sd, provenance, load=None):
     global LOAD
     LOAD = load
@@ -1144,6 +1174,7 @@ def emit(sd, provenance, load=None):
         index_datatype_bindings(load)
     """The Rust source for the profile, and `(elements, slices, deferred)` counts."""
     c = build(sd, load)
+    DATATYPE_ROWS.extend(datatype_profile_rows(sd.get("url"), c))
     name = sd.get("title") or sd.get("name") or sd.get("id") or sd.get("url")
     invariants = invariants_of(sd)
     n_slices = sum(len(s[2]) for s in c.slicings)

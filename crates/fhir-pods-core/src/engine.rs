@@ -150,9 +150,9 @@ pub(crate) fn validate_at_with<D: Document>(
     for el in profile.elements {
         check_element(el, el.path, doc, tx, &mut r);
     }
-    let scope = Scope { root, bundle, tx, depth, cache, evaluated };
-    for el in profile.elements {
-        check_datatype_profiles(el, el.path, doc, &scope, &mut r);
+    let scope = Scope { root, bundle, tx, depth, cache, evaluated, profile: profile.url };
+    for (_, _, path, ty, url) in datatype_profile_elements().filter(|(p, s, ..)| *p == profile.url && s.is_empty()) {
+        check_datatype_profiles(path, path, ty, url, doc, &scope, &mut r);
     }
     for slicing in profile.slicings {
         check_slicing(slicing, doc, &scope, "", &mut r);
@@ -298,6 +298,9 @@ struct Scope<'s, D> {
     cache: Option<&'s crate::Validator>,
     /// Invariants already evaluated on this resource by another profile.
     evaluated: Option<&'s Evaluated<'s, D>>,
+    /// The canonical of the profile being applied (`""` outside one): what
+    /// `DATATYPE_PROFILE_ELEMENTS` is filtered by inside its slices.
+    profile: &'s str,
 }
 
 impl<D: Document> Scope<'_, D> {
@@ -551,37 +554,54 @@ fn backbone_copies<D: Document>(backbone: &str, at: &str, doc: &D) -> Vec<String
     copies
 }
 
-/// The base datatype profiles a compiled profile puts on an element
-/// (`ElementConstraint::datatype_profiles`), applied whole to every instance
-/// of the element of that type, as the shape walk applies the ones the base
-/// itself names: each element the profile prohibits (max 0; present through
-/// its `_` carrier too) is `structure.max`, each of its invariants `inv.<key>`
-/// — the same findings, at the element. A choice element's instances are its
+/// Every element a compiled profile holds to a base datatype profile its
+/// base definition does not name — the shipped registry's sparse table
+/// (`generated::DATATYPE_PROFILE_ELEMENTS`), then a host's and the test
+/// context's in builds that carry them.
+fn datatype_profile_elements(
+) -> impl Iterator<Item = &'static (&'static str, &'static str, &'static str, &'static str, &'static str)> {
+    let rows = crate::generated::DATATYPE_PROFILE_ELEMENTS.iter();
+    #[cfg(feature = "host-profiles")]
+    let rows = rows.chain(crate::generated_host::DATATYPE_PROFILE_ELEMENTS.iter());
+    #[cfg(feature = "testcase-profiles")]
+    let rows = rows.chain(crate::generated_testcases::DATATYPE_PROFILE_ELEMENTS.iter());
+    rows
+}
+
+/// A base datatype profile a compiled profile puts on an element (one row
+/// of [`datatype_profile_elements`]), applied whole to every instance of the
+/// element of that type, as the shape walk applies the ones the base itself
+/// names: each element the profile prohibits (max 0; present through its `_`
+/// carrier too) is `structure.max`, each of its invariants `inv.<key>` — the
+/// same findings, at the element. A choice element's instances are its
 /// concrete keys of the profiled type (`valueQuantity`).
 fn check_datatype_profiles<D: Document>(
-    el: &ElementConstraint,
+    path: &str,
     label: &str,
+    ty: &str,
+    url: &str,
     doc: &D,
     scope: &Scope<'_, D>,
     r: &mut Report,
 ) {
-    for (ty, url) in el.datatype_profiles {
+    {
         let Some((name, versioned, _, prohibited, invariants)) =
-            crate::typemap::DATATYPE_PROFILES.iter().find(|(_, u, ..)| u.split('|').next() == Some(*url))
+            crate::typemap::DATATYPE_PROFILES.iter().find(|(_, u, ..)| u.split('|').next() == Some(url))
         else {
-            continue; // the generator refuses a profile it cannot apply whole
+            return; // the generator refuses a profile it cannot apply whole
         };
-        let instances: Vec<(String, D)> = match el.path.rsplit_once('.') {
+        let instances: Vec<(String, D)> = match path.rsplit_once('.') {
             Some((parent, last)) if last.ends_with("[x]") => {
                 let stem = &last[..last.len() - 3];
                 let mut key = String::from(stem);
-                key.push_str(&ty[..1].to_uppercase());
+                // type codes are ASCII: no Unicode case tables in the artefact
+                key.push(ty.as_bytes()[0].to_ascii_uppercase() as char);
                 key.push_str(&ty[1..]);
                 let at =
                     format!("{}.{key}", label.strip_suffix(last).map(|l| l.trim_end_matches('.')).unwrap_or(label));
                 doc.instances(parent).iter().flat_map(|p| p.child_instances(&key)).map(|i| (at.clone(), i)).collect()
             }
-            _ => doc.instances(el.path).into_iter().map(|i| (String::from(label), i)).collect(),
+            _ => doc.instances(path).into_iter().map(|i| (String::from(label), i)).collect(),
         };
         for (at, inst) in instances {
             for element in *prohibited {
@@ -1063,7 +1083,7 @@ fn matches_one<D: Document>(d: &Discriminator, inst: &D, scope: &Scope<'_, D>) -
 /// profile applies to.
 pub(crate) fn bundle_invariants<D: Document>(doc: &D, cache: Option<&crate::Validator>, bundle: Option<&D>) -> Report {
     let mut r = Report::default();
-    let scope = Scope { root: doc, bundle, tx: &Bundled, depth: 0, cache, evaluated: None };
+    let scope = Scope { root: doc, bundle, tx: &Bundled, depth: 0, cache, evaluated: None, profile: "" };
     for (path, key, is_error, human, expression) in crate::typemap::BUNDLE_INVARIANTS {
         let inv = ProfileInvariant {
             path,
@@ -1090,7 +1110,7 @@ pub(crate) fn resource_invariants<D: Document>(
     bundle: Option<&D>,
 ) -> Report {
     let mut r = Report::default();
-    let scope = Scope { root: doc, bundle, tx: &Bundled, depth: 0, cache, evaluated: None };
+    let scope = Scope { root: doc, bundle, tx: &Bundled, depth: 0, cache, evaluated: None, profile: "" };
     for (ty, path, key, is_error, human, expression, types) in crate::typemap::RESOURCE_INVARIANTS {
         if *ty != rt {
             continue;
@@ -1115,7 +1135,7 @@ pub(crate) fn domain_invariants<D: Document>(
     bundle: Option<&D>,
 ) -> Report {
     let mut r = Report::default();
-    let scope = Scope { root: doc, bundle, tx: &Bundled, depth: 0, cache, evaluated: None };
+    let scope = Scope { root: doc, bundle, tx: &Bundled, depth: 0, cache, evaluated: None, profile: "" };
     for (key, is_error, human, expression) in crate::typemap::DOMAIN_INVARIANTS {
         if matches!(*key, "dom-2" | "dom-4" | "dom-5") {
             continue;
@@ -1602,13 +1622,22 @@ fn check_slicing<D: Document>(slicing: &Slicing, doc: &D, scope: &Scope<'_, D>, 
                 }
             }
             let base_len = label.len();
+            // the sparse table's rows for this slice (none, almost always)
+            let profiled: Vec<_> =
+                datatype_profile_elements().filter(|(p, s, ..)| *p == scope.profile && *s == label.as_str()).collect();
             for inst in &insts {
                 for el in slice.elements {
                     label.truncate(base_len);
                     label.push('.');
                     label.push_str(el.path.trim_start_matches("$this."));
                     check_element(el, &label, inst, tx, r);
-                    check_datatype_profiles(el, &label, inst, scope, r);
+                }
+                label.truncate(base_len);
+                for (_, _, path, ty, url) in &profiled {
+                    label.truncate(base_len);
+                    label.push('.');
+                    label.push_str(path.trim_start_matches("$this."));
+                    check_datatype_profiles(path, &label, ty, url, inst, scope, r);
                 }
                 for inv in slice.invariants {
                     label.truncate(base_len);

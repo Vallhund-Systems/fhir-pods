@@ -1735,13 +1735,17 @@ fn a_compiled_profile_carries_a_base_datatype_profile_the_base_element_does_not_
     use fhir_pods_core::validate::Severity;
     // the one shipped profile that puts SimpleQuantity where the base does
     // not: an extension's value[x] (hl7.fhir.uv.extensions.r4)
-    let carrying: Vec<(&str, &str)> = fhir_pods_core::REGISTRY
-        .iter()
-        .flat_map(|p| p.elements.iter().filter(|e| !e.datatype_profiles.is_empty()).map(move |e| (p.url, e.path)))
-        .collect();
+    // every row of the sparse table, slices included: a profile gaining one
+    // later cannot pass unnoticed
     assert_eq!(
-        carrying,
-        [("http://hl7.org/fhir/StructureDefinition/medicationdispense-quantityRemaining", "Extension.value[x]")]
+        fhir_pods_core::generated::DATATYPE_PROFILE_ELEMENTS,
+        &[(
+            "http://hl7.org/fhir/StructureDefinition/medicationdispense-quantityRemaining",
+            "",
+            "Extension.value[x]",
+            "Quantity",
+            "http://hl7.org/fhir/StructureDefinition/SimpleQuantity",
+        )]
     );
     let dispense = |c: &str| {
         format!(

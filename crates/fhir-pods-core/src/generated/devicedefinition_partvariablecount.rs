@@ -10,20 +10,20 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     name: "DeviceDefinition Part Variable Count",
     resource_type: "Extension",
     elements: &[
-        ElementConstraint { path: "Extension.extension", min: 2, max: Max::Star, fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Extension.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Extension.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org/fhir/StructureDefinition/DeviceDefinition-partVariableCount"), required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Extension.value[x]", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: super::intern::S83, patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Extension.extension", min: 2, max: Max::Star, fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Extension.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Extension.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org/fhir/StructureDefinition/DeviceDefinition-partVariableCount"), required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Extension.value[x]", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: super::intern::S83, patterns: &[] },
     ],
     slicings: &[
         Slicing { path: "Extension.extension", closed: false, slices: &[
             Slice { name: "minimum", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "minimum" },
             ], min: 1, max: Max::Bounded(1), elements: &[
-                ElementConstraint { path: "$this.extension", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("minimum"), required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["unsignedInt"], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.extension", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("minimum"), required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["unsignedInt"], patterns: &[] },
             ], invariants: &[
             ], profiles: &[
             ], slicings: &[
@@ -31,10 +31,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             Slice { name: "maximum", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "maximum" },
             ], min: 1, max: Max::Bounded(1), elements: &[
-                ElementConstraint { path: "$this.extension", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("maximum"), required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["unsignedInt"], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.extension", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("maximum"), required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["unsignedInt"], patterns: &[] },
             ], invariants: &[
             ], profiles: &[
             ], slicings: &[

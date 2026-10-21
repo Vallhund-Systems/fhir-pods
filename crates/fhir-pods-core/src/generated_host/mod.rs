@@ -4,3 +4,5 @@
 use crate::compiled::CompiledProfile;
 
 pub static REGISTRY: &[&CompiledProfile] = &[];
+
+pub static DATATYPE_PROFILE_ELEMENTS: &[(&str, &str, &str, &str, &str)] = &[];

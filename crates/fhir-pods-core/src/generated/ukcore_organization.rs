@@ -10,18 +10,18 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     name: "UK Core Organization",
     resource_type: "Organization",
     elements: &[
-        ElementConstraint { path: "Organization.active", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Organization.contact.address", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Organization.contact.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Organization.contact.name", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Organization.contact.purpose", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Organization.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Organization.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Organization.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Organization.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Organization.name", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Organization.partOf", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Organization.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Organization.active", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Organization.contact.address", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Organization.contact.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Organization.contact.name", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Organization.contact.purpose", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Organization.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Organization.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Organization.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Organization.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Organization.name", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Organization.partOf", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Organization.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
     ],
     slicings: &[
         Slicing { path: "Organization.extension", closed: false, slices: &[
@@ -35,10 +35,10 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             Slice { name: "organizationPeriod", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/StructureDefinition/organization-period" },
             ], min: 0, max: Max::Bounded(1), elements: &[
-                ElementConstraint { path: "$this.extension", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org/fhir/StructureDefinition/organization-period"), required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["Period"], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.extension", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org/fhir/StructureDefinition/organization-period"), required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["Period"], patterns: &[] },
             ], invariants: &[
             ], profiles: &[
             ], slicings: &[
@@ -48,13 +48,13 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             Slice { name: "odsOrganisationCode", discriminators: &[
                 Discriminator::Value { path: "$this.system", value: "https://fhir.nhs.uk/Id/ods-organization-code" },
             ], min: 0, max: Max::Bounded(1), elements: &[
-                ElementConstraint { path: "$this.assigner", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.system", min: 1, max: Max::Bounded(1), fixed: Some("https://fhir.nhs.uk/Id/ods-organization-code"), required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.value", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.assigner", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.system", min: 1, max: Max::Bounded(1), fixed: Some("https://fhir.nhs.uk/Id/ods-organization-code"), required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.value", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
             ], invariants: &[
             ], profiles: &[
             ], slicings: &[
@@ -62,13 +62,13 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             Slice { name: "odsSiteCode", discriminators: &[
                 Discriminator::Value { path: "$this.system", value: "https://fhir.nhs.uk/Id/ods-site-code" },
             ], min: 0, max: Max::Bounded(1), elements: &[
-                ElementConstraint { path: "$this.assigner", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.system", min: 1, max: Max::Bounded(1), fixed: Some("https://fhir.nhs.uk/Id/ods-site-code"), required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.value", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.assigner", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.period", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.system", min: 1, max: Max::Bounded(1), fixed: Some("https://fhir.nhs.uk/Id/ods-site-code"), required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.use", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.value", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
             ], invariants: &[
             ], profiles: &[
             ], slicings: &[

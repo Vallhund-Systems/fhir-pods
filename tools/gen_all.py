@@ -20,6 +20,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import gen_profile  # noqa: E402
 from gen_profile import emit, emit_intern  # noqa: E402
 
 
@@ -195,6 +196,15 @@ def main():
         f.write("pub static REGISTRY: &[&CompiledProfile] = &[\n")
         for mod, *_ in mods:
             f.write(f"    &{mod}::PROFILE,\n")
+        f.write("];\n")
+        f.write("\n/// Every element a compiled profile holds to a base datatype profile its\n")
+        f.write("/// base definition does not name (`SimpleQuantity` on an extension's\n")
+        f.write("/// `value[x]`): (profile url, slice label or `\"\"`, element path — `$this.…`\n")
+        f.write("/// inside a slice —, type code, datatype profile canonical). Sparse: the\n")
+        f.write("/// engine filters it by profile and slice (`engine::check_datatype_profiles`).\n")
+        f.write("pub static DATATYPE_PROFILE_ELEMENTS: &[(&str, &str, &str, &str, &str)] = &[\n")
+        for row in sorted(gen_profile.DATATYPE_ROWS):
+            f.write("    (" + ", ".join(gen_profile.rs(x) for x in row) + "),\n")
         f.write("];\n")
         f.write("\n/// The base spec's vital-sign profiles, applied to an Observation that carries\n")
         f.write("/// their fixed LOINC code (or the vital-signs category) whether or not it\n")

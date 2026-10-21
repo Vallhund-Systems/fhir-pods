@@ -26,7 +26,9 @@ STUB='// The host'"'"'s own compiled profiles — a stub until scripts/gen-host-
 // in with `--features host-profiles`; the shipped registry stays as it is.
 use crate::compiled::CompiledProfile;
 
-pub static REGISTRY: &[&CompiledProfile] = &[];'
+pub static REGISTRY: &[&CompiledProfile] = &[];
+
+pub static DATATYPE_PROFILE_ELEMENTS: &[(&str, &str, &str, &str, &str)] = &[];'
 
 if [ "${1:-}" = "--reset" ]; then
   rm -rf "$OUT" && mkdir -p "$OUT" && printf '%s\n' "$STUB" > "$OUT/mod.rs"
@@ -135,6 +137,8 @@ mod = os.path.join(out, "mod.rs")
 text = open(mod).read()
 text = re.sub(r"\n(?:///[^\n]*\n)*pub static IMPLIED[^;]*;\n", "\n", text, flags=re.S)
 lines = [l for l in text.split("\n") if not any(l == f"pub mod {n};" or l.strip() == f"&{n}::PROFILE," for n in pruned)]
+# a pruned dependency's datatype-profile rows are the shipped table's
+lines = [l for l in lines if not any(l.strip().startswith(f'("{u}",') for u in shipped)]
 open(mod, "w").write("\n".join(lines))
 print(f"==> {len(kept)} host profile(s) compiled" + (f"; {len(pruned)} shipped dependencies pruned" if pruned else ""))
 PY

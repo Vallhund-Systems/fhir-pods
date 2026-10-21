@@ -10,44 +10,44 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     name: "UK Core Observation Lab",
     resource_type: "Observation",
     elements: &[
-        ElementConstraint { path: "Observation.bodySite", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.category", min: 1, max: Max::Star, fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.component.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.component.dataAbsentReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.component.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.component.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S4, patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.dataAbsentReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.device", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.effective[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S13, patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.encounter", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.issued", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.method", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.referenceRange.age", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.referenceRange.high", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.referenceRange.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.referenceRange.low", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.referenceRange.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.referenceRange.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.specimen", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/observation-status|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.subject", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Observation.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S4, patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Observation.bodySite", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.category", min: 1, max: Max::Star, fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.component.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.component.dataAbsentReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.component.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.component.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S4, patterns: &[] },
+        ElementConstraint { path: "Observation.dataAbsentReason", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.device", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.effective[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S13, patterns: &[] },
+        ElementConstraint { path: "Observation.encounter", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.issued", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.method", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.referenceRange.age", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.referenceRange.high", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.referenceRange.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.referenceRange.low", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.referenceRange.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.referenceRange.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.specimen", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.status", min: 1, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/observation-status|4.0.1", kind: BindingKind::Code }), types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.subject", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Observation.value[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S4, patterns: &[] },
     ],
     slicings: &[
         Slicing { path: "Observation.extension", closed: false, slices: &[
             Slice { name: "triggeredByR5", discriminators: &[
                 Discriminator::Value { path: "$this.url", value: "http://hl7.org/fhir/5.0/StructureDefinition/extension-Observation.triggeredBy" },
             ], min: 0, max: Max::Star, elements: &[
-                ElementConstraint { path: "$this.extension", min: 2, max: Max::Star, fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org/fhir/5.0/StructureDefinition/extension-Observation.triggeredBy"), required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.value[x]", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: super::intern::S83, patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.extension", min: 2, max: Max::Star, fixed: None, required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("http://hl7.org/fhir/5.0/StructureDefinition/extension-Observation.triggeredBy"), required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.value[x]", min: 0, max: Max::Bounded(0), fixed: None, required_binding: None, types: super::intern::S83, patterns: &[] },
             ], invariants: &[
             ], profiles: &[
             ], slicings: &[
@@ -55,9 +55,9 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                     Slice { name: "observation", discriminators: &[
                         Discriminator::Value { path: "$this.url", value: "observation" },
                     ], min: 1, max: Max::Bounded(1), elements: &[
-                        ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                        ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("observation"), required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                        ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["Reference"], patterns: &[], datatype_profiles: &[] },
+                        ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                        ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("observation"), required_binding: None, types: &[], patterns: &[] },
+                        ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["Reference"], patterns: &[] },
                     ], invariants: &[
                     ], profiles: &[
                     ], slicings: &[
@@ -65,9 +65,9 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                     Slice { name: "type", discriminators: &[
                         Discriminator::Value { path: "$this.url", value: "type" },
                     ], min: 1, max: Max::Bounded(1), elements: &[
-                        ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                        ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("type"), required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                        ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["code"], patterns: &[], datatype_profiles: &[] },
+                        ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                        ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("type"), required_binding: None, types: &[], patterns: &[] },
+                        ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["code"], patterns: &[] },
                     ], invariants: &[
                     ], profiles: &[
                     ], slicings: &[
@@ -75,9 +75,9 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
                     Slice { name: "reason", discriminators: &[
                         Discriminator::Value { path: "$this.url", value: "reason" },
                     ], min: 0, max: Max::Bounded(1), elements: &[
-                        ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                        ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("reason"), required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                        ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["string"], patterns: &[], datatype_profiles: &[] },
+                        ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                        ElementConstraint { path: "$this.url", min: 1, max: Max::Bounded(1), fixed: Some("reason"), required_binding: None, types: &[], patterns: &[] },
+                        ElementConstraint { path: "$this.value[x]", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &["string"], patterns: &[] },
                     ], invariants: &[
                     ], profiles: &[
                     ], slicings: &[
@@ -96,14 +96,14 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             Slice { name: "laboratory", discriminators: &[
                 Discriminator::Value { path: "$this.coding.code", value: "laboratory" },
             ], min: 1, max: Max::Bounded(1), elements: &[
-                ElementConstraint { path: "$this.coding.code", min: 0, max: Max::Bounded(1), fixed: Some("laboratory"), required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.coding.display", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.coding.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.coding.system", min: 0, max: Max::Bounded(1), fixed: Some("http://terminology.hl7.org/CodeSystem/observation-category"), required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.coding.userSelected", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.coding.version", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-                ElementConstraint { path: "$this.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this.coding.code", min: 0, max: Max::Bounded(1), fixed: Some("laboratory"), required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.coding.display", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.coding.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.coding.system", min: 0, max: Max::Bounded(1), fixed: Some("http://terminology.hl7.org/CodeSystem/observation-category"), required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.coding.userSelected", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.coding.version", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+                ElementConstraint { path: "$this.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
             ], invariants: &[
             ], profiles: &[
             ], slicings: &[

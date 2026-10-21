@@ -2307,6 +2307,19 @@ pub static REGISTRY: &[&CompiledProfile] = &[
     &workflow_triggeredby::PROFILE,
 ];
 
+/// Every element a compiled profile holds to a base datatype profile its
+/// base definition does not name (`SimpleQuantity` on an extension's
+/// `value[x]`): (profile url, slice label or `""`, element path — `$this.…`
+/// inside a slice —, type code, datatype profile canonical). Sparse: the
+/// engine filters it by profile and slice (`engine::check_datatype_profiles`).
+pub static DATATYPE_PROFILE_ELEMENTS: &[(&str, &str, &str, &str, &str)] = &[(
+    "http://hl7.org/fhir/StructureDefinition/medicationdispense-quantityRemaining",
+    "",
+    "Extension.value[x]",
+    "Quantity",
+    "http://hl7.org/fhir/StructureDefinition/SimpleQuantity",
+)];
+
 /// The base spec's vital-sign profiles, applied to an Observation that carries
 /// their fixed LOINC code (or the vital-signs category) whether or not it
 /// declares them — the spec requires it, and the reference validator does it.

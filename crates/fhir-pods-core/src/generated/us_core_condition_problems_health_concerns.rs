@@ -10,27 +10,27 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
     name: "US Core Condition Problems and Health Concerns Profile",
     resource_type: "Condition",
     elements: &[
-        ElementConstraint { path: "Condition.abatement[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S62, patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Condition.asserter", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Condition.category", min: 1, max: Max::Star, fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Condition.clinicalStatus", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/condition-clinical", kind: BindingKind::CodeableConcept }), types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Condition.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Condition.encounter", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Condition.evidence.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Condition.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Condition.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Condition.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Condition.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Condition.onset[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S62, patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Condition.recordedDate", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Condition.recorder", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Condition.severity", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Condition.stage.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Condition.stage.summary", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Condition.stage.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Condition.subject", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Condition.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[], datatype_profiles: &[] },
-        ElementConstraint { path: "Condition.verificationStatus", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/condition-ver-status", kind: BindingKind::CodeableConcept }), types: &[], patterns: &[], datatype_profiles: &[] },
+        ElementConstraint { path: "Condition.abatement[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S62, patterns: &[] },
+        ElementConstraint { path: "Condition.asserter", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Condition.category", min: 1, max: Max::Star, fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Condition.clinicalStatus", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/condition-clinical", kind: BindingKind::CodeableConcept }), types: &[], patterns: &[] },
+        ElementConstraint { path: "Condition.code", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Condition.encounter", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Condition.evidence.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Condition.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Condition.implicitRules", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Condition.language", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Condition.meta", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Condition.onset[x]", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: super::intern::S62, patterns: &[] },
+        ElementConstraint { path: "Condition.recordedDate", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Condition.recorder", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Condition.severity", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Condition.stage.id", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Condition.stage.summary", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Condition.stage.type", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Condition.subject", min: 1, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Condition.text", min: 0, max: Max::Bounded(1), fixed: None, required_binding: None, types: &[], patterns: &[] },
+        ElementConstraint { path: "Condition.verificationStatus", min: 0, max: Max::Bounded(1), fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/ValueSet/condition-ver-status", kind: BindingKind::CodeableConcept }), types: &[], patterns: &[] },
     ],
     slicings: &[
         Slicing { path: "Condition.extension", closed: false, slices: &[
@@ -46,7 +46,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             Slice { name: "us-core", discriminators: &[
                 Discriminator::Member { path: "$this", binding: Binding { value_set: "http://hl7.org/fhir/us/core/ValueSet/us-core-problem-or-health-concern", kind: BindingKind::CodeableConcept } },
             ], min: 1, max: Max::Star, elements: &[
-                ElementConstraint { path: "$this", min: 0, max: Max::Star, fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/us/core/ValueSet/us-core-problem-or-health-concern", kind: BindingKind::CodeableConcept }), types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this", min: 0, max: Max::Star, fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/us/core/ValueSet/us-core-problem-or-health-concern", kind: BindingKind::CodeableConcept }), types: &[], patterns: &[] },
             ], invariants: &[
             ], profiles: &[
             ], slicings: &[
@@ -54,7 +54,7 @@ pub static PROFILE: CompiledProfile = CompiledProfile {
             Slice { name: "screening-assessment", discriminators: &[
                 Discriminator::Member { path: "$this", binding: Binding { value_set: "http://hl7.org/fhir/us/core/ValueSet/us-core-screening-assessment-condition-category", kind: BindingKind::CodeableConcept } },
             ], min: 0, max: Max::Star, elements: &[
-                ElementConstraint { path: "$this", min: 0, max: Max::Star, fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/us/core/ValueSet/us-core-screening-assessment-condition-category", kind: BindingKind::CodeableConcept }), types: &[], patterns: &[], datatype_profiles: &[] },
+                ElementConstraint { path: "$this", min: 0, max: Max::Star, fixed: None, required_binding: Some(Binding { value_set: "http://hl7.org/fhir/us/core/ValueSet/us-core-screening-assessment-condition-category", kind: BindingKind::CodeableConcept }), types: &[], patterns: &[] },
             ], invariants: &[
             ], profiles: &[
             ], slicings: &[
