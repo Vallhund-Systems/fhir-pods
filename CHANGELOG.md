@@ -78,8 +78,9 @@ oracle runs during the work: one failed four shared-key StructureDefinitions
 on intermittent oracle drift, the pod's verdict unchanged on each; the next
 had none); questionnaire **74/81** verdicts, 73/81 every error, exit 0;
 supporting **9/11**; validator test cases Java **64/84**, Firely **14/20**;
-ad-hoc profiles Java **12/13**, Firely **7/7**; v2 samples **77/77** and
-Synthea **14/14** (cached oracle, before the 0.22.1 merge); the
+ad-hoc profiles Java **12/13**, Firely **7/7**; v2 samples **77/77**
+verdicts, 74/77 every error, and Synthea **14/14** on both (fresh oracle,
+measured after the merge); the
 instrument-path scenario (`conformance/instrument.py`) **71** with
 `--chain` (70 agree, the one triaged residue) and **40** with
 `--host-profile`; mutation lane (`--reuse-oracle`, pod re-judged)
