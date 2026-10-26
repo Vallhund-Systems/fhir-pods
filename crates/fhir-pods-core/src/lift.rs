@@ -250,6 +250,8 @@ pub fn lift_with(
         return Err(LiftError::WrongResourceType);
     }
     let doc = &parsed.doc();
+    let scoped = crate::terminology_context::ResourceProvider::for_document(tx, doc);
+    let tx = scoped.as_ref().map_or(tx, |provider| provider as &dyn TerminologyProvider);
     let mut inputs: Vec<(String, Node)> = Vec::new();
     let mut covered: Vec<String> = Vec::new(); // unlabelled paths a slot, a fixed leaf or a pass-through covers
     let mut missing: Vec<&'static str> = Vec::new();

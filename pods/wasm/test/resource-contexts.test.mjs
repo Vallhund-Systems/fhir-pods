@@ -41,3 +41,17 @@ test('scoped unknowns are recorded without consulting a foreign callback and amb
  const input=JSON.stringify(patient('one','AAA'));const result=pod.validate(input);assert.ok(result.issues.some(i=>i.id==='binding.unknown'));assert.equal(calls,0);assert.equal(pod.terminologyNeeds(input).length,1);
  const duplicate=pod.validate(JSON.stringify(bundle([patient('one','AAA'),patient('one','AAA')])));assert.equal(duplicate.valid,false);assert.ok(duplicate.issues.some(i=>i.id==='terminology.context-ambiguous'));
 });
+
+
+test('regional export selects the owned profile identity rather than a global table',async()=>{
+ const valueSet='http://hl7.org/fhir/uv/ips/ValueSet/pregnancies-summary-uv-ips';
+ const own=`fhir-pods-terminology 1\n= ${valueSet}\nhttp://loinc.org\t11636-8\n`;
+ const foreign=own.replace('11636-8','foreign');
+ const resource={resourceType:'Observation',id:'one',status:'final',code:{coding:[{system:'http://loinc.org',code:'11636-8'}]},subject:{reference:'Patient/p'},effectiveDateTime:'2026-10-25',valueInteger:1};
+ for(const global of ['',foreign]){
+   const pod=await instantiate(wasm);assert.equal(pod.loadTerminology(global),true);
+   assert.equal(pod.loadTerminology(JSON.stringify({format:'fhir-pods.terminology-contexts.v1',contexts:[{terminology:own,resources:[{resourceType:'Observation',id:'one'}]}]})),true);
+   const selected=pod.export('ips',{resources:[resource],document:false}).resources[0];
+   assert.equal(selected.profile?.url,'http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-pregnancy-outcome-uv-ips',JSON.stringify(selected));
+ }
+});

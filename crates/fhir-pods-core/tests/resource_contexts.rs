@@ -148,3 +148,87 @@ fn extensions_without_an_owner_profile_retain_the_containing_resources_context()
     assert!(!result.is_valid(), "{result:?}");
     assert!(result.report.issues.iter().any(|i| i.id == "binding.not-member"));
 }
+
+use fhir_pods_core::compiled::*;
+static OWNED_SLICE_PROFILE: CompiledProfile = CompiledProfile {
+    url: "http://example.invalid/review-profile",
+    base: None,
+    name: "Synthetic review profile",
+    resource_type: "Observation",
+    elements: &[],
+    invariants: &[],
+    must_support: &[],
+    contexts: &[],
+    references: &[],
+    deferred: &[],
+    slicings: &[Slicing {
+        path: "Observation.category",
+        closed: false,
+        slices: &[Slice {
+            name: "owned",
+            discriminators: &[Discriminator::Member {
+                path: "$this",
+                binding: Binding { value_set: "http://example.invalid/set", kind: BindingKind::CodeableConcept },
+            }],
+            min: 1,
+            max: Max::Star,
+            elements: &[],
+            invariants: &[],
+            profiles: &[],
+            slicings: &[],
+            profile: None,
+        }],
+    }],
+    lowering: &Lowering {
+        fixed: &[],
+        slices: &[("category:owned", 1)],
+        slots: &[
+            Slot {
+                path: "category:owned",
+                ty: "CodeableConcept",
+                choices: &[],
+                min: 1,
+                max: Max::Star,
+                must_support: false,
+            },
+            Slot { path: "status", ty: "code", choices: &[], min: 1, max: Max::Bounded(1), must_support: false },
+            Slot {
+                path: "code",
+                ty: "CodeableConcept",
+                choices: &[],
+                min: 1,
+                max: Max::Bounded(1),
+                must_support: false,
+            },
+        ],
+    },
+};
+
+#[test]
+fn lift_extracts_an_owned_membership_slice_without_foreign_global_authority() {
+    let table = "fhir-pods-terminology 1\n= http://example.invalid/set\nhttp://example.invalid/system\town\n";
+    let config = format!(
+        r#"{{"format":"fhir-pods.terminology-contexts.v1","contexts":[{{"terminology":{},"resources":[{{"resourceType":"Observation","id":"one"}}]}}]}}"#,
+        quoted(table)
+    );
+    let contexts = ResourceContexts::parse(config.as_bytes()).unwrap();
+    let foreign = Expansions::parse(&table.replace("\town\n", "\tforeign\n")).unwrap();
+    let resource=br#"{"resourceType":"Observation","id":"one","status":"final","code":{"text":"Synthetic"},"category":[{"coding":[{"system":"http://example.invalid/system","code":"own"}]}]}"#;
+    for providers in [
+        vec![&Bundled as &dyn fhir_pods_core::terminology::TerminologyProvider, &contexts],
+        vec![&Bundled, &contexts, &foreign],
+    ] {
+        let tx = Chain(&providers);
+        let lifted = fhir_pods_core::lift::lift_with(&OWNED_SLICE_PROFILE, resource, &Validator::new(), &tx).unwrap();
+        assert!(lifted.validation.is_valid(), "{:?}", lifted.validation);
+        assert!(
+            lifted.inputs.contains("category:owned"),
+            "{} missing={:?} extras={:?}",
+            lifted.inputs,
+            lifted.missing,
+            lifted.extras
+        );
+        assert!(lifted.missing.is_empty());
+        assert!(lifted.extras.is_empty());
+    }
+}
