@@ -6,3 +6,5 @@ use crate::compiled::CompiledProfile;
 pub static REGISTRY: &[&CompiledProfile] = &[];
 
 pub static DATATYPE_PROFILE_ELEMENTS: &[(&str, &str, &str, &str, &str)] = &[];
+
+pub static SOURCE_SHA256: &[(&str, &str)] = &[];

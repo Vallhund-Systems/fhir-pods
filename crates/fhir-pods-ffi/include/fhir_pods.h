@@ -184,7 +184,9 @@ uint8_t *fhir_pods_export_tx(const uint8_t *region, size_t region_len, const uin
 
 /* Discovery: what is compiled in — {"regions": [{"name","title","guide",
  * "document"}], "profiles": [{"url","name","resourceType","kind","base"}]}
- * ("kind": resource | datatype | extension). No input. */
+ * ("kind": resource | datatype | extension). Compiled host rows may include
+ * sourceSha256, the exact input-file fingerprint; missing is not an identity
+ * claim. Verify the artifact and compare against the verified package. No input. */
 uint8_t *fhir_pods_profiles(void);
 
 /* Compiled terminology. Load a table (the line format tools/compile_valueset.py

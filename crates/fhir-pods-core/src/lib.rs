@@ -477,12 +477,27 @@ pub fn resource_profile(url: &str) -> Option<&'static compiled::CompiledProfile>
     crate::REGISTRY.iter().find(|p| p.url == url).filter(|p| p.resource_type != "Extension").copied()
 }
 
+/// The exact raw input identity of a compiled host profile, when available.
+/// Shipped profiles and builds without host inputs make no source-file claim.
+pub fn host_profile_source_sha256(url: &str) -> Option<&'static str> {
+    #[cfg(feature = "host-profiles")]
+    {
+        generated_host::SOURCE_SHA256.iter().find(|(canonical, _)| *canonical == url).map(|(_, digest)| *digest)
+    }
+    #[cfg(not(feature = "host-profiles"))]
+    {
+        let _ = url;
+        None
+    }
+}
+
 /// What is compiled in, for a host to discover without the specification:
 /// `{"regions": [{"name", "title", "guide", "document"}], "profiles":
 /// [{"url", "name", "resourceType", "kind", "base"}]}` — every registry
 /// profile (`kind`: `resource` a host may lower into, lift from or export
 /// through; `datatype` a slice inherits; `extension`), and the regions
-/// `export` speaks.
+/// `export` speaks. Compiled host rows also carry `sourceSha256` of the exact
+/// staged input file; shipped/older rows make no host-source claim.
 pub fn catalogue_json() -> String {
     use wire::escape;
     let mut out = String::from("{\"regions\":[");
@@ -534,6 +549,11 @@ pub fn catalogue_json() -> String {
                 out.push('"');
             }
             None => out.push_str("null"),
+        }
+        if let Some(digest) = host_profile_source_sha256(p.url) {
+            out.push_str(",\"sourceSha256\":\"");
+            escape(&mut out, digest);
+            out.push('"');
         }
         out.push('}');
     }

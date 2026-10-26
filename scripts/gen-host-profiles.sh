@@ -28,7 +28,9 @@ use crate::compiled::CompiledProfile;
 
 pub static REGISTRY: &[&CompiledProfile] = &[];
 
-pub static DATATYPE_PROFILE_ELEMENTS: &[(&str, &str, &str, &str, &str)] = &[];'
+pub static DATATYPE_PROFILE_ELEMENTS: &[(&str, &str, &str, &str, &str)] = &[];
+
+pub static SOURCE_SHA256: &[(&str, &str)] = &[];'
 
 if [ "${1:-}" = "--reset" ]; then
   rm -rf "$OUT" && mkdir -p "$OUT" && printf '%s\n' "$STUB" > "$OUT/mod.rs"
@@ -64,6 +66,17 @@ for d in sys.argv[1:]:
 print("host packages: " + " + ".join(names))
 PY
 )"
+
+# Compile and fingerprint the same private snapshot of the host package. Reading
+# a mutable source again after generation could attest bytes never compiled.
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/fhir-pods-host.XXXXXX")"
+trap 'rm -rf "$WORK"' EXIT
+TMP="$WORK/generated"
+mkdir "$TMP"
+python3 "$ROOT/tools/host_profile_sources.py" stage "$WORK/inputs" "${HOSTS[@]}"
+HOST_COUNT=${#HOSTS[@]}
+HOSTS=()
+for ((i=0; i<HOST_COUNT; i++)); do HOSTS+=("$WORK/inputs/package-$i"); done
 
 # What the host package compiles (the generator's own rule: a constraint
 # with a snapshot, on a resource or an Identifier / complex Extension) must
@@ -102,9 +115,7 @@ if not own:
     sys.exit("nothing to compile: no constraint profile with a snapshot in " + ", ".join(hosts))
 PY
 
-# generated into a scratch dir; moved into place only once it all checks out
-TMP="$(mktemp -d "${TMPDIR:-/tmp}/fhir-pods-host.XXXXXX")"
-trap 'rm -rf "$TMP"' EXIT
+# Generated into the private workspace; installed only after all checks pass.
 # R4 core is a plain dependency here (not --base): the base resources are
 # already in the shipped registry
 python3 "$ROOT/tools/gen_all.py" --primaries "${#HOSTS[@]}" "$TMP" "$PROVENANCE" "${HOSTS[@]}" "${PINNED[@]}" "$R4" >/dev/null
@@ -143,7 +154,9 @@ open(mod, "w").write("\n".join(lines))
 print(f"==> {len(kept)} host profile(s) compiled" + (f"; {len(pruned)} shipped dependencies pruned" if pruned else ""))
 PY
 
-rm -rf "$OUT" && mv "$TMP" "$OUT" && trap - EXIT
+python3 "$ROOT/tools/host_profile_sources.py" record "$TMP" "${HOSTS[@]}"
+rm -rf "$OUT" && mv "$TMP" "$OUT"
+rm -rf "$WORK" && trap - EXIT
 rustfmt --edition 2021 "$OUT"/*.rs 2>/dev/null || true
 python3 "$ROOT/tools/gen_rules.py" "$SRC"    # the host's invariant keys get stable ids too
 echo "==> $OUT written; build with: cargo build --features host-profiles   (pods: FEATURES=host-profiles scripts/build-*.sh)"
