@@ -146,6 +146,8 @@ pub(crate) fn validate_at_with<D: Document>(
     bundle: Option<&D>,
     evaluated: Option<&Evaluated<'_, D>>,
 ) -> Report {
+    let scoped = crate::terminology_context::ResourceProvider::for_document(tx, root);
+    let tx = scoped.as_ref().map_or(tx, |provider| provider as &dyn TerminologyProvider);
     let mut r = Report::default();
     for el in profile.elements {
         check_element(el, el.path, doc, tx, &mut r);

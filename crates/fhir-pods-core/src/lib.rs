@@ -199,6 +199,27 @@ fn validate_bytes_in(
     for (path, kind, message) in warnings {
         report.push(Severity::Warning, kind, &path, message);
     }
+    // Logical resource ids need not be globally unique in arbitrary FHIR
+    // documents (e.g. separate contained scopes). Such an input cannot use a
+    // single explicit rt/id ownership key for both resources: refuse the claim.
+    let mut scoped_keys = Vec::new();
+    for resource in core::iter::once(&doc).chain(nested.iter().map(|(_, doc)| doc)) {
+        let types = resource.scalars("$this.resourceType");
+        let ids = resource.scalars("$this.id");
+        let (Some(rt), Some(id)) = (types.first(), ids.first()) else { continue };
+        if tx.resource_context(rt, id).is_some() {
+            if scoped_keys.contains(&(*rt, *id)) {
+                report.push(
+                    Severity::Error,
+                    IssueType::BusinessRule,
+                    "resourceType",
+                    format!("Resource identity '{rt}/{id}' is ambiguous for its terminology context"),
+                );
+            } else {
+                scoped_keys.push((*rt, *id));
+            }
+        }
+    }
     let bundle = (rt == "Bundle").then_some(&doc);
     if let Some(b) = bundle {
         engine::check_document(b, &mut report);
@@ -222,26 +243,44 @@ fn validate_bytes_in(
     };
     let bundle_value = bundle.map(|b| b.value());
     let by_kind = |rt: &str, value: &json::Value<'_>, label: &str, report: &mut Report| match rt {
-        "QuestionnaireResponse" => questionnaire::check(value, bundle_value, questionnaires, tx, label, report),
+        "QuestionnaireResponse" => {
+            let doc = document::TreeDoc::at(value, Some("QuestionnaireResponse"));
+            let scoped = terminology_context::ResourceProvider::for_document(tx, &doc);
+            questionnaire::check(
+                value,
+                bundle_value,
+                questionnaires,
+                scoped.as_ref().map_or(tx, |p| p as &dyn terminology::TerminologyProvider),
+                label,
+                report,
+            )
+        }
         "Questionnaire" => questionnaire::check_questionnaire(value, label, report),
         _ => {}
     };
     by_kind(rt, parsed.value(), rt, &mut report);
     // every resource nested in this one (Bundle entries, contained resources,
     // Parameters) is held to its own declared profiles, in this bundle's scope
-    for (label, nested) in nested {
+    for (label, nested) in &nested {
         let Some(nrt) = nested.scalars("$this.resourceType").first().copied() else { continue };
         let Some(nrt) = typing::known_type(nrt).filter(|t| typemap::RESOURCES.binary_search(t).is_ok()) else {
             continue;
         };
-        validate_resource(nrt, &nested, &label, tx, cache, bundle, &[], &memo, &mut report);
+        validate_resource(nrt, nested, label, tx, cache, bundle, &[], &memo, &mut report);
         by_kind(nrt, nested.value(), &format!("{label}.{nrt}"), &mut report);
     }
     // every extension whose url names a compiled extension profile is held
     // to it, wherever it sits (a translation on a coding's display…)
     for (label, ext, profile) in extensions {
+        // The structure walk supplies exact indexed paths. The nearest enclosing
+        // resource owns an extension's provider and its %resource context.
+        let owner = nested
+            .iter()
+            .filter(|(path, _)| label.strip_prefix(path.as_str()).is_some_and(|tail| tail.starts_with('.')))
+            .max_by_key(|(path, _)| path.len())
+            .map_or(&doc, |(_, owner)| owner);
         let evaluated = engine::Evaluated::new(Some(&memo));
-        for mut issue in engine::validate_at_with(profile, &ext, &ext, tx, 0, cache, bundle, Some(&evaluated)).issues {
+        for mut issue in engine::validate_at_with(profile, &ext, owner, tx, 0, cache, bundle, Some(&evaluated)).issues {
             issue.path = format!("{label}.{}", issue.path);
             if !report.issues.contains(&issue) {
                 report.issues.push(issue);
@@ -824,3 +863,4 @@ pub mod temporal;
 pub mod regex;
 
 pub mod terminology;
+pub mod terminology_context;

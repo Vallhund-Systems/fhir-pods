@@ -47,6 +47,12 @@ issue list as "almost conformant" would be wrong), and for
 item whose definition is broken. Both were probed against validator_cli
 6.10.4 (2026-10-14): it reports `fatal` for the same two inputs.
 
+## terminology
+
+| Id | Severity | Meaning |
+| --- | --- | --- |
+| `terminology.context-ambiguous` | error | an explicitly scoped resource identity occurs more than once in the input document; its terminology owner cannot be uniquely selected |
+
 ## The input
 
 | Id | Severity | Meaning |

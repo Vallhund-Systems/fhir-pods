@@ -94,6 +94,51 @@ The same instance provides `validate`, `operationOutcome`, `mustSupportGaps`,
 `terminologyNeeds`. The [Expo module](pods/expo/README.md) exports the same
 operations as functions (`exportRecord` for `export`, a reserved word).
 
+### Explicit resource terminology ownership
+
+`loadTerminology` also accepts an atomic operational installation:
+
+```js
+const loaded = pod.loadTerminology(JSON.stringify({
+  format: "fhir-pods.terminology-contexts.v1",
+  contexts: [{
+    terminology: originalCompiledTable,
+    resources: [{ resourceType: "Observation", id: "result-one" }],
+  }],
+}));
+if (!loaded) throw new Error("Resource terminology contexts were refused");
+```
+
+Trusted preparation explicitly assigns each owned resource to its original table.
+Two resources can declare the same profile and ValueSet URLs while using distinct
+complete expansions. The runtime selects by resourceType/id, including base shape,
+profiles, extensions, nested resources, lower/lift, whole collections and reference
+target conformance. A referenced target uses its own owner; extensions and other
+subelements keep their containing resource's owner. Questionnaire semantics can use
+these resource contexts too; an explicitly loaded questionnaire context continues
+to own that form's semantic checks. Callers supplying both must use consistent
+original tables. Exported FHIR and semantic canonical URLs remain unchanged.
+
+Bound resources consult bundled standards and their own table only. Unknown sets
+remain warnings and recorded needs, without borrowing global tables or callbacks.
+Unbound resources retain the configured provider. The complete installation is
+parsed before replacement; unknown/duplicate fields, invalid resource types/ids,
+malformed tables and duplicate ownership keys refuse without changing state.
+Binding a repeated resourceType/id inside one input (including separate contained
+scopes) produces `terminology.context-ambiguous`, an error: that document needs
+unique operational keys before this ownership mode can represent it. This does
+not change ordinary unscoped FHIR identity rules. Conformance memoization remains
+per immutable operation snapshot and target identity/profile; each target resolves
+to one unique provider throughout that operation.
+
+Installing contexts preserves the configured global table for unrelated resources.
+`{ format: "fhir-pods.terminology-contexts.v1", contexts: [] }` clears ownership only.
+Loading a plain table clears ownership and replaces the global table; empty input
+clears both. Refused installations preserve both. Hosts must install all required
+owned keys and check the boolean result; an older loader refuses this format.
+The format is configuration, not a FHIR resource. Version0.25.0 retains ABI14; no
+new C entrypoint or result shape. No registry/native package publication is implied.
+
 ### Exact questionnaire terminology contexts
 
 `loadQuestionnaire` also accepts a strict operational envelope:

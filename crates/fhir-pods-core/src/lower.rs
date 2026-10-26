@@ -360,6 +360,12 @@ pub fn lower_with(
     tx: &dyn TerminologyProvider,
 ) -> Result<Lowered, LowerError> {
     let Value::Object(members) = inputs else { return Err(LowerError::InputsNotAnObject) };
+    let id = members.iter().find(|(key, _)| key.as_ref() == "id").and_then(|(_, value)| match value {
+        Value::Str(id) => Some(id.as_ref()),
+        _ => None,
+    });
+    let scoped = crate::terminology_context::ResourceProvider::new(tx, profile.resource_type, id);
+    let tx = &scoped as &dyn TerminologyProvider;
     let l = profile.lowering;
     let mut issues = Report::default();
     let mut root = Node::Object(alloc::vec![

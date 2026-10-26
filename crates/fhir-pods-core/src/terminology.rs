@@ -47,6 +47,17 @@ pub trait TerminologyProvider {
     /// membership decision. A sealed questionnaire context uses this to retain
     /// discovery while refusing to borrow another context's complete table.
     fn record_need(&self, _value_set: &str, _system: &str, _code: &str) {}
+
+    /// Explicit ownership selected by the resource root, not a profile URL.
+    fn resource_context(&self, _resource_type: &str, _id: &str) -> Option<&Expansions> {
+        None
+    }
+
+    /// Return to the operation's unscoped provider before selecting another
+    /// resource (notably a reference target). Default providers are already root.
+    fn context_root(&self) -> Option<&dyn TerminologyProvider> {
+        None
+    }
 }
 
 /// The value sets compiled into the core (see [`crate::value_sets`]).
@@ -77,6 +88,9 @@ impl TerminologyProvider for Bundled {
 pub struct Chain<'a>(pub &'a [&'a dyn TerminologyProvider]);
 
 impl TerminologyProvider for Chain<'_> {
+    fn resource_context(&self, rt: &str, id: &str) -> Option<&Expansions> {
+        self.0.iter().find_map(|p| p.resource_context(rt, id))
+    }
     fn record_need(&self, value_set: &str, system: &str, code: &str) {
         for provider in self.0 {
             provider.record_need(value_set, system, code);

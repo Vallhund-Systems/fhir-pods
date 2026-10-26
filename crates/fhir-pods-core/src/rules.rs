@@ -18,6 +18,7 @@ use crate::validate::IssueType;
 /// of the id — the column says which a host may see, and a test holds it to
 /// what the lanes actually produce.
 pub static RULES: &[(&str, &str, &str)] = &[
+    ("terminology.context-ambiguous", "error", "an explicitly scoped resource identity occurs more than once in the input document; its terminology owner cannot be uniquely selected"),
     // --- the resource itself ---
     ("parse.json", "fatal", "the input is not JSON — the bytes could not be parsed at all, so nothing else was checked (path `(document)`)"),
     ("parse.resource-type", "error", "no resourceType, or not a string, or not an R4 resource type"),
@@ -104,6 +105,9 @@ pub static RULES: &[(&str, &str, &str)] = &[
 
 /// The id for a finding of `code` with `message`.
 pub fn rule_id(code: IssueType, message: &str) -> &'static str {
+    if message.starts_with("Resource identity '") && message.contains("is ambiguous for its terminology context") {
+        return "terminology.context-ambiguous";
+    }
     let m = message;
     let has = |s: &str| m.contains(s);
     let ends = |s: &str| message.ends_with(s);
