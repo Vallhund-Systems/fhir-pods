@@ -150,7 +150,7 @@ fn unplaced_segments_fail_even_with_a_valid_bundle_and_invalid_bundles_stay_insp
         errors,
         vec![
             // MSH-5 "GHH LAB, INC." lands in a url per the v2 maps: not a valid url (0.15.0 checks whitespace)
-            ("value", "Bundle.entry.resource.destination.endpoint is not a valid url"),
+            ("value", "Bundle.entry[0].resource.MessageHeader.destination[0].endpoint is not a valid url"),
             ("required", "Provenance.agent is required (min 1, found 0)"),
             ("required", "Provenance.target is required (min 1, found 0)"),
             // PID-3's "SS" identifier system: the IG's literal carried a trailing dot,

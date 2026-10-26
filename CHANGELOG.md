@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+Primitive value findings now retain repetition indices in their instance paths
+and serialized `OperationOutcome.issue.expression`. A bad nested questionnaire
+answer identifies `QuestionnaireResponse.item[1].item[0].answer[1].valueDate`
+instead of an ambiguous type-level path. The same walk correction covers primitive
+JSON-kind errors, required code carriers, known-space URL failures and wrong
+complex JSON kinds, including nested resources. Scalar locations, validation
+rules, issue IDs and severities, and the ABI are unchanged. Paths and diagnostics
+for repeating values become more specific; consumers should use issue IDs rather
+than match diagnostic strings. No release artifact or version bump is included.
+
 ## 0.23.0 — 2026-10-20
 
 **Stricter on a comparator where the base says `SimpleQuantity`.** A
