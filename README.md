@@ -94,6 +94,33 @@ The same instance provides `validate`, `operationOutcome`, `mustSupportGaps`,
 `terminologyNeeds`. The [Expo module](pods/expo/README.md) exports the same
 operations as functions (`exportRecord` for `export`, a reserved word).
 
+### Exact questionnaire terminology contexts
+
+`loadQuestionnaire` also accepts a strict operational envelope:
+
+```js
+const loaded = pod.loadQuestionnaire(JSON.stringify({
+  format: "fhir-pods.questionnaire-context.v1",
+  questionnaire: form, // an ordinary Questionnaire with a nonempty url/version
+  terminology: compiledTable,
+}));
+if (!loaded) throw new Error("Questionnaire context was refused");
+```
+
+Each response must name the exact `url|version`. Its questionnaire semantics use
+that form's complete table, including inside mixed/nested collections and through
+lower/lift/export. Another form may use the same versionless ValueSet URL with
+different members. Global tables/callbacks are not a fallback for a missing scoped
+set: the result retains its unknown-membership warning and `terminologyNeeds`
+records it. Bundled standard sets retain precedence. This envelope is loader
+configuration, not a FHIR resource; exported resources keep their original content.
+It does not scope ordinary profile bindings, which retain their configured provider.
+
+A refused load leaves the previous entry unchanged. Plain Questionnaire loads
+retain global/provider behavior; a replacement of the same canonical/version drops
+its old context, and `loadQuestionnaire("")` clears all forms and contexts. ABI14
+is unchanged; older builds return false for this envelope.
+
 ### Export — one transformer, every region
 
 A global app's mapping is written **once**, against the base R4

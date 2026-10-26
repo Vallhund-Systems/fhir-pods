@@ -199,9 +199,11 @@ int32_t fhir_pods_terminology_load(const uint8_t *ptr, size_t len);
  * canonical (url, or url|version) in any call after it — validated, lowered,
  * lifted, exported, composed into a document — on this module, for its
  * lifetime; a contained Questionnaire or a bundle entry is found without
- * loading. Returns 1 when loaded (the same canonical loaded again replaces
- * the first), 0 when the bytes are not a Questionnaire (the store is
- * unchanged); empty input clears the store. */
+ * loading. Returns 1 when loaded (the same canonical and version replaces
+ * that entry), 0 on refusal without changing the store. A strict
+ * fhir-pods.questionnaire-context.v1 envelope binds the form version to its
+ * complete offline terminology table. Plain loads retain global/provider
+ * behavior; empty input clears all forms and their owned contexts. */
 int32_t fhir_pods_questionnaire_load(const uint8_t *ptr, size_t len);
 
 /* Host options, for every call that follows (this module, its lifetime):

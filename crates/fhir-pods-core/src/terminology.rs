@@ -42,6 +42,11 @@ pub trait TerminologyProvider {
     fn knows_set(&self, value_set: &str) -> bool {
         self.validate_code(value_set, "", "") != Membership::Unknown
     }
+
+    /// Observe an unresolved need without asking an alternate authority for a
+    /// membership decision. A sealed questionnaire context uses this to retain
+    /// discovery while refusing to borrow another context's complete table.
+    fn record_need(&self, _value_set: &str, _system: &str, _code: &str) {}
 }
 
 /// The value sets compiled into the core (see [`crate::value_sets`]).
@@ -72,6 +77,12 @@ impl TerminologyProvider for Bundled {
 pub struct Chain<'a>(pub &'a [&'a dyn TerminologyProvider]);
 
 impl TerminologyProvider for Chain<'_> {
+    fn record_need(&self, value_set: &str, system: &str, code: &str) {
+        for provider in self.0 {
+            provider.record_need(value_set, system, code);
+        }
+    }
+
     fn knows_set(&self, value_set: &str) -> bool {
         self.0.iter().any(|p| p.knows_set(value_set))
     }
@@ -126,11 +137,15 @@ impl TerminologyProvider for Recorder {
     }
 
     fn validate_code(&self, value_set: &str, system: &str, code: &str) -> Membership {
+        self.record_need(value_set, system, code);
+        Membership::Unknown
+    }
+
+    fn record_need(&self, value_set: &str, system: &str, code: &str) {
         let mut asked = self.asked.borrow_mut();
         if !asked.iter().any(|n| n.value_set == value_set && n.system == system && n.code == code) {
             asked.push(Need { value_set: value_set.into(), system: system.into(), code: code.into() });
         }
-        Membership::Unknown
     }
 }
 

@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.24.0 — 2026-10-26
+
+A host can bind each exact Questionnaire canonical/version to its own complete
+offline terminology table through the existing loader. The strict operational
+`fhir-pods.questionnaire-context.v1` envelope carries `questionnaire` and
+`terminology`; it is not a FHIR resource and is never exported. Two versions may
+use the same versionless ValueSet URL without combining their memberships. The
+selected context follows response validation, nested collections, lowering,
+lifting, export and terminology discovery. Bundled standard sets keep their
+precedence; an unresolved scoped set remains unknown and is recorded as a need,
+without borrowing another global table or callback result.
+
+Context loads require a nonempty unique url/version identity. Unknown fields,
+duplicate identities and malformed tables are refused atomically. Replacing or
+clearing a form drops its owned table. A versionless response cannot select a
+version-specific context: new `questionnaire.context-version-required` warns that this
+validation was not performed. Plain Questionnaire loads retain their existing
+global/provider behavior. `TerminologyProvider.record_need` is an optional
+observer with a default no-op, so discovery can report unresolved scoped needs
+without asking a different membership authority.
+
+ABI14 is unchanged: no entrypoint, argument ABI or result shape changes. Earlier
+builds refuse the new envelope rather than silently loading an unscoped form.
+The table governs questionnaire semantic bindings; ordinary profile bindings
+continue to use their configured terminology provider.
+
 ## 0.23.1 — 2026-10-26
 
 Primitive value findings now retain repetition indices in their instance paths

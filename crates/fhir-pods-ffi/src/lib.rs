@@ -584,8 +584,11 @@ pub unsafe extern "C" fn fhir_pods_terminology_load(ptr: *const u8, len: usize) 
 /// after it that names it by canonical (`url`, or `url|version`) — on this
 /// module, for its lifetime; a contained Questionnaire or a bundle entry is
 /// found without loading. Returns 1 when loaded (a second load of the same
-/// canonical replaces the first), 0 when the bytes are not a Questionnaire
-/// (the store is unchanged). Empty input clears the store.
+/// canonical and version replaces that entry), 0 when the bytes are not a Questionnaire
+/// (the store is unchanged). A strict `fhir-pods.questionnaire-context.v1`
+/// envelope binds an exact form version to its own complete offline terminology
+/// table. Plain loads retain global/provider behavior. Empty input clears every
+/// form and its owned context.
 #[no_mangle]
 pub unsafe extern "C" fn fhir_pods_questionnaire_load(ptr: *const u8, len: usize) -> i32 {
     let bytes = input(ptr, len);
@@ -1383,6 +1386,53 @@ mod tests {
             assert_eq!(calls, 1, "the loaded table answers now; the host is not asked");
             assert!(!second.contains("date-accuracy-indicator") && second.contains("\"valid\":true"), "{second}");
             fhir_pods_terminology_load(std::ptr::null(), 0);
+        }
+    }
+
+    #[test]
+    fn questionnaire_contexts_are_isolated_and_cleared_through_the_native_abi() {
+        let _guard = TABLE_LOCK.lock().unwrap();
+        let form = |version: &str| {
+            format!(
+                r#"{{"resourceType":"Questionnaire","url":"https://forms.example.invalid/q","version":"{version}","status":"active","item":[{{"linkId":"a","type":"choice","answerValueSet":"https://forms.example.invalid/set"}}]}}"#
+            )
+        };
+        let context = |version: &str, code: &str| {
+            format!(
+                r#"{{"format":"fhir-pods.questionnaire-context.v1","questionnaire":{},"terminology":"fhir-pods-terminology 1\n= https://forms.example.invalid/set\nhttps://forms.example.invalid/codes\t{code}\n"}}"#,
+                form(version)
+            )
+        };
+        let response = |version: &str, code: &str| {
+            format!(
+                r#"{{"resourceType":"QuestionnaireResponse","questionnaire":"https://forms.example.invalid/q|{version}","status":"completed","item":[{{"linkId":"a","answer":[{{"valueCoding":{{"system":"https://forms.example.invalid/codes","code":"{code}"}}}}]}}]}}"#
+            )
+        };
+        unsafe {
+            assert_eq!(fhir_pods_questionnaire_load(std::ptr::null(), 0), 1);
+            assert_eq!(fhir_pods_terminology_load(std::ptr::null(), 0), 1);
+            for (version, code) in [("1", "one"), ("2", "two")] {
+                let json = context(version, code);
+                assert_eq!(fhir_pods_questionnaire_load(json.as_ptr(), json.len()), 1);
+            }
+            for (version, own, other) in [("1", "one", "two"), ("2", "two", "one")] {
+                assert!(call(fhir_pods_validate, &response(version, own)).contains("\"valid\":true"));
+                let bad = call(fhir_pods_validate, &response(version, other));
+                assert!(bad.contains("\"valid\":false") && bad.contains("questionnaire.answer-not-in-set"), "{bad}");
+            }
+            // Invalid replacement preserves the previous table, then clear drops it.
+            let bad = context("1", "two").replace("fhir-pods-terminology 1", "invalid-table");
+            assert_eq!(fhir_pods_questionnaire_load(bad.as_ptr(), bad.len()), 0);
+            assert!(call(fhir_pods_validate, &response("1", "one")).contains("\"valid\":true"));
+            assert_eq!(fhir_pods_questionnaire_load(std::ptr::null(), 0), 1);
+            let table = "fhir-pods-terminology 1\n= https://forms.example.invalid/set\nhttps://forms.example.invalid/codes\ttwo\n";
+            assert_eq!(fhir_pods_terminology_load(table.as_ptr(), table.len()), 1);
+            let plain = form("1");
+            assert_eq!(fhir_pods_questionnaire_load(plain.as_ptr(), plain.len()), 1);
+            assert!(call(fhir_pods_validate, &response("1", "two")).contains("\"valid\":true"));
+            assert!(call(fhir_pods_validate, &response("1", "one")).contains("\"valid\":false"));
+            assert_eq!(fhir_pods_questionnaire_load(std::ptr::null(), 0), 1);
+            assert_eq!(fhir_pods_terminology_load(std::ptr::null(), 0), 1);
         }
     }
 

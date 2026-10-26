@@ -72,6 +72,7 @@ pub static RULES: &[(&str, &str, &str)] = &[
     // --- questionnaires ---
     ("questionnaire.unresolved", "information when none is named, or the canonical is an `example.org` url; warning when a named one could not be resolved", "the Questionnaire could not be resolved, so no validation was performed against it: the response named none, or named one this module has not been given (a contained one and a bundle entry are found without loading)"),
     ("questionnaire.version-mismatch", "warning", "the response names a version of a loaded Questionnaire other than the one loaded; not validated against it"),
+    ("questionnaire.context-version-required", "warning", "a versionless response cannot select a version-specific terminology context; not validated against that form"),
     ("questionnaire.linkid-unknown", "error", "a response item the Questionnaire does not define"),
     ("questionnaire.wrong-place", "error", "a response item defined elsewhere in the Questionnaire"),
     ("questionnaire.out-of-order", "error", "response items out of the Questionnaire's order"),
@@ -273,6 +274,9 @@ pub fn rule_id(code: IssueType, message: &str) -> &'static str {
     // questionnaires
     if starts("The questionnaire '") && has("is loaded; the response was not validated") {
         return "questionnaire.version-mismatch";
+    }
+    if starts("The questionnaire '") && has("requires an explicit version for its terminology context") {
+        return "questionnaire.context-version-required";
     }
     if starts("The questionnaire '") || starts("No questionnaire is identified") {
         return "questionnaire.unresolved";
