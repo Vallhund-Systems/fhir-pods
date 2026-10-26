@@ -212,7 +212,7 @@ fn an_adt_a01_becomes_an_admission_with_what_the_message_carries_and_names_what_
         errors,
         vec![
             // MSH-5 "GHH LAB, INC." lands in destination.endpoint (a url) per the v2 maps
-            "Bundle.entry.resource.destination.endpoint is not a valid url",
+            "Bundle.entry[0].resource.MessageHeader.destination[0].endpoint is not a valid url",
             "Provenance.agent is required (min 1, found 0)",
             "Provenance.target is required (min 1, found 0)",
             // PID-3's "SS" identifier system: the IG's literal carried a trailing dot,

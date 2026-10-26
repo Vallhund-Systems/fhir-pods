@@ -367,8 +367,8 @@ fn declares_compiled_profile(kvs: &[(alloc::borrow::Cow<'_, str>, Value<'_>)]) -
 
 /// The shape walk's state: the findings, every nested resource found (with
 /// the indexed element path it sits at), and the path segments so far —
-/// `(key, index)` for a repeating element — rendered only when a nested
-/// resource is found, so the walk itself never formats a path per element.
+/// `(key, index)` for a repeating element — rendered for a finding or nested
+/// resource, rather than for every successfully traversed value.
 struct Walk<'v, 'a, 't> {
     root: &'static str,
     /// Who answers the base's required bindings (the host's provider, else
@@ -1526,18 +1526,20 @@ fn structure_object<'v, 'a>(
                     })
                 };
                 if json_kind(x) != expected {
+                    let label = w.label(w.root);
                     w.gaps.push((
-                        child_path.clone(),
+                        label.clone(),
                         ValueIssue,
-                        alloc::format!("{child_path}: a {} is a JSON {expected}, found {}", ch.ty, json_kind(x)),
+                        alloc::format!("{label}: a {} is a JSON {expected}, found {}", ch.ty, json_kind(x)),
                     ));
                 } else if carried {
                     // nothing to hold the value to; the carrier is walked as
                     // an element below — but a required binding still wants
                     // its code, as the reference validator says
                     if let (true, Some(b)) = (ch.ty == "code", base_binding(ctx, bare, w)) {
+                        let label = w.label(w.root);
                         w.gaps.push((
-                            child_path.clone(),
+                            label,
                             crate::validate::IssueType::CodeInvalid,
                             alloc::format!(
                                 "No code provided, and a code is required from the value set {}",
@@ -1548,11 +1550,8 @@ fn structure_object<'v, 'a>(
                 } else if !(primitive_value_ok(ch.ty, x) || (ctx == "Binary" && bare == "data")) {
                     // `Binary.data` is the content itself, not held to the base64
                     // lexical check the reference validator applies to Attachment.data
-                    w.gaps.push((
-                        child_path.clone(),
-                        ValueIssue,
-                        alloc::format!("{child_path} is not a valid {}", ch.ty),
-                    ));
+                    let label = w.label(w.root);
+                    w.gaps.push((label.clone(), ValueIssue, alloc::format!("{label} is not a valid {}", ch.ty)));
                 } else if let (Value::Str(code), "code", Some(b)) = (x, ch.ty, base_binding(ctx, bare, w)) {
                     // the base's required binding on a code: what the
                     // reference validator holds every resource to
@@ -1563,8 +1562,9 @@ fn structure_object<'v, 'a>(
                     // a uri in HL7's own spaces that names no definition the
                     // packages hold: a typo, not a local system (the reference
                     // validator takes an unknown URL anywhere else on trust)
+                    let label = w.label(w.root);
                     w.gaps.push((
-                        child_path.clone(),
+                        label,
                         ValueIssue,
                         alloc::format!("No definition could be found for URL value '{url}'"),
                     ));
@@ -1572,11 +1572,14 @@ fn structure_object<'v, 'a>(
             } else {
                 match x {
                     Value::Object(_) => structure_at(x, ch.ctx, &child_path, bare, contained, true, w),
-                    other => w.gaps.push((
-                        child_path.clone(),
-                        ValueIssue,
-                        alloc::format!("{child_path}: a {} is a JSON object, found {}", ch.ty, json_kind(other)),
-                    )),
+                    other => {
+                        let label = w.label(w.root);
+                        w.gaps.push((
+                            label.clone(),
+                            ValueIssue,
+                            alloc::format!("{label}: a {} is a JSON object, found {}", ch.ty, json_kind(other)),
+                        ));
+                    }
                 }
             }
             w.segs.pop();
