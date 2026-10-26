@@ -24,6 +24,14 @@ test("exact questionnaire contexts isolate mixed versions through validation, lo
   assert.equal(pod.abiVersion, 14);
   assert.equal(pod.loadQuestionnaire(context("1", table("one"))), true);
   assert.equal(pod.loadQuestionnaire(context("2", table("two"))), true);
+  for (const identity of ["resourceType", "url", "version"].flatMap((key) =>
+    [1, true, null, {}, [], "", " "].map((value) => ({ [key]: value })))) {
+    const malformed = JSON.parse(context("1", table("two")));
+    Object.assign(malformed.questionnaire, identity);
+    assert.equal(pod.loadQuestionnaire(JSON.stringify(malformed)), false, JSON.stringify(identity));
+    assert.equal(pod.validate(JSON.stringify(response("1", "one"))).valid, true);
+    assert.equal(pod.validate(JSON.stringify(response("1", "two"))).valid, false);
+  }
   const good = [response("1", "one"), response("2", "two")];
   const wrong = [response("1", "two"), response("2", "one")];
   for (const resource of good) {

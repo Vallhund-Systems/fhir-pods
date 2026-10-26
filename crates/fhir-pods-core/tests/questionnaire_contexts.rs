@@ -120,6 +120,10 @@ fn malformed_context_loads_do_not_replace_either_previous_version() {
         good.replace("\"format\":", "\"format\":\"fhir-pods.questionnaire-context.v1\",\"format\":"),
         context(&form("1"), "not a terminology table"),
         context(&form("1").replace("\"version\":\"1\",", ""), &table("two")),
+        context(&form("1").replace("\"version\":\"1\"", "\"version\":1"), &table("two")),
+        context(&form("1").replace("\"version\":\"1\"", "\"version\":true"), &table("two")),
+        context(&form("1").replace(&format!("\"url\":\"{URL}\""), "\"url\":true"), &table("two")),
+        context(&form("1").replace(&format!("\"url\":\"{URL}\""), "\"url\":1"), &table("two")),
         context(&form("1").replace(&format!("\"url\":\"{URL}\","), ""), &table("two")),
         context(&form("1").replace("\"version\":\"1\",", "\"version\":\"1\",\"version\":\"2\","), &table("two")),
         context(

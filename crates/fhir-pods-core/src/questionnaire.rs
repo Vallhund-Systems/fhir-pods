@@ -281,6 +281,12 @@ impl Questionnaire {
             if identity.iter().filter(|(name, _)| name.as_ref() == key).count() != 1 {
                 return None;
             }
+            // The general form reader also handles scalar answer values. A
+            // context's identity is stricter: coercing a number into a string
+            // could replace another context with the same canonical/version.
+            if !matches!(member(resource, key), Some(Value::Str(value)) if !value.trim().is_empty()) {
+                return None;
+            }
         }
         let mut q = Self::from_value(resource)?;
         if q.url.as_deref()?.trim().is_empty() || q.version.as_deref()?.trim().is_empty() {
