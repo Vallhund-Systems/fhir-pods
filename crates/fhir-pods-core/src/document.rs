@@ -5,6 +5,7 @@
 use alloc::vec::Vec;
 
 use crate::json::{self, Value};
+use crate::terminology::TerminologyProvider;
 
 pub trait Document: Sized + Clone {
     /// For each instance of the element's parent, how many children exist
@@ -127,6 +128,7 @@ impl<'a> Parsed<'a> {
         let mut w = Walk {
             root: rt,
             tx,
+            resource_keys: Vec::new(),
             gaps: Vec::new(),
             warnings: Vec::new(),
             invariants: Vec::new(),
@@ -374,6 +376,7 @@ struct Walk<'v, 'a, 't> {
     /// Who answers the base's required bindings (the host's provider, else
     /// the bundled sets).
     tx: &'t dyn crate::terminology::TerminologyProvider,
+    resource_keys: Vec<Option<(&'v str, &'v str)>>,
     gaps: Vec<Gap>,
     /// Findings graded warning by the base spec (eld-20 …).
     warnings: Vec<Gap>,
@@ -429,6 +432,10 @@ fn profile_reaches(slicings: &[crate::compiled::Slicing], url: &str) -> bool {
 }
 
 impl<'v, 'a, 't> Walk<'v, 'a, 't> {
+    fn provider(&self) -> crate::terminology_context::ResourceProvider<'_> {
+        let (rt, id) = self.resource_keys.last().copied().flatten().map_or(("", None), |(rt, id)| (rt, Some(id)));
+        crate::terminology_context::ResourceProvider::new(self.tx, rt, id)
+    }
     fn label(&self, root: &str) -> alloc::string::String {
         let mut s = alloc::string::String::from(root);
         for (key, index) in &self.segs {
@@ -545,7 +552,7 @@ fn base_binding_object<'v, 'a>(v: &'v Value<'a>, ctx: &'static str, w: &mut Walk
         return;
     }
     let doc = TreeDoc::at(v, Some(ctx));
-    let (m, seen) = crate::engine::membership_of(b, &doc, w.tx);
+    let (m, seen) = crate::engine::membership_of(b, &doc, &w.provider());
     if seen {
         let label = w.label(w.root);
         report_base_binding(m, b, "the codings", label, w);
@@ -556,7 +563,7 @@ fn base_binding_object<'v, 'a>(v: &'v Value<'a>, ctx: &'static str, w: &mut Walk
         // (the reference validator says nothing for a set it cannot expand
         // offline, and neither do we beyond "not checked").
         let label = w.label(w.root);
-        let m = if w.tx.validate_code(b.value_set, "", "") != crate::terminology::Membership::Unknown {
+        let m = if w.provider().validate_code(b.value_set, "", "") != crate::terminology::Membership::Unknown {
             crate::terminology::Membership::NotMember
         } else {
             crate::terminology::Membership::Unknown
@@ -664,6 +671,18 @@ fn structure_at<'v, 'a>(
     needs_content: bool,
     w: &mut Walk<'v, 'a, '_>,
 ) {
+    let resource = crate::typemap::RESOURCES.binary_search(&ctx).is_ok();
+    if resource {
+        let key = if let Value::Object(fields) = v {
+            fields.iter().find(|(key, _)| key.as_ref() == "id").and_then(|(_, value)| match value {
+                Value::Str(id) => Some((ctx, id.as_ref())),
+                _ => None,
+            })
+        } else {
+            None
+        };
+        w.resource_keys.push(key);
+    }
     w.ctxs.push((ctx, key));
     w.nodes.push(v);
     datatype_invariants(v, ctx, w);
@@ -672,6 +691,9 @@ fn structure_at<'v, 'a>(
     structure_object(v, ctx, path, contained, needs_content, w);
     w.nodes.pop();
     w.ctxs.pop();
+    if resource {
+        w.resource_keys.pop();
+    }
 }
 
 /// A datatype's own invariants (cpt-2, per-1, qty-3, rng-2, tim-* …) on
@@ -1555,7 +1577,7 @@ fn structure_object<'v, 'a>(
                 } else if let (Value::Str(code), "code", Some(b)) = (x, ch.ty, base_binding(ctx, bare, w)) {
                     // the base's required binding on a code: what the
                     // reference validator holds every resource to
-                    let m = w.tx.validate_code(b.value_set, "", code);
+                    let m = w.provider().validate_code(b.value_set, "", code);
                     let label = w.label(w.root);
                     report_base_binding(m, b, code, label, w);
                 } else if let Some(url) = unknown_in_known_space(ch.ty, x, ctx, bare) {
@@ -1666,6 +1688,7 @@ impl<'v, 'a> Document for TreeDoc<'v, 'a> {
         let mut w = Walk {
             root: rt,
             tx,
+            resource_keys: Vec::new(),
             gaps: Vec::new(),
             warnings: Vec::new(),
             invariants: Vec::new(),
@@ -1863,6 +1886,7 @@ mod context_tests {
         let w = Walk {
             root: "Patient",
             tx: &crate::terminology::Bundled,
+            resource_keys: Vec::new(),
             gaps: Vec::new(),
             warnings: Vec::new(),
             invariants: Vec::new(),
@@ -1898,6 +1922,7 @@ mod context_tests {
         let w = Walk {
             root: "Patient",
             tx: &crate::terminology::Bundled,
+            resource_keys: Vec::new(),
             gaps: Vec::new(),
             warnings: Vec::new(),
             invariants: Vec::new(),

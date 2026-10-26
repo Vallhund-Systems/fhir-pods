@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.25.0
+
+- Add strict atomic `fhir-pods.terminology-contexts.v1` installations through the
+  existing terminology loader. Explicit resourceType/id ownership selects original
+  complete tables through base/profile/extension/nested/target validation and
+  lower/lift/export. Shared profiles and ValueSet URLs do not share ownership.
+- Scoped unknowns retain warnings/needs without other-table/callback authority;
+  unrelated resources retain the configured provider. Malformed installations
+  preserve state. Duplicate scoped identities in an input refuse with the new
+  `terminology.context-ambiguous` rule. ABI14 is unchanged.
+
 ## 0.24.0 — 2026-10-26
 
 A host can bind each exact Questionnaire canonical/version to its own complete

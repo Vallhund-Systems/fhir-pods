@@ -62,7 +62,26 @@ pub const ABI_VERSION: u32 = 14;
 
 /// The compiled terminology table the host loaded (`fhir_pods_terminology_load`),
 /// consulted after the bundled sets and before any host callback.
-static TABLE: RwLock<Option<std::sync::Arc<Expansions>>> = RwLock::new(None);
+#[derive(Clone, Default)]
+struct TableState {
+    global: Option<Expansions>,
+    contexts: fhir_pods_core::terminology_context::ResourceContexts,
+}
+impl TerminologyProvider for TableState {
+    fn validate_code(&self, vs: &str, system: &str, code: &str) -> Membership {
+        self.global.as_ref().map_or(Membership::Unknown, |table| table.validate_code(vs, system, code))
+    }
+    fn knows_set(&self, vs: &str) -> bool {
+        self.global.as_ref().is_some_and(|table| table.knows_set(vs))
+    }
+    fn display(&self, system: &str, code: &str) -> Option<String> {
+        self.global.as_ref().and_then(|table| table.display(system, code))
+    }
+    fn resource_context(&self, rt: &str, id: &str) -> Option<&Expansions> {
+        self.contexts.resource_context(rt, id)
+    }
+}
+static TABLE: RwLock<Option<std::sync::Arc<TableState>>> = RwLock::new(None);
 
 /// Validate with the loaded Questionnaires in reach (the snapshot's own).
 fn validate_loaded(input: &[u8], tx: &dyn TerminologyProvider) -> fhir_pods_core::Validation {
@@ -562,7 +581,10 @@ fn document_json(kind: &[u8], inputs: &[u8], tx: &dyn TerminologyProvider) -> St
 /// writes; see `Expansions` in the core). It answers, after the bundled sets
 /// and before any host callback, for every call that follows — on this
 /// module, for its lifetime. Returns 1 when loaded, 0 when the text could not
-/// be parsed (the previous table stays). Empty input clears the table.
+/// be parsed (the previous state stays). Empty input clears all tables. Strict
+/// `fhir-pods.terminology-contexts.v1` JSON installs explicit resource ownership
+/// atomically, preserving the configured global table. Empty contexts clear only
+/// ownership; a plain table clears ownership and replaces the global table.
 #[no_mangle]
 pub unsafe extern "C" fn fhir_pods_terminology_load(ptr: *const u8, len: usize) -> i32 {
     let text = input(ptr, len);
@@ -571,9 +593,18 @@ pub unsafe extern "C" fn fhir_pods_terminology_load(ptr: *const u8, len: usize) 
         *slot = None;
         return 1;
     }
+    // The operational JSON format replaces all ownership atomically while
+    // preserving the configured global table for unrelated resources. A plain
+    // table explicitly returns to legacy mode and clears resource ownership.
+    if text.iter().find(|b| !b.is_ascii_whitespace()) == Some(&b'{') {
+        let Some(contexts) = fhir_pods_core::terminology_context::ResourceContexts::parse(text) else { return 0 };
+        let global = slot.as_ref().and_then(|state| state.global.clone());
+        *slot = Some(std::sync::Arc::new(TableState { global, contexts }));
+        return 1;
+    }
     match core::str::from_utf8(text).ok().and_then(|t| Expansions::parse(t).ok()) {
-        Some(t) => {
-            *slot = Some(std::sync::Arc::new(t));
+        Some(global) => {
+            *slot = Some(std::sync::Arc::new(TableState { global: Some(global), contexts: Default::default() }));
             1
         }
         None => 0,
@@ -1496,6 +1527,40 @@ mod tests {
             assert!(cleared.contains("\"valid\":true") && cleared.contains("could not be resolved"), "{cleared}");
             // garbage is refused and the store is unchanged
             assert_eq!(fhir_pods_questionnaire_load(b"{\"resourceType\":\"Patient\"}".as_ptr(), 26), 0);
+        }
+    }
+
+    #[test]
+    fn resource_context_installation_is_atomic_through_the_native_abi() {
+        let _guard = TABLE_LOCK.lock().unwrap();
+        let table =
+            "fhir-pods-terminology 1\n= https://forms.example.invalid/set\nhttps://forms.example.invalid/system\tone\n";
+        let quoted = |text: &str| {
+            let mut s = String::from("\"");
+            wire::escape(&mut s, text);
+            s.push('"');
+            s
+        };
+        let context = format!(
+            r#"{{"format":"fhir-pods.terminology-contexts.v1","contexts":[{{"terminology":{},"resources":[{{"resourceType":"QuestionnaireResponse","id":"one"}}]}}]}}"#,
+            quoted(table)
+        );
+        let form = r#"{"resourceType":"Questionnaire","url":"https://forms.example.invalid/form","version":"1","status":"active","item":[{"linkId":"answer","type":"choice","answerValueSet":"https://forms.example.invalid/set"}]}"#;
+        let response = r#"{"resourceType":"QuestionnaireResponse","id":"one","questionnaire":"https://forms.example.invalid/form|1","status":"completed","item":[{"linkId":"answer","answer":[{"valueCoding":{"system":"https://forms.example.invalid/system","code":"one"}}]}]}"#;
+        unsafe {
+            fhir_pods_terminology_load(std::ptr::null(), 0);
+            fhir_pods_questionnaire_load(std::ptr::null(), 0);
+            assert_eq!(fhir_pods_questionnaire_load(form.as_ptr(), form.len()), 1);
+            assert_eq!(fhir_pods_terminology_load(context.as_ptr(), context.len()), 1);
+            assert!(call(fhir_pods_validate, response).contains("\"valid\":true"));
+            let wrong = response.replace("\"code\":\"one\"", "\"code\":\"two\"");
+            assert!(call(fhir_pods_validate, &wrong).contains("\"valid\":false"));
+            let bad = context.replace("\"id\":\"one\"", "\"id\":1");
+            assert_eq!(fhir_pods_terminology_load(bad.as_ptr(), bad.len()), 0);
+            assert!(call(fhir_pods_validate, &wrong).contains("\"valid\":false"));
+            assert_eq!(fhir_pods_terminology_load(std::ptr::null(), 0), 1);
+            assert!(call(fhir_pods_validate, &wrong).contains("binding.unknown"));
+            fhir_pods_questionnaire_load(std::ptr::null(), 0);
         }
     }
 

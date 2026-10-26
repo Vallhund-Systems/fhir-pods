@@ -526,6 +526,9 @@ fn single_lineage(candidates: &[&'static CompiledProfile]) -> Option<&'static Co
 /// The profiles for a resource in `region`, or why there is none.
 pub fn select(region: &Region, resource: &Node, tx: &dyn TerminologyProvider) -> Result<Selection, String> {
     let rt = resource.member("resourceType").and_then(Node::as_str).unwrap_or("");
+    let scoped =
+        crate::terminology_context::ResourceProvider::new(tx, rt, resource.member("id").and_then(Node::as_str));
+    let tx = &scoped as &dyn TerminologyProvider;
     let own = region.candidates(rt);
     let document = region.document_candidates(rt);
     if own.is_empty() && document.is_empty() {

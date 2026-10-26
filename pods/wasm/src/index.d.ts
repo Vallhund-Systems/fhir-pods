@@ -433,7 +433,12 @@ export interface Pod {
    * writes from `$expand` responses). It answers after the bundled sets and
    * before `options.terminology`, for every call that follows. A set in the
    * table is complete: a code not listed is not a member. `false` when the
-   * text could not be parsed (the previous table stays); "" clears the table.
+   * text could not be parsed (the previous state stays); "" clears all tables.
+   * Also accepts strict `fhir-pods.terminology-contexts.v1` JSON: `contexts`
+   * contains {terminology, resources: [{resourceType,id}]}. Installs all resource
+   * ownership atomically, preserving the global table for unbound resources.
+   * Empty contexts clears ownership only; a plain table clears ownership.
+   * Check the boolean: older runtimes refuse the operational JSON format.
    */
   loadTerminology(table: string): boolean;
   /**

@@ -192,7 +192,11 @@ uint8_t *fhir_pods_profiles(void);
  * any callback, for every call that follows, for the module's lifetime. A set
  * in the table is complete — a code not listed is not a member. Returns 1 when
  * loaded, 0 when the text could not be parsed (the previous table stays);
- * empty input clears it. */
+ * empty input clears all tables. Also accepts strict operational JSON
+ * fhir-pods.terminology-contexts.v1 with contexts of {terminology, resources:
+ * [{resourceType,id}]}. Ownership replaces atomically, preserving the global
+ * table for unbound resources. Empty contexts clears ownership only; plain
+ * table loads clear ownership. Older loaders return 0; always check it. */
 int32_t fhir_pods_terminology_load(const uint8_t *ptr, size_t len);
 
 /* A Questionnaire (JSON) for every QuestionnaireResponse that names it by
