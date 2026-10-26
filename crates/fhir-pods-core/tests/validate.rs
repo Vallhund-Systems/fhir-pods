@@ -525,7 +525,7 @@ fn a_canonical_is_absolute_and_a_narrative_says_something() {
     assert!(probe_str(&frag).contains("\"valid\":true"), "{}", probe_str(&frag));
     let rel = abs.replace("http://example.org/fhir/Library/zika|1.0", "Library/zika");
     let r = probe_str(&rel);
-    assert!(r.contains("\"valid\":false") && r.contains("library is not a valid canonical"), "{r}");
+    assert!(r.contains("\"valid\":false") && r.contains("library[0] is not a valid canonical"), "{r}");
     // a uri may be relative
     let uri = r##"{"resourceType":"Basic","code":{"coding":[{"system":"codes/local","code":"x"}]}}"##;
     assert!(probe_str(uri).contains("\"valid\":true"), "{}", probe_str(uri));
@@ -1365,7 +1365,7 @@ fn an_empty_string_beside_a_carrier_with_content_is_an_absent_value() {
     assert!(errors(carried).is_empty(), "{:?}", errors(carried));
     let bare = r#"{"resourceType":"Patient","name":[{"family":""}]}"#;
     let e = errors(bare);
-    assert!(e.iter().any(|x| x.starts_with("Patient.name.family | ")), "{e:?}");
+    assert!(e.iter().any(|x| x.starts_with("Patient.name[0].family | ")), "{e:?}");
 }
 
 /// Inside a Bundle, a reference that resolves to an entry is held to the
