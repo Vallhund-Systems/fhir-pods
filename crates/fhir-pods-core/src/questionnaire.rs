@@ -35,7 +35,7 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
 use crate::json::Value;
-use crate::terminology::{Membership, TerminologyProvider};
+use crate::terminology::{Bundled, Chain, Expansions, Membership, TerminologyProvider};
 use crate::validate::{IssueType, Report, Severity};
 
 // Every finding here is a `BusinessRule` (the reference validator's own
@@ -45,6 +45,9 @@ use crate::validate::{IssueType, Report, Severity};
 
 const EXT: &str = "http://hl7.org/fhir/StructureDefinition/";
 const SDC: &str = "http://hl7.org/fhir/uv/sdc/StructureDefinition/";
+
+/// An operational loader envelope, never an exported FHIR resource.
+pub const QUESTIONNAIRE_CONTEXT_FORMAT: &str = "fhir-pods.questionnaire-context.v1";
 
 /// A parsed `Questionnaire`: what the checker reads of it.
 #[derive(Debug, Clone)]
@@ -58,6 +61,9 @@ pub struct Questionnaire {
     /// not an enumeration the pod can decide.
     contained_sets: Vec<ContainedSet>,
     items: Vec<Item>,
+    /// The complete offline table explicitly bound to this exact form version.
+    /// None preserves the existing global/provider behavior for a plain load.
+    terminology: Option<Expansions>,
 }
 
 /// A contained ValueSet, as an `answerValueSet` (`#id`) names it.
@@ -255,10 +261,33 @@ fn ext_int(v: &Value<'_>, url: &str) -> Option<i64> {
 }
 
 impl Questionnaire {
-    /// Read a `Questionnaire` from its JSON; `None` when the bytes are not one.
+    /// Read a plain `Questionnaire`, or a strict version-specific context envelope.
+    /// A refused envelope never becomes a plain form with its table discarded.
     pub fn parse(bytes: &[u8]) -> Option<Questionnaire> {
         let v = crate::json::parse(bytes).ok()?;
-        Self::from_value(&v)
+        if member(&v, "format").is_none() {
+            return Self::from_value(&v);
+        }
+        let Value::Object(fields) = &v else { return None };
+        if fields.len() != 3
+            || fields.iter().any(|(key, _)| !matches!(key.as_ref(), "format" | "questionnaire" | "terminology"))
+            || text(&v, "format") != Some(QUESTIONNAIRE_CONTEXT_FORMAT)
+        {
+            return None;
+        }
+        let resource = member(&v, "questionnaire")?;
+        let Value::Object(identity) = resource else { return None };
+        for key in ["resourceType", "url", "version"] {
+            if identity.iter().filter(|(name, _)| name.as_ref() == key).count() != 1 {
+                return None;
+            }
+        }
+        let mut q = Self::from_value(resource)?;
+        if q.url.as_deref()?.trim().is_empty() || q.version.as_deref()?.trim().is_empty() {
+            return None;
+        }
+        q.terminology = Some(Expansions::parse(text(&v, "terminology")?).ok()?);
+        Some(q)
     }
 
     pub(crate) fn from_value(v: &Value<'_>) -> Option<Questionnaire> {
@@ -274,6 +303,7 @@ impl Questionnaire {
             effective_end: period.and_then(|p| text(p, "end")).map(String::from),
             contained_sets,
             items: items_of(v, "item").into_iter().map(Item::read).collect(),
+            terminology: None,
         })
     }
 
@@ -512,6 +542,15 @@ pub(crate) fn check(
     } else {
         return not_found(canonical, label, r);
     };
+    if q.terminology.is_some() && !canonical.contains('|') {
+        r.push(
+            Severity::Warning,
+            IssueType::BusinessRule,
+            label,
+            format!("The questionnaire '{canonical}' requires an explicit version for its terminology context; the response was not validated against it"),
+        );
+        return;
+    }
     // an in-progress response is judged like any other, except that a
     // missing required answer is a warning there, not an error
     let in_progress = !matches!(text(qr, "status").unwrap_or(""), "completed" | "amended");
@@ -538,8 +577,33 @@ pub(crate) fn check(
             }
         }
     }
-    let mut c = Checker { q, tx, root: qr, in_progress, stack: Vec::new() };
+    let context = q.terminology.as_ref().map(|table| ScopedTerminology { table, needs: tx });
+    let provider = context.as_ref().map_or(tx, |provider| provider as &dyn TerminologyProvider);
+    let mut c = Checker { q, tx: provider, root: qr, in_progress, stack: Vec::new() };
     c.items(&q.items, qr, label, r);
+}
+
+/// Bundled standard sets keep their existing precedence. An unknown set stays
+/// unknown: other forms' tables and global callbacks are not this form's scope.
+/// Discovery observes the need without consulting those alternate authorities.
+struct ScopedTerminology<'a> {
+    table: &'a Expansions,
+    needs: &'a dyn TerminologyProvider,
+}
+impl TerminologyProvider for ScopedTerminology<'_> {
+    fn validate_code(&self, value_set: &str, system: &str, code: &str) -> Membership {
+        let membership = Chain(&[&Bundled, self.table]).validate_code(value_set, system, code);
+        if membership == Membership::Unknown {
+            self.needs.record_need(value_set, system, code);
+        }
+        membership
+    }
+    fn knows_set(&self, value_set: &str) -> bool {
+        Bundled.knows_set(value_set) || self.table.knows_set(value_set)
+    }
+    fn display(&self, system: &str, code: &str) -> Option<String> {
+        Chain(&[&Bundled, self.table]).display(system, code)
+    }
 }
 
 fn not_found(canonical: &str, label: &str, r: &mut Report) {

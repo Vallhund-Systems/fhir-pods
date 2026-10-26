@@ -440,7 +440,13 @@ export interface Pod {
    * Load a Questionnaire (JSON) for every QuestionnaireResponse validated
    * after it that names it by canonical (`url`, or `url|version`); a
    * contained Questionnaire or a bundle entry is found without loading.
-   * `false` when the JSON is not a Questionnaire; "" clears the store.
+   * Also accepts a strict `{ format: "fhir-pods.questionnaire-context.v1",
+   * questionnaire: <Questionnaire>, terminology: <table text> }` envelope.
+   * The form must name its url and version; responses name that exact version.
+   * Its complete table is isolated from other forms/global providers. Unknown
+   * membership remains a warning and a terminology need. Plain loads retain
+   * global/provider behavior. `false` on refusal without replacing the prior
+   * entry; "" clears all forms and their owned contexts.
    */
   loadQuestionnaire(json: string): boolean;
   /**

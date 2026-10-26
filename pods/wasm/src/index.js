@@ -159,7 +159,10 @@ export async function instantiate(source, options = {}) {
     // A Questionnaire for every QuestionnaireResponse that names it by
     // canonical in any call after it — validate, lower, lift, export,
     // document alike (a contained one or a bundle entry needs no load).
-    // false when the JSON is not a Questionnaire; "" clears the store.
+    // Also accepts a strict { format: "fhir-pods.questionnaire-context.v1",
+    // questionnaire, terminology } envelope for an exact form version and its
+    // complete offline table. Other global tables/providers are not borrowed.
+    // false on refusal without replacing the prior entry; "" clears all contexts.
     loadQuestionnaire: (json) => callInt(ex.fhir_pods_questionnaire_load, json) === 1,
     // What to resolve for a verdict free of terminology warnings.
     terminologyNeeds: (json) => JSON.parse(call(ex.fhir_pods_terminology_needs, json)).needs,

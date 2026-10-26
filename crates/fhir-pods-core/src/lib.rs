@@ -672,11 +672,12 @@ impl Validator {
         self
     }
 
-    /// Apply `url`'s profile to every `resource_type` resource that declares
-    /// no profile of its own (e.g. AU Core Patient for a bare `Patient`).
     /// Load a `Questionnaire` (JSON) for responses that name it by canonical
-    /// (`url`, or `url|version`). Returns whether the bytes were one; a
-    /// second load of the same canonical replaces the first.
+    /// (`url`, or `url|version`). Returns whether a form/context was loaded; a
+    /// second load of the same canonical and version replaces that entry.
+    /// A strict `fhir-pods.questionnaire-context.v1` envelope can bind an exact
+    /// form version to its complete offline terminology table; see
+    /// [`questionnaire::QUESTIONNAIRE_CONTEXT_FORMAT`].
     pub fn load_questionnaire(&mut self, bytes: &[u8]) -> bool {
         let Some(q) = questionnaire::Questionnaire::parse(bytes) else { return false };
         self.questionnaires.retain(|k| !(k.url == q.url && k.version == q.version));
@@ -685,7 +686,7 @@ impl Validator {
     }
 
     /// [`load_questionnaire`](Self::load_questionnaire), builder-style; bytes
-    /// that are not a Questionnaire are ignored.
+    /// that the loader refuses are ignored.
     pub fn with_questionnaire(mut self, bytes: &[u8]) -> Self {
         self.load_questionnaire(bytes);
         self
