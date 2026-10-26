@@ -401,6 +401,9 @@ export interface CatalogueProfile {
   resourceType: string;
   kind: "resource" | "datatype" | "extension";
   base: string | null;
+  /** SHA256 of the exact host StructureDefinition file consumed by compilation.
+   * Absent for shipped profiles or older artifacts; do not infer source identity. */
+  sourceSha256?: string;
 }
 
 export interface Catalogue {

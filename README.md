@@ -399,6 +399,22 @@ FEATURES=host-profiles ./scripts/build-wasm.sh          # the pods (ios / androi
 ./scripts/gen-host-profiles.sh --reset                  # back to the stub
 ```
 
+`profiles()` includes optional `sourceSha256` for compiled host profiles: SHA256
+of the exact original StructureDefinition file bytes consumed by the compiler.
+The build stages a private copy of host inputs and compiles and fingerprints that
+same copy, so changes to the original package cannot substitute a different source
+after compilation. Duplicate input canonicals refuse before registry replacement.
+The fingerprint is compiled into the artifact, not supplied by the caller at run
+time. Verify the artifact itself, then compare this field with the corresponding
+verified package file digest before relying on its declared profile. A missing or
+mismatched fingerprint is not evidence of matching source. URL/type/version alone
+are insufficient. Compile from the package's original files: formatting changes
+also change this byte identity; nothing silently canonicalizes or rewrites them.
+Shipped profiles/older artifacts do not claim host source identities; `--reset`
+clears host fingerprint metadata along with the host registry for the next build.
+This metadata identifies input bytes, not independent-engine or clinical acceptance.
+Version0.26.0 retains ABI14 and adds no entrypoint or changed validation rule.
+
 The host package is primary: every resource profile, `Identifier` and
 complex `Extension` profile in it is compiled; the pinned packages are what
 it may derive from and slice by (AU Core, US Core, IPS, …). The registry is

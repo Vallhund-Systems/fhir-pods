@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.26.0
+
+- Expose optional artifact-bound `sourceSha256` on compiled host catalogue profiles,
+  identifying the exact raw StructureDefinition input. Stage private host inputs
+  before generation so compilation and fingerprinting consume the same bytes.
+- Refuse duplicate host canonical ownership before registry replacement; reset
+  clears host source metadata. Shipped catalogue rows, validation semantics and
+  ABI14 remain compatible. Consumers must compare the attestation with their
+  verified original package files; URL/type discovery alone is insufficient.
+
 ## 0.25.0
 
 - Add strict atomic `fhir-pods.terminology-contexts.v1` installations through the
