@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.23.1 — 2026-10-26
 
 Primitive value findings now retain repetition indices in their instance paths
 and serialized `OperationOutcome.issue.expression`. A bad nested questionnaire
