@@ -647,10 +647,18 @@ an export mapping, the way `uk`/`ca`/`nz` came in 0.13.0.
   `DATATYPE_PROFILE_ELEMENTS` table — 105 rows in the shipped registry
   beside the one `SimpleQuantity` row: `CodeableConcept-uv-ips` 90,
   `au-dosage` 7, `profile-identifier` 5, `NzAddress`, `NzContactpoint`,
-  `Coding-uv-ips` 1 each. Where the walk meets such an element it validates
-  each instance against the compiled profile, as it validates a slice's
-  instance against the slice's profile, and reports its findings at the
-  element. Probed against validator_cli 6.10.4 (`-ig` the guide's package,
+  `Coding-uv-ips` 1 each. Such a profile is compiled with only what it adds
+  over its base datatype — the rules its differential states that the base
+  does not, the invariants whose keys the base does not carry, its own
+  slicings — since its snapshot restates the base (`cpt-2`, `Dosage.text`
+  max 1), which the shape walk already holds every instance to; and an
+  extension slice's profile inside it is left to the shape walk, which holds
+  every extension whose url names a compiled extension profile to it at its
+  own indexed path. Each finding is therefore said once, as the reference
+  validator says it. Where the walk meets such an element it validates each
+  instance against that compiled profile and reports its findings at the
+  instance, indexed (`Patient.address[1].extension:suburb`; the oracle's
+  `Patient.address[1]`). Probed against validator_cli 6.10.4 (`-ig` the guide's package,
   `conformance/probes/nz-*`, `ca-*`): an NZ Base Patient whose address
   carries two `suburb` extensions is `error Address.extension:suburb: max
   allowed = 1, but found 2 (from
@@ -685,7 +693,13 @@ an export mapping, the way `uk`/`ca`/`nz` came in 0.13.0.
   The generator writes such a row with the canonicals joined by a space, which
   names no compiled profile, and the engine reports the element, where it is
   present, as an **information** `not-supported` issue naming them; nothing
-  is dropped without a trace. No shipped profile has one.
+  is dropped without a trace. No shipped profile has one. The same issue,
+  worded by its cause, marks a row whose single profile the registry does not
+  carry, and one whose profile sits deeper than the eight levels of profile
+  the engine follows. A host package's own datatype profile held to alone is
+  compiled, attested (`sourceSha256`) and refused without a snapshot or under
+  a shipped canonical like the host's other profiles
+  (`tools/host_profile_sources.py`).
 - **A Bundle entry with a resource carries a `fullUrl`** (0.8.3), as the
   reference validator requires — except a transaction's or batch's create,
   whose resource has no identity yet.

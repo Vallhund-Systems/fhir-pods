@@ -1,0 +1,34 @@
+{
+  "resourceType": "Patient",
+  "id": "p8",
+  "meta": {
+    "profile": [
+      "http://hl7.org.nz/fhir/StructureDefinition/NzPatient"
+    ]
+  },
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Probe</p></div>"
+  },
+  "name": [
+    {
+      "family": "Probe",
+      "given": [
+        "Pat"
+      ]
+    }
+  ],
+  "gender": "female",
+  "birthDate": "1980-01-01",
+  "address": [
+    {
+      "city": "X",
+      "extension": [
+        {
+          "url": "http://hl7.org.nz/fhir/StructureDefinition/suburb",
+          "valueCode": "abc"
+        }
+      ]
+    }
+  ]
+}

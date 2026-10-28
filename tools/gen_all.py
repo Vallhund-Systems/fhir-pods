@@ -152,6 +152,7 @@ def main():
     # compiled; nor is the base package's own (`SimpleQuantity`), the walk's.
     gen_profile.LOAD = load
     have = {sd["url"] for sd in targets}
+    over_base = set()
     stack = list(targets)
     while stack:
         sd = stack.pop()
@@ -165,6 +166,7 @@ def main():
                 if dt and url not in have and is_profile(dt) and dt.get("kind") == "complex-type":
                     targets.append(dt)
                     have.add(url)
+                    over_base.add(url)
                     stack.append(dt)
 
     # The base spec's vital-sign profiles: the reference validator applies
@@ -200,7 +202,9 @@ def main():
         used.add(mod)
         if sd["url"] in implied:
             implied_mods.append(mod)
-        text, (ne, ns, nd) = emit(sd, provenance, load)
+        # an IG datatype profile compiled for the elements held to it: only
+        # what it adds over its base (the walk holds every instance to that)
+        text, (ne, ns, nd) = emit(sd, provenance, load, differential=sd["url"] in over_base)
         with open(os.path.join(out_dir, f"{mod}.rs"), "w") as f:
             f.write(text)
         mods.append((mod, sd.get("title") or sd_id, ne, ns, nd))

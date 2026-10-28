@@ -394,5 +394,40 @@
     "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
     "expect": false,
     "reason": "An AU identifier profile reached through a slice is applied: an IHI failing the Luhn check breaks au-ihi's inv-ihi-value-2 (validator_cli 6.10.4, at Patient.identifier[1])."
+  },
+  {
+    "file": "nz-address-second-of-three-two-suburbs.json",
+    "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+    "ig": "fhir.org.nz.ig.base#3.1.0",
+    "expect": false,
+    "reason": "NzAddress applies to each address: of three, the second's two suburbs break max 1 (validator_cli 6.10.4, at Patient.address[1]; the pod names the same address)."
+  },
+  {
+    "file": "nz-telecom-value-no-system.json",
+    "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+    "ig": "fhir.org.nz.ig.base#3.1.0",
+    "expect": false,
+    "reason": "A telecom with a value and no system is cpt-2, reported once (validator_cli 6.10.4, at Patient.telecom[0]): NzContactpoint applies only what it adds over ContactPoint, not the base invariant again."
+  },
+  {
+    "file": "nz-address-suburb-wrong-type.json",
+    "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+    "ig": "fhir.org.nz.ig.base#3.1.0",
+    "expect": false,
+    "reason": "A suburb extension valued with a code where it allows a string is one error (validator_cli 6.10.4, at Patient.address[0].extension[0]): the extension is held to its profile once, by the shape walk."
+  },
+  {
+    "file": "nz-telecom-two-purposes-no-system.json",
+    "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+    "ig": "fhir.org.nz.ig.base#3.1.0",
+    "expect": false,
+    "reason": "cpt-2 and NzContactpoint's cp-purpose max 1, each once (validator_cli 6.10.4, both at Patient.telecom[0])."
+  },
+  {
+    "file": "ca-practitioner-identifier-no-system.json",
+    "profile": "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitioner",
+    "ig": "hl7.fhir.ca.baseline#1.2.0",
+    "expect": false,
+    "reason": "CA Baseline holds Practitioner.identifier to profile-identifier alone: an identifier without a system is one error from it (validator_cli 6.10.4, at Practitioner.identifier[0])."
   }
 ]

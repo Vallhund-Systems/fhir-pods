@@ -1205,16 +1205,39 @@ def datatype_profile_rows(url, c):
     return rows
 
 
-def emit(sd, provenance, load=None):
+def over_base(sd, c, invariants, load):
+    """What an IG datatype profile adds over its base datatype: the element
+    rules the base definition does not already state, and the invariants
+    whose keys it does not carry. Its snapshot restates the base (`cpt-2`,
+    `Dosage.text` max 1), which the shape walk already holds every instance
+    to; applied whole, each would be said twice where the reference
+    validator says it once. Slicings are the profile's own."""
+    base = load(DATATYPE_URL + sd["type"]) if load else None
+    if not base:
+        sys.exit(f"{sd.get('url')}: no base definition for {sd['type']}")
+    base_rules, _, _ = collect(base)
+    # a rule the differential states and the base does not (a snapshot also
+    # expands a primitive's `id` / `value`, which the base never restates)
+    said = {e.get("path") for e in (sd.get("differential") or {}).get("element", []) if ":" not in e.get("id", "")}
+    c.elements = {p: r for p, r in c.elements.items() if p in said and base_rules.get(p) != r}
+    base_keys = {key for _, key, *_ in invariants_of(base)}
+    return [i for i in invariants if i[1] not in base_keys]
+
+
+def emit(sd, provenance, load=None, differential=False):
+    """The Rust source for the profile, and `(elements, slices, deferred)`
+    counts. `differential`: an IG datatype profile applied where an element
+    is held to it (gen_all.py) — only what it adds over its base."""
     global LOAD
     LOAD = load
     if load and not DATATYPE_BINDINGS:
         index_datatype_bindings(load)
-    """The Rust source for the profile, and `(elements, slices, deferred)` counts."""
     c = build(sd, load)
     DATATYPE_ROWS.extend(datatype_profile_rows(sd.get("url"), c))
     name = sd.get("title") or sd.get("name") or sd.get("id") or sd.get("url")
     invariants = invariants_of(sd)
+    if differential:
+        invariants = over_base(sd, c, invariants, load)
     n_slices = sum(len(s[2]) for s in c.slicings)
     out = [
         # the package list lives in mod.rs alone, so adding a guide does not

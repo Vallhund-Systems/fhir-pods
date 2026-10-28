@@ -23,6 +23,12 @@ pub trait Document: Sized + Clone {
         p.push_str(key);
         self.instances(&p)
     }
+    /// [`Document::child_instances`], each with its index when the key holds
+    /// an array (`None` for a single value, or where the adapter cannot tell)
+    /// — what a reported path names it by (`address[1]`).
+    fn child_instances_indexed(&self, key: &str) -> Vec<(Option<usize>, Self)> {
+        self.child_instances(key).into_iter().map(|c| (None, c)).collect()
+    }
     /// This node's scalar value as text, if it is a scalar.
     fn as_scalar(&self) -> Option<&str>;
     /// This node's value if it is a JSON number (its literal text).
@@ -418,7 +424,7 @@ struct Walk<'v, 'a, 't> {
 
 /// Does a profile reach an extension of this url through a slice (an
 /// inherited extension profile, or a profile discriminator)?
-fn profile_reaches(slicings: &[crate::compiled::Slicing], url: &str) -> bool {
+pub(crate) fn profile_reaches(slicings: &[crate::compiled::Slicing], url: &str) -> bool {
     slicings.iter().any(|sl| {
         sl.slices.iter().any(|s| {
             s.profile == Some(url)
@@ -1777,6 +1783,14 @@ impl<'v, 'a> Document for TreeDoc<'v, 'a> {
             out.push(TreeDoc { root: n, ctx: if ctx == Some("Resource") { resource_ctx(n) } else { ctx }, carrier })
         });
         out
+    }
+
+    fn child_instances_indexed(&self, key: &str) -> Vec<(Option<usize>, Self)> {
+        let array = matches!(
+            self.container(),
+            Some(Value::Object(kvs)) if kvs.iter().any(|(k, v)| k.as_ref() == key && matches!(v, Value::Array(_)))
+        );
+        self.child_instances(key).into_iter().enumerate().map(|(i, c)| (array.then_some(i), c)).collect()
     }
 
     fn as_scalar(&self) -> Option<&str> {

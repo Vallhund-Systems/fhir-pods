@@ -1827,12 +1827,12 @@ fn an_ig_datatype_profile_an_element_is_held_to_alone_is_applied() {
     assert!(errors(&nz(&format!(r#""address":[{{"city":"x","extension":[{suburb}]}}]"#))).is_empty());
     assert_eq!(
         errors(&nz(&format!(r#""address":[{{"city":"x","extension":[{suburb},{suburb}]}}]"#))),
-        ["structure.max | Patient.address.extension:suburb"]
+        ["structure.max | Patient.address[0].extension:suburb"]
     );
     assert!(errors(&nz(&format!(r#""telecom":[{{"system":"phone","value":"0","extension":[{purpose}]}}]"#))).is_empty());
     assert_eq!(
         errors(&nz(&format!(r#""telecom":[{{"system":"phone","value":"0","extension":[{purpose},{purpose}]}}]"#))),
-        ["structure.max | Patient.telecom.extension:cp-purpose"]
+        ["structure.max | Patient.telecom[0].extension:cp-purpose"]
     );
     // CA Baseline holds Patient.identifier to its profile-identifier alone:
     // the oracle reports the missing system from both definitions, as here
@@ -1844,7 +1844,35 @@ fn an_ig_datatype_profile_an_element_is_held_to_alone_is_applied() {
     assert!(errors(&ca(r#"{"system":"https://example.org/mrn","value":"v"}"#)).is_empty());
     assert_eq!(
         errors(&ca(r#"{"value":"v"}"#)),
-        ["structure.required | Patient.identifier.system", "structure.required | Patient.identifier.system"]
+        ["structure.required | Patient.identifier.system", "structure.required | Patient.identifier[0].system"]
+    );
+    // what the IG profile adds over its base, said once (probed, 6.10.4):
+    // a value with no system is one cpt-2, a suburb valued with a code is
+    // one finding from the shape walk, and the bad one of three addresses is
+    // named by its index
+    assert_eq!(errors(&nz(r#""telecom":[{"value":"000"}]"#)), ["inv.cpt-2 | Patient.telecom[0]"]);
+    assert_eq!(
+        errors(&nz(&format!(r#""telecom":[{{"value":"000","extension":[{purpose},{purpose}]}}]"#))),
+        ["inv.cpt-2 | Patient.telecom[0]", "structure.max | Patient.telecom[0].extension:cp-purpose"]
+    );
+    assert_eq!(
+        errors(&nz(
+            r#""address":[{"city":"x","extension":[{"url":"http://hl7.org.nz/fhir/StructureDefinition/suburb","valueCode":"abc"}]}]"#
+        )),
+        ["structure.choice | Patient.address[0].extension[0].Extension.value[x]"]
+    );
+    assert_eq!(
+        errors(&nz(&format!(
+            r#""address":[{{"city":"a"}},{{"city":"b","extension":[{suburb},{suburb}]}},{{"city":"c"}}]"#
+        ))),
+        ["structure.max | Patient.address[1].extension:suburb"]
+    );
+    // CodeableConcept-uv-ips restates no base rule: a text given as an array
+    // is the walk's one finding (probed: one error)
+    let ips = r#"{"resourceType":"Condition","meta":{"profile":["http://hl7.org/fhir/uv/ips/StructureDefinition/Condition-uv-ips"]},"clinicalStatus":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/condition-clinical","code":"active"}]},"code":{"text":["a","b"]},"subject":{"reference":"Patient/p"}}"#;
+    assert_eq!(
+        errors(ips).iter().filter(|e| e.ends_with("Condition.code.text")).collect::<Vec<_>>(),
+        [&"structure.array | Condition.code.text".to_string()]
     );
     // AU Core lets Patient.address be `Address` or `au-address`: an address
     // breaking every au-address rule is valid on both sides (probed)

@@ -22,18 +22,28 @@ datatype profile alone is compiled into the registry (`tools/gen_all.py`:
 `profile-identifier` was already there) and the element is a row of the
 registry's `DATATYPE_PROFILE_ELEMENTS`, now 106 rows: `CodeableConcept-uv-ips`
 90, `au-dosage` 7, `profile-identifier` 5, `NzAddress`, `NzContactpoint`,
-`Coding-uv-ips` and the existing `SimpleQuantity` one each. The engine
-validates each instance against the compiled profile, as it does a slice's
-profile, and reports its findings at the element. A type that lists its base
+`Coding-uv-ips` and the existing `SimpleQuantity` one each. Such a profile
+is compiled with only what it adds over its base datatype (the differential's
+rules the base does not state, invariants whose keys the base does not
+carry, its slicings); an extension slice's profile inside it is left to the
+shape walk, which already holds that extension to it. The engine validates
+each instance against the compiled profile and reports its findings at the
+indexed instance (`Patient.address[1].extension:suburb`), each once: a
+telecom with a value and no system is one `cpt-2`, as the oracle has it, not
+a second one from `NzContactpoint`'s snapshot. A type that lists its base
 datatype beside IG profiles (AU Core's `Address` or `au-address`; every AU
 identifier list, which starts with `Identifier`) is an any-of the base
 already satisfies and gets no row. Two or more IG profiles with no base among
 them would be a row naming no compiled profile, reported where the element is
 present as an information `not-supported` issue; no shipped profile has one.
+A host package's own datatype profile held to alone is compiled like this
+too, and the host guards cover it: it carries its `sourceSha256`, and
+`scripts/gen-host-profiles.sh` refuses it by name without a snapshot and
+refuses it under a shipped canonical (`tools/test_host_profile_sources.py`).
 A Bundle-entry type check on a slice's sub-element (`slice.profiles`) no
 longer treats a compiled datatype profile there as a resource the entry may be.
 
-Probed with the change (`conformance/probes/`, ten new): CA Baseline's
+Probed with the change (`conformance/probes/`, fifteen new): CA Baseline's
 Patient identifier without a `system` is two errors on both sides, the
 oracle reporting it from `profile-identifier` and from the Patient profile's
 own snapshot, as the pod now does (the verdict was already invalid here); an

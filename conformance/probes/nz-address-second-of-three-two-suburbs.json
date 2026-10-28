@@ -1,0 +1,68 @@
+{
+  "resourceType": "Patient",
+  "id": "p4",
+  "meta": {
+    "profile": [
+      "http://hl7.org.nz/fhir/StructureDefinition/NzPatient"
+    ]
+  },
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Probe</p></div>"
+  },
+  "name": [
+    {
+      "family": "Probe",
+      "given": [
+        "Pat"
+      ]
+    }
+  ],
+  "gender": "female",
+  "birthDate": "1980-01-01",
+  "address": [
+    {
+      "line": [
+        "1 Probe St"
+      ],
+      "city": "A",
+      "country": "NZ",
+      "extension": [
+        {
+          "url": "http://hl7.org.nz/fhir/StructureDefinition/suburb",
+          "valueString": "A"
+        }
+      ]
+    },
+    {
+      "line": [
+        "1 Probe St"
+      ],
+      "city": "Placeville",
+      "country": "NZ",
+      "extension": [
+        {
+          "url": "http://hl7.org.nz/fhir/StructureDefinition/suburb",
+          "valueString": "A"
+        },
+        {
+          "url": "http://hl7.org.nz/fhir/StructureDefinition/suburb",
+          "valueString": "B"
+        }
+      ]
+    },
+    {
+      "line": [
+        "1 Probe St"
+      ],
+      "city": "C",
+      "country": "NZ",
+      "extension": [
+        {
+          "url": "http://hl7.org.nz/fhir/StructureDefinition/suburb",
+          "valueString": "A"
+        }
+      ]
+    }
+  ]
+}
