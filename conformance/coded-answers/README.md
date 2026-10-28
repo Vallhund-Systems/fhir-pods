@@ -1,6 +1,6 @@
 # Coded-answer probes
 
-A hundred and twenty-three synthetic cases: a coded answer with one part missing, under every
+A hundred and thirty-two synthetic cases: a coded answer with one part missing, under every
 way a Questionnaire can name its options, and the same Codings outside a
 questionnaire. A rule written from one shape (a display with no code, which
 is an error) once reached another (a code with no system, which
@@ -26,6 +26,9 @@ url unique to its file, or none: the oracle caches a url-bearing set's
 results by url and version, not content, so a url shared between two
 definitions has the first one read decide for both (`run.py` refuses such a
 fixture set, `../canonical_guard.py`). Outside a questionnaire: a required
+`CodeableConcept` (one coding, and several: a code with no system beside the
+same code with its system, in either order, beside a second code with no
+system, beside a coding of another system), an extensible and a preferred
 `CodeableConcept`, a `Coding`, an example binding, no binding.
 
 What validator_cli 6.10.4 does (`-tx n/a`; `evidence.json` has every issue):
@@ -55,10 +58,19 @@ What validator_cli 6.10.4 does (`-tx n/a`; `evidence.json` has every issue):
   besides the uri finding on the Coding.
 - **The set's name in the message** is its title, else its name, else
   `ValueSet[<url>]`; `ValueSet[null]` only when the set has no url either.
-- **Outside a questionnaire**, a required `CodeableConcept` whose only coding
-  has no system is refused (`None of the codings provided are in the value
-  set`); a `Coding` (Encounter.class, extensible in R4) and unbound or
-  example-bound concepts only warn.
+- **Outside a questionnaire**, a required `CodeableConcept` none of whose
+  codings is a member is refused (`None of the codings provided are in the
+  value set`). Under `Condition.clinicalStatus` (a set including a whole code
+  system) a coding with a code and no system is never a member — alone, with
+  a display, beside a second such coding or beside a coding of another
+  system; beside the same code with its system the concept is valid, in
+  either order (any coding decides). (Under a set whose compose is one
+  include listing its concepts the oracle infers the system and decides by
+  the listed codes — probed outside this lane, `crates/fhir-pods-core/tests/validate.rs`.) Extensible and preferred concepts, a
+  `Coding` (Encounter.class, extensible in R4), and unbound or example-bound
+  concepts only warn. (A required-bound standalone `Coding` with no system
+  only warns too, member or not — probed outside this lane, since it needs
+  the guides loaded: `crates/fhir-pods-core/tests/validate.rs`.)
 
 The pod is given `defs/` as a host gives it: the Questionnaires loaded
 (`--questionnaire`), the ValueSets compiled into a terminology table
@@ -96,9 +108,7 @@ its reason there:
   on purpose, stricter than the pinned 6.10.4, which has no message for it
   and reports information — the entry goes when the pin moves;
 - a system of whitespace: the uri finding's path spelling;
-- the same string under `answerOption`s: a path spelling only;
-- outside a questionnaire, a required `CodeableConcept` whose only coding has
-  a code and no system: the pod's general binding check accepts it.
+- the same string under `answerOption`s: a path spelling only.
 
 The pod's exact messages and rule ids for these shapes are pinned by the
 core's questionnaire tests (`crates/fhir-pods-core/tests/questionnaire.rs`).

@@ -183,6 +183,25 @@ def outside():
         out[f"outside-required-concept-{name}"] = {
             "resourceType": "Condition", "id": "c", "clinicalStatus": {"coding": [coding]},
             "code": {"text": "Probe"}, "subject": subject}
+    # several codings in one concept: any coding decides (T078)
+    for name, codings in {
+        "code-only-beside-coded": [{"code": "active"}, {"system": clinical, "code": "active"}],
+        "coded-beside-code-only": [{"system": clinical, "code": "active"}, {"code": "active"}],
+        "code-only-beside-code-only-nonmember": [{"code": "active"}, {"code": "bogus"}],
+        "code-only-beside-other-system": [{"code": "active"}, {"system": "http://example.org/fhir/CodeSystem/probe-other", "code": "x"}],
+        "code-only-display-member": [{"code": "active", "display": "Active"}],
+    }.items():
+        out[f"outside-required-concept-{name}"] = {
+            "resourceType": "Condition", "id": "c", "clinicalStatus": {"coding": codings},
+            "code": {"text": "Probe"}, "subject": subject}
+    for name, code in {"code-only-member": "problem-list-item", "code-only-nonmember": "bogus"}.items():
+        out[f"outside-extensible-concept-{name}"] = {
+            "resourceType": "Condition", "id": "c", "clinicalStatus": {"coding": [{"system": clinical, "code": "active"}]},
+            "category": [{"coding": [{"code": code}]}], "code": {"text": "Probe"}, "subject": subject}
+    for name, code in {"code-only-member": "vital-signs", "code-only-nonmember": "bogus"}.items():
+        out[f"outside-preferred-concept-{name}"] = {
+            "resourceType": "Observation", "id": "o", "status": "final", "category": [{"coding": [{"code": code}]}],
+            "code": {"text": "Probe"}, "subject": subject}
     for name, coding in {
         "code-only-member": {"code": "AMB"},
         "code-only-nonmember": {"code": "bogus"},
@@ -210,6 +229,11 @@ ANSWER_WORDS = {
     "system-display": "a system and a display: no code",
     "string": "a valueString on a choice item",
     "coded": "system and code (control)",
+    "code-only-beside-coded": "a code with no system beside the same code with its system (any coding decides)",
+    "coded-beside-code-only": "system and code beside the same code with no system (any coding decides)",
+    "code-only-beside-code-only-nonmember": "two codings with no system, one code in the set and one not",
+    "code-only-beside-other-system": "a code with no system beside a coding from a system the set does not include",
+    "code-only-display-member": "a code with no system and a display, the code in the set",
 }
 SHAPE_WORDS = {
     "contained-vs": "the answerValueSet contained in the Questionnaire, loaded by canonical (dom-2 forbids a contained Questionnaire containing one)",
@@ -242,6 +266,8 @@ def describe(name):
         where = {
             "outside-required-concept": "Condition.clinicalStatus, a required CodeableConcept binding",
             "outside-required-coding": "Encounter.class, a Coding (extensible binding in R4)",
+            "outside-extensible-concept": "Condition.category, an extensible CodeableConcept binding",
+            "outside-preferred-concept": "Observation.category, a preferred CodeableConcept binding",
             "outside-example-concept": "Observation.code, an example binding",
             "outside-unbound-concept": "Observation.valueCodeableConcept, no binding",
         }

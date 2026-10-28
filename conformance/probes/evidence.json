@@ -1,6 +1,6 @@
 {
-  "recorded_at": "2026-10-28T02:36:51.365787+00:00",
-  "source_revision": "5a01c572bf5cdd33728e88682180156222984e79",
+  "recorded_at": "2026-10-28T04:29:07.671381+00:00",
+  "source_revision": "39257a52a033bb67391dd37af12d034baeff622e",
   "source_dirty": false,
   "oracle_version": "6.10.4",
   "oracle_sha256": "1106b9d58f9e363e47bea7c4fc065841e5fc91fe9d062775c3bfdd212bd653cc",
@@ -1658,7 +1658,7 @@
             "code": "code-invalid",
             "id": "binding.not-member",
             "path": "Condition.clinicalStatus",
-            "message": "The value provided ('the codings') was not found in the value set 'http://hl7.org/fhir/ValueSet/condition-clinical', and a code is required from this value set"
+            "message": "None of the codings provided are in the value set 'http://hl7.org/fhir/ValueSet/condition-clinical', and a coding from this value set is required"
           },
           {
             "severity": "warning",
@@ -1733,7 +1733,7 @@
             "code": "code-invalid",
             "id": "binding.not-member",
             "path": "Condition.clinicalStatus",
-            "message": "'the codings' is not in the bound value set"
+            "message": "None of the codings provided are in the value set 'http://hl7.org/fhir/ValueSet/condition-clinical|4.0.1', and a coding from this value set is required"
           },
           {
             "severity": "warning",

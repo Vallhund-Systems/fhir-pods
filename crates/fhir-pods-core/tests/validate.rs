@@ -1060,8 +1060,7 @@ fn a_required_bound_concept_with_no_coding_is_an_error_bare_and_profiled() {
         assert!(
             e.iter().any(|x| {
                 x.starts_with("AllergyIntolerance.clinicalStatus | ")
-                    && x.contains("codings")
-                    && (x.contains("not found in the value set") || x.contains("not in the bound value set"))
+                    && x.contains("None of the codings provided are in the value set")
             }),
             "meta={meta:?}: {e:?}"
         );
@@ -1302,7 +1301,10 @@ fn a_binding_beneath_a_choice_is_judged_by_the_instances_shape() {
     let e = errors(&audit(
         r#"{"coding":[{"system":"https://profiles.ihe.net/ITI/BALP/CodeSystem/OtherIdentifierTypes","display":"x"}]}"#,
     ));
-    assert!(e.iter().any(|x| x.contains("agent") && x.contains("not in the bound value set")), "{e:?}");
+    assert!(
+        e.iter().any(|x| x.contains("agent") && x.contains("None of the codings provided are in the value set")),
+        "{e:?}"
+    );
     let e = errors(&audit(r#"{"text":"x"}"#));
     assert!(e.iter().any(|x| x.contains("agent") && x.contains("No code provided")), "{e:?}");
 }
@@ -1878,4 +1880,193 @@ fn an_ig_datatype_profile_an_element_is_held_to_alone_is_applied() {
     // breaking every au-address rule is valid on both sides (probed)
     let au = r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},"identifier":[{"system":"https://example.org/mrn","value":"v"}],"name":[{"family":"Example"}],"gender":"unknown","birthDate":"1980-02-29","address":[{"city":"x","postalCode":"12345","country":"NZ"}]}"#;
     assert!(errors(au).is_empty(), "{:?}", errors(au));
+}
+
+/// A `CodeableConcept` coding with a code and no system under a required
+/// binding is placed as validator_cli 6.10.4 places it (probed 0.28.0): the
+/// oracle infers the system only where the set's compose is ONE include that
+/// lists its concepts, and decides by the listed codes there
+/// (`questionnaireresponse-mode`, `au-timezone`: a listed code is valid, any
+/// other refused); under every other compose — a whole code system
+/// (`condition-clinical`), two includes (UK Core BirthSex: a whole system
+/// beside a listed NullFlavor `UNK`; synthetic sets of two listed includes,
+/// even of one system), a filter, an expansion alone — such a code is no
+/// member ("None of the codings provided are in the value set … (codes =
+/// null#active)"). Any coding still decides: the code-only coding beside the
+/// same code with its system is valid, in either order (probe a19 of the
+/// 0.22.1 review). A set the pod does not hold (IPS's LOINC-listed EDD
+/// methods) stays "not checked" — the oracle reads its listed codes and
+/// refuses a code-only non-member there, a declared lenient case
+/// (`docs/scope.md`). Found by the mutation lane's `systemless` class and the
+/// 0.28.0 review.
+#[test]
+fn a_code_with_no_system_is_placed_as_the_oracle_infers_its_system() {
+    use fhir_pods_core::validate::Severity;
+    let errors = |json: &str| -> Vec<(String, String, &'static str)> {
+        fhir_pods_core::validate_bytes(json.as_bytes())
+            .report
+            .issues
+            .iter()
+            .filter(|i| i.severity == Severity::Error)
+            .map(|i| (i.path.clone(), i.message.clone(), i.id))
+            .collect()
+    };
+    let refused = |json: &str, at: &str| {
+        let e = errors(json);
+        assert!(
+            e.iter().any(|(p, m, id)| p.contains(at)
+                && *id == "binding.not-member"
+                && m.starts_with("None of the codings provided are in the value set")),
+            "{at}: {e:?}"
+        );
+    };
+    let accepted = |json: &str, at: &str| {
+        let e = errors(json);
+        assert!(!e.iter().any(|(p, _, _)| p.contains(at)), "{at}: {e:?}");
+    };
+    // a whole code system: refused, base definition or profile
+    let clinical = "http://terminology.hl7.org/CodeSystem/condition-clinical";
+    let condition = |profile: &str, codings: &str| {
+        format!(
+            r#"{{"resourceType":"Condition",{profile}"clinicalStatus":{{"coding":[{codings}]}},"code":{{"text":"Probe"}},"subject":{{"reference":"Patient/p"}}}}"#
+        )
+    };
+    let au_core = r#""meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-condition"]},"#;
+    for profile in ["", au_core] {
+        for codings in [
+            r#"{"code":"active"}"#,
+            r#"{"code":"active","display":"Active"}"#,
+            r#"{"code":"active"},{"code":"bogus"}"#,
+            r#"{"code":"active"},{"system":"http://example.org/fhir/CodeSystem/probe-other","code":"x"}"#,
+        ] {
+            refused(&condition(profile, codings), "clinicalStatus");
+        }
+        // any coding decides (a19), in either order
+        accepted(
+            &condition(profile, &format!(r#"{{"code":"active"}},{{"system":"{clinical}","code":"active"}}"#)),
+            "clinicalStatus",
+        );
+        accepted(
+            &condition(profile, &format!(r#"{{"system":"{clinical}","code":"active"}},{{"code":"active"}}"#)),
+            "clinicalStatus",
+        );
+    }
+    refused(
+        r#"{"resourceType":"AllergyIntolerance","clinicalStatus":{"coding":[{"code":"active"}]},"patient":{"reference":"Patient/p"}}"#,
+        "clinicalStatus",
+    );
+    // one include listing its concepts: decided by the listed codes
+    let mode = |codings: &str| {
+        format!(
+            r#"{{"resourceType":"QuestionnaireResponse","status":"completed","extension":[{{"url":"http://hl7.org/fhir/StructureDefinition/questionnaireresponse-completionMode","valueCodeableConcept":{{"coding":[{codings}]}}}}]}}"#
+        )
+    };
+    accepted(&mode(r#"{"code":"ELECTRONIC"}"#), "extension");
+    accepted(&mode(r#"{"code":"VERBAL"}"#), "extension");
+    accepted(&mode(r#"{"code":"zzz"},{"code":"ELECTRONIC"}"#), "extension");
+    refused(&mode(r#"{"code":"zzz"}"#), "extension");
+    let timezone = |code: &str| {
+        format!(
+            r#"{{"resourceType":"Location","hoursOfOperation":[{{"daysOfWeek":["mon"],"openingTime":"08:00:00","_openingTime":{{"extension":[{{"url":"http://hl7.org.au/fhir/StructureDefinition/au-timezone","valueCodeableConcept":{{"coding":[{{"code":"{code}"}}]}}}}]}}}}]}}"#
+        )
+    };
+    accepted(&timezone("Australia/Brisbane"), "extension");
+    refused(&timezone("Mars/Base"), "extension");
+    // two includes (a whole system beside a listed code): refused, listed or not
+    let birth_sex = |code: &str| {
+        format!(
+            r#"{{"resourceType":"Patient","extension":[{{"url":"https://fhir.hl7.org.uk/StructureDefinition/Extension-UKCore-BirthSex","valueCodeableConcept":{{"coding":[{{"code":"{code}"}}]}}}}]}}"#
+        )
+    };
+    refused(&birth_sex("UNK"), "extension");
+    refused(&birth_sex("F"), "extension");
+    // a set the pod does not hold: not checked, never refused
+    let edd = |code: &str| {
+        format!(
+            r#"{{"resourceType":"Observation","meta":{{"profile":["http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-pregnancy-edd-uv-ips"]}},"status":"final","code":{{"coding":[{{"code":"{code}"}}]}},"subject":{{"reference":"Patient/p"}},"effectiveDateTime":"2020-01-10","performer":[{{"reference":"Patient/p"}}],"valueDateTime":"2020-05-02"}}"#
+        )
+    };
+    accepted(&edd("11778-8"), "Observation.code");
+    accepted(&edd("zzz-1"), "Observation.code");
+    // extensible and preferred concepts are not held to their sets at all
+    let category = r#"{"resourceType":"Condition","clinicalStatus":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/condition-clinical","code":"active"}]},"category":[{"coding":[{"code":"bogus"}]}],"code":{"text":"Probe"},"subject":{"reference":"Patient/p"}}"#;
+    assert!(fhir_pods_core::validate_bytes(category.as_bytes()).report.is_valid());
+}
+
+/// A host's table holds a set's members, not the compose they came from, so
+/// a code given with no system that the table holds cannot be placed (the
+/// oracle accepts it under one listed include and refuses it under any other
+/// compose, an expansion alone included): not checked. A code the table does
+/// not hold under any system is refused under every compose.
+#[test]
+fn a_code_with_no_system_under_a_host_table_is_refused_only_when_absent() {
+    use fhir_pods_core::terminology::{Bundled, Chain, Expansions, Membership, TerminologyProvider};
+    use fhir_pods_core::validate::Severity;
+    let table = Expansions::parse(
+        "fhir-pods-terminology 1\n= http://hl7.org/fhir/ValueSet/condition-clinical\nhttp://example.org/fhir/CodeSystem/probe-host\tactive\n",
+    )
+    .unwrap();
+    assert_eq!(
+        table.validate_code_only("http://hl7.org/fhir/ValueSet/condition-clinical", "active"),
+        Membership::Unknown
+    );
+    assert_eq!(
+        table.validate_code_only("http://hl7.org/fhir/ValueSet/condition-clinical", "zzz"),
+        Membership::NotMember
+    );
+    assert_eq!(table.validate_code_only("http://example.org/fhir/ValueSet/none", "zzz"), Membership::Unknown);
+    // the bundled set answers first: condition-clinical is a whole system
+    assert_eq!(
+        Chain(&[&Bundled, &table]).validate_code_only("http://hl7.org/fhir/ValueSet/condition-clinical", "active"),
+        Membership::NotMember
+    );
+    let host_only = r#"{"resourceType":"Observation","meta":{"profile":["http://hl7.org/fhir/uv/ips/StructureDefinition/Observation-pregnancy-edd-uv-ips"]},"status":"final","code":{"coding":[{"code":"CODE"}]},"subject":{"reference":"Patient/p"},"effectiveDateTime":"2020-01-10","performer":[{"reference":"Patient/p"}],"valueDateTime":"2020-05-02"}"#;
+    let edd = Expansions::parse(
+        "fhir-pods-terminology 1\n= http://hl7.org/fhir/uv/ips/ValueSet/edd-method-uv-ips\nhttp://loinc.org\t11778-8\n",
+    )
+    .unwrap();
+    let at = |code: &str, sev: Severity| -> usize {
+        fhir_pods_core::validate_bytes_with(host_only.replace("CODE", code).as_bytes(), &Chain(&[&Bundled, &edd]))
+            .report
+            .issues
+            .iter()
+            .filter(|i| i.severity == sev && i.path == "Observation.code")
+            .count()
+    };
+    assert_eq!(at("11778-8", Severity::Error), 0);
+    assert_eq!(at("11778-8", Severity::Warning), 1, "held but not placeable: not checked");
+    assert_eq!(at("zzz-1", Severity::Error), 1);
+}
+
+/// A standalone `Coding` under a required binding with a code and no system
+/// is not judged against its set: validator_cli 6.10.4 only warns ("A code
+/// with no system has no defined meaning, and it cannot be validated"),
+/// member or not — probed on AU Base's `medication-type` extension
+/// (`valueCoding`, a set the pod decides) and US Core's race `ombCategory`.
+/// A system the set does not include is still refused.
+#[test]
+fn a_standalone_coding_with_no_system_is_not_judged_against_its_set() {
+    use fhir_pods_core::validate::Severity;
+    let medication = |coding: &str| {
+        format!(
+            r#"{{"resourceType":"Medication","code":{{"coding":[{{"system":"http://example.org/fhir/CodeSystem/probe-med","code":"x","extension":[{{"url":"http://hl7.org.au/fhir/StructureDefinition/medication-type","valueCoding":{coding}}}]}}]}}}}"#
+        )
+    };
+    let errors = |json: &str| -> Vec<String> {
+        fhir_pods_core::validate_bytes(json.as_bytes())
+            .report
+            .issues
+            .iter()
+            .filter(|i| i.severity == Severity::Error)
+            .map(|i| format!("{} | {}", i.path, i.message))
+            .collect()
+    };
+    assert!(errors(&medication(r#"{"code":"BPG"}"#)).is_empty());
+    assert!(errors(&medication(r#"{"code":"bogus"}"#)).is_empty());
+    assert!(errors(&medication(
+        r#"{"system":"http://terminology.hl7.org.au/CodeSystem/medication-type","code":"BPG"}"#
+    ))
+    .is_empty());
+    let e = errors(&medication(r#"{"system":"http://example.org/fhir/CodeSystem/probe-other","code":"BPG"}"#));
+    assert!(e.iter().any(|m| m.contains("not in the bound value set")), "{e:?}");
 }

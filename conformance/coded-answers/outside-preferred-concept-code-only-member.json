@@ -1,0 +1,20 @@
+{
+  "resourceType": "Observation",
+  "id": "o",
+  "status": "final",
+  "category": [
+    {
+      "coding": [
+        {
+          "code": "vital-signs"
+        }
+      ]
+    }
+  ],
+  "code": {
+    "text": "Probe"
+  },
+  "subject": {
+    "reference": "Patient/p"
+  }
+}

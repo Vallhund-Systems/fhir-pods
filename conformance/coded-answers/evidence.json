@@ -1,6 +1,6 @@
 {
-  "recorded_at": "2026-10-21T01:17:56.197042+00:00",
-  "source_revision": "ed877949cdc2660fd9c1730852401f4293a0d221",
+  "recorded_at": "2026-10-28T04:28:30.952795+00:00",
+  "source_revision": "bf9454bd76a22ad84b3c88b3c943e69003b59595",
   "source_dirty": false,
   "oracle_version": "6.10.4",
   "oracle_sha256": "1106b9d58f9e363e47bea7c4fc065841e5fc91fe9d062775c3bfdd212bd653cc",
@@ -17,10 +17,10 @@
   "oracle_exit_code": 0,
   "note": "Verdict and error-path parity; every issue on both sides retained (severity, code, the pod's rule id, text, paths).",
   "counts": {
-    "total": 123,
-    "pass": 123,
+    "total": 132,
+    "pass": 132,
     "fail": 0,
-    "reviewed": 24
+    "reviewed": 23
   },
   "probes": [
     {
@@ -7760,9 +7760,9 @@
           "severity": "error",
           "code": "value",
           "rule": "value.invalid",
-          "text": "QuestionnaireResponse.item.answer.valueCoding.system is not a valid uri",
+          "text": "QuestionnaireResponse.item[0].answer[0].valueCoding.system is not a valid uri",
           "paths": [
-            "QuestionnaireResponse.item.answer.valueCoding.system"
+            "QuestionnaireResponse.item[0].answer[0].valueCoding.system"
           ]
         },
         {
@@ -7882,9 +7882,9 @@
           "severity": "error",
           "code": "value",
           "rule": "value.invalid",
-          "text": "QuestionnaireResponse.item.answer.valueCoding.system is not a valid uri",
+          "text": "QuestionnaireResponse.item[0].answer[0].valueCoding.system is not a valid uri",
           "paths": [
-            "QuestionnaireResponse.item.answer.valueCoding.system"
+            "QuestionnaireResponse.item[0].answer[0].valueCoding.system"
           ]
         },
         {
@@ -9038,14 +9038,6 @@
       "file": "outside-required-concept-code-only-member.json",
       "expect": false,
       "reason": "Outside a questionnaire \u2014 Condition.clinicalStatus, a required CodeableConcept binding: a code with no system, the code in the set.",
-      "reviewed": {
-        "local": true,
-        "missed": [
-          "Condition.clinicalStatus"
-        ],
-        "extra": [],
-        "reason": "outside a questionnaire, the general binding check: a required CodeableConcept whose only coding has a code and no system. The oracle refuses it ('None of the codings provided are in the value set', codes = null#active); the pod matches the code without a system and accepts it. Pre-dates this release (lenient at 0.22.0 too), a different rule path (binding.not-member), reported as its own task."
-      },
       "sha256": "85654fc097e626c459cb335caf650243c5e4b50620fd23cd7867252ffb6a8d06",
       "oracle_valid": false,
       "oracle_errors": [
@@ -9080,9 +9072,20 @@
           ]
         }
       ],
-      "local_valid": true,
-      "local_errors": [],
+      "local_valid": false,
+      "local_errors": [
+        "Condition.clinicalStatus"
+      ],
       "local_issues": [
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": "binding.not-member",
+          "text": "None of the codings provided are in the value set 'http://hl7.org/fhir/ValueSet/condition-clinical', and a coding from this value set is required",
+          "paths": [
+            "Condition.clinicalStatus"
+          ]
+        },
         {
           "severity": "warning",
           "code": "invariant",
@@ -9093,7 +9096,7 @@
           ]
         }
       ],
-      "review": "reviewed",
+      "review": "agreement",
       "agrees": true
     },
     {
@@ -9143,7 +9146,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": "binding.not-member",
-          "text": "The value provided ('the codings') was not found in the value set 'http://hl7.org/fhir/ValueSet/condition-clinical', and a code is required from this value set",
+          "text": "None of the codings provided are in the value set 'http://hl7.org/fhir/ValueSet/condition-clinical', and a coding from this value set is required",
           "paths": [
             "Condition.clinicalStatus"
           ]
@@ -9208,7 +9211,7 @@
           "severity": "error",
           "code": "code-invalid",
           "rule": "binding.not-member",
-          "text": "The value provided ('the codings') was not found in the value set 'http://hl7.org/fhir/ValueSet/condition-clinical', and a code is required from this value set",
+          "text": "None of the codings provided are in the value set 'http://hl7.org/fhir/ValueSet/condition-clinical', and a coding from this value set is required",
           "paths": [
             "Condition.clinicalStatus"
           ]
@@ -9220,6 +9223,531 @@
           "text": "dom-6: A resource should have narrative for robust management",
           "paths": [
             "Condition"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "outside-required-concept-code-only-beside-coded.json",
+      "expect": true,
+      "reason": "Outside a questionnaire \u2014 Condition.clinicalStatus, a required CodeableConcept binding: a code with no system beside the same code with its system (any coding decides).",
+      "sha256": "a7bcfe7db07d3a83e54c7dd7f7af491f717a7ee4b96d491e2bd2b3a69dacc2d8",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "rule": null,
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "Condition.clinicalStatus.coding[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Condition"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "Condition"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "outside-required-concept-coded-beside-code-only.json",
+      "expect": true,
+      "reason": "Outside a questionnaire \u2014 Condition.clinicalStatus, a required CodeableConcept binding: system and code beside the same code with no system (any coding decides).",
+      "sha256": "43b4329ffa1bbd5a74057bdeeb99cd827e41e7c089c2faf8b39b8846fe1b1b19",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "rule": null,
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "Condition.clinicalStatus.coding[1]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Condition"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "Condition"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "outside-required-concept-code-only-beside-code-only-nonmember.json",
+      "expect": false,
+      "reason": "Outside a questionnaire \u2014 Condition.clinicalStatus, a required CodeableConcept binding: two codings with no system, one code in the set and one not.",
+      "sha256": "f61a6f3bf3521b9cd6a0c64ac1b635694561432fc999e8b34eb2c6750edd9447",
+      "oracle_valid": false,
+      "oracle_errors": [
+        "Condition.clinicalStatus"
+      ],
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "rule": null,
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "Condition.clinicalStatus.coding[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "rule": null,
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "Condition.clinicalStatus.coding[1]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "None of the codings provided are in the value set 'Condition Clinical Status Codes' (http://hl7.org/fhir/ValueSet/condition-clinical|4.0.1), and a coding from this value set is required) (codes = null#active, null#bogus)",
+          "paths": [
+            "Condition.clinicalStatus"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Condition"
+          ]
+        }
+      ],
+      "local_valid": false,
+      "local_errors": [
+        "Condition.clinicalStatus"
+      ],
+      "local_issues": [
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": "binding.not-member",
+          "text": "None of the codings provided are in the value set 'http://hl7.org/fhir/ValueSet/condition-clinical', and a coding from this value set is required",
+          "paths": [
+            "Condition.clinicalStatus"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "Condition"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "outside-required-concept-code-only-beside-other-system.json",
+      "expect": false,
+      "reason": "Outside a questionnaire \u2014 Condition.clinicalStatus, a required CodeableConcept binding: a code with no system beside a coding from a system the set does not include.",
+      "sha256": "ad9ac60c56d3d0f4372bafc610f76f700a13f057af8add8c94e5e18449332407",
+      "oracle_valid": false,
+      "oracle_errors": [
+        "Condition.clinicalStatus"
+      ],
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "rule": null,
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "Condition.clinicalStatus.coding[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "rule": null,
+          "text": "A definition for CodeSystem 'http://example.org/fhir/CodeSystem/probe-other' could not be found, so the code cannot be validated",
+          "paths": [
+            "Condition.clinicalStatus.coding[1].system"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "None of the codings provided are in the value set 'Condition Clinical Status Codes' (http://hl7.org/fhir/ValueSet/condition-clinical|4.0.1), and a coding from this value set is required) (codes = null#active, http://example.org/fhir/CodeSystem/probe-other#x)",
+          "paths": [
+            "Condition.clinicalStatus"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Condition"
+          ]
+        }
+      ],
+      "local_valid": false,
+      "local_errors": [
+        "Condition.clinicalStatus"
+      ],
+      "local_issues": [
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": "binding.not-member",
+          "text": "None of the codings provided are in the value set 'http://hl7.org/fhir/ValueSet/condition-clinical', and a coding from this value set is required",
+          "paths": [
+            "Condition.clinicalStatus"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "Condition"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "outside-required-concept-code-only-display-member.json",
+      "expect": false,
+      "reason": "Outside a questionnaire \u2014 Condition.clinicalStatus, a required CodeableConcept binding: a code with no system and a display, the code in the set.",
+      "sha256": "068c7bd0dfa280e60dbaacd25ceaa3587cb2db0182ff7873b658364b162ecedf",
+      "oracle_valid": false,
+      "oracle_errors": [
+        "Condition.clinicalStatus"
+      ],
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "rule": null,
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "Condition.clinicalStatus.coding[0]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "None of the codings provided are in the value set 'Condition Clinical Status Codes' (http://hl7.org/fhir/ValueSet/condition-clinical|4.0.1), and a coding from this value set is required) (codes = null#active)",
+          "paths": [
+            "Condition.clinicalStatus"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Condition"
+          ]
+        }
+      ],
+      "local_valid": false,
+      "local_errors": [
+        "Condition.clinicalStatus"
+      ],
+      "local_issues": [
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "rule": "binding.not-member",
+          "text": "None of the codings provided are in the value set 'http://hl7.org/fhir/ValueSet/condition-clinical', and a coding from this value set is required",
+          "paths": [
+            "Condition.clinicalStatus"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "Condition"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "outside-extensible-concept-code-only-member.json",
+      "expect": true,
+      "reason": "Outside a questionnaire \u2014 Condition.category, an extensible CodeableConcept binding: a code with no system, the code in the set.",
+      "sha256": "c3409dca7b799804dfc3151c1004f35cde74d13b7fdb525ce2250e5db8406139",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "rule": null,
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "Condition.category[0].coding[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "None of the codings provided are in the value set 'Condition Category Codes' (http://hl7.org/fhir/ValueSet/condition-category|4.0.1), and a coding should come from this value set unless it has no suitable code (note that the validator cannot judge what is suitable) (codes = null#problem-list-item)",
+          "paths": [
+            "Condition.category[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Condition"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "Condition"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "outside-extensible-concept-code-only-nonmember.json",
+      "expect": true,
+      "reason": "Outside a questionnaire \u2014 Condition.category, an extensible CodeableConcept binding: a code with no system, the code not in the set.",
+      "sha256": "a2bd8ff65c95be207c83c92253c2649279358562dbc8cd5b53da042e89bfd701",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "rule": null,
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "Condition.category[0].coding[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "rule": null,
+          "text": "None of the codings provided are in the value set 'Condition Category Codes' (http://hl7.org/fhir/ValueSet/condition-category|4.0.1), and a coding should come from this value set unless it has no suitable code (note that the validator cannot judge what is suitable) (codes = null#bogus)",
+          "paths": [
+            "Condition.category[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Condition"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "Condition"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "outside-preferred-concept-code-only-member.json",
+      "expect": true,
+      "reason": "Outside a questionnaire \u2014 Observation.category, a preferred CodeableConcept binding: a code with no system, the code in the set.",
+      "sha256": "451836edcdc9862eb85417a0c29a9d617a8c8b4af59c7a2dbae4736aecdbcce6",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "rule": null,
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "Observation.category[0].coding[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Observation"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "rule": null,
+          "text": "Best Practice Recommendation: In general, all observations should have a performer",
+          "paths": [
+            "Observation"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "rule": null,
+          "text": "Best Practice Recommendation: In general, all observations should have an effective[x] ()",
+          "paths": [
+            "Observation"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "Observation"
+          ]
+        }
+      ],
+      "review": "agreement",
+      "agrees": true
+    },
+    {
+      "file": "outside-preferred-concept-code-only-nonmember.json",
+      "expect": true,
+      "reason": "Outside a questionnaire \u2014 Observation.category, a preferred CodeableConcept binding: a code with no system, the code not in the set.",
+      "sha256": "299d0833d2c8b797cff9aee17ecc213b665deec7aaf8bc82ace054a6cf4ca5f2",
+      "oracle_valid": true,
+      "oracle_errors": [],
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "rule": null,
+          "text": "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided",
+          "paths": [
+            "Observation.category[0].coding[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": null,
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Observation"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "rule": null,
+          "text": "Best Practice Recommendation: In general, all observations should have a performer",
+          "paths": [
+            "Observation"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "rule": null,
+          "text": "Best Practice Recommendation: In general, all observations should have an effective[x] ()",
+          "paths": [
+            "Observation"
+          ]
+        }
+      ],
+      "local_valid": true,
+      "local_errors": [],
+      "local_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "rule": "inv.dom-6",
+          "text": "dom-6: A resource should have narrative for robust management",
+          "paths": [
+            "Observation"
           ]
         }
       ],

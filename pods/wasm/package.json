@@ -1,6 +1,6 @@
 {
   "name": "fhir-pods-wasm",
-  "version": "0.27.0",
+  "version": "0.28.0",
   "description": "Embeddable compliance runtime for health applications. FHIR lift/lower, validation, de-identification, documents, audit, and HL7 v2 through WebAssembly.",
   "license": "MIT",
   "author": "Justin Grosvenor",

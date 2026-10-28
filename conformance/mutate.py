@@ -14,11 +14,17 @@ our verdicts always come fresh from the probe binary. The lane prints, per
 class, how many derived files agree, where we are lenient (we say valid,
 the oracle says invalid — the ones that matter), where we are stricter, and
 where both say invalid but we miss an error the oracle reports. Accepted
-differences are named in `mutate-triage.json` by `<class>:<family>`; the lane
-exits 1 while an unaccepted lenient or stricter case remains.
+verdict differences are named in `mutate-triage.json`, one entry per derived
+file (`<class>:<file>`), each bound to the file's bytes (sha256), the
+oracle's verdict and full error signature, the pod's verdict and a reviewed
+reason; `mutate_triage.py` derives it from the lane's evidence and its own
+table of reasons, never by hand. The lane exits 1 while an unaccepted
+lenient or stricter case remains, and when an entry no longer matches a
+difference (the file, the oracle or the pod moved: a stale entry).
 """
 import argparse
 import copy
+import hashlib
 import json
 import os
 import re
@@ -29,6 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import run  # noqa: E402
 import reasons  # noqa: E402
+import canonical_guard  # noqa: E402
 
 ROOT = run.ROOT
 CORPUS = os.path.join(HERE, "corpus")
@@ -218,6 +225,60 @@ def m_orphanext(doc, cap):
     yield "nourlext", d2
 
 
+# the parts of a definition that decide membership: a coding-shaped object
+# there (`ValueSet.expansion.contains`) is the definition, never an instance
+DEFINITION_PARTS = {"compose", "expansion", "concept"}
+
+
+def coding_shaped(v):
+    """A Coding: a code and a system, and none of a Quantity's value/unit/comparator."""
+    return (isinstance(v, dict) and isinstance(v.get("code"), str) and "system" in v
+            and not any(k in v for k in ("value", "unit", "comparator")))
+
+
+def systemless_sites(doc):
+    """Every coded site carrying a code and a system: a concept's `coding`
+    array (the codings in it that have both), a standalone Coding, an array
+    of Codings (`meta.tag`) — never inside a definition's own parts."""
+    for path, container, key in walk(doc):
+        if any(p in DEFINITION_PARTS for p in path if isinstance(p, str)):
+            continue
+        v = container[key]
+        if isinstance(v, list):
+            idx = [i for i, c in enumerate(v) if coding_shaped(c)]
+            if idx:
+                yield path, idx
+        elif coding_shaped(v):
+            yield path, None
+
+
+def strip_at(d, path, idx):
+    node = d
+    for p in path[:-1]:
+        node = node[p]
+    v = node[path[-1]]
+    for c in ([v[i] for i in idx] if idx is not None else [v]):
+        del c["system"]
+
+
+def m_systemless(doc, cap):
+    """Every coding that has a code loses its system; then one coded site at a
+    time (a concept's codings, or a standalone Coding)."""
+    sites = list(systemless_sites(doc))
+    if not sites:
+        return
+    d = copy.deepcopy(doc)
+    for path, idx in sites:
+        strip_at(d, path, idx)
+    yield "systemless-all", d
+    for path, idx in sites[:cap]:
+        if len(sites) == 1:
+            break  # the one site is the whole document's
+        d = copy.deepcopy(doc)
+        strip_at(d, path, idx)
+        yield f"systemless-{'.'.join(map(str, path))}", d
+
+
 CLASSES = {
     "drop": m_drop,
     "codeless": m_codeless,
@@ -228,7 +289,12 @@ CLASSES = {
     "emptystr": m_emptystr,
     "badref": m_badref,
     "orphanext": m_orphanext,
+    "systemless": m_systemless,
 }
+
+# classes whose derived files must name each canonical once (the oracle caches
+# a url-bearing ValueSet by url+version, not content: `canonical_guard.py`)
+GUARDED = {"systemless"}
 
 
 def derive(cls, cap, limit):
@@ -254,6 +320,21 @@ def derive(cls, cap, limit):
             json.dump(mutated, open(p, "w"), separators=(",", ":"))
             paths.append(p)
     return paths
+
+
+def file_sha256(path):
+    with open(path, "rb") as fh:
+        return hashlib.sha256(fh.read()).hexdigest()
+
+
+def oracle_signature(detail):
+    """The oracle's whole error list, order-free: what a triage entry binds."""
+    return hashlib.sha256(json.dumps(sorted(detail)).encode()).hexdigest()
+
+
+def accepts(entry, row):
+    """Does a triage entry accept this row exactly as it now stands?"""
+    return bool(entry) and all(entry.get(k) == row.get(k) for k in ("sha256", "oracle_signature", "oracle", "ours"))
 
 
 def family(detail):
@@ -283,8 +364,11 @@ def main():
     inherited = baseline_missed()
     evidence = {}
     ungated = 0
+    used = set()
     for cls in a.classes.split(","):
         paths = derive(cls, a.per_file, a.limit)
+        if cls in GUARDED:
+            canonical_guard.refuse_shared_canonicals(paths)
         cache = os.path.join(OUT, cls, "_oracle.json")
         if a.reuse_oracle and os.path.exists(cache):
             oracle = json.load(open(cache))
@@ -323,6 +407,7 @@ def main():
                 kind = "stricter"
             rows.append({"file": key, "kind": kind, "ours": nv, "oracle": ov,
                          "family": family(odetail), "missed": sorted(new_missed),
+                         "sha256": file_sha256(p), "oracle_signature": oracle_signature(odetail),
                          "oracle_detail": [x[:160] for x in odetail[:4]]})
         counts = {}
         for r in rows:
@@ -334,19 +419,26 @@ def main():
                 if r["kind"] == kind:
                     fams.setdefault(r["family"] if kind != "stricter" else "(we error, oracle valid)", []).append(r)
             for fam, rs in sorted(fams.items(), key=lambda kv: -len(kv[1])):
-                accepted = triage.get(f"{cls}:{fam}") or triage.get(f"{cls}:*")
-                tag = "triaged" if accepted else "UNTRIAGED"
+                gated = kind in ("lenient", "stricter", "error")
+                taken = [r for r in rs if gated and accepts(triage.get(f"{cls}:{r['file']}"), r)]
+                used.update(f"{cls}:{r['file']}" for r in taken)
+                tag = ("triaged" if len(taken) == len(rs) else "UNTRIAGED") if gated else "reported"
                 # a verdict disagreement, or no verdict at all, gates the lane
-                if not accepted and kind in ("lenient", "stricter", "error"):
-                    ungated += len(rs)
+                ungated += len(rs) - len(taken) if gated else 0
                 print(f"  {kind:8} {len(rs):4}  {tag:9} {fam}")
                 for r in rs[: a.show]:
                     extra = f" missed {r['missed']}" if kind == "missed" else ""
                     print(f"             {r['file']}{extra}")
         evidence[cls] = rows
     json.dump({"oracle": run.JAR_VERSION, "classes": evidence}, open(os.path.join(OUT, "evidence.json"), "w"), indent=1)
-    print(f"\n{ungated} untriaged lenient/stricter case(s)")
-    sys.exit(1 if ungated else 0)
+    # an entry for a class just run that accepted nothing is stale: the file,
+    # the oracle or the pod moved, and the review is owed again
+    stale = [] if a.limit else sorted(
+        k for k in triage if k.split(":", 1)[0] in a.classes.split(",") and k not in used)
+    for k in stale:
+        print(f"  STALE    {k}")
+    print(f"\n{ungated} untriaged lenient/stricter case(s), {len(stale)} stale triage entr{'y' if len(stale) == 1 else 'ies'}")
+    sys.exit(1 if ungated or stale else 0)
 
 
 if __name__ == "__main__":

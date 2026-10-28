@@ -773,15 +773,7 @@
   {
     "file": "outside-required-concept-code-only-member.json",
     "expect": false,
-    "reason": "Outside a questionnaire \u2014 Condition.clinicalStatus, a required CodeableConcept binding: a code with no system, the code in the set.",
-    "reviewed": {
-      "local": true,
-      "missed": [
-        "Condition.clinicalStatus"
-      ],
-      "extra": [],
-      "reason": "outside a questionnaire, the general binding check: a required CodeableConcept whose only coding has a code and no system. The oracle refuses it ('None of the codings provided are in the value set', codes = null#active); the pod matches the code without a system and accepts it. Pre-dates this release (lenient at 0.22.0 too), a different rule path (binding.not-member), reported as its own task."
-    }
+    "reason": "Outside a questionnaire \u2014 Condition.clinicalStatus, a required CodeableConcept binding: a code with no system, the code in the set."
   },
   {
     "file": "outside-required-concept-code-only-nonmember.json",
@@ -792,6 +784,51 @@
     "file": "outside-required-concept-display-only.json",
     "expect": false,
     "reason": "Outside a questionnaire \u2014 Condition.clinicalStatus, a required CodeableConcept binding: a display alone: no code, no system."
+  },
+  {
+    "file": "outside-required-concept-code-only-beside-coded.json",
+    "expect": true,
+    "reason": "Outside a questionnaire \u2014 Condition.clinicalStatus, a required CodeableConcept binding: a code with no system beside the same code with its system (any coding decides)."
+  },
+  {
+    "file": "outside-required-concept-coded-beside-code-only.json",
+    "expect": true,
+    "reason": "Outside a questionnaire \u2014 Condition.clinicalStatus, a required CodeableConcept binding: system and code beside the same code with no system (any coding decides)."
+  },
+  {
+    "file": "outside-required-concept-code-only-beside-code-only-nonmember.json",
+    "expect": false,
+    "reason": "Outside a questionnaire \u2014 Condition.clinicalStatus, a required CodeableConcept binding: two codings with no system, one code in the set and one not."
+  },
+  {
+    "file": "outside-required-concept-code-only-beside-other-system.json",
+    "expect": false,
+    "reason": "Outside a questionnaire \u2014 Condition.clinicalStatus, a required CodeableConcept binding: a code with no system beside a coding from a system the set does not include."
+  },
+  {
+    "file": "outside-required-concept-code-only-display-member.json",
+    "expect": false,
+    "reason": "Outside a questionnaire \u2014 Condition.clinicalStatus, a required CodeableConcept binding: a code with no system and a display, the code in the set."
+  },
+  {
+    "file": "outside-extensible-concept-code-only-member.json",
+    "expect": true,
+    "reason": "Outside a questionnaire \u2014 Condition.category, an extensible CodeableConcept binding: a code with no system, the code in the set."
+  },
+  {
+    "file": "outside-extensible-concept-code-only-nonmember.json",
+    "expect": true,
+    "reason": "Outside a questionnaire \u2014 Condition.category, an extensible CodeableConcept binding: a code with no system, the code not in the set."
+  },
+  {
+    "file": "outside-preferred-concept-code-only-member.json",
+    "expect": true,
+    "reason": "Outside a questionnaire \u2014 Observation.category, a preferred CodeableConcept binding: a code with no system, the code in the set."
+  },
+  {
+    "file": "outside-preferred-concept-code-only-nonmember.json",
+    "expect": true,
+    "reason": "Outside a questionnaire \u2014 Observation.category, a preferred CodeableConcept binding: a code with no system, the code not in the set."
   },
   {
     "file": "outside-required-coding-code-only-member.json",

@@ -82,7 +82,7 @@ the current regression lanes track individual cases and evidence hashes.
 | **Reference target types** | (none in corpus) | `subject` must reference a Patient | Enforced as the reference validator enforces it (0.15.0): a target it can reach — a bundle entry, a contained resource — is held to the element's `targetProfile`s (a bundle entry by conformance, "Unable to find a profile match for … among choices"; a `#contained` resource by type only, as the oracle judges it). A `Patient/x` nobody can resolve is not judged by either side (`heartrate-subject-wrong-type` expects *valid* as a guard). |
 | **Default profiles** | — | An undeclared profile means the base resource | Same: no profile claimed; the base resource's own rules (shape, its required elements, one key per choice, `dom-3` / `dom-6`) still apply. A jurisdiction default is opt-in (`Validator::with_default_profile`). |
 | **Attachment fetching** | 1 | "Attachment content cannot be checked … error accessing <url>" | Never: a library does no I/O. |
-| **A coding with no system, against a required binding** | probed (0.22.1) | A required `CodeableConcept` whose only coding carries a code and no system — `Condition.clinicalStatus` `{"code": "active"}` — is refused: "None of the codings provided are in the value set … (codes = null#active)" | **Lenient, declared:** the general binding check matches a code with no system against the set's codes of any system, so the pod accepts it. Not the questionnaire rule (a different path, `binding.not-member`); its own task, to be measured across the mutation lane before it moves (`conformance/coded-answers/outside-*`). |
+| **A coding with no system, against a required binding** | probed (0.22.1, 0.28.0) | One coding of a required `CodeableConcept` with a code and no system: where the set's compose is one include listing its concepts the oracle infers the system and decides by the listed codes (a listed code valid, with a "Coding has no system" warning; any other refused) — `questionnaireresponse-mode`, `au-timezone`, IPS EDD methods (listed LOINC codes); under any other compose (a whole code system, two includes even of one system, a filter, an expansion alone) it refuses the code, listed or not: `Condition.clinicalStatus` `{"code": "active"}`, "None of the codings provided are in the value set … (codes = null#active)". Any coding decides (a19). A standalone required-bound `Coding` with no system (AU Base `medication-type`, US Core race `ombCategory`), extensible and preferred concepts: a warning only, member or not | **Applied (0.28.0)** for the sets the pod bundles (the 35 of one listed include decided by their listed codes, every other refusing) and the base definitions' and profiles' bindings alike (`binding.not-member`); a standalone `Coding` with no system is not judged against its required set; a slice discriminator still places one by its code (BALP `AuditEvent.subtype`); a bare `code` element is untouched. **Lenient, declared:** under a set the pod does not hold, a code-only coding is "not checked" (a warning) — the oracle refuses a non-member under IPS EDD methods (one listed LOINC include) and any code-only coding under US Core DocumentReference Type (two includes; 4 mutation files, triaged); under a host's terminology table, a code-only coding the table holds is "not checked" (the table carries members, not the compose), one it does not hold refused. Measured by the mutation lane's `systemless` class, `conformance/coded-answers/outside-*` and synthetic compose shapes (0.28.0 review evidence). |
 | **"A code with no system" warnings** | probed (0.22.1) | A `Coding` with no system draws a warning, bound or not — "A code with no system has no defined meaning, and it cannot be validated" at a `Coding` element with a code; "Coding has no system …" at a coding inside a `CodeableConcept`, with a code or a display alone | **Not emitted** (a missing warning, never a verdict): the pod's one such warning is the questionnaire answer's, `questionnaire.answer-no-system`. |
 | **must-support** | 0 | Validators do not check must-support | Not an error by spec. Exposed separately: `must_support_gaps(resource)` (and `probe --must-support`) lists the selected profile's must-support elements the resource leaves empty where their parent is present — what a client certifying against the IG must populate when it has the data. Never in the validation report. |
 
@@ -286,21 +286,30 @@ alongside the guides' own.
 A corpus of publisher-valid examples can only show where the pod is
 *stricter* than the reference validator; three releases in a row were fixed
 on host reports of leniency no lane could see. The mutation lane derives
-every release-corpus original under nine fixed mutations — drop one
+every release-corpus original under ten fixed mutations — drop one
 top-level element; a coding with its code removed, a concept reduced to
 text; a primitive of the wrong JSON type; an array of objects reduced to
 `[{}]`; a `status` / `gender` / `use` / `intent` / `mode` / `kind` / `type`
 set outside its set; a top-level primitive set to `null`; a string set
 empty; a reference to a type the base does not define, and a bare id; an
-extension with a url and nothing else, and one with no url — and puts every
-derived file (19,067 at 0.19.4) before validator_cli 6.10.4, one JVM per
-class, the oracle's verdicts cached per class. It reports, lenient first:
+extension with a url and nothing else, and one with no url; every coding
+with a code losing its system, then one coded site at a time (`systemless`,
+0.28.0: never inside a ValueSet's or CodeSystem's own compose, expansion or
+concepts, and refused before the oracle starts if one canonical url would
+name two definitions, `canonical_guard.py`) — and puts every derived file
+(19,067 at 0.19.4; 21,371 at 0.28.0) before validator_cli 6.10.4, one JVM
+per class, the oracle's verdicts cached per class. It reports, lenient first:
 where the pod says valid and the oracle invalid, the reverse, and where both
 say invalid but the pod misses an error path the oracle reports (after the
 reasons lane's own path spelling and with the original's recorded
 differences subtracted). Accepted differences are named in
 `mutate-triage.json`; the lane exits 1 while an unaccepted lenient or
-stricter case remains. Its first run found nine defects (0.19.4, above).
+stricter case, or a stale entry, remains. Its first run found nine defects (0.19.4, above);
+the `systemless` class measured 128 lenient files before the 0.28.0 rule
+and 18 after, all triaged per file (a Questionnaire the pod is not given;
+a set it does not hold). Triage entries are bound to the file's bytes, the
+oracle's verdict and error signature and the pod's verdict, derived by
+`mutate_triage.py`; one that no longer matches fails the lane.
 
 The instrument-path lane is one synthetic end-to-end scenario: the shape a
 host builds around a questionnaire instrument — a synthetic sixteen-part

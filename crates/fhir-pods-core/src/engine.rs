@@ -890,7 +890,7 @@ fn check_element<D: Document>(
         }
         BindingKind::Coding => {
             for inst in doc.instances(el.path) {
-                if let Some((system, code)) = coding_of(&inst) {
+                if let Some((system, code)) = coding_of(&inst).filter(|(system, _)| !system.is_empty()) {
                     let m = under_base(tx.validate_code(vs, system, code), &b, el.path, |set| {
                         tx.validate_code(set, system, code)
                     });
@@ -921,7 +921,7 @@ fn check_element<D: Document>(
                     let mut verdict = None;
                     for c in &codings {
                         if let Some((system, code)) = coding_of(c) {
-                            match tx.validate_code(set, system, code) {
+                            match concept_coding(tx, set, system, code) {
                                 Membership::Member => return Some(Membership::Member),
                                 Membership::Unknown => verdict = Some(Membership::Unknown),
                                 Membership::NotMember => verdict = verdict.or(Some(Membership::NotMember)),
@@ -940,7 +940,7 @@ fn check_element<D: Document>(
                     }
                 }
                 if let Some(v) = verdict {
-                    report_membership(v, vs, "the codings", label, r);
+                    report_membership(v, vs, CODINGS, label, r);
                 } else if codeable_concept {
                     // Coding objects exist, none with a code: no member of the
                     // set — where the set can be decided at all. Where it
@@ -949,7 +949,7 @@ fn check_element<D: Document>(
                     // usual "not checked".
                     let judged = decidable(tx, vs) || base.is_some_and(|b| decidable(tx, b.value_set));
                     let m = if judged { Membership::NotMember } else { Membership::Unknown };
-                    report_membership(m, vs, "the codings", label, r);
+                    report_membership(m, vs, CODINGS, label, r);
                 }
             }
         }
@@ -1001,7 +1001,7 @@ fn concept_shaped<D: Document>(inst: &D) -> bool {
 /// `CodeableConcept` reached by the shape walk) in the binding's set, and
 /// whether any coding was there to decide it.
 pub(crate) fn membership_of<D: Document>(b: &Binding, inst: &D, tx: &dyn TerminologyProvider) -> (Membership, bool) {
-    membership_seen(b, inst, "$this", tx)
+    membership_seen(b, inst, "$this", tx, true)
 }
 
 pub(crate) fn membership_at<D: Document>(
@@ -1010,14 +1010,24 @@ pub(crate) fn membership_at<D: Document>(
     path: &str,
     tx: &dyn TerminologyProvider,
 ) -> Membership {
-    match membership_seen(b, inst, path, tx) {
+    match membership_seen(b, inst, path, tx, false) {
         // nothing coded there: not this slice's, decidedly
         (_, false) => Membership::NotMember,
         (m, true) => m,
     }
 }
 
-fn membership_seen<D: Document>(b: &Binding, inst: &D, path: &str, tx: &dyn TerminologyProvider) -> (Membership, bool) {
+/// `binding`: judging the binding itself, where a standalone `Coding` with
+/// no system is not judged (`concept_coding`); a slice discriminator
+/// (`binding` false) still places one by its code, as validator_cli 6.10.4
+/// does (BALP's `AuditEvent.subtype` slices, the mutation lane).
+fn membership_seen<D: Document>(
+    b: &Binding,
+    inst: &D,
+    path: &str,
+    tx: &dyn TerminologyProvider,
+    binding: bool,
+) -> (Membership, bool) {
     let vs = b.value_set;
     let mut verdict = Membership::Unknown;
     let mut seen = false;
@@ -1035,7 +1045,9 @@ fn membership_seen<D: Document>(b: &Binding, inst: &D, path: &str, tx: &dyn Term
         }
         BindingKind::Coding => {
             for c in inst.instances(path) {
-                if let Some((system, code)) = coding_of(&c) {
+                // judging the binding, a Coding with no system is not
+                // judged against its set (`concept_coding`)
+                if let Some((system, code)) = coding_of(&c).filter(|(system, _)| !binding || !system.is_empty()) {
                     seen = true;
                     fold(&mut verdict, tx.validate_code(vs, system, code));
                 }
@@ -1047,7 +1059,7 @@ fn membership_seen<D: Document>(b: &Binding, inst: &D, path: &str, tx: &dyn Term
                 for c in cc.instances("$this.coding") {
                     if let Some((system, code)) = coding_of(&c) {
                         seen = true;
-                        match tx.validate_code(vs, system, code) {
+                        match concept_coding(tx, vs, system, code) {
                             Membership::Member => return (Membership::Member, true),
                             Membership::Unknown => unknown = true,
                             Membership::NotMember => fold(&mut verdict, Membership::NotMember),
@@ -1109,15 +1121,51 @@ fn under_base(
     }
 }
 
+/// One coding of a `CodeableConcept` held to a required binding. A coding
+/// with a code and no system is placed as validator_cli 6.10.4 places it
+/// (`TerminologyProvider::validate_code_only`): by the listed codes where
+/// the set's compose is one include listing its concepts
+/// (`questionnaireresponse-mode`, `au-timezone`), and never a member under
+/// any other compose — a whole code system (`condition-clinical`), two
+/// includes, a filter ("None of the codings provided are in the value set …
+/// (codes = null#active)"). A set the provider cannot place a code in stays
+/// unknown. A coding with a system beside it still decides ("any coding
+/// decides").
+/// A standalone `Coding` with no system is a different finding: the oracle
+/// only warns there ("A code with no system has no defined meaning"), bound
+/// required or not, member or not — so the binding's `Coding` arms do not
+/// judge one (a slice's discriminator still places it by its code).
+/// A bare `code` element has no system of its own and is never routed here.
+fn concept_coding(tx: &dyn TerminologyProvider, set: &str, system: &str, code: &str) -> Membership {
+    if system.is_empty() {
+        tx.validate_code_only(set, code)
+    } else {
+        tx.validate_code(set, system, code)
+    }
+}
+
 fn coding_of(inst: &impl Document) -> Option<(&str, &str)> {
     let code = inst.scalars("$this.code").into_iter().next()?;
     let system = inst.scalars("$this.system").into_iter().next().unwrap_or("");
     Some((system, code))
 }
 
+/// What a `CodeableConcept`'s membership is reported for: its codings,
+/// taken together — named in words, never quoted as a value.
+pub(crate) const CODINGS: &str = "the codings";
+
+/// A required `CodeableConcept` none of whose codings is a member, in the
+/// reference validator's words.
+pub(crate) fn no_coding_in_set(vs: &str) -> String {
+    format!("None of the codings provided are in the value set '{vs}', and a coding from this value set is required")
+}
+
 fn report_membership(m: Membership, vs: &str, what: &str, label: &str, r: &mut Report) {
     match m {
         Membership::Member => {}
+        Membership::NotMember if what == CODINGS => {
+            r.push(Severity::Error, IssueType::CodeInvalid, label, no_coding_in_set(vs))
+        }
         Membership::NotMember => {
             r.push(Severity::Error, IssueType::CodeInvalid, label, format!("'{what}' is not in the bound value set"))
         }

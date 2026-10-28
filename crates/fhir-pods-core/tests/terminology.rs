@@ -67,5 +67,8 @@ fn codeable_concept_binding_is_member_if_any_coding_is() {
     let ok = wire::report(&validate_bytes_with(cond("active").as_bytes(), &Only("active")));
     assert!(!ok.contains("clinicalStatus"), "{ok}");
     let bad = wire::report(&validate_bytes_with(cond("bogus").as_bytes(), &Only("active")));
-    assert!(bad.contains("Condition.clinicalStatus") && bad.contains("not in the bound value set"), "{bad}");
+    assert!(
+        bad.contains("Condition.clinicalStatus") && bad.contains("None of the codings provided are in the value set"),
+        "{bad}"
+    );
 }

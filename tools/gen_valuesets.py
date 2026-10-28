@@ -85,6 +85,19 @@ class Expander:
             systems.append(system)
         return sorted(set(systems)) or None
 
+    def one_listed_include(self, url):
+        """Does the set's compose have exactly one include, and does that
+        include list its concepts (no filter, no whole system, no other
+        value set)? There validator_cli 6.10.4 infers the system of a code
+        given without one and decides membership by the listed codes; under
+        any other compose — two includes, even of one system, a filter, a
+        whole system, an expansion alone — it refuses such a code (0.28.0,
+        probed on synthetic sets)."""
+        j = self.vs.get(url.split("|")[0])
+        includes = ((j or {}).get("compose") or {}).get("include", [])
+        return (len(includes) == 1 and bool(includes[0].get("concept")) and bool(includes[0].get("system"))
+                and not includes[0].get("filter") and not includes[0].get("valueSet"))
+
     def expand(self, url, seen=()):
         """`(codes, why)`: a sorted list of (system, code, display) — or
         `(None, reason)` when the set cannot be expanded offline."""
@@ -206,6 +219,13 @@ def main():
         f.write("pub static WHOLE_SYSTEMS: &[(&str, &[&str])] = &[\n")
         for url, systems in sorted(whole):
             f.write(f"    ({rs(url)}, &[{', '.join(rs(x) for x in systems)}]),\n")
+        f.write("];\n\n")
+        f.write("/// Bundled sets whose compose is one include listing its concepts: a\n")
+        f.write("/// code given with no system is decided by the listed codes (sorted URLs).\n")
+        f.write("pub static ONE_LISTED_INCLUDE: &[&str] = &[\n")
+        for url, _ in bundled:
+            if ex.one_listed_include(url):
+                f.write(f"    {rs(url)},\n")
         f.write("];\n\n")
         f.write("/// Displays for the codings the registry fixes, from the packages' code\n")
         f.write("/// systems: sorted (system, code, display).\n")

@@ -3352,6 +3352,46 @@ pub static WHOLE_SYSTEMS: &[(&str, &[&str])] = &[
     ("http://terminology.hl7.org.au/ValueSet/pbs-item", &["http://pbs.gov.au/code/item"]),
 ];
 
+/// Bundled sets whose compose is one include listing its concepts: a
+/// code given with no system is decided by the listed codes (sorted URLs).
+pub static ONE_LISTED_INCLUDE: &[&str] = &[
+    "http://hl7.org/fhir/ValueSet/all-resource-types",
+    "http://hl7.org/fhir/ValueSet/care-plan-activity-kind",
+    "http://hl7.org/fhir/ValueSet/care-plan-intent",
+    "http://hl7.org/fhir/ValueSet/clinicalimpression-status",
+    "http://hl7.org/fhir/ValueSet/immunization-evaluation-status",
+    "http://hl7.org/fhir/ValueSet/immunization-status",
+    "http://hl7.org/fhir/ValueSet/major-fhir-version",
+    "http://hl7.org/fhir/ValueSet/name-v3-representation",
+    "http://hl7.org/fhir/ValueSet/postal-address-use",
+    "http://hl7.org/fhir/ValueSet/probability-distribution-type",
+    "http://hl7.org/fhir/ValueSet/questionnaireresponse-mode",
+    "http://hl7.org/fhir/ValueSet/system-restful-interaction",
+    "http://hl7.org/fhir/ValueSet/template-status-code",
+    "http://hl7.org/fhir/ValueSet/time-duration-units",
+    "http://hl7.org/fhir/ValueSet/type-restful-interaction",
+    "http://hl7.org/fhir/ValueSet/ucum-bodylength",
+    "http://hl7.org/fhir/ValueSet/ucum-bodytemp",
+    "http://hl7.org/fhir/ValueSet/ucum-bodyweight",
+    "http://hl7.org/fhir/ValueSet/ucum-vitals-common",
+    "http://hl7.org/fhir/ValueSet/units-of-time",
+    "http://hl7.org/fhir/ValueSet/value-filter-comparator",
+    "http://hl7.org/fhir/us/core/ValueSet/us-core-clinical-result-observation-category",
+    "http://hl7.org/fhir/us/core/ValueSet/us-core-narrative-status",
+    "http://hl7.org/fhir/us/core/ValueSet/us-core-observation-smoking-status-status",
+    "http://terminology.hl7.org.au/ValueSet/accession-number-type",
+    "http://terminology.hl7.org.au/ValueSet/au-timezone",
+    "http://terminology.hl7.org.au/ValueSet/dva-entitlement",
+    "http://terminology.hl7.org.au/ValueSet/order-identifier-type",
+    "http://terminology.hl7.org/ValueSet/v3-ConfidentialityClassification",
+    "https://nzhts.digital.health.nz/fhir/ValueSet/nhi-use-code",
+    "https://profiles.ihe.net/ITI/BALP/ValueSet/AllReadVS",
+    "https://profiles.ihe.net/ITI/BALP/ValueSet/AllSearchVS",
+    "https://profiles.ihe.net/ITI/BALP/ValueSet/AllUpdateVS",
+    "https://profiles.ihe.net/ITI/BALP/ValueSet/DataSources",
+    "https://profiles.ihe.net/ITI/BALP/ValueSet/RestObjectRoles",
+];
+
 /// Displays for the codings the registry fixes, from the packages' code
 /// systems: sorted (system, code, display).
 pub static DISPLAYS: &[(&str, &str, &str)] = &[

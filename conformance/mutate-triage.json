@@ -1,0 +1,230 @@
+{
+ "systemless:us-DocumentReference-discharge-summary__systemless-all.json": {
+  "kind": "lenient",
+  "oracle": "invalid",
+  "oracle_errors": [
+   "error: None of the codings provided are in the value set 'US Core DocumentReference Type' (http://hl7.org/fhir/us/core/ValueSet/us-core-documentreference-type|6.1.0), and a coding from this value set is required) (codes = null#18842-5) @ ['DocumentReference.type']"
+  ],
+  "oracle_signature": "73ddf192024298ae92b13423a4860c1be57d64e2da6660815db46394144e0b26",
+  "ours": "valid",
+  "reason": "US Core DocumentReference Type is not bundled (its LOINC include is a filter, which the pod does not expand): the pod reports it not checked (a warning). The oracle refuses a code with no system under it because the compose has two includes (a listed v3-NullFlavor UNK beside the LOINC filter) and it infers a system only under one include listing its concepts. A host that supplies the set as a table gets the refusal for a code the table does not hold.",
+  "sha256": "5d90d824c6597c70008962f00d75f9bf3b3537156948aa399fb7447a624162c0"
+ },
+ "systemless:us-DocumentReference-discharge-summary__systemless-type.coding.json": {
+  "kind": "lenient",
+  "oracle": "invalid",
+  "oracle_errors": [
+   "error: None of the codings provided are in the value set 'US Core DocumentReference Type' (http://hl7.org/fhir/us/core/ValueSet/us-core-documentreference-type|6.1.0), and a coding from this value set is required) (codes = null#18842-5) @ ['DocumentReference.type']"
+  ],
+  "oracle_signature": "73ddf192024298ae92b13423a4860c1be57d64e2da6660815db46394144e0b26",
+  "ours": "valid",
+  "reason": "US Core DocumentReference Type is not bundled (its LOINC include is a filter, which the pod does not expand): the pod reports it not checked (a warning). The oracle refuses a code with no system under it because the compose has two includes (a listed v3-NullFlavor UNK beside the LOINC filter) and it infers a system only under one include listing its concepts. A host that supplies the set as a table gets the refusal for a code the table does not hold.",
+  "sha256": "b85f1c1e90a434f9f60a135de85d58d4fab8b3fe5c99623c07f758ca2ea65c6f"
+ },
+ "systemless:us-DocumentReference-episode-summary__systemless-all.json": {
+  "kind": "lenient",
+  "oracle": "invalid",
+  "oracle_errors": [
+   "error: None of the codings provided are in the value set 'US Core DocumentReference Type' (http://hl7.org/fhir/us/core/ValueSet/us-core-documentreference-type|6.1.0), and a coding from this value set is required) (codes = null#34133-9) @ ['DocumentReference.type']"
+  ],
+  "oracle_signature": "c1004ce2e2aae3c48e96df3a6dfc45a28ff504dda118cb2f8c29cc06096aade4",
+  "ours": "valid",
+  "reason": "US Core DocumentReference Type is not bundled (its LOINC include is a filter, which the pod does not expand): the pod reports it not checked (a warning). The oracle refuses a code with no system under it because the compose has two includes (a listed v3-NullFlavor UNK beside the LOINC filter) and it infers a system only under one include listing its concepts. A host that supplies the set as a table gets the refusal for a code the table does not hold.",
+  "sha256": "7de38f665a2923882e2a9914df44fad55c9c02c01b33c1dfe48cc8f60431b1e4"
+ },
+ "systemless:us-DocumentReference-episode-summary__systemless-type.coding.json": {
+  "kind": "lenient",
+  "oracle": "invalid",
+  "oracle_errors": [
+   "error: None of the codings provided are in the value set 'US Core DocumentReference Type' (http://hl7.org/fhir/us/core/ValueSet/us-core-documentreference-type|6.1.0), and a coding from this value set is required) (codes = null#34133-9) @ ['DocumentReference.type']"
+  ],
+  "oracle_signature": "c1004ce2e2aae3c48e96df3a6dfc45a28ff504dda118cb2f8c29cc06096aade4",
+  "ours": "valid",
+  "reason": "US Core DocumentReference Type is not bundled (its LOINC include is a filter, which the pod does not expand): the pod reports it not checked (a warning). The oracle refuses a code with no system under it because the compose has two includes (a listed v3-NullFlavor UNK beside the LOINC filter) and it infers a system only under one include listing its concepts. A host that supplies the set as a table gets the refusal for a code the table does not hold.",
+  "sha256": "7a6e93e88b052c257889b4ed9e659a7dce4c5998f10484eb48763ee8c8cdb3a1"
+ },
+ "systemless:us-QuestionnaireResponse-hunger-vital-sign-example__systemless-all.json": {
+  "kind": "lenient",
+  "oracle": "invalid",
+  "oracle_errors": [
+   "error: The code null::LA28397-0 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].answer[0]']",
+   "error: The code null::LA28397-0 is not in the set of permitted values @ ['QuestionnaireResponse.item[1].answer[0]']",
+   "error: The code null::LA19952-3 is not in the set of permitted values @ ['QuestionnaireResponse.item[2].answer[0]']"
+  ],
+  "oracle_signature": "1642bdc310ffe1d6c09568461b89d26fc87ddd5e7900fdefd477ff3801cb0163",
+  "ours": "valid",
+  "reason": "A QuestionnaireResponse naming a Questionnaire the pod is not given (US Core's own, which the oracle reads from the package): the pod reports the questionnaire unresolved (a warning) and judges no answer against it; the oracle refuses each answer whose system was stripped against the item's answerOption codings. Not the general binding check: the questionnaire rule, given the Questionnaire, refuses it (coded-answers `options-*`).",
+  "sha256": "54d634f560b95cd6ed9c36ac0c410d9514c0902cd05cc091520e43753bc46600"
+ },
+ "systemless:us-QuestionnaireResponse-hunger-vital-sign-example__systemless-item.0.answer.0.valueCoding.json": {
+  "kind": "lenient",
+  "oracle": "invalid",
+  "oracle_errors": [
+   "error: The code null::LA28397-0 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].answer[0]']"
+  ],
+  "oracle_signature": "8418e3be14d9f52f85b09786b9a57bcf7763fe39cb84ff102d33a735842511f9",
+  "ours": "valid",
+  "reason": "A QuestionnaireResponse naming a Questionnaire the pod is not given (US Core's own, which the oracle reads from the package): the pod reports the questionnaire unresolved (a warning) and judges no answer against it; the oracle refuses each answer whose system was stripped against the item's answerOption codings. Not the general binding check: the questionnaire rule, given the Questionnaire, refuses it (coded-answers `options-*`).",
+  "sha256": "6af1ad2fc398d1024adfcbd3d1b3f9d67a278aaae941e3381c67199ff187b35a"
+ },
+ "systemless:us-QuestionnaireResponse-hunger-vital-sign-example__systemless-item.1.answer.0.valueCoding.json": {
+  "kind": "lenient",
+  "oracle": "invalid",
+  "oracle_errors": [
+   "error: The code null::LA28397-0 is not in the set of permitted values @ ['QuestionnaireResponse.item[1].answer[0]']"
+  ],
+  "oracle_signature": "6be6e02919ac3d856aa4640ea89d5db87452b13d0f2802fc36646be31c80646c",
+  "ours": "valid",
+  "reason": "A QuestionnaireResponse naming a Questionnaire the pod is not given (US Core's own, which the oracle reads from the package): the pod reports the questionnaire unresolved (a warning) and judges no answer against it; the oracle refuses each answer whose system was stripped against the item's answerOption codings. Not the general binding check: the questionnaire rule, given the Questionnaire, refuses it (coded-answers `options-*`).",
+  "sha256": "b0a1bdf55bbba8b06ed2c778a8df0c4f549ddf026d11573b94952636ea7b5d61"
+ },
+ "systemless:us-QuestionnaireResponse-hunger-vital-sign-example__systemless-item.2.answer.0.valueCoding.json": {
+  "kind": "lenient",
+  "oracle": "invalid",
+  "oracle_errors": [
+   "error: The code null::LA19952-3 is not in the set of permitted values @ ['QuestionnaireResponse.item[2].answer[0]']"
+  ],
+  "oracle_signature": "39c4c9b9f274fa969a5219b32ed921d8b4f34a8e64d57601ce439062b4d4d0b0",
+  "ours": "valid",
+  "reason": "A QuestionnaireResponse naming a Questionnaire the pod is not given (US Core's own, which the oracle reads from the package): the pod reports the questionnaire unresolved (a warning) and judges no answer against it; the oracle refuses each answer whose system was stripped against the item's answerOption codings. Not the general binding check: the questionnaire rule, given the Questionnaire, refuses it (coded-answers `options-*`).",
+  "sha256": "ca677170de9e030c04c981495fbab04ed73a62f2e1870295ecd6cdf77aa5c590"
+ },
+ "systemless:us-QuestionnaireResponse-phq-9-example__systemless-all.json": {
+  "kind": "lenient",
+  "oracle": "invalid",
+  "oracle_errors": [
+   "error: The code null::LA6570-1 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].answer[0]']",
+   "error: The code null::LA6570-1 is not in the set of permitted values @ ['QuestionnaireResponse.item[1].answer[0]']",
+   "error: The code null::LA6570-1 is not in the set of permitted values @ ['QuestionnaireResponse.item[2].answer[0]']",
+   "error: The code null::LA6570-1 is not in the set of permitted values @ ['QuestionnaireResponse.item[3].answer[0]']",
+   "error: The code null::LA6569-3 is not in the set of permitted values @ ['QuestionnaireResponse.item[4].answer[0]']",
+   "error: The code null::LA6569-3 is not in the set of permitted values @ ['QuestionnaireResponse.item[5].answer[0]']",
+   "error: The code null::LA6570-1 is not in the set of permitted values @ ['QuestionnaireResponse.item[6].answer[0]']",
+   "error: The code null::LA6568-5 is not in the set of permitted values @ ['QuestionnaireResponse.item[7].answer[0]']",
+   "error: The code null::LA6568-5 is not in the set of permitted values @ ['QuestionnaireResponse.item[8].answer[0]']",
+   "error: The code null::LA6573-5 is not in the set of permitted values @ ['QuestionnaireResponse.item[10].answer[0]']"
+  ],
+  "oracle_signature": "f757c2b18d5e706291f93dc1ad23521dc3915f680dcd9150fcba23b64e057285",
+  "ours": "valid",
+  "reason": "A QuestionnaireResponse naming a Questionnaire the pod is not given (US Core's own, which the oracle reads from the package): the pod reports the questionnaire unresolved (a warning) and judges no answer against it; the oracle refuses each answer whose system was stripped against the item's answerOption codings. Not the general binding check: the questionnaire rule, given the Questionnaire, refuses it (coded-answers `options-*`).",
+  "sha256": "e9a9e751cadb84a63672e0e0af5e5b2055dafb38d1051a69ceb1048144fc4a45"
+ },
+ "systemless:us-QuestionnaireResponse-phq-9-example__systemless-item.0.answer.0.valueCoding.json": {
+  "kind": "lenient",
+  "oracle": "invalid",
+  "oracle_errors": [
+   "error: The code null::LA6570-1 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].answer[0]']"
+  ],
+  "oracle_signature": "696edaa7fd4c099afdc1c2bc0eda210585e6f10fa2b678427b118e35e5380ada",
+  "ours": "valid",
+  "reason": "A QuestionnaireResponse naming a Questionnaire the pod is not given (US Core's own, which the oracle reads from the package): the pod reports the questionnaire unresolved (a warning) and judges no answer against it; the oracle refuses each answer whose system was stripped against the item's answerOption codings. Not the general binding check: the questionnaire rule, given the Questionnaire, refuses it (coded-answers `options-*`).",
+  "sha256": "ae84492ff755cad59781608353e7536036c2699cee77e97d7d5e9bf1d62e0fd0"
+ },
+ "systemless:us-QuestionnaireResponse-phq-9-example__systemless-item.1.answer.0.valueCoding.json": {
+  "kind": "lenient",
+  "oracle": "invalid",
+  "oracle_errors": [
+   "error: The code null::LA6570-1 is not in the set of permitted values @ ['QuestionnaireResponse.item[1].answer[0]']"
+  ],
+  "oracle_signature": "7bb1c18c1deff9631d9dc681568bec58bef54658eaa18ff42ce2abf3ac05decf",
+  "ours": "valid",
+  "reason": "A QuestionnaireResponse naming a Questionnaire the pod is not given (US Core's own, which the oracle reads from the package): the pod reports the questionnaire unresolved (a warning) and judges no answer against it; the oracle refuses each answer whose system was stripped against the item's answerOption codings. Not the general binding check: the questionnaire rule, given the Questionnaire, refuses it (coded-answers `options-*`).",
+  "sha256": "93943ca0c5d12ebfe2828407d28087930bdbb77a2b604aef7b4453b894a1c053"
+ },
+ "systemless:us-QuestionnaireResponse-phq-9-example__systemless-item.2.answer.0.valueCoding.json": {
+  "kind": "lenient",
+  "oracle": "invalid",
+  "oracle_errors": [
+   "error: The code null::LA6570-1 is not in the set of permitted values @ ['QuestionnaireResponse.item[2].answer[0]']"
+  ],
+  "oracle_signature": "3ba19526ee3cc0172053d0a70189b489ae61fe36e113c9792c8d380b147405cc",
+  "ours": "valid",
+  "reason": "A QuestionnaireResponse naming a Questionnaire the pod is not given (US Core's own, which the oracle reads from the package): the pod reports the questionnaire unresolved (a warning) and judges no answer against it; the oracle refuses each answer whose system was stripped against the item's answerOption codings. Not the general binding check: the questionnaire rule, given the Questionnaire, refuses it (coded-answers `options-*`).",
+  "sha256": "54ef3b5f13e9da7d41456fd645b5b8799dfde9887a68688e2acd8d12e5e52541"
+ },
+ "systemless:us-QuestionnaireResponse-phq-9-example__systemless-item.3.answer.0.valueCoding.json": {
+  "kind": "lenient",
+  "oracle": "invalid",
+  "oracle_errors": [
+   "error: The code null::LA6570-1 is not in the set of permitted values @ ['QuestionnaireResponse.item[3].answer[0]']"
+  ],
+  "oracle_signature": "eb9eaf28524a4dae4f732fb0f920f4001d941f20f49fa0388e3c8cd990e39a47",
+  "ours": "valid",
+  "reason": "A QuestionnaireResponse naming a Questionnaire the pod is not given (US Core's own, which the oracle reads from the package): the pod reports the questionnaire unresolved (a warning) and judges no answer against it; the oracle refuses each answer whose system was stripped against the item's answerOption codings. Not the general binding check: the questionnaire rule, given the Questionnaire, refuses it (coded-answers `options-*`).",
+  "sha256": "eabea9e88a3aa0957ce847689b53e63fb6507852b1c6a135fb0054744081cbd7"
+ },
+ "systemless:us-QuestionnaireResponse-prapare-example__systemless-all.json": {
+  "kind": "lenient",
+  "oracle": "invalid",
+  "oracle_errors": [
+   "error: The code null::LA32-8 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].item[0].item[0].answer[0]']",
+   "error: The code null::LA4457-3 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].item[0].item[1].answer[0]']",
+   "error: The code null::LA30187-1 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].item[0].item[1].answer[1]']",
+   "error: The code null::LA33-6 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].item[0].item[2].answer[0]']",
+   "error: The code null::LA32-8 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].item[0].item[3].answer[0]']",
+   "error: The code null::LA43-5 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].item[0].item[4].answer[0]']",
+   "error: The code null::LA30190-5 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].item[1].item[1].answer[0]']",
+   "error: The code null::LA30122-8 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].item[1].item[2].answer[0]']",
+   "error: The code null::LA30191-3 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].item[2].item[0].answer[0]']",
+   "error: The code null::LA17956-6 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].item[2].item[1].answer[0]']",
+   "error: The code null::LA17849-3 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].item[2].item[2].answer[0]']",
+   "error: The code null::LA30126-9 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].item[2].item[4].answer[0]']",
+   "error: The code null::LA30127-7 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].item[2].item[4].answer[1]']",
+   "error: The code null::LA30134-3 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].item[2].item[5].answer[0]']",
+   "error: The code null::LA30130-1 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].item[3].item[0].answer[0]']",
+   "error: The code null::LA13909-9 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].item[3].item[1].answer[0]']",
+   "error: The code null::LA32-8 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].item[4].item[0].answer[0]']",
+   "error: The code null::LA32-8 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].item[4].item[1].answer[0]']",
+   "error: The code null::LA32-8 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].item[4].item[2].answer[0]']",
+   "error: The code null::LA32-8 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].item[4].item[3].answer[0]']"
+  ],
+  "oracle_signature": "d43c2706db4555df3bedd5ea348d72e9ecf6324de7d5aa5f9da3547d949c9aba",
+  "ours": "valid",
+  "reason": "A QuestionnaireResponse naming a Questionnaire the pod is not given (US Core's own, which the oracle reads from the package): the pod reports the questionnaire unresolved (a warning) and judges no answer against it; the oracle refuses each answer whose system was stripped against the item's answerOption codings. Not the general binding check: the questionnaire rule, given the Questionnaire, refuses it (coded-answers `options-*`).",
+  "sha256": "d8f5579793d64c3c446799083fe5efeb21f082822abace8f48ef890bee9dc0df"
+ },
+ "systemless:us-QuestionnaireResponse-prapare-example__systemless-item.0.item.0.item.0.answer.0.valueCoding.json": {
+  "kind": "lenient",
+  "oracle": "invalid",
+  "oracle_errors": [
+   "error: The code null::LA32-8 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].item[0].item[0].answer[0]']"
+  ],
+  "oracle_signature": "a3bf27376f3c7c72044903b91df50364161d80b4a7d6f8a84277cb4df7f50da4",
+  "ours": "valid",
+  "reason": "A QuestionnaireResponse naming a Questionnaire the pod is not given (US Core's own, which the oracle reads from the package): the pod reports the questionnaire unresolved (a warning) and judges no answer against it; the oracle refuses each answer whose system was stripped against the item's answerOption codings. Not the general binding check: the questionnaire rule, given the Questionnaire, refuses it (coded-answers `options-*`).",
+  "sha256": "d5d3ede2d6e89bbd8b60db5f3c30f5c8243eb197ba21b8cf77f15f60ccd180a5"
+ },
+ "systemless:us-QuestionnaireResponse-prapare-example__systemless-item.0.item.0.item.1.answer.0.valueCoding.json": {
+  "kind": "lenient",
+  "oracle": "invalid",
+  "oracle_errors": [
+   "error: The code null::LA4457-3 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].item[0].item[1].answer[0]']"
+  ],
+  "oracle_signature": "a99afc8ea6b1cd5116b37f8894f3849c2197fa3b1f464da50a28fda65606cce2",
+  "ours": "valid",
+  "reason": "A QuestionnaireResponse naming a Questionnaire the pod is not given (US Core's own, which the oracle reads from the package): the pod reports the questionnaire unresolved (a warning) and judges no answer against it; the oracle refuses each answer whose system was stripped against the item's answerOption codings. Not the general binding check: the questionnaire rule, given the Questionnaire, refuses it (coded-answers `options-*`).",
+  "sha256": "b299d9381c46620ae2181b0834b93c2ce1729d225002a753c3fdd9823c315b6d"
+ },
+ "systemless:us-QuestionnaireResponse-prapare-example__systemless-item.0.item.0.item.1.answer.1.valueCoding.json": {
+  "kind": "lenient",
+  "oracle": "invalid",
+  "oracle_errors": [
+   "error: The code null::LA30187-1 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].item[0].item[1].answer[1]']"
+  ],
+  "oracle_signature": "c4d26ba2f1c5fd6fae2677298ef2dac3253dd46f6508e504067a151dd3ef7bc2",
+  "ours": "valid",
+  "reason": "A QuestionnaireResponse naming a Questionnaire the pod is not given (US Core's own, which the oracle reads from the package): the pod reports the questionnaire unresolved (a warning) and judges no answer against it; the oracle refuses each answer whose system was stripped against the item's answerOption codings. Not the general binding check: the questionnaire rule, given the Questionnaire, refuses it (coded-answers `options-*`).",
+  "sha256": "52240a38f7bc673a793f49b26da1bb83d6876ea7e65962945ea43b54fb08e391"
+ },
+ "systemless:us-QuestionnaireResponse-prapare-example__systemless-item.0.item.0.item.2.answer.0.valueCoding.json": {
+  "kind": "lenient",
+  "oracle": "invalid",
+  "oracle_errors": [
+   "error: The code null::LA33-6 is not in the set of permitted values @ ['QuestionnaireResponse.item[0].item[0].item[2].answer[0]']"
+  ],
+  "oracle_signature": "d82695c070eaaee48ba926a3781ca967731697e2f603f04893b5f0b42c957bb2",
+  "ours": "valid",
+  "reason": "A QuestionnaireResponse naming a Questionnaire the pod is not given (US Core's own, which the oracle reads from the package): the pod reports the questionnaire unresolved (a warning) and judges no answer against it; the oracle refuses each answer whose system was stripped against the item's answerOption codings. Not the general binding check: the questionnaire rule, given the Questionnaire, refuses it (coded-answers `options-*`).",
+  "sha256": "908fae0407ef23538c5e2841381096d92f1e0db10921b421d7fbe3c0304543b8"
+ }
+}

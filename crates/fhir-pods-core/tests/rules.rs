@@ -38,7 +38,7 @@ fn every_rule_id_is_documented_and_every_documented_id_is_real() {
         (IssueType::Structure, "Patient.foo is not an element of Patient"),
         (IssueType::Required, "Patient.gender is required (min 1, found 0)"),
         (IssueType::CodeInvalid, "No code provided, and a code is required from the value set x"),
-        (IssueType::CodeInvalid, "'the codings' is not in the bound value set"),
+        (IssueType::CodeInvalid, "None of the codings provided are in the value set 'x', and a coding from this value set is required"),
         (IssueType::Structure, "Invalid Resource target type. Found Flag, but expected one of (Patient)"),
         (IssueType::Invariant, "cmp-1: A section must contain at least one of text, entries, or sub-sections"),
         (IssueType::Invariant, "que-7: If the operator is 'exists', the value must be a boolean"),

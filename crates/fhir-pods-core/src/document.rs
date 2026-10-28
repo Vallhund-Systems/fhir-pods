@@ -516,10 +516,14 @@ fn report_base_binding(
         crate::terminology::Membership::NotMember => w.gaps.push((
             label,
             CodeInvalid,
-            alloc::format!(
-                "The value provided ('{what}') was not found in the value set '{}', and a code is required from this value set",
-                b.value_set
-            ),
+            if what == crate::engine::CODINGS {
+                crate::engine::no_coding_in_set(b.value_set)
+            } else {
+                alloc::format!(
+                    "The value provided ('{what}') was not found in the value set '{}', and a code is required from this value set",
+                    b.value_set
+                )
+            },
         )),
         crate::terminology::Membership::Unknown => w.warnings.push((
             label,
@@ -561,7 +565,7 @@ fn base_binding_object<'v, 'a>(v: &'v Value<'a>, ctx: &'static str, w: &mut Walk
     let (m, seen) = crate::engine::membership_of(b, &doc, &w.provider());
     if seen {
         let label = w.label(w.root);
-        report_base_binding(m, b, "the codings", label, w);
+        report_base_binding(m, b, crate::engine::CODINGS, label, w);
     } else if ctx == "CodeableConcept" {
         // Coding objects exist, but none carries a code. The Coding itself is
         // permitted to be partial; the parent concept still has no member of
@@ -574,7 +578,7 @@ fn base_binding_object<'v, 'a>(v: &'v Value<'a>, ctx: &'static str, w: &mut Walk
         } else {
             crate::terminology::Membership::Unknown
         };
-        report_base_binding(m, b, "the codings", label, w);
+        report_base_binding(m, b, crate::engine::CODINGS, label, w);
     }
 }
 
