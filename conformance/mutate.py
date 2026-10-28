@@ -14,11 +14,17 @@ our verdicts always come fresh from the probe binary. The lane prints, per
 class, how many derived files agree, where we are lenient (we say valid,
 the oracle says invalid — the ones that matter), where we are stricter, and
 where both say invalid but we miss an error the oracle reports. Accepted
-differences are named in `mutate-triage.json` by `<class>:<family>`; the lane
-exits 1 while an unaccepted lenient or stricter case remains.
+verdict differences are named in `mutate-triage.json`, one entry per derived
+file (`<class>:<file>`), each bound to the file's bytes (sha256), the
+oracle's verdict and full error signature, the pod's verdict and a reviewed
+reason; `mutate_triage.py` derives it from the lane's evidence and its own
+table of reasons, never by hand. The lane exits 1 while an unaccepted
+lenient or stricter case remains, and when an entry no longer matches a
+difference (the file, the oracle or the pod moved: a stale entry).
 """
 import argparse
 import copy
+import hashlib
 import json
 import os
 import re
@@ -316,6 +322,21 @@ def derive(cls, cap, limit):
     return paths
 
 
+def file_sha256(path):
+    with open(path, "rb") as fh:
+        return hashlib.sha256(fh.read()).hexdigest()
+
+
+def oracle_signature(detail):
+    """The oracle's whole error list, order-free: what a triage entry binds."""
+    return hashlib.sha256(json.dumps(sorted(detail)).encode()).hexdigest()
+
+
+def accepts(entry, row):
+    """Does a triage entry accept this row exactly as it now stands?"""
+    return bool(entry) and all(entry.get(k) == row.get(k) for k in ("sha256", "oracle_signature", "oracle", "ours"))
+
+
 def family(detail):
     """The oracle's first error message, with the variable parts removed."""
     for line in detail:
@@ -343,6 +364,7 @@ def main():
     inherited = baseline_missed()
     evidence = {}
     ungated = 0
+    used = set()
     for cls in a.classes.split(","):
         paths = derive(cls, a.per_file, a.limit)
         if cls in GUARDED:
@@ -385,6 +407,7 @@ def main():
                 kind = "stricter"
             rows.append({"file": key, "kind": kind, "ours": nv, "oracle": ov,
                          "family": family(odetail), "missed": sorted(new_missed),
+                         "sha256": file_sha256(p), "oracle_signature": oracle_signature(odetail),
                          "oracle_detail": [x[:160] for x in odetail[:4]]})
         counts = {}
         for r in rows:
@@ -396,19 +419,26 @@ def main():
                 if r["kind"] == kind:
                     fams.setdefault(r["family"] if kind != "stricter" else "(we error, oracle valid)", []).append(r)
             for fam, rs in sorted(fams.items(), key=lambda kv: -len(kv[1])):
-                accepted = triage.get(f"{cls}:{fam}") or triage.get(f"{cls}:*")
-                tag = "triaged" if accepted else "UNTRIAGED"
+                gated = kind in ("lenient", "stricter", "error")
+                taken = [r for r in rs if gated and accepts(triage.get(f"{cls}:{r['file']}"), r)]
+                used.update(f"{cls}:{r['file']}" for r in taken)
+                tag = ("triaged" if len(taken) == len(rs) else "UNTRIAGED") if gated else "reported"
                 # a verdict disagreement, or no verdict at all, gates the lane
-                if not accepted and kind in ("lenient", "stricter", "error"):
-                    ungated += len(rs)
+                ungated += len(rs) - len(taken) if gated else 0
                 print(f"  {kind:8} {len(rs):4}  {tag:9} {fam}")
                 for r in rs[: a.show]:
                     extra = f" missed {r['missed']}" if kind == "missed" else ""
                     print(f"             {r['file']}{extra}")
         evidence[cls] = rows
     json.dump({"oracle": run.JAR_VERSION, "classes": evidence}, open(os.path.join(OUT, "evidence.json"), "w"), indent=1)
-    print(f"\n{ungated} untriaged lenient/stricter case(s)")
-    sys.exit(1 if ungated else 0)
+    # an entry for a class just run that accepted nothing is stale: the file,
+    # the oracle or the pod moved, and the review is owed again
+    stale = [] if a.limit else sorted(
+        k for k in triage if k.split(":", 1)[0] in a.classes.split(",") and k not in used)
+    for k in stale:
+        print(f"  STALE    {k}")
+    print(f"\n{ungated} untriaged lenient/stricter case(s), {len(stale)} stale triage entr{'y' if len(stale) == 1 else 'ies'}")
+    sys.exit(1 if ungated or stale else 0)
 
 
 if __name__ == "__main__":

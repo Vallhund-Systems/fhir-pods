@@ -43,6 +43,22 @@ pub trait TerminologyProvider {
         self.validate_code(value_set, "", "") != Membership::Unknown
     }
 
+    /// A code given with no system, as one coding of a `CodeableConcept`
+    /// under a required binding. validator_cli 6.10.4 infers the system only
+    /// where the set's compose is one include that lists its concepts, and
+    /// then decides by the listed codes; under any other compose (two
+    /// includes, even of one system; a filter; a whole code system; an
+    /// expansion alone) such a code is no member. Default, for a provider
+    /// that holds members but not the compose they came from: a code the set
+    /// does not hold under any system is not a member (every shape refuses
+    /// it); one it holds cannot be placed (`Unknown`).
+    fn validate_code_only(&self, value_set: &str, code: &str) -> Membership {
+        match self.validate_code(value_set, "", code) {
+            Membership::NotMember => Membership::NotMember,
+            _ => Membership::Unknown,
+        }
+    }
+
     /// Observe an unresolved need without asking an alternate authority for a
     /// membership decision. A sealed questionnaire context uses this to retain
     /// discovery while refusing to borrow another context's complete table.
@@ -80,6 +96,14 @@ impl TerminologyProvider for Bundled {
     fn knows_set(&self, value_set: &str) -> bool {
         crate::value_sets::knows(value_set)
     }
+
+    fn validate_code_only(&self, value_set: &str, code: &str) -> Membership {
+        match crate::value_sets::code_only_membership(value_set, code) {
+            Some(true) => Membership::Member,
+            Some(false) => Membership::NotMember,
+            None => Membership::Unknown,
+        }
+    }
 }
 
 /// Providers in order; the first definite answer wins. Put [`Bundled`]
@@ -104,6 +128,16 @@ impl TerminologyProvider for Chain<'_> {
     fn validate_code(&self, value_set: &str, system: &str, code: &str) -> Membership {
         for p in self.0 {
             let m = p.validate_code(value_set, system, code);
+            if m != Membership::Unknown {
+                return m;
+            }
+        }
+        Membership::Unknown
+    }
+
+    fn validate_code_only(&self, value_set: &str, code: &str) -> Membership {
+        for p in self.0 {
+            let m = p.validate_code_only(value_set, code);
             if m != Membership::Unknown {
                 return m;
             }

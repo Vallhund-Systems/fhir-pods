@@ -122,6 +122,14 @@ impl TerminologyProvider for ResourceProvider<'_> {
     fn knows_set(&self, vs: &str) -> bool {
         self.table.map_or_else(|| self.root.knows_set(vs), |table| Bundled.knows_set(vs) || table.knows_set(vs))
     }
+    fn validate_code_only(&self, vs: &str, code: &str) -> Membership {
+        let Some(table) = self.table else { return self.root.validate_code_only(vs, code) };
+        let verdict = Chain(&[&Bundled, table]).validate_code_only(vs, code);
+        if verdict == Membership::Unknown {
+            self.root.record_need(vs, "", code);
+        }
+        verdict
+    }
     fn display(&self, system: &str, code: &str) -> Option<String> {
         self.table
             .map_or_else(|| self.root.display(system, code), |table| Chain(&[&Bundled, table]).display(system, code))

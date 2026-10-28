@@ -607,6 +607,13 @@ impl TerminologyProvider for ScopedTerminology<'_> {
     fn knows_set(&self, value_set: &str) -> bool {
         Bundled.knows_set(value_set) || self.table.knows_set(value_set)
     }
+    fn validate_code_only(&self, value_set: &str, code: &str) -> Membership {
+        let membership = Chain(&[&Bundled, self.table]).validate_code_only(value_set, code);
+        if membership == Membership::Unknown {
+            self.needs.record_need(value_set, "", code);
+        }
+        membership
+    }
     fn display(&self, system: &str, code: &str) -> Option<String> {
         Chain(&[&Bundled, self.table]).display(system, code)
     }

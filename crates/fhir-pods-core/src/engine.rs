@@ -815,7 +815,7 @@ fn check_element<D: Document>(
                     }
                 }
                 if let Some(v) = verdict {
-                    report_membership(v, vs, "the codings", label, r);
+                    report_membership(v, vs, CODINGS, label, r);
                 } else if codeable_concept {
                     // Coding objects exist, none with a code: no member of the
                     // set — where the set can be decided at all. Where it
@@ -824,7 +824,7 @@ fn check_element<D: Document>(
                     // usual "not checked".
                     let judged = decidable(tx, vs) || base.is_some_and(|b| decidable(tx, b.value_set));
                     let m = if judged { Membership::NotMember } else { Membership::Unknown };
-                    report_membership(m, vs, "the codings", label, r);
+                    report_membership(m, vs, CODINGS, label, r);
                 }
             }
         }
@@ -997,22 +997,23 @@ fn under_base(
 }
 
 /// One coding of a `CodeableConcept` held to a required binding. A coding
-/// with a code and no system is no member of any set: validator_cli 6.10.4
-/// refuses the concept when none of its codings is a member ("None of the
-/// codings provided are in the value set … (codes = null#active)"), and a
-/// coding with a system beside it still decides ("any coding decides").
-/// Only where the set can be decided: under a set nobody here holds (a
-/// LOINC-built one, offline) the question stays open, as before — the
-/// oracle is silent under a set whose every include it cannot read, and
-/// refuses under one with any include it can.
+/// with a code and no system is placed as validator_cli 6.10.4 places it
+/// (`TerminologyProvider::validate_code_only`): by the listed codes where
+/// the set's compose is one include listing its concepts
+/// (`questionnaireresponse-mode`, `au-timezone`), and never a member under
+/// any other compose — a whole code system (`condition-clinical`), two
+/// includes, a filter ("None of the codings provided are in the value set …
+/// (codes = null#active)"). A set the provider cannot place a code in stays
+/// unknown. A coding with a system beside it still decides ("any coding
+/// decides").
 /// A standalone `Coding` with no system is a different finding: the oracle
 /// only warns there ("A code with no system has no defined meaning"), bound
 /// required or not, member or not — so the binding's `Coding` arms do not
 /// judge one (a slice's discriminator still places it by its code).
 /// A bare `code` element has no system of its own and is never routed here.
 fn concept_coding(tx: &dyn TerminologyProvider, set: &str, system: &str, code: &str) -> Membership {
-    if system.is_empty() && tx.knows_set(set) {
-        Membership::NotMember
+    if system.is_empty() {
+        tx.validate_code_only(set, code)
     } else {
         tx.validate_code(set, system, code)
     }
@@ -1024,9 +1025,22 @@ fn coding_of(inst: &impl Document) -> Option<(&str, &str)> {
     Some((system, code))
 }
 
+/// What a `CodeableConcept`'s membership is reported for: its codings,
+/// taken together — named in words, never quoted as a value.
+pub(crate) const CODINGS: &str = "the codings";
+
+/// A required `CodeableConcept` none of whose codings is a member, in the
+/// reference validator's words.
+pub(crate) fn no_coding_in_set(vs: &str) -> String {
+    format!("None of the codings provided are in the value set '{vs}', and a coding from this value set is required")
+}
+
 fn report_membership(m: Membership, vs: &str, what: &str, label: &str, r: &mut Report) {
     match m {
         Membership::Member => {}
+        Membership::NotMember if what == CODINGS => {
+            r.push(Severity::Error, IssueType::CodeInvalid, label, no_coding_in_set(vs))
+        }
         Membership::NotMember => {
             r.push(Severity::Error, IssueType::CodeInvalid, label, format!("'{what}' is not in the bound value set"))
         }

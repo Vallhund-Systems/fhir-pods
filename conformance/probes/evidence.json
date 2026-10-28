@@ -1,7 +1,7 @@
 {
-  "recorded_at": "2026-10-21T01:17:17.642684+00:00",
-  "source_revision": "ed877949cdc2660fd9c1730852401f4293a0d221",
-  "source_dirty": false,
+  "recorded_at": "2026-10-28T02:39:07.178150+00:00",
+  "source_revision": "2d8d5c3c3ad1f61ad3a1fa2e7a68e09006ce651b",
+  "source_dirty": true,
   "oracle_version": "6.10.4",
   "oracle_sha256": "1106b9d58f9e363e47bea7c4fc065841e5fc91fe9d062775c3bfdd212bd653cc",
   "oracle_options": [
@@ -1561,7 +1561,7 @@
             "code": "code-invalid",
             "id": "binding.not-member",
             "path": "Condition.clinicalStatus",
-            "message": "The value provided ('the codings') was not found in the value set 'http://hl7.org/fhir/ValueSet/condition-clinical', and a code is required from this value set"
+            "message": "None of the codings provided are in the value set 'http://hl7.org/fhir/ValueSet/condition-clinical', and a coding from this value set is required"
           },
           {
             "severity": "warning",
@@ -1633,7 +1633,7 @@
             "code": "code-invalid",
             "id": "binding.not-member",
             "path": "Condition.clinicalStatus",
-            "message": "'the codings' is not in the bound value set"
+            "message": "None of the codings provided are in the value set 'http://hl7.org/fhir/ValueSet/condition-clinical|4.0.1', and a coding from this value set is required"
           },
           {
             "severity": "warning",
@@ -3008,6 +3008,14 @@
       "oracle_valid": false,
       "oracle_issues": [
         {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: sqty-1: 'The comparator is not used on a SimpleQuantity' (defined in http://hl7.org/fhir/StructureDefinition/SimpleQuantity)",
+          "paths": [
+            "MedicationDispense.extension[0].value.ofType(Quantity)"
+          ]
+        },
+        {
           "severity": "warning",
           "code": "business-rule",
           "text": "Unable to validate code '{tbl}' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
@@ -3027,14 +3035,6 @@
           "severity": "error",
           "code": "structure",
           "text": "Quantity.comparator: max allowed = 0, but found 1 (from http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)",
-          "paths": [
-            "MedicationDispense.extension[0].value.ofType(Quantity)"
-          ]
-        },
-        {
-          "severity": "error",
-          "code": "invariant",
-          "text": "Constraint failed: sqty-1: 'The comparator is not used on a SimpleQuantity'",
           "paths": [
             "MedicationDispense.extension[0].value.ofType(Quantity)"
           ]

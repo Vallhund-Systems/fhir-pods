@@ -60,10 +60,13 @@ What validator_cli 6.10.4 does (`-tx n/a`; `evidence.json` has every issue):
   `ValueSet[<url>]`; `ValueSet[null]` only when the set has no url either.
 - **Outside a questionnaire**, a required `CodeableConcept` none of whose
   codings is a member is refused (`None of the codings provided are in the
-  value set`), and a coding with a code and no system is never a member —
-  alone, with a display, beside a second such coding or beside a coding of
-  another system; beside the same code with its system the concept is valid,
-  in either order (any coding decides). Extensible and preferred concepts, a
+  value set`). Under `Condition.clinicalStatus` (a set including a whole code
+  system) a coding with a code and no system is never a member — alone, with
+  a display, beside a second such coding or beside a coding of another
+  system; beside the same code with its system the concept is valid, in
+  either order (any coding decides). (Under a set whose compose is one
+  include listing its concepts the oracle infers the system and decides by
+  the listed codes — probed outside this lane, `crates/fhir-pods-core/tests/validate.rs`.) Extensible and preferred concepts, a
   `Coding` (Encounter.class, extensible in R4), and unbound or example-bound
   concepts only warn. (A required-bound standalone `Coding` with no system
   only warns too, member or not — probed outside this lane, since it needs

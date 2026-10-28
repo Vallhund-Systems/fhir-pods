@@ -221,7 +221,10 @@ pub fn rule_id(code: IssueType, message: &str) -> &'static str {
     {
         return "questionnaire.answer-not-in-set";
     }
-    if has("is not in the bound value set") || has("was not found in the value set") {
+    if has("is not in the bound value set")
+        || has("was not found in the value set")
+        || has("None of the codings provided are in the value set")
+    {
         return "binding.not-member";
     }
     if starts("no bundled terminology") {

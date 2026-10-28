@@ -4,7 +4,7 @@
 //! engine degrades that to a warning. SNOMED- and LOINC-bound sets are
 //! intentionally absent: they resolve at runtime through the terminology seam.
 
-use crate::value_sets_table::{DISPLAYS, SETS, WHOLE_SYSTEMS};
+use crate::value_sets_table::{DISPLAYS, ONE_LISTED_INCLUDE, SETS, WHOLE_SYSTEMS};
 
 /// A bundled set's codes: sorted (system, code, display).
 pub type Codes = &'static [(&'static str, &'static str, &'static str)];
@@ -26,6 +26,20 @@ fn set(url: &str) -> Option<Codes> {
 pub fn knows(url: &str) -> bool {
     let base = url.split('|').next().unwrap_or(url);
     WHOLE_SYSTEMS.binary_search_by(|(u, _)| u.cmp(&base)).is_ok() || set(url).is_some()
+}
+
+/// A code given with no system against the bundled set at `url`, as the
+/// reference validator places it: where the set's compose is one include
+/// listing its concepts, by the listed codes; under any other compose (a
+/// whole code system, several includes) never a member. `None` for a set
+/// not bundled.
+pub fn code_only_membership(url: &str, code: &str) -> Option<bool> {
+    let base = url.split('|').next().unwrap_or(url);
+    if WHOLE_SYSTEMS.binary_search_by(|(u, _)| u.cmp(&base)).is_ok() {
+        return Some(false);
+    }
+    let codes = set(url)?;
+    Some(ONE_LISTED_INCLUDE.binary_search(&base).is_ok() && codes.iter().any(|(_, c, _)| *c == code))
 }
 
 pub fn membership(url: &str, system: &str, code: &str) -> Option<bool> {
