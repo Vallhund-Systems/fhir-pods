@@ -143,6 +143,31 @@ def main():
             sd = json.load(open(path))
             if is_profile(sd) and sd.get("url") in referenced and (datatype_profile(sd) or sd.get("kind") == "resource"):
                 targets.append(sd)
+    # An IG's own datatype profile of any other type (`NzAddress`,
+    # `NzContactpoint`, `au-dosage`, `CodeableConcept-uv-ips` and the
+    # `Coding-uv-ips` it names) that a compiled profile holds an element to
+    # alone: compiled too, from any package, so the engine can apply it
+    # whole there (gen_profile.ig_datatype_profile). One only ever listed
+    # beside its base datatype (`au-address`) has nothing to apply and is not
+    # compiled; nor is the base package's own (`SimpleQuantity`), the walk's.
+    gen_profile.LOAD = load
+    have = {sd["url"] for sd in targets}
+    over_base = set()
+    stack = list(targets)
+    while stack:
+        sd = stack.pop()
+        for e in (sd.get("snapshot") or {}).get("element", []):
+            for t in e.get("type", []):
+                code = t.get("code")
+                if code in ("Extension", "Resource", "DomainResource") or code not in gen_profile.DATATYPE_CODES:
+                    continue
+                url = gen_profile.ig_datatype_profile(code, [p.split("|")[0] for p in t.get("profile", [])])
+                dt = load(url) if url and " " not in url else None
+                if dt and url not in have and is_profile(dt) and dt.get("kind") == "complex-type":
+                    targets.append(dt)
+                    have.add(url)
+                    over_base.add(url)
+                    stack.append(dt)
 
     # The base spec's vital-sign profiles: the reference validator applies
     # them to any Observation carrying their LOINC code (or, for the generic
@@ -177,7 +202,9 @@ def main():
         used.add(mod)
         if sd["url"] in implied:
             implied_mods.append(mod)
-        text, (ne, ns, nd) = emit(sd, provenance, load)
+        # an IG datatype profile compiled for the elements held to it: only
+        # what it adds over its base (the walk holds every instance to that)
+        text, (ne, ns, nd) = emit(sd, provenance, load, differential=sd["url"] in over_base)
         with open(os.path.join(out_dir, f"{mod}.rs"), "w") as f:
             f.write(text)
         mods.append((mod, sd.get("title") or sd_id, ne, ns, nd))

@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
-from host_profile_sources import record_sources, source_identities, stage_packages
+from host_profile_sources import precheck, record_sources, source_identities, stage_packages
 
 URL = "https://profiles.example.invalid/StructureDefinition/score"
 
@@ -53,6 +53,58 @@ class HostProfileSources(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"source was not compiled"):
             record_sources(self.generated,[self.package])
         self.assertEqual((self.generated / "mod.rs").read_bytes(),before)
+
+CP = "https://profiles.example.invalid/StructureDefinition/probe-contactpoint"
+PATIENT = "https://profiles.example.invalid/StructureDefinition/probe-patient"
+
+
+def host_patient(types):
+    return {"resourceType": "StructureDefinition", "url": PATIENT, "kind": "resource", "type": "Patient",
+            "derivation": "constraint", "snapshot": {"element": [
+                {"id": "Patient", "path": "Patient"},
+                {"id": "Patient.telecom", "path": "Patient.telecom", "type": [{"code": "ContactPoint", "profile": types}]}]}}
+
+
+def host_contactpoint(snapshot=True):
+    sd = {"resourceType": "StructureDefinition", "url": CP, "kind": "complex-type", "type": "ContactPoint",
+          "derivation": "constraint", "differential": {"element": [{"id": "ContactPoint", "path": "ContactPoint"}]}}
+    if snapshot:
+        sd["snapshot"] = {"element": [{"id": "ContactPoint", "path": "ContactPoint"}]}
+    return sd
+
+
+class HostDatatypeProfiles(unittest.TestCase):
+    """A host datatype profile an element is held to alone is compiled
+    (gen_profile.ig_datatype_profile), so the host guards cover it too."""
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.package = Path(self.temp.name) / "package"
+        self.package.mkdir()
+    def tearDown(self):
+        self.temp.cleanup()
+    def write(self, patient_types, cp):
+        (self.package / "patient.json").write_text(json.dumps(host_patient(patient_types)))
+        (self.package / "contactpoint.json").write_text(json.dumps(cp))
+    def test_held_alone_is_attested(self):
+        self.write([CP], host_contactpoint())
+        ids = source_identities([self.package])
+        self.assertEqual(set(ids), {PATIENT, CP})
+        self.assertEqual(ids[CP], hashlib.sha256((self.package / "contactpoint.json").read_bytes()).hexdigest())
+    def test_beside_its_base_it_is_not_compiled_and_not_attested(self):
+        self.write(["http://hl7.org/fhir/StructureDefinition/ContactPoint", CP], host_contactpoint())
+        self.assertEqual(set(source_identities([self.package])), {PATIENT})
+    def test_held_alone_without_a_snapshot_is_refused_by_name(self):
+        self.write([CP], host_contactpoint(snapshot=False))
+        with self.assertRaisesRegex(SystemExit, "contactpoint.json"):
+            precheck(set(), [self.package])
+        # unreferenced, the same definition is nothing the generator compiles
+        self.write(["http://hl7.org/fhir/StructureDefinition/ContactPoint", CP], host_contactpoint(snapshot=False))
+        precheck(set(), [self.package])
+    def test_held_alone_reusing_a_shipped_canonical_is_refused(self):
+        self.write([CP], host_contactpoint())
+        with self.assertRaisesRegex(SystemExit, "redefines shipped canonicals"):
+            precheck({CP}, [self.package])
+        precheck(set(), [self.package])
 
 if __name__ == "__main__":
     unittest.main()
