@@ -56,15 +56,20 @@ its profile comes from (`ig`, one JVM per guide) and accepts a difference only
 as a `reviewed` entry bound to the fixture's hash, the oracle's signature and
 the pod's verdict; none is recorded.
 
-Lanes, measured on this tree: release gate **1,818/1,818** (the 1,808 inputs
-it had plus the ten probes; 0.26.0's pod on the same 1,818 gives 1,816, the
-two NZ probes lenient, and no other verdict moves); reasons 0 untriaged on
-1,818 (3 triaged); probes **65/65** (55 + 10); published R4 examples
+Lanes, measured on this tree: release gate **1,823/1,823** (the 1,808 inputs
+it had plus the fifteen probes; 0.26.0's pod on the same 1,823 gives 1,819,
+four probes lenient — the two NZ extension counts, the second of three
+addresses, the CA Practitioner identifier); reasons 0 untriaged on 1,823 (3
+triaged); probes **70/70** (55 + 15); published R4 examples
 (`--reuse-oracle`) **5,155/5,287**, 132 lenient, 0 stricter — unchanged;
-mutation lane (`--reuse-oracle`) 19,067 derived files, 0 untriaged. On the
-inputs of the validator test-case, v2, coded-answer, narrative, instrument
-and unprofiled lanes the pod's verdict and error set are the ones 0.26.0
-gives. The wasm artefact was not rebuilt for this entry.
+mutation lane (`--reuse-oracle`) 19,067 derived files, 0 untriaged. Error
+sets, pod against pod: on the release corpus only probes differ from 0.26.0
+(the four above and the CA Patient identifier's second finding, which the
+oracle also reports); on the inputs of the validator test-case (233), v2
+(77), coded-answer (132), narrative (42), instrument (786) and unprofiled
+(23) lanes the pod's verdict and error set are the ones 0.26.0 gives. Those
+are the inputs measured, not every input. The wasm artefact was not rebuilt
+for this entry.
 
 ## 0.26.0
 

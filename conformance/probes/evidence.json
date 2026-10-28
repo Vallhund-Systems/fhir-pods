@@ -1,6 +1,6 @@
 {
-  "recorded_at": "2026-10-28T02:07:35.504211+00:00",
-  "source_revision": "5ec958b7afb434884b115ad6087e7ab33e09e1f7",
+  "recorded_at": "2026-10-28T02:36:51.365787+00:00",
+  "source_revision": "5a01c572bf5cdd33728e88682180156222984e79",
   "source_dirty": false,
   "oracle_version": "6.10.4",
   "oracle_sha256": "1106b9d58f9e363e47bea7c4fc065841e5fc91fe9d062775c3bfdd212bd653cc",
@@ -24,8 +24,8 @@
   },
   "note": "Terminology service disabled; the oracle may still resolve unknown profile URLs. One oracle run per guide (`ig`). Verdict parity only; a reviewed difference counts only while its input hash, oracle signature and local verdict match the review. Issues retained for inspection.",
   "counts": {
-    "total": 65,
-    "agree": 65,
+    "total": 70,
+    "agree": 70,
     "reviewed": 0,
     "differ": 0
   },
@@ -3337,7 +3337,7 @@
             "severity": "error",
             "code": "structure",
             "id": "structure.max",
-            "path": "Patient.address.extension:suburb",
+            "path": "Patient.address[0].extension:suburb",
             "message": "Address.extension:suburb exceeds max 1 (found 2)"
           }
         ]
@@ -3399,7 +3399,7 @@
             "severity": "error",
             "code": "structure",
             "id": "structure.max",
-            "path": "Patient.telecom.extension:cp-purpose",
+            "path": "Patient.telecom[0].extension:cp-purpose",
             "message": "ContactPoint.extension:cp-purpose exceeds max 1 (found 2)"
           }
         ]
@@ -3486,7 +3486,7 @@
             "severity": "error",
             "code": "required",
             "id": "structure.required",
-            "path": "Patient.identifier.system",
+            "path": "Patient.identifier[0].system",
             "message": "Identifier.system is required (min 1, found 0)"
           }
         ]
@@ -3671,6 +3671,233 @@
             "id": "inv.dom-6",
             "path": "Patient",
             "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "nz-address-second-of-three-two-suburbs.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
+      "expect": false,
+      "reason": "NzAddress applies to each address: of three, the second's two suburbs break max 1 (validator_cli 6.10.4, at Patient.address[1]; the pod names the same address).",
+      "sha256": "dc0a0004e4e40f1dfc1851ce35229dfcbf6a890410b104e032c2bedbce1d18d8",
+      "oracle_valid": false,
+      "oracle_signature": "2d3616c1c98802b66916191353add5be89155f59bd489fb02dc256073a69e417",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Address.extension:suburb: max allowed = 1, but found 2 (from http://hl7.org.nz/fhir/StructureDefinition/NzAddress|1.0.0)",
+          "paths": [
+            "Patient.address[1]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.max",
+            "path": "Patient.address[1].extension:suburb",
+            "message": "Address.extension:suburb exceeds max 1 (found 2)"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "nz-telecom-value-no-system.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
+      "expect": false,
+      "reason": "A telecom with a value and no system is cpt-2, reported once (validator_cli 6.10.4, at Patient.telecom[0]): NzContactpoint applies only what it adds over ContactPoint, not the base invariant again.",
+      "sha256": "93dba8ace585c1eccac6365735df5d2f7cd8608ac62077c980600d42255353a8",
+      "oracle_valid": false,
+      "oracle_signature": "53fa12f668ee04433d74e776f8c551abd960b4d3ebff457f3c212be966cbce6c",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: cpt-2: 'A system is required if a value is provided.'",
+          "paths": [
+            "Patient.telecom[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.cpt-2",
+            "path": "Patient.telecom[0]",
+            "message": "cpt-2: A system is required if a value is provided."
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "nz-address-suburb-wrong-type.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
+      "expect": false,
+      "reason": "A suburb extension valued with a code where it allows a string is one error (validator_cli 6.10.4, at Patient.address[0].extension[0]): the extension is held to its profile once, by the shape walk.",
+      "sha256": "60fcd96855d2a798da961341e15b3797725fb70abb78effcfcd238a9f65e67c1",
+      "oracle_valid": false,
+      "oracle_signature": "f716544b3c4443859881f549469c9eef1933bd4b0f032fcd6a07ce9aac24e6ce",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/suburb' definition allows for the types [string] but found type code",
+          "paths": [
+            "Patient.address[0].extension[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.address[0].extension[0].Extension.value[x]",
+            "message": "Extension.value[x] allows the types [string]; found valueCode"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "nz-telecom-two-purposes-no-system.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
+      "expect": false,
+      "reason": "cpt-2 and NzContactpoint's cp-purpose max 1, each once (validator_cli 6.10.4, both at Patient.telecom[0]).",
+      "sha256": "6311f8d1bf5766ceb1426204bbf64a7273f0b6cf55cac1c8a7a6ba6f4a4a2c38",
+      "oracle_valid": false,
+      "oracle_signature": "85bd827c21d2b6342101ca2f80cd5225789663d3c451adfe5fa92733ef24420a",
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "text": "A definition for CodeSystem 'http://example.org/cs-r13' could not be found, so the code cannot be validated",
+          "paths": [
+            "Patient.telecom[0].extension[0].value.ofType(CodeableConcept).coding[0].system"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "code-invalid",
+          "text": "None of the codings provided are in the value set 'ContactPoint purpose' (https://nzhts.digital.health.nz/fhir/ValueSet/contact-point-purpose-code|1.0.0), and a coding is recommended to come from this value set (codes = http://example.org/cs-r13#x)",
+          "paths": [
+            "Patient.telecom[0].extension[0].value.ofType(CodeableConcept)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "not-found",
+          "text": "A definition for CodeSystem 'http://example.org/cs-r13' could not be found, so the code cannot be validated",
+          "paths": [
+            "Patient.telecom[0].extension[1].value.ofType(CodeableConcept).coding[0].system"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "code-invalid",
+          "text": "None of the codings provided are in the value set 'ContactPoint purpose' (https://nzhts.digital.health.nz/fhir/ValueSet/contact-point-purpose-code|1.0.0), and a coding is recommended to come from this value set (codes = http://example.org/cs-r13#x)",
+          "paths": [
+            "Patient.telecom[0].extension[1].value.ofType(CodeableConcept)"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: cpt-2: 'A system is required if a value is provided.'",
+          "paths": [
+            "Patient.telecom[0]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "ContactPoint.extension:cp-purpose: max allowed = 1, but found 2 (from http://hl7.org.nz/fhir/StructureDefinition/NzContactpoint|1.0.0)",
+          "paths": [
+            "Patient.telecom[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.cpt-2",
+            "path": "Patient.telecom[0]",
+            "message": "cpt-2: A system is required if a value is provided."
+          },
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.max",
+            "path": "Patient.telecom[0].extension:cp-purpose",
+            "message": "ContactPoint.extension:cp-purpose exceeds max 1 (found 2)"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "ca-practitioner-identifier-no-system.json",
+      "profile": "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitioner",
+      "ig": "hl7.fhir.ca.baseline#1.2.0",
+      "expect": false,
+      "reason": "CA Baseline holds Practitioner.identifier to profile-identifier alone: an identifier without a system is one error from it (validator_cli 6.10.4, at Practitioner.identifier[0]).",
+      "sha256": "af3e414a2e95eb8ea08e5312d790b7e7cd926b3f40c8008e66311486d0311832",
+      "oracle_valid": false,
+      "oracle_signature": "d82816097da98bcf1df8e00c660b1929357e8d7a6f489529cf563625d9f316dd",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Identifier.system: minimum required = 1, but only found 0 (from http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-identifier|0.3.1)",
+          "paths": [
+            "Practitioner.identifier[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Practitioner",
+        "profile": "Practitioner Profile (General)",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "required",
+            "id": "structure.required",
+            "path": "Practitioner.identifier[0].system",
+            "message": "Identifier.system is required (min 1, found 0)"
           }
         ]
       },
