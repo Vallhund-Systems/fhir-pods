@@ -11,6 +11,11 @@ import re
 import shutil
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import gen_profile  # noqa: E402
+
+BASE = "http://hl7.org/fhir/StructureDefinition/"
+
 
 def stage_packages(destination, sources):
     destination = Path(destination)
@@ -28,9 +33,10 @@ def stage_packages(destination, sources):
     return staged
 
 
-def source_identities(packages):
+def _definitions(packages):
+    """Every StructureDefinition in the packages: url -> (path, raw bytes, sd).
+    A canonical defined twice is refused."""
     seen = {}
-    result = {}
     for package in packages:
         for path in sorted(Path(package).glob("*.json")):
             raw = path.read_bytes()
@@ -44,14 +50,75 @@ def source_identities(packages):
             if not isinstance(url, str):
                 raise ValueError(f"non-string profile canonical in {path.name}")
             if url in seen:
-                raise ValueError(f"duplicate host profile canonical {url}: {seen[url].name}, {path.name}")
-            seen[url] = path
-            compiled_kind = sd.get("kind") == "resource" or (
-                sd.get("kind") == "complex-type" and sd.get("type") in ("Identifier", "Extension")
-            )
-            if sd.get("derivation") == "constraint" and compiled_kind and (sd.get("snapshot") or {}).get("element"):
-                result[url] = hashlib.sha256(raw).hexdigest()
-    return result
+                raise ValueError(f"duplicate host profile canonical {url}: {seen[url][0].name}, {path.name}")
+            seen[url] = (path, raw, sd)
+    return seen
+
+
+def _held_alone(sd):
+    """The datatype profiles an element of `sd` is held to alone — one IG
+    profile, no base datatype beside it — which the generator compiles too
+    (gen_profile.ig_datatype_profile)."""
+    for e in (sd.get("snapshot") or {}).get("element", []):
+        for t in e.get("type", []):
+            code = t.get("code")
+            if code in ("Extension", "Resource", "DomainResource") or code not in gen_profile.DATATYPE_CODES:
+                continue
+            urls = [u.split("|")[0] for u in t.get("profile", [])]
+            own = [u for u in urls if not u.startswith(BASE)]
+            if BASE + code not in urls and len(own) == 1:
+                yield own[0]
+
+
+def compiled_definitions(packages):
+    """What the generator compiles from the host packages, the generator's
+    own rule: every constraint on a resource, an Identifier or a complex
+    Extension, and every other datatype profile of the host's that a compiled
+    one holds an element to alone (transitively). Returns `(compiled, missing)`:
+    url -> (path, raw bytes) for those with a snapshot, and the paths of those
+    without one, which would compile to nothing."""
+    defs = _definitions(packages)
+
+    def kind(sd):
+        if sd.get("derivation") != "constraint":
+            return False
+        return sd.get("kind") == "resource" or (sd.get("kind") == "complex-type" and sd.get("type") in ("Identifier", "Extension"))
+
+    chosen = {url for url, (_, _, sd) in defs.items() if kind(sd)}
+    frontier = list(chosen)
+    while frontier:
+        for url in _held_alone(defs[frontier.pop()][2]):
+            sd = defs.get(url, (None, None, {}))[2]
+            if url not in chosen and sd.get("derivation") == "constraint" and sd.get("kind") == "complex-type":
+                chosen.add(url)
+                frontier.append(url)
+    compiled, missing = {}, []
+    for url in sorted(chosen):
+        path, raw, sd = defs[url]
+        if (sd.get("snapshot") or {}).get("element"):
+            compiled[url] = (path, raw)
+        else:
+            missing.append(str(path))
+    return compiled, missing
+
+
+def precheck(shipped, packages):
+    """Refuse, before anything is generated: a definition the generator would
+    compile but has no snapshot (by name), and a host canonical the shipped
+    registry already holds (pruning would serve the shipped copy instead)."""
+    compiled, missing = compiled_definitions(packages)
+    if missing:
+        raise SystemExit("definitions without a snapshot (refused — publish with snapshots):\n  " + "\n  ".join(missing))
+    both = sorted(set(compiled) & set(shipped))
+    if both:
+        raise SystemExit("host package redefines shipped canonicals (refused):\n  " + "\n  ".join(both))
+    if not compiled:
+        raise SystemExit("nothing to compile: no constraint profile with a snapshot in " + ", ".join(map(str, packages)))
+
+
+def source_identities(packages):
+    compiled, _ = compiled_definitions(packages)
+    return {url: hashlib.sha256(raw).hexdigest() for url, (_, raw) in compiled.items()}
 
 
 def rust_literal(value):

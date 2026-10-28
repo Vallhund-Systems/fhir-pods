@@ -1,0 +1,23 @@
+{
+  "resourceType": "Practitioner",
+  "id": "c4",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-practitioner"
+    ]
+  },
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Probe</p></div>"
+  },
+  "identifier": [
+    {
+      "value": "v3"
+    }
+  ],
+  "name": [
+    {
+      "family": "Probe"
+    }
+  ]
+}

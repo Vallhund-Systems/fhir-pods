@@ -3,7 +3,8 @@
 # merged into the registry by `--features host-profiles` (the pods' build
 # scripts take FEATURES="host-profiles"). The host's packages are primaries —
 # every resource profile, Identifier and complex Extension profile in them is
-# compiled; the pinned packages (the shipped registry's) are what they may
+# compiled, and any other datatype profile of theirs an element is held to
+# alone; the pinned packages (the shipped registry's) are what they may
 # derive from and slice by. The registry is written only when the whole
 # package compiles: a canonical the shipped registry already holds is
 # refused, and so is a definition without a snapshot (a differential alone
@@ -79,40 +80,21 @@ HOSTS=()
 for ((i=0; i<HOST_COUNT; i++)); do HOSTS+=("$WORK/inputs/package-$i"); done
 
 # What the host package compiles (the generator's own rule: a constraint
-# with a snapshot, on a resource or an Identifier / complex Extension) must
-# not be a canonical the shipped registry holds; a definition the generator
-# would skip for want of a snapshot is refused by name. Judged before
-# anything is generated.
-python3 - "$SRC/generated" "${HOSTS[@]}" <<'PY'
-import re, sys, glob, os, json
-shipped_dir, hosts = sys.argv[1], sys.argv[2:]
+# with a snapshot, on a resource or an Identifier / complex Extension, and any
+# other datatype profile of the host's an element is held to alone) must not
+# be a canonical the shipped registry holds; a definition the generator would
+# skip for want of a snapshot is refused by name. Judged before anything is
+# generated (tools/host_profile_sources.py precheck).
+python3 - "$SRC/generated" "$ROOT/tools" "${HOSTS[@]}" <<'PY'
+import re, sys, glob, os
+shipped_dir, tools, hosts = sys.argv[1], sys.argv[2], sys.argv[3:]
+sys.path.insert(0, tools)
+import host_profile_sources
 def url_of(path):
     m = re.search(r'^\s+url: "([^"]+)"', open(path).read(), re.M)
     return m[1] if m else None
 shipped = {url_of(p) for p in glob.glob(os.path.join(shipped_dir, "*.rs"))} - {None}
-own, no_snapshot = set(), []
-for d in hosts:
-    for p in sorted(glob.glob(os.path.join(d, "*.json"))):
-        try:
-            sd = json.load(open(p))
-        except ValueError:
-            continue
-        if sd.get("resourceType") != "StructureDefinition" or not sd.get("url"):
-            continue
-        compiled_kind = sd.get("kind") == "resource" or (sd.get("kind") == "complex-type" and sd.get("type") in ("Identifier", "Extension"))
-        if sd.get("derivation") != "constraint" or not compiled_kind:
-            continue
-        if not (sd.get("snapshot") or {}).get("element"):
-            no_snapshot.append(p)
-            continue
-        own.add(sd["url"])
-if no_snapshot:
-    sys.exit("definitions without a snapshot (refused — publish with snapshots):\n  " + "\n  ".join(no_snapshot))
-both = sorted(own & shipped)
-if both:
-    sys.exit("host package redefines shipped canonicals (refused):\n  " + "\n  ".join(both))
-if not own:
-    sys.exit("nothing to compile: no constraint profile with a snapshot in " + ", ".join(hosts))
+host_profile_sources.precheck(shipped, hosts)
 PY
 
 # Generated into the private workspace; installed only after all checks pass.

@@ -93,19 +93,50 @@ def index_datatype_bindings(load):
 # (`medicationdispense-quantityRemaining`). One the base element already
 # names is the shape walk's (`typemap::ELEMENT_PROFILES`), so it is not
 # carried twice. A base datatype profile that cannot be applied whole stops
-# the generator; an IG's own datatype profile (`au-address`) is not one of
-# these and is not applied (docs/scope.md). Set by `emit` from its resolver.
+# the generator. An IG's own datatype profile an element is held to alone
+# (`NzAddress`) is carried the same way, by its canonical, and applied as
+# the registry's compiled profile (`ig_datatype_profile`; docs/scope.md).
+# Set by `emit` from its resolver.
 # Carried sparsely: `DATATYPE_ROWS` gathers one row per such element across
 # every profile `emit` writes — (profile url, slice label or "", element
 # path, type code, profile canonical) — and gen_all.py writes them to the
-# registry's `DATATYPE_PROFILE_ELEMENTS` (one row in the shipped registry; a
+# registry's `DATATYPE_PROFILE_ELEMENTS` (106 rows in the shipped registry; a
 # field on every constraint cost the wasm artefact ~117 KB).
 LOAD = None
 DATATYPE_ROWS = []
 BASE_ELEMENT_TYPE_PROFILES = {}
 
 
-def datatype_profiles_of(e):
+def ig_datatype_profile(code, urls):
+    """The IG's own datatype profile an element's type holds it to, as one
+    `DATATYPE_ROWS` canonical, or None when there is nothing to apply.
+
+    A type that also lists its base datatype (AU Core's `Patient.address`:
+    `Address` or `au-address`; every AU identifier list starts with
+    `Identifier`) asks for conformance to any ONE of them, and the base is
+    the shape walk's — nothing more to apply (probed: an address breaking
+    every `au-address` rule is valid to the reference validator). One IG
+    profile alone (`NzAddress`, `NzContactpoint`, CA's `profile-identifier`)
+    is compiled into the registry by gen_all.py and applied whole by the
+    engine. Two or more with no base among them is an any-of the engine
+    does not evaluate: the canonicals joined by a space, which names no
+    compiled profile, so the engine reports the element `not-supported`
+    rather than dropping it."""
+    if DATATYPE_URL + code in urls:
+        return None
+    ig = [u for u in urls if not u.startswith(DATATYPE_URL)]
+    if not ig:
+        return None
+    if len(ig) == 1:
+        sd = LOAD(ig[0])
+        # a resource profile on a resource-typed element (a Bundle entry's
+        # `resource`) is the slicing's business, not a datatype's
+        if sd and sd.get("kind") == "resource":
+            return None
+    return " ".join(sorted(dict.fromkeys(ig)))
+
+
+def datatype_profiles_of(e, ig=True):
     if LOAD is None:
         return ()
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -113,6 +144,11 @@ def datatype_profiles_of(e):
     out = []
     for t in e.get("type", []):
         code = t.get("code")
+        urls = [prof.split("|")[0] for prof in t.get("profile", [])]
+        if ig and code != "Extension" and code in DATATYPE_CODES and code not in ("Resource", "DomainResource"):
+            own = ig_datatype_profile(code, urls)
+            if own:
+                out.append((code, own))
         for prof in t.get("profile", []):
             url = prof.split("|")[0]
             if code == "Extension" or not url.startswith(DATATYPE_URL):
@@ -171,7 +207,7 @@ class Rule:
     datatype_profiles: tuple = ()   # [(type code, base datatype profile url)] the base does not already name here
 
     @staticmethod
-    def of(e):
+    def of(e, ig=True):
         mx = e.get("max")
         # a choice element's allowed types (the profile's list, which the
         # snapshot narrows from the base); a type slice element carries none
@@ -184,7 +220,7 @@ class Rule:
             fixed=scalar_fixed(e),
             binding=binding_of(e),
             types=types,
-            datatype_profiles=datatype_profiles_of(e),
+            datatype_profiles=datatype_profiles_of(e, ig=ig),
         )
 
     def enforceable(self):
@@ -755,7 +791,9 @@ def collect(sd):
 
     def slice_element(sl, e):
         types = e.get("type", [])
-        rule = Rule.of(e)
+        # an IG datatype profile on the slice's own type is the slice's
+        # `profile`, applied by the engine through the registry: not twice
+        rule = Rule.of(e, ig=False)
         sl.min, sl.max = rule.min, rule.max
         sl.type = types[0].get("code") if types else None
         sl.profile = (types[0].get("profile") or [None])[0] if types else None
@@ -1167,16 +1205,39 @@ def datatype_profile_rows(url, c):
     return rows
 
 
-def emit(sd, provenance, load=None):
+def over_base(sd, c, invariants, load):
+    """What an IG datatype profile adds over its base datatype: the element
+    rules the base definition does not already state, and the invariants
+    whose keys it does not carry. Its snapshot restates the base (`cpt-2`,
+    `Dosage.text` max 1), which the shape walk already holds every instance
+    to; applied whole, each would be said twice where the reference
+    validator says it once. Slicings are the profile's own."""
+    base = load(DATATYPE_URL + sd["type"]) if load else None
+    if not base:
+        sys.exit(f"{sd.get('url')}: no base definition for {sd['type']}")
+    base_rules, _, _ = collect(base)
+    # a rule the differential states and the base does not (a snapshot also
+    # expands a primitive's `id` / `value`, which the base never restates)
+    said = {e.get("path") for e in (sd.get("differential") or {}).get("element", []) if ":" not in e.get("id", "")}
+    c.elements = {p: r for p, r in c.elements.items() if p in said and base_rules.get(p) != r}
+    base_keys = {key for _, key, *_ in invariants_of(base)}
+    return [i for i in invariants if i[1] not in base_keys]
+
+
+def emit(sd, provenance, load=None, differential=False):
+    """The Rust source for the profile, and `(elements, slices, deferred)`
+    counts. `differential`: an IG datatype profile applied where an element
+    is held to it (gen_all.py) — only what it adds over its base."""
     global LOAD
     LOAD = load
     if load and not DATATYPE_BINDINGS:
         index_datatype_bindings(load)
-    """The Rust source for the profile, and `(elements, slices, deferred)` counts."""
     c = build(sd, load)
     DATATYPE_ROWS.extend(datatype_profile_rows(sd.get("url"), c))
     name = sd.get("title") or sd.get("name") or sd.get("id") or sd.get("url")
     invariants = invariants_of(sd)
+    if differential:
+        invariants = over_base(sd, c, invariants, load)
     n_slices = sum(len(s[2]) for s in c.slicings)
     out = [
         # the package list lives in mod.rs alone, so adding a guide does not

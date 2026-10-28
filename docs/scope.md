@@ -643,22 +643,72 @@ an export mapping, the way `uk`/`ca`/`nz` came in 0.13.0.
   `medicationdispense-quantityRemaining` (`hl7.fhir.uv.extensions.r4`), typed
   `Quantity` / `SimpleQuantity` — probed, the oracle's two errors at the
   extension's value, and valid here before (`conformance/probes/sq-extension-value-*`).
-  What stays unapplied is an IG's *own* datatype profile on an element
-  outside a slice — `au-address`, the AU identifier profiles, `au-dosage`,
-  `NzAddress`, `NzContactpoint`, `CodeableConcept-uv-ips`. Measured against
-  validator_cli 6.10.4 (`-ig` the guide's package): an NZ Base Patient whose
-  address carries two `suburb` extensions (`NzAddress` slices it `max 1`) is
-  `error Address.extension:suburb: max allowed = 1, but found 2 (from
-  http://hl7.org.nz/fhir/StructureDefinition/NzAddress|1.0.0)` there and
-  valid here, and two `cp-purpose` extensions on a telecom (`NzContactpoint`)
-  are the same error there and valid here — a **lenient** difference; an AU
+- **An IG's own datatype profile is applied where an element is held to it
+  alone** (0.27.0). A profile can type an element with its guide's own
+  datatype profile — NZ Base types `Patient.address` `NzAddress` and
+  `Patient.telecom` `NzContactpoint`, CA Baseline types the identifiers of
+  its Patient, Practitioner and PractitionerRole `profile-identifier`, AU
+  Base its dosages `au-dosage`, IPS and the AU Patient Summary 90 coded
+  elements `CodeableConcept-uv-ips` (which types its codings
+  `Coding-uv-ips`). The generator (`tools/gen_profile.py`) reads every
+  element's `type[].profile`, compiles each such profile into the registry
+  (`tools/gen_all.py`), and lists the element in the registry's sparse
+  `DATATYPE_PROFILE_ELEMENTS` table — 105 rows in the shipped registry
+  beside the one `SimpleQuantity` row: `CodeableConcept-uv-ips` 90,
+  `au-dosage` 7, `profile-identifier` 5, `NzAddress`, `NzContactpoint`,
+  `Coding-uv-ips` 1 each. Such a profile is compiled with only what it adds
+  over its base datatype — the rules its differential states that the base
+  does not, the invariants whose keys the base does not carry, its own
+  slicings — since its snapshot restates the base (`cpt-2`, `Dosage.text`
+  max 1), which the shape walk already holds every instance to; and an
+  extension slice's profile inside it is left to the shape walk, which holds
+  every extension whose url names a compiled extension profile to it at its
+  own indexed path. Each finding is therefore said once, as the reference
+  validator says it. Where the walk meets such an element it validates each
+  instance against that compiled profile and reports its findings at the
+  instance, indexed (`Patient.address[1].extension:suburb`; the oracle's
+  `Patient.address[1]`). Probed against validator_cli 6.10.4 (`-ig` the guide's package,
+  `conformance/probes/nz-*`, `ca-*`): an NZ Base Patient whose address
+  carries two `suburb` extensions is `error Address.extension:suburb: max
+  allowed = 1, but found 2 (from
+  http://hl7.org.nz/fhir/StructureDefinition/NzAddress|1.0.0)` at
+  `Patient.address[0]` there and `structure.max` at
+  `Patient.address.extension:suburb` here; two `cp-purpose` extensions on a
+  telecom are the same error from `NzContactpoint` on both sides; one of
+  each passes on both sides. A CA Baseline Patient identifier without a
+  `system` is two errors on both sides — the oracle reports it from
+  `profile-identifier` and from the Patient profile's own snapshot, and so
+  does the pod. `au-dosage`, `CodeableConcept-uv-ips` and `Coding-uv-ips`
+  carry nothing beyond the base that the compiler enforces (preferred
+  bindings, an open `translation` extension slice with no cardinality), so
+  applying them moves no verdict (read from their differentials; the release
+  corpus's IPS and AU PS examples are unchanged).
+  An element whose type lists the base datatype beside IG profiles asks for
+  conformance to any one of them, and the base is the shape walk's, so there
+  is nothing more to apply: AU Core types `Patient.address` `Address` or
+  `au-address`, and every AU identifier list (`Patient.identifier`,
+  `Practitioner.identifier`, `Organization.identifier`,
+  `DiagnosticReport.identifier`, …) starts with `Identifier`. Probed: an AU
   Core Patient address breaking every `au-address` rule (no line or text, a
-  five-digit postcode, country `NZ`) is valid on **both** sides, because AU
-  Core types `Patient.address` `Address` or `au-address` and the oracle
-  accepts conformance to either. `au-dosage` and `CodeableConcept-uv-ips`
-  carry nothing enforceable beyond the base — preferred bindings,
-  obligations, open slices with no cardinality — which is read from their
-  differentials, not probed; the AU identifier profiles were not probed.
+  five-digit postcode, country `NZ`), a medical record number missing the
+  system and assigner `au-medicalrecordnumber` requires, and an AU Base
+  DiagnosticReport identifier missing the system the local order identifier
+  requires are all valid on both sides. An AU identifier profile reached
+  through a slice (`Patient.identifier:ihi` → `au-ihi`) was already applied as
+  the slice's profile: an IHI failing its Luhn check is `inv-ihi-value-2` at
+  the identifier on both sides (`conformance/probes/au-*`).
+  The one shape left unapplied is an element held to two or more IG datatype
+  profiles with no base among them — an any-of the engine does not evaluate.
+  The generator writes such a row with the canonicals joined by a space, which
+  names no compiled profile, and the engine reports the element, where it is
+  present, as an **information** `not-supported` issue naming them; nothing
+  is dropped without a trace. No shipped profile has one. The same issue,
+  worded by its cause, marks a row whose single profile the registry does not
+  carry, and one whose profile sits deeper than the eight levels of profile
+  the engine follows. A host package's own datatype profile held to alone is
+  compiled, attested (`sourceSha256`) and refused without a snapshot or under
+  a shipped canonical like the host's other profiles
+  (`tools/host_profile_sources.py`).
 - **A Bundle entry with a resource carries a `fullUrl`** (0.8.3), as the
   reference validator requires — except a transaction's or batch's create,
   whose resource has no identity yet.

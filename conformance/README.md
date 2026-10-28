@@ -156,6 +156,13 @@ fresh. Where the two disagree the pod keeps the stored outcome's stricter
 finding (fail-closed), and the probe lane names it as a reviewed difference;
 those entries go when the pin moves.
 
+The synthetic probes (`probes/run.py`) give each fixture the guide its
+profile comes from (`ig`; one JVM per guide) and accept a local/oracle
+difference only as a `reviewed` manifest entry bound to the fixture's hash,
+the oracle's signature (verdict and error-level issues) and the pod's verdict;
+any change voids it (`probes/README.md`,
+`python3 -m unittest discover -s conformance -p test_probes.py`).
+
 ## Probe fixtures: one definition per canonical url
 
 The oracle's validation cache keys url-bearing ValueSets by url+version, not
