@@ -344,14 +344,15 @@ compliance.
 | Synthea cohort | **14/14** bundles (10 seeded patients + hospital + practitioner, 27.3 MB, 9,482 US Core entries) agree at 0.22.0 on the verdict and on every error-level issue; the pod validates the whole cohort in 4.39 s (6.2 MB/s; largest bundle 9.7 MB in 1.65 s), measured on a loaded machine. The oracle side is one JVM over the 14 bundles; larger cohorts are not measured (`conformance/synthea.py`) |
 | Ad-hoc profile tests | **13 of 53** cases compare at 0.22.0: **12/13** agree with Java and **7/7** with Firely where available; 1 reviewed lenient, 0 stricter; 40 have compiler (28), snapshot, package, policy, SMART Health Card or cross-version exclusions (`conformance/testcases.py --profiles`) |
 
-At 0.28.0 the lanes the `CodeableConcept` no-system rule could reach were
-re-run on the pod side against their recorded oracle outcomes — the
-published R4 examples, the validator base, questionnaire and supporting
-tests, the HL7 v2 samples, the Synthea cohort, the instrument path (with
-`--chain`), and the release corpus, probes and narrative fixtures (no pod
-finding moved on any of their files) — and every count above but the
-mutation lane's is unchanged; the coded-answer probes (`conformance/coded-answers/`)
-were re-run against the oracle: **132/132**, 23 reviewed differences.
+At 0.28.0 (merged over 0.27.0) the lanes the `CodeableConcept` no-system
+rule could reach were re-run. Against the oracle, fresh: the release corpus
+(**1,823/1,823**), the probes (**70/70**), the narrative probes (**42/42**),
+the coded-answer probes (**132/132**, 23 reviewed differences) and the
+mutation lane's `systemless` class. On the pod side against recorded oracle
+outcomes: the published R4 examples, the validator base, questionnaire and
+supporting tests, the HL7 v2 samples, the Synthea cohort, the instrument path
+(with `--chain`) and the nine earlier mutation classes. Every count above
+but the mutation lane's is unchanged.
 
 The broader lanes enforce reviewed baselines: new or changed differences and
 unusable evidence fail. Exclusions are never counted as agreement; "compare"
