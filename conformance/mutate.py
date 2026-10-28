@@ -29,6 +29,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import run  # noqa: E402
 import reasons  # noqa: E402
+import canonical_guard  # noqa: E402
 
 ROOT = run.ROOT
 CORPUS = os.path.join(HERE, "corpus")
@@ -218,6 +219,60 @@ def m_orphanext(doc, cap):
     yield "nourlext", d2
 
 
+# the parts of a definition that decide membership: a coding-shaped object
+# there (`ValueSet.expansion.contains`) is the definition, never an instance
+DEFINITION_PARTS = {"compose", "expansion", "concept"}
+
+
+def coding_shaped(v):
+    """A Coding: a code and a system, and none of a Quantity's value/unit/comparator."""
+    return (isinstance(v, dict) and isinstance(v.get("code"), str) and "system" in v
+            and not any(k in v for k in ("value", "unit", "comparator")))
+
+
+def systemless_sites(doc):
+    """Every coded site carrying a code and a system: a concept's `coding`
+    array (the codings in it that have both), a standalone Coding, an array
+    of Codings (`meta.tag`) — never inside a definition's own parts."""
+    for path, container, key in walk(doc):
+        if any(p in DEFINITION_PARTS for p in path if isinstance(p, str)):
+            continue
+        v = container[key]
+        if isinstance(v, list):
+            idx = [i for i, c in enumerate(v) if coding_shaped(c)]
+            if idx:
+                yield path, idx
+        elif coding_shaped(v):
+            yield path, None
+
+
+def strip_at(d, path, idx):
+    node = d
+    for p in path[:-1]:
+        node = node[p]
+    v = node[path[-1]]
+    for c in ([v[i] for i in idx] if idx is not None else [v]):
+        del c["system"]
+
+
+def m_systemless(doc, cap):
+    """Every coding that has a code loses its system; then one coded site at a
+    time (a concept's codings, or a standalone Coding)."""
+    sites = list(systemless_sites(doc))
+    if not sites:
+        return
+    d = copy.deepcopy(doc)
+    for path, idx in sites:
+        strip_at(d, path, idx)
+    yield "systemless-all", d
+    for path, idx in sites[:cap]:
+        if len(sites) == 1:
+            break  # the one site is the whole document's
+        d = copy.deepcopy(doc)
+        strip_at(d, path, idx)
+        yield f"systemless-{'.'.join(map(str, path))}", d
+
+
 CLASSES = {
     "drop": m_drop,
     "codeless": m_codeless,
@@ -228,7 +283,12 @@ CLASSES = {
     "emptystr": m_emptystr,
     "badref": m_badref,
     "orphanext": m_orphanext,
+    "systemless": m_systemless,
 }
+
+# classes whose derived files must name each canonical once (the oracle caches
+# a url-bearing ValueSet by url+version, not content: `canonical_guard.py`)
+GUARDED = {"systemless"}
 
 
 def derive(cls, cap, limit):
@@ -285,6 +345,8 @@ def main():
     ungated = 0
     for cls in a.classes.split(","):
         paths = derive(cls, a.per_file, a.limit)
+        if cls in GUARDED:
+            canonical_guard.refuse_shared_canonicals(paths)
         cache = os.path.join(OUT, cls, "_oracle.json")
         if a.reuse_oracle and os.path.exists(cache):
             oracle = json.load(open(cache))

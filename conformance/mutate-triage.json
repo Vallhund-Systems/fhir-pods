@@ -1,0 +1,76 @@
+{
+ "systemless:None of the codings provided are in the value set '\u2026' (http://hl7.org/fhir/us/core/ValueSe": {
+  "reason": "US Core DocumentReference Type is not bundled (an include filtering LOINC): the pod cannot decide it offline and reports it not checked (a warning). The oracle refuses a code with no system here because it can read the set's other include (v3-NullFlavor UNK); under a set none of whose includes it can read (IPS EDD methods, LOINC only) it is silent, probed solo. Without the set's definition the pod cannot tell the two apart; a host that supplies the set gets the refusal.",
+  "oracle": "invalid",
+  "pod": "valid",
+  "files": [
+   "us-DocumentReference-discharge-summary__systemless-all.json",
+   "us-DocumentReference-discharge-summary__systemless-type.coding.json",
+   "us-DocumentReference-episode-summary__systemless-all.json",
+   "us-DocumentReference-episode-summary__systemless-type.coding.json"
+  ]
+ },
+ "systemless:The code null::LA28397-n is not in the set of permitted values @ ": {
+  "reason": "A QuestionnaireResponse naming a Questionnaire the pod is not given (US Core's own, which the oracle reads from the package): the pod reports the questionnaire unresolved (a warning) and judges no answer against it; the oracle refuses each answer whose system was stripped against the item's answerOption codings. Not the general binding check: the questionnaire rule, given the Questionnaire, refuses it (coded-answers `options-*`).",
+  "oracle": "invalid",
+  "pod": "valid",
+  "files": [
+   "us-QuestionnaireResponse-hunger-vital-sign-example__systemless-all.json",
+   "us-QuestionnaireResponse-hunger-vital-sign-example__systemless-item.0.answer.0.valueCoding.json",
+   "us-QuestionnaireResponse-hunger-vital-sign-example__systemless-item.1.answer.0.valueCoding.json"
+  ]
+ },
+ "systemless:The code null::LA19952-n is not in the set of permitted values @ ": {
+  "reason": "A QuestionnaireResponse naming a Questionnaire the pod is not given (US Core's own, which the oracle reads from the package): the pod reports the questionnaire unresolved (a warning) and judges no answer against it; the oracle refuses each answer whose system was stripped against the item's answerOption codings. Not the general binding check: the questionnaire rule, given the Questionnaire, refuses it (coded-answers `options-*`).",
+  "oracle": "invalid",
+  "pod": "valid",
+  "files": [
+   "us-QuestionnaireResponse-hunger-vital-sign-example__systemless-item.2.answer.0.valueCoding.json"
+  ]
+ },
+ "systemless:The code null::LA6570-n is not in the set of permitted values @ ": {
+  "reason": "A QuestionnaireResponse naming a Questionnaire the pod is not given (US Core's own, which the oracle reads from the package): the pod reports the questionnaire unresolved (a warning) and judges no answer against it; the oracle refuses each answer whose system was stripped against the item's answerOption codings. Not the general binding check: the questionnaire rule, given the Questionnaire, refuses it (coded-answers `options-*`).",
+  "oracle": "invalid",
+  "pod": "valid",
+  "files": [
+   "us-QuestionnaireResponse-phq-9-example__systemless-all.json",
+   "us-QuestionnaireResponse-phq-9-example__systemless-item.0.answer.0.valueCoding.json",
+   "us-QuestionnaireResponse-phq-9-example__systemless-item.1.answer.0.valueCoding.json",
+   "us-QuestionnaireResponse-phq-9-example__systemless-item.2.answer.0.valueCoding.json",
+   "us-QuestionnaireResponse-phq-9-example__systemless-item.3.answer.0.valueCoding.json"
+  ]
+ },
+ "systemless:The code null::LA32-n is not in the set of permitted values @ ": {
+  "reason": "A QuestionnaireResponse naming a Questionnaire the pod is not given (US Core's own, which the oracle reads from the package): the pod reports the questionnaire unresolved (a warning) and judges no answer against it; the oracle refuses each answer whose system was stripped against the item's answerOption codings. Not the general binding check: the questionnaire rule, given the Questionnaire, refuses it (coded-answers `options-*`).",
+  "oracle": "invalid",
+  "pod": "valid",
+  "files": [
+   "us-QuestionnaireResponse-prapare-example__systemless-all.json",
+   "us-QuestionnaireResponse-prapare-example__systemless-item.0.item.0.item.0.answer.0.valueCoding.json"
+  ]
+ },
+ "systemless:The code null::LA4457-n is not in the set of permitted values @ ": {
+  "reason": "A QuestionnaireResponse naming a Questionnaire the pod is not given (US Core's own, which the oracle reads from the package): the pod reports the questionnaire unresolved (a warning) and judges no answer against it; the oracle refuses each answer whose system was stripped against the item's answerOption codings. Not the general binding check: the questionnaire rule, given the Questionnaire, refuses it (coded-answers `options-*`).",
+  "oracle": "invalid",
+  "pod": "valid",
+  "files": [
+   "us-QuestionnaireResponse-prapare-example__systemless-item.0.item.0.item.1.answer.0.valueCoding.json"
+  ]
+ },
+ "systemless:The code null::LA30187-n is not in the set of permitted values @ ": {
+  "reason": "A QuestionnaireResponse naming a Questionnaire the pod is not given (US Core's own, which the oracle reads from the package): the pod reports the questionnaire unresolved (a warning) and judges no answer against it; the oracle refuses each answer whose system was stripped against the item's answerOption codings. Not the general binding check: the questionnaire rule, given the Questionnaire, refuses it (coded-answers `options-*`).",
+  "oracle": "invalid",
+  "pod": "valid",
+  "files": [
+   "us-QuestionnaireResponse-prapare-example__systemless-item.0.item.0.item.1.answer.1.valueCoding.json"
+  ]
+ },
+ "systemless:The code null::LA33-n is not in the set of permitted values @ ": {
+  "reason": "A QuestionnaireResponse naming a Questionnaire the pod is not given (US Core's own, which the oracle reads from the package): the pod reports the questionnaire unresolved (a warning) and judges no answer against it; the oracle refuses each answer whose system was stripped against the item's answerOption codings. Not the general binding check: the questionnaire rule, given the Questionnaire, refuses it (coded-answers `options-*`).",
+  "oracle": "invalid",
+  "pod": "valid",
+  "files": [
+   "us-QuestionnaireResponse-prapare-example__systemless-item.0.item.0.item.2.answer.0.valueCoding.json"
+  ]
+ }
+}

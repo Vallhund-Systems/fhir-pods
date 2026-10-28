@@ -1,6 +1,6 @@
 [package]
 name = "fhir-pods-core"
-version = "0.26.0"
+version = "0.28.0"
 edition = "2021"
 rust-version = "1.87"   # const reads of the registry statics (1.83), usize::is_multiple_of (1.87)
 license = "MIT"

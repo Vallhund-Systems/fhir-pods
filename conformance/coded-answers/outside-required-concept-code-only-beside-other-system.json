@@ -1,0 +1,21 @@
+{
+  "resourceType": "Condition",
+  "id": "c",
+  "clinicalStatus": {
+    "coding": [
+      {
+        "code": "active"
+      },
+      {
+        "system": "http://example.org/fhir/CodeSystem/probe-other",
+        "code": "x"
+      }
+    ]
+  },
+  "code": {
+    "text": "Probe"
+  },
+  "subject": {
+    "reference": "Patient/p"
+  }
+}

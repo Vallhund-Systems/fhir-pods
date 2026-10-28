@@ -1,0 +1,20 @@
+{
+  "resourceType": "Condition",
+  "id": "c",
+  "clinicalStatus": {
+    "coding": [
+      {
+        "code": "active"
+      },
+      {
+        "code": "bogus"
+      }
+    ]
+  },
+  "code": {
+    "text": "Probe"
+  },
+  "subject": {
+    "reference": "Patient/p"
+  }
+}

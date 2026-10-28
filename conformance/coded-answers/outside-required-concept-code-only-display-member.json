@@ -1,0 +1,18 @@
+{
+  "resourceType": "Condition",
+  "id": "c",
+  "clinicalStatus": {
+    "coding": [
+      {
+        "code": "active",
+        "display": "Active"
+      }
+    ]
+  },
+  "code": {
+    "text": "Probe"
+  },
+  "subject": {
+    "reference": "Patient/p"
+  }
+}

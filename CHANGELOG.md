@@ -1,5 +1,54 @@
 # Changelog
 
+## 0.28.0
+
+**A coding with a code and no system is no member of a required
+`CodeableConcept` set.** The general binding check matched a code with no
+system against the set's codes of any system, so `Condition.clinicalStatus
+{"coding": [{"code": "active"}]}` was valid; validator_cli 6.10.4 refuses it
+("None of the codings provided are in the value set 'Condition Clinical
+Status Codes' … (codes = null#active)"). Declared lenient in `docs/scope.md`
+since 0.22.1. Measured before the change by a new mutation class,
+`systemless` (`conformance/mutate.py`: every coding with a code loses its
+system, then one coded site at a time; 2,304 derived files, refused before
+the oracle starts if one canonical url would name two definitions), and by
+solo probes. What 6.10.4 does, and the pod now:
+
+- **a required `CodeableConcept`** none of whose codings is a member is an
+  error, and a coding with a code and no system is never a member — alone,
+  with a display, beside a second such coding, beside a coding of another
+  system; base definition or profile (`binding.not-member`). Any coding still
+  decides: the same code-only coding beside the code with its system is
+  valid, in either order (probe a19 of the 0.22.1 review, pinned);
+- **a set the pod cannot decide offline** stays "not checked" (a warning).
+  The oracle is silent under a set none of whose includes it can read (IPS
+  EDD methods, LOINC only — probed solo) and refuses under one with any
+  include it can (US Core DocumentReference Type, v3-NullFlavor beside a
+  LOINC filter); without the set the pod cannot tell them apart, so the
+  latter is lenient and triaged (4 derived files);
+- **a standalone `Coding` with no system** under a required binding is not
+  judged against its set: the oracle only warns ("A code with no system has
+  no defined meaning, and it cannot be validated"), member or not (AU Base
+  `medication-type`, a set the pod decides; US Core race `ombCategory`).
+  The pod refused one that was no member — stricter, now gone. A system the
+  set does not include is still refused. A slice discriminator still places
+  a code-only Coding by its code, as the oracle does (BALP
+  `AuditEvent.subtype`);
+- **extensible and preferred concepts** (Condition.category,
+  Observation.category) only warn on the oracle side, and the pod does not
+  check them; a bare `code` element is untouched.
+
+The `systemless` class: 128 lenient files at 0.26.0, 18 now; 110 moved from
+valid to invalid, every one invalid on the oracle; 0 stricter. The 18 are
+triaged in `conformance/mutate-triage.json` (new): 14 QuestionnaireResponses
+naming US Core Questionnaires the pod is not given, 4 under US Core
+DocumentReference Type. The mutation lane is 21,353/21,371 on the verdict
+(the nine earlier classes unchanged at 19,067/19,067). Nine new
+`coded-answers/outside-*` probes (extensible and preferred concepts, several
+codings in one concept); the lane is 132/132, the reviewed difference for
+`outside-required-concept-code-only-member` gone. Every other lane is
+unchanged. ABI 14 is unchanged; no rule id is added.
+
 ## 0.26.0
 
 - Expose optional artifact-bound `sourceSha256` on compiled host catalogue profiles,
