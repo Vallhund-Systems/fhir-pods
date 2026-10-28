@@ -1737,9 +1737,13 @@ fn a_compiled_profile_carries_a_base_datatype_profile_the_base_element_does_not_
     // not: an extension's value[x] (hl7.fhir.uv.extensions.r4)
     // every row of the sparse table, slices included: a profile gaining one
     // later cannot pass unnoticed
+    let base: Vec<_> = fhir_pods_core::generated::DATATYPE_PROFILE_ELEMENTS
+        .iter()
+        .filter(|row| row.4.starts_with("http://hl7.org/fhir/StructureDefinition/"))
+        .collect();
     assert_eq!(
-        fhir_pods_core::generated::DATATYPE_PROFILE_ELEMENTS,
-        &[(
+        base,
+        [&(
             "http://hl7.org/fhir/StructureDefinition/medicationdispense-quantityRemaining",
             "",
             "Extension.value[x]",
@@ -1766,4 +1770,84 @@ fn a_compiled_profile_carries_a_base_datatype_profile_the_base_element_does_not_
     assert!(errors(&dispense("")).is_empty(), "{:?}", errors(&dispense("")));
     // probed, validator_cli 6.10.4: max 0 + sqty-1 at the extension's value
     assert_eq!(errors(&dispense(r#""comparator":"<","#)), ["inv.sqty-1", "structure.max"]);
+}
+
+#[test]
+fn an_ig_datatype_profile_an_element_is_held_to_alone_is_applied() {
+    use fhir_pods_core::validate::Severity;
+    // every row of the sparse table, by datatype profile: a profile gaining
+    // one later cannot pass unnoticed. An element listing its base datatype
+    // beside IG profiles (AU Core's `Address` or `au-address`, every AU
+    // identifier list) has no row: any one of them will do, and the base is
+    // the walk's. No row is an any-of the engine cannot evaluate.
+    let rows = fhir_pods_core::generated::DATATYPE_PROFILE_ELEMENTS;
+    let count = |tail: &str| rows.iter().filter(|r| r.4.rsplit('/').next() == Some(tail)).count();
+    assert_eq!(
+        [
+            count("CodeableConcept-uv-ips"),
+            count("au-dosage"),
+            count("profile-identifier"),
+            count("NzAddress"),
+            count("NzContactpoint"),
+            count("Coding-uv-ips"),
+            count("SimpleQuantity"),
+        ],
+        [90, 7, 5, 1, 1, 1, 1]
+    );
+    assert_eq!(rows.len(), 106);
+    for row in rows {
+        assert!(!row.4.contains(' '), "an any-of row: {row:?}");
+        assert!(
+            row.4.starts_with("http://hl7.org/fhir/StructureDefinition/")
+                || fhir_pods_core::REGISTRY.iter().any(|p| p.url == row.4),
+            "an IG datatype profile the registry does not carry: {row:?}"
+        );
+    }
+    let errors = |json: &str| -> Vec<String> {
+        let mut v: Vec<String> = fhir_pods_core::validate_bytes(json.as_bytes())
+            .report
+            .issues
+            .iter()
+            .filter(|i| i.severity == Severity::Error)
+            .map(|i| format!("{} | {}", i.id, i.path))
+            .collect();
+        v.sort();
+        v
+    };
+    let nz = |field: &str| {
+        format!(
+            r#"{{"resourceType":"Patient","meta":{{"profile":["http://hl7.org.nz/fhir/StructureDefinition/NzPatient"]}},"name":[{{"family":"Probe"}}],"gender":"female","birthDate":"1980-01-01",{field}}}"#
+        )
+    };
+    let suburb = r#"{"url":"http://hl7.org.nz/fhir/StructureDefinition/suburb","valueString":"s"}"#;
+    let purpose = r#"{"url":"http://hl7.org.nz/fhir/StructureDefinition/contactpoint-purpose","valueCodeableConcept":{"coding":[{"system":"https://standards.digital.health.nz/ns/contact-point-purpose-code","code":"rx"}]}}"#;
+    // probed, validator_cli 6.10.4 (-ig fhir.org.nz.ig.base#3.1.0):
+    // `Address.extension:suburb: max allowed = 1, but found 2 (from …/NzAddress|1.0.0)`
+    // and `ContactPoint.extension:cp-purpose: …` at the element; one passes
+    assert!(errors(&nz(&format!(r#""address":[{{"city":"x","extension":[{suburb}]}}]"#))).is_empty());
+    assert_eq!(
+        errors(&nz(&format!(r#""address":[{{"city":"x","extension":[{suburb},{suburb}]}}]"#))),
+        ["structure.max | Patient.address.extension:suburb"]
+    );
+    assert!(errors(&nz(&format!(r#""telecom":[{{"system":"phone","value":"0","extension":[{purpose}]}}]"#))).is_empty());
+    assert_eq!(
+        errors(&nz(&format!(r#""telecom":[{{"system":"phone","value":"0","extension":[{purpose},{purpose}]}}]"#))),
+        ["structure.max | Patient.telecom.extension:cp-purpose"]
+    );
+    // CA Baseline holds Patient.identifier to its profile-identifier alone:
+    // the oracle reports the missing system from both definitions, as here
+    let ca = |identifier: &str| {
+        format!(
+            r#"{{"resourceType":"Patient","meta":{{"profile":["http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-patient"]}},"identifier":[{identifier}],"name":[{{"family":"Probe"}}],"gender":"unknown","birthDate":"1980-01-01"}}"#
+        )
+    };
+    assert!(errors(&ca(r#"{"system":"https://example.org/mrn","value":"v"}"#)).is_empty());
+    assert_eq!(
+        errors(&ca(r#"{"value":"v"}"#)),
+        ["structure.required | Patient.identifier.system", "structure.required | Patient.identifier.system"]
+    );
+    // AU Core lets Patient.address be `Address` or `au-address`: an address
+    // breaking every au-address rule is valid on both sides (probed)
+    let au = r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},"identifier":[{"system":"https://example.org/mrn","value":"v"}],"name":[{"family":"Example"}],"gender":"unknown","birthDate":"1980-02-29","address":[{"city":"x","postalCode":"12345","country":"NZ"}]}"#;
+    assert!(errors(au).is_empty(), "{:?}", errors(au));
 }

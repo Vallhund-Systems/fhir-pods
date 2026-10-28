@@ -1,5 +1,61 @@
 # Changelog
 
+## 0.27.0
+
+**An IG's own datatype profile is applied where an element is held to it
+alone.** A verdict-changing release; ABI14 is unchanged — no entrypoint,
+option or report shape moved. NZ Base types `Patient.address` `NzAddress` and
+`Patient.telecom` `NzContactpoint`, each slicing an extension `max 1`; the
+generator dropped both without a trace, so two `suburb` extensions on an
+address, or two `cp-purpose` extensions on a telecom, were valid here and are
+now `structure.max` errors at the element. Probed first against validator_cli
+6.10.4 (`-ig fhir.org.nz.ig.base#3.1.0`, `-tx n/a`): `error
+Address.extension:suburb: max allowed = 1, but found 2 (from
+http://hl7.org.nz/fhir/StructureDefinition/NzAddress|1.0.0)` at
+`Patient.address[0]` and the same from `NzContactpoint` at `Patient.telecom[0]`;
+one of each passes on both sides.
+
+`tools/gen_profile.py` reads every element's `type[].profile`. One IG
+datatype profile alone is compiled into the registry (`tools/gen_all.py`:
+`NzAddress`, `NzContactpoint`, `au-dosage`, `CodeableConcept-uv-ips` and the
+`Coding-uv-ips` it names — 1,154 compiled profiles, five more; CA Baseline's
+`profile-identifier` was already there) and the element is a row of the
+registry's `DATATYPE_PROFILE_ELEMENTS`, now 106 rows: `CodeableConcept-uv-ips`
+90, `au-dosage` 7, `profile-identifier` 5, `NzAddress`, `NzContactpoint`,
+`Coding-uv-ips` and the existing `SimpleQuantity` one each. The engine
+validates each instance against the compiled profile, as it does a slice's
+profile, and reports its findings at the element. A type that lists its base
+datatype beside IG profiles (AU Core's `Address` or `au-address`; every AU
+identifier list, which starts with `Identifier`) is an any-of the base
+already satisfies and gets no row. Two or more IG profiles with no base among
+them would be a row naming no compiled profile, reported where the element is
+present as an information `not-supported` issue; no shipped profile has one.
+A Bundle-entry type check on a slice's sub-element (`slice.profiles`) no
+longer treats a compiled datatype profile there as a resource the entry may be.
+
+Probed with the change (`conformance/probes/`, ten new): CA Baseline's
+Patient identifier without a `system` is two errors on both sides, the
+oracle reporting it from `profile-identifier` and from the Patient profile's
+own snapshot, as the pod now does (the verdict was already invalid here); an
+AU Core address breaking every `au-address` rule, a medical record number
+missing what `au-medicalrecordnumber` requires and an AU Base DiagnosticReport
+identifier missing what the local order identifier requires are valid on both
+sides; an IHI failing its Luhn check, reached through `Patient.identifier:ihi`,
+is `inv-ihi-value-2` on both sides. The probe lane gives a fixture the guide
+its profile comes from (`ig`, one JVM per guide) and accepts a difference only
+as a `reviewed` entry bound to the fixture's hash, the oracle's signature and
+the pod's verdict; none is recorded.
+
+Lanes, measured on this tree: release gate **1,818/1,818** (the 1,808 inputs
+it had plus the ten probes; 0.26.0's pod on the same 1,818 gives 1,816, the
+two NZ probes lenient, and no other verdict moves); reasons 0 untriaged on
+1,818 (3 triaged); probes **65/65** (55 + 10); published R4 examples
+(`--reuse-oracle`) **5,155/5,287**, 132 lenient, 0 stricter — unchanged;
+mutation lane (`--reuse-oracle`) 19,067 derived files, 0 untriaged. On the
+inputs of the validator test-case, v2, coded-answer, narrative, instrument
+and unprofiled lanes the pod's verdict and error set are the ones 0.26.0
+gives. The wasm artefact was not rebuilt for this entry.
+
 ## 0.26.0
 
 - Expose optional artifact-bound `sourceSha256` on compiled host catalogue profiles,

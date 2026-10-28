@@ -570,13 +570,22 @@ fn datatype_profile_elements(
     rows
 }
 
-/// A base datatype profile a compiled profile puts on an element (one row
-/// of [`datatype_profile_elements`]), applied whole to every instance of the
-/// element of that type, as the shape walk applies the ones the base itself
-/// names: each element the profile prohibits (max 0; present through its `_`
-/// carrier too) is `structure.max`, each of its invariants `inv.<key>` — the
-/// same findings, at the element. A choice element's instances are its
-/// concrete keys of the profiled type (`valueQuantity`).
+/// A datatype profile a compiled profile puts on an element (one row of
+/// [`datatype_profile_elements`]), applied whole to every instance of the
+/// element of that type. A choice element's instances are its concrete keys
+/// of the profiled type (`valueQuantity`).
+///
+/// A base datatype profile (`SimpleQuantity`) is applied as the shape walk
+/// applies the ones the base itself names: each element the profile
+/// prohibits (max 0; present through its `_` carrier too) is
+/// `structure.max`, each of its invariants `inv.<key>` — the same findings,
+/// at the element. An IG's own datatype profile the element is held to
+/// alone (`NzAddress`, `NzContactpoint`, CA's `profile-identifier`) is the
+/// registry's compiled profile, validated on each instance the way a slice's
+/// profile is, its findings at the element. A row naming no compiled profile
+/// — two or more IG profiles with no base among them, an any-of the engine
+/// does not evaluate — is said where the element is present: an
+/// `information` `not-supported` issue, never a silently weaker verdict.
 fn check_datatype_profiles<D: Document>(
     path: &str,
     label: &str,
@@ -586,61 +595,85 @@ fn check_datatype_profiles<D: Document>(
     scope: &Scope<'_, D>,
     r: &mut Report,
 ) {
-    {
-        let Some((name, versioned, _, prohibited, invariants)) =
-            crate::typemap::DATATYPE_PROFILES.iter().find(|(_, u, ..)| u.split('|').next() == Some(url))
-        else {
-            return; // the generator refuses a profile it cannot apply whole
-        };
-        let instances: Vec<(String, D)> = match path.rsplit_once('.') {
-            Some((parent, last)) if last.ends_with("[x]") => {
-                let stem = &last[..last.len() - 3];
-                let mut key = String::from(stem);
-                // type codes are ASCII: no Unicode case tables in the artefact
-                key.push(ty.as_bytes()[0].to_ascii_uppercase() as char);
-                key.push_str(&ty[1..]);
-                let at =
-                    format!("{}.{key}", label.strip_suffix(last).map(|l| l.trim_end_matches('.')).unwrap_or(label));
-                doc.instances(parent).iter().flat_map(|p| p.child_instances(&key)).map(|i| (at.clone(), i)).collect()
-            }
-            _ => doc.instances(path).into_iter().map(|i| (String::from(label), i)).collect(),
-        };
-        for (at, inst) in instances {
-            for element in *prohibited {
-                let mut p = String::from("$this.");
-                p.push_str(element);
-                let found: usize = inst.child_counts(&p).iter().sum();
-                if found > 0 {
-                    r.push(
-                        Severity::Error,
-                        IssueType::Structure,
-                        &at,
-                        format!(
-                            "{at}.{element} exceeds max 0 (found {found}): {at} is a {name} ({versioned}), which prohibits {ty}.{element}"
-                        ),
-                    );
+    let instances: Vec<(String, D)> = match path.rsplit_once('.') {
+        Some((parent, last)) if last.ends_with("[x]") => {
+            let stem = &last[..last.len() - 3];
+            let mut key = String::from(stem);
+            // type codes are ASCII: no Unicode case tables in the artefact
+            key.push(ty.as_bytes()[0].to_ascii_uppercase() as char);
+            key.push_str(&ty[1..]);
+            let at = format!("{}.{key}", label.strip_suffix(last).map(|l| l.trim_end_matches('.')).unwrap_or(label));
+            doc.instances(parent).iter().flat_map(|p| p.child_instances(&key)).map(|i| (at.clone(), i)).collect()
+        }
+        _ => doc.instances(path).into_iter().map(|i| (String::from(label), i)).collect(),
+    };
+    if instances.is_empty() {
+        return;
+    }
+    let Some((name, versioned, _, prohibited, invariants)) =
+        crate::typemap::DATATYPE_PROFILES.iter().find(|(_, u, ..)| u.split('|').next() == Some(url))
+    else {
+        // an IG's own datatype profile: the registry's, applied whole
+        match crate::REGISTRY.iter().find(|p| p.url == url) {
+            Some(profile) if scope.depth < MAX_INHERIT => {
+                for (at, inst) in &instances {
+                    let rep =
+                        validate_at(profile, inst, scope.root, scope.tx, scope.depth + 1, scope.cache, scope.bundle);
+                    forward(rep, profile, at, r);
                 }
             }
-            for (key, is_error, human, expression) in *invariants {
-                let verdict = match path::parse_invariant(key, expression) {
-                    Ok(e) => path::check_constraint_in(&e, &inst, Some(ty), Some(scope.root), scope.bundle),
-                    Err(_) => Verdict::Unsupported,
-                };
-                match verdict {
-                    Verdict::Pass => {}
-                    Verdict::Fail => r.push(
-                        if *is_error { Severity::Error } else { Severity::Warning },
-                        IssueType::Invariant,
-                        &at,
-                        format!("{key}: {human} ({at} is a {name}, {versioned})"),
+            Some(_) => {}
+            None => {
+                let at = &instances[0].0;
+                r.push(
+                    Severity::Information,
+                    IssueType::NotSupported,
+                    at,
+                    format!(
+                        "{at} is held to the datatype profile(s) {} as an any-of, which was not checked: \
+                         outside the compiler's support",
+                        url.replace(' ', ", ")
                     ),
-                    Verdict::Unsupported => r.push(
-                        Severity::Warning,
-                        IssueType::NotSupported,
-                        &at,
-                        format!("{key} not evaluated: outside the supported FHIRPath core"),
+                );
+            }
+        }
+        return;
+    };
+    for (at, inst) in instances {
+        for element in *prohibited {
+            let mut p = String::from("$this.");
+            p.push_str(element);
+            let found: usize = inst.child_counts(&p).iter().sum();
+            if found > 0 {
+                r.push(
+                    Severity::Error,
+                    IssueType::Structure,
+                    &at,
+                    format!(
+                        "{at}.{element} exceeds max 0 (found {found}): {at} is a {name} ({versioned}), which prohibits {ty}.{element}"
                     ),
-                }
+                );
+            }
+        }
+        for (key, is_error, human, expression) in *invariants {
+            let verdict = match path::parse_invariant(key, expression) {
+                Ok(e) => path::check_constraint_in(&e, &inst, Some(ty), Some(scope.root), scope.bundle),
+                Err(_) => Verdict::Unsupported,
+            };
+            match verdict {
+                Verdict::Pass => {}
+                Verdict::Fail => r.push(
+                    if *is_error { Severity::Error } else { Severity::Warning },
+                    IssueType::Invariant,
+                    &at,
+                    format!("{key}: {human} ({at} is a {name}, {versioned})"),
+                ),
+                Verdict::Unsupported => r.push(
+                    Severity::Warning,
+                    IssueType::NotSupported,
+                    &at,
+                    format!("{key} not evaluated: outside the supported FHIRPath core"),
+                ),
             }
         }
     }
@@ -1662,11 +1695,17 @@ fn check_slicing<D: Document>(slicing: &Slicing, doc: &D, scope: &Scope<'_, D>, 
                     check_slicing(nested, inst, scope, &label, r);
                 }
                 // a sub-element that must conform to one of some profiles (a
-                // Bundle entry's resource): checked only when every one is compiled
+                // Bundle entry's resource): checked only when every one is
+                // compiled. A datatype profile there (a section's `code` held
+                // to `CodeableConcept-uv-ips`) is not a resource the entry may
+                // be: `datatype_profile_elements` carries those.
                 for (rel, urls) in slice.profiles {
                     let known: Vec<&CompiledProfile> =
                         urls.iter().filter_map(|u| crate::REGISTRY.iter().find(|p| p.url == *u).copied()).collect();
-                    if known.len() != urls.len() || depth >= MAX_INHERIT {
+                    if known.len() != urls.len()
+                        || depth >= MAX_INHERIT
+                        || !known.iter().all(|p| crate::typemap::RESOURCES.binary_search(&p.resource_type).is_ok())
+                    {
                         continue;
                     }
                     label.truncate(base_len);
@@ -1750,5 +1789,51 @@ fn check_slicing<D: Document>(slicing: &Slicing, doc: &D, scope: &Scope<'_, D>, 
                 ),
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod datatype_profile_rows {
+    use super::*;
+
+    fn issues(json: &str, url: &str) -> Vec<(Severity, IssueType, String)> {
+        let parsed = crate::document::Parsed::parse(json.as_bytes()).expect("parses");
+        let doc = parsed.doc();
+        let scope =
+            Scope { root: &doc, bundle: None, tx: &Bundled, depth: 0, cache: None, evaluated: None, profile: "" };
+        let mut r = Report::default();
+        check_datatype_profiles("Patient.address", "Patient.address", "Address", url, &doc, &scope, &mut r);
+        r.issues.into_iter().map(|i| (i.severity, i.code, i.path)).collect()
+    }
+
+    /// A row the engine cannot apply — an any-of of IG profiles with no base
+    /// among them, which the generator writes as the canonicals joined by a
+    /// space — is said where the element is present, never dropped.
+    #[test]
+    fn an_unapplied_datatype_profile_is_said_where_the_element_is() {
+        let any_of = "https://example.org/a https://example.org/b";
+        let present = r#"{"resourceType":"Patient","address":[{"city":"x"},{"city":"y"}]}"#;
+        assert_eq!(
+            issues(present, any_of),
+            [(Severity::Information, IssueType::NotSupported, String::from("Patient.address"))]
+        );
+        assert!(issues(r#"{"resourceType":"Patient"}"#, any_of).is_empty());
+    }
+
+    /// The registry's compiled IG datatype profile, applied whole to each
+    /// instance: `NzAddress` slices `suburb` max 1.
+    #[test]
+    fn a_compiled_ig_datatype_profile_is_applied_to_every_instance() {
+        let url = "http://hl7.org.nz/fhir/StructureDefinition/NzAddress";
+        let suburb = r#"{"url":"http://hl7.org.nz/fhir/StructureDefinition/suburb","valueString":"s"}"#;
+        let one = format!(r#"{{"resourceType":"Patient","address":[{{"city":"x","extension":[{suburb}]}}]}}"#);
+        assert!(issues(&one, url).is_empty(), "{:?}", issues(&one, url));
+        let two = format!(
+            r#"{{"resourceType":"Patient","address":[{{"city":"x"}},{{"city":"y","extension":[{suburb},{suburb}]}}]}}"#
+        );
+        assert_eq!(
+            issues(&two, url),
+            [(Severity::Error, IssueType::Structure, String::from("Patient.address.extension:suburb"))]
+        );
     }
 }

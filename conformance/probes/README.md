@@ -1,10 +1,13 @@
 # Adversarial validation probes
 
-These 55 synthetic fixtures cover valid controls, JSON shapes, primitive limits,
+These 65 synthetic fixtures cover valid controls, JSON shapes, primitive limits,
 extensions, contained resources, unknown profiles, offline references, required
 coded content, recursive content-reference validation, the shape a
-de-identified age over 89 goes out as, and the datatype profile R4 puts on
-an element (`sq-*`: a `SimpleQuantity` with and without a comparator).
+de-identified age over 89 goes out as, the datatype profile R4 puts on
+an element (`sq-*`: a `SimpleQuantity` with and without a comparator), and an
+IG's own datatype profiles (`nz-*`, `ca-*`, `au-*`: `NzAddress`,
+`NzContactpoint`, CA's `profile-identifier`, `au-address` and the AU
+identifier profiles).
 `manifest.json` records an expected verdict and reason for each fixture. The
 shared corpus builder automatically includes them as `probe-*` cases.
 
@@ -15,7 +18,10 @@ JAVA_HOME=/path/to/jdk python3 conformance/probes/run.py
 ```
 
 Requires Python 3, Cargo, a JDK, the pinned `conformance/validator_cli.jar`
-(6.10.4), and the AU Core 2.0.0 package used by the main conformance harness.
+(6.10.4), and the packages the probes name. A probe's `ig` names the guide the
+oracle loads for it (default `hl7.fhir.au.core#2.0.0`; the NZ probes
+`fhir.org.nz.ig.base#3.1.0`, the CA ones `hl7.fhir.ca.baseline#1.2.0`); the
+runner starts one JVM per guide, one after another.
 `JAVA` can select a Java executable instead of `JAVA_HOME`. The validator may
 download packages or resolve profile URLs; `-tx n/a` disables terminology-server
 calls, not all network access.
@@ -23,7 +29,19 @@ calls, not all network access.
 Each run uses a fresh temporary oracle output, verifies the JAR version and
 every result identity, and writes `evidence.json` with fixture hashes, oracle
 issues, local reports and provenance. A missing result, nonzero oracle exit,
-unexpected verdict or local/oracle disagreement fails the command. Use
+unexpected verdict or local/oracle disagreement fails the command, unless the
+disagreement is a reviewed difference.
+
+A manifest entry may carry `reviewed`: `{"sha256": <the fixture's hash>,
+"oracle": <the oracle signature>, "local_valid": <the pod's verdict>,
+"reason": <why>}`. The oracle signature is the SHA-256 of the oracle's verdict
+and every error-level issue (severity, code, text, location), canonically
+ordered; each record in `evidence.json` carries the one it was given
+(`oracle_signature`). Such a difference counts as `reviewed`, not as a
+failure, only while all three still match: an edited fixture, a different
+oracle answer or a different pod verdict makes the review stale and fails the
+run, and so does a review of a probe whose verdicts now agree. None is
+recorded today (`conformance/test_probes.py` holds the mechanism). Use
 `--output /tmp/probe-evidence.json` to preserve the checked-in snapshot, or
 `--oracle-only` to establish reference verdicts without running the local engine.
 

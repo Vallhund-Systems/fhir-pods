@@ -93,19 +93,50 @@ def index_datatype_bindings(load):
 # (`medicationdispense-quantityRemaining`). One the base element already
 # names is the shape walk's (`typemap::ELEMENT_PROFILES`), so it is not
 # carried twice. A base datatype profile that cannot be applied whole stops
-# the generator; an IG's own datatype profile (`au-address`) is not one of
-# these and is not applied (docs/scope.md). Set by `emit` from its resolver.
+# the generator. An IG's own datatype profile an element is held to alone
+# (`NzAddress`) is carried the same way, by its canonical, and applied as
+# the registry's compiled profile (`ig_datatype_profile`; docs/scope.md).
+# Set by `emit` from its resolver.
 # Carried sparsely: `DATATYPE_ROWS` gathers one row per such element across
 # every profile `emit` writes — (profile url, slice label or "", element
 # path, type code, profile canonical) — and gen_all.py writes them to the
-# registry's `DATATYPE_PROFILE_ELEMENTS` (one row in the shipped registry; a
+# registry's `DATATYPE_PROFILE_ELEMENTS` (106 rows in the shipped registry; a
 # field on every constraint cost the wasm artefact ~117 KB).
 LOAD = None
 DATATYPE_ROWS = []
 BASE_ELEMENT_TYPE_PROFILES = {}
 
 
-def datatype_profiles_of(e):
+def ig_datatype_profile(code, urls):
+    """The IG's own datatype profile an element's type holds it to, as one
+    `DATATYPE_ROWS` canonical, or None when there is nothing to apply.
+
+    A type that also lists its base datatype (AU Core's `Patient.address`:
+    `Address` or `au-address`; every AU identifier list starts with
+    `Identifier`) asks for conformance to any ONE of them, and the base is
+    the shape walk's — nothing more to apply (probed: an address breaking
+    every `au-address` rule is valid to the reference validator). One IG
+    profile alone (`NzAddress`, `NzContactpoint`, CA's `profile-identifier`)
+    is compiled into the registry by gen_all.py and applied whole by the
+    engine. Two or more with no base among them is an any-of the engine
+    does not evaluate: the canonicals joined by a space, which names no
+    compiled profile, so the engine reports the element `not-supported`
+    rather than dropping it."""
+    if DATATYPE_URL + code in urls:
+        return None
+    ig = [u for u in urls if not u.startswith(DATATYPE_URL)]
+    if not ig:
+        return None
+    if len(ig) == 1:
+        sd = LOAD(ig[0])
+        # a resource profile on a resource-typed element (a Bundle entry's
+        # `resource`) is the slicing's business, not a datatype's
+        if sd and sd.get("kind") == "resource":
+            return None
+    return " ".join(sorted(dict.fromkeys(ig)))
+
+
+def datatype_profiles_of(e, ig=True):
     if LOAD is None:
         return ()
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -113,6 +144,11 @@ def datatype_profiles_of(e):
     out = []
     for t in e.get("type", []):
         code = t.get("code")
+        urls = [prof.split("|")[0] for prof in t.get("profile", [])]
+        if ig and code != "Extension" and code in DATATYPE_CODES and code not in ("Resource", "DomainResource"):
+            own = ig_datatype_profile(code, urls)
+            if own:
+                out.append((code, own))
         for prof in t.get("profile", []):
             url = prof.split("|")[0]
             if code == "Extension" or not url.startswith(DATATYPE_URL):
@@ -171,7 +207,7 @@ class Rule:
     datatype_profiles: tuple = ()   # [(type code, base datatype profile url)] the base does not already name here
 
     @staticmethod
-    def of(e):
+    def of(e, ig=True):
         mx = e.get("max")
         # a choice element's allowed types (the profile's list, which the
         # snapshot narrows from the base); a type slice element carries none
@@ -184,7 +220,7 @@ class Rule:
             fixed=scalar_fixed(e),
             binding=binding_of(e),
             types=types,
-            datatype_profiles=datatype_profiles_of(e),
+            datatype_profiles=datatype_profiles_of(e, ig=ig),
         )
 
     def enforceable(self):
@@ -755,7 +791,9 @@ def collect(sd):
 
     def slice_element(sl, e):
         types = e.get("type", [])
-        rule = Rule.of(e)
+        # an IG datatype profile on the slice's own type is the slice's
+        # `profile`, applied by the engine through the registry: not twice
+        rule = Rule.of(e, ig=False)
         sl.min, sl.max = rule.min, rule.max
         sl.type = types[0].get("code") if types else None
         sl.profile = (types[0].get("profile") or [None])[0] if types else None

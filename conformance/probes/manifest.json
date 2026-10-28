@@ -328,5 +328,71 @@
     "profile": null,
     "expect": true,
     "reason": "Control: the same extension value without a comparator is valid."
+  },
+  {
+    "file": "nz-address-one-suburb.json",
+    "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+    "ig": "fhir.org.nz.ig.base#3.1.0",
+    "expect": true,
+    "reason": "Control: NZ Base types Patient.address NzAddress alone, whose suburb extension slice is max 1; one suburb conforms."
+  },
+  {
+    "file": "nz-address-two-suburbs.json",
+    "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+    "ig": "fhir.org.nz.ig.base#3.1.0",
+    "expect": false,
+    "reason": "The IG's own datatype profile on an unsliced element is applied: two suburb extensions break NzAddress's max 1 (validator_cli 6.10.4: 'Address.extension:suburb: max allowed = 1, but found 2 (from …/NzAddress|1.0.0)' at Patient.address[0])."
+  },
+  {
+    "file": "nz-telecom-one-purpose.json",
+    "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+    "ig": "fhir.org.nz.ig.base#3.1.0",
+    "expect": true,
+    "reason": "Control: NZ Base types Patient.telecom NzContactpoint alone, whose cp-purpose extension slice is max 1; one purpose conforms."
+  },
+  {
+    "file": "nz-telecom-two-purposes.json",
+    "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+    "ig": "fhir.org.nz.ig.base#3.1.0",
+    "expect": false,
+    "reason": "Two cp-purpose extensions break NzContactpoint's max 1 (validator_cli 6.10.4: 'ContactPoint.extension:cp-purpose: max allowed = 1, but found 2 (from …/NzContactpoint|1.0.0)' at Patient.telecom[0])."
+  },
+  {
+    "file": "ca-identifier-control.json",
+    "profile": "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-patient",
+    "ig": "hl7.fhir.ca.baseline#1.2.0",
+    "expect": true,
+    "reason": "Control: CA Baseline types Patient.identifier profile-identifier alone (system and value 1..1); this identifier carries both."
+  },
+  {
+    "file": "ca-identifier-no-system.json",
+    "profile": "http://hl7.org/fhir/ca/baseline/StructureDefinition/profile-patient",
+    "ig": "hl7.fhir.ca.baseline#1.2.0",
+    "expect": false,
+    "reason": "An identifier without a system breaks profile-identifier, applied on the unsliced element; validator_cli 6.10.4 reports it from both the datatype profile and the Patient profile's own snapshot."
+  },
+  {
+    "file": "au-address-every-rule-broken.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+    "expect": true,
+    "reason": "AU Core types Patient.address 'au-address' or base 'Address': conformance to either is enough, so an address breaking every au-address rule (no line or text, a five-digit postcode, country NZ) is valid on both sides."
+  },
+  {
+    "file": "au-identifier-element-mr-incomplete.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+    "expect": true,
+    "reason": "AU Core's unsliced Patient.identifier lists base Identifier beside the AU identifier profiles: a medical record number missing the system and assigner au-medicalrecordnumber requires is still a valid Identifier."
+  },
+  {
+    "file": "au-identifier-element-order-incomplete.json",
+    "profile": "http://hl7.org.au/fhir/StructureDefinition/au-diagnosticreport",
+    "expect": true,
+    "reason": "AU Base DiagnosticReport.identifier (unsliced) lists base Identifier beside the local order / report / accession profiles: an identifier missing the system they require is valid."
+  },
+  {
+    "file": "au-ihi-slice-check-digit.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+    "expect": false,
+    "reason": "An AU identifier profile reached through a slice is applied: an IHI failing the Luhn check breaks au-ihi's inv-ihi-value-2 (validator_cli 6.10.4, at Patient.identifier[1])."
   }
 ]
