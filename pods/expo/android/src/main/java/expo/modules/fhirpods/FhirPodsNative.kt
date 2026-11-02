@@ -66,6 +66,9 @@ internal object FhirPodsNative {
   /** Load a Questionnaire for the responses that name it: 1 = loaded, 0 = not a Questionnaire. */
   external fun questionnaireLoad(json: ByteArray): Int
 
+  /** Load a resource, or a Bundle's entry resources, into the resource store: 1 = loaded, 0 = not a resource (the store unchanged); empty clears. */
+  external fun resourceLoad(json: ByteArray): Int
+
   /** Host options for the calls that follow: 1 = taken, 0 = refused (the previous options stay). */
   external fun options(json: ByteArray): Int
 

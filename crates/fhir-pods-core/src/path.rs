@@ -666,11 +666,19 @@ pub(crate) struct Env<'e, D> {
     /// The document `Bundle` that resource sits in, when it does: what
     /// `resolve()` looks references up in.
     pub bundle: Option<&'e Item<D>>,
+    /// The host's resource store (a Bundle of what it loaded), searched by
+    /// `resolve()` after the contained resources and the document Bundle.
+    pub store: Option<&'e Item<D>>,
+    /// `$this` is the empty collection: `iif`'s arguments on an empty input
+    /// (its criterion is evaluated on the input collection, as the
+    /// reference validator evaluates it — `ctm-1`'s `iif(empty(), true, …)`
+    /// on a reference that resolves to nothing).
+    empty_focus: bool,
 }
 
 impl<'e, D> Env<'e, D> {
     fn inner(&self) -> Env<'e, D> {
-        Env { this_type: None, root: self.root, bundle: self.bundle }
+        Env { this_type: None, root: self.root, bundle: self.bundle, store: self.store, empty_focus: false }
     }
 }
 
@@ -680,27 +688,49 @@ impl<'e, D> Env<'e, D> {
 /// and id. A `/_history/version` suffix selects the matching `meta.versionId`.
 /// `None` when it is not there — never fetched.
 pub fn resolve_reference<D: Document>(reference: &str, resource: Option<&D>, bundle: Option<&D>) -> Option<D> {
+    resolve_reference_in(reference, resource, bundle, None)
+}
+
+/// [`resolve_reference`], then the host's resource store: a reference that
+/// is not `#local` and is not found in the Bundle is looked up among the
+/// stored resources by the same rules a Bundle entry is (`store` is a Bundle
+/// of them). Precedence: contained, then the document Bundle, then the store.
+pub(crate) fn resolve_reference_in<D: Document>(
+    reference: &str,
+    resource: Option<&D>,
+    bundle: Option<&D>,
+    store: Option<&D>,
+) -> Option<D> {
     if let Some(local) = reference.strip_prefix('#') {
-        let resource = resource?;
-        if let Some(found) =
-            resource.child_instances("contained").into_iter().find(|c| c.scalars("$this.id") == [local])
-        {
-            return Some(found);
-        }
-        // a constraint on a Bundle reaching into an entry's own contained
-        // resources: the reference sits in that entry, whose contained the
-        // `#id` names (the first entry holding one, when several do)
-        if resource.scalars("$this.resourceType") == ["Bundle"] {
-            return resource
-                .child_instances("entry")
-                .into_iter()
-                .filter_map(|e| e.child_instances("resource").into_iter().next())
-                .flat_map(|r| r.child_instances("contained"))
-                .find(|c| c.scalars("$this.id") == [local]);
-        }
-        return None;
+        return resolve_local(local, resource?);
     }
-    let bundle = bundle?;
+    bundle.and_then(|b| resolve_entry(reference, b)).or_else(|| store.and_then(|s| resolve_entry(reference, s)))
+}
+
+/// `#local`: a contained resource of `resource` (a local reference never
+/// names a Bundle entry or a stored resource).
+fn resolve_local<D: Document>(local: &str, resource: &D) -> Option<D> {
+    if let Some(found) = resource.child_instances("contained").into_iter().find(|c| c.scalars("$this.id") == [local]) {
+        return Some(found);
+    }
+    // a constraint on a Bundle reaching into an entry's own contained
+    // resources: the reference sits in that entry, whose contained the
+    // `#id` names (the first entry holding one, when several do)
+    if resource.scalars("$this.resourceType") == ["Bundle"] {
+        return resource
+            .child_instances("entry")
+            .into_iter()
+            .filter_map(|e| e.child_instances("resource").into_iter().next())
+            .flat_map(|r| r.child_instances("contained"))
+            .find(|c| c.scalars("$this.id") == [local]);
+    }
+    None
+}
+
+/// A Bundle entry named by `reference` (not `#local`): by `fullUrl`, or by
+/// `Type/id` against a `fullUrl` ending so or the entry's resource type and
+/// id; a `/_history/version` suffix selects the matching `meta.versionId`.
+fn resolve_entry<D: Document>(reference: &str, bundle: &D) -> Option<D> {
     let (identity, version) = match reference.rsplit_once("/_history/") {
         Some((identity, version)) if !version.is_empty() && !version.contains('/') => (identity, Some(version)),
         Some(_) => return None,
@@ -1081,6 +1111,7 @@ fn logic(op: Op, a: Option<bool>, b: Option<bool>) -> Option<bool> {
 /// `select`/`where` over scalars (the Luhn invariants iterate digits).
 fn eval<D: Document>(e: &Expr, ctx: &Item<D>, env: &Env<'_, D>) -> Result<Vec<Item<D>>, Unsupported> {
     Ok(match e {
+        Expr::This if env.empty_focus => vec![],
         Expr::This => vec![ctx.clone()],
         Expr::Var(name) => match (name.as_str(), env.root) {
             ("resource", Some(root)) => vec![root.clone()],
@@ -1115,6 +1146,7 @@ fn eval<D: Document>(e: &Expr, ctx: &Item<D>, env: &Env<'_, D>) -> Result<Vec<It
         // `Patient.name`) is `$this` when that is its type.
         Expr::Nav(base, name)
             if matches!(**base, Expr::This)
+                && !env.empty_focus
                 && (env.this_type == Some(name.as_str())
                     || matches!(ctx, Item::Node(d) if d.fhir_type() == Some(name.as_str())
                         || d.scalars("$this.resourceType") == [name.as_str()])) =>
@@ -1149,19 +1181,14 @@ fn eval<D: Document>(e: &Expr, ctx: &Item<D>, env: &Env<'_, D>) -> Result<Vec<It
                 ("count", 0) => vec![Item::Int(coll.len() as i64)],
                 ("first", 0) => coll.into_iter().take(1).collect(),
                 // `resolve()`: references to what sits alongside — contained,
-                // or in the document Bundle. Anything else cannot be fetched
-                // here, and is not guessed.
+                // in the document Bundle, or in the host's resource store.
+                // Nothing is fetched: what is not there resolves to nothing.
                 ("resolve", 0) => {
-                    let (resource, bundle) = (
-                        match env.root {
-                            Some(Item::Node(d)) => Some(d),
-                            _ => None,
-                        },
-                        match env.bundle {
-                            Some(Item::Node(d)) => Some(d),
-                            _ => None,
-                        },
-                    );
+                    let node = |it: Option<&Item<D>>| match it {
+                        Some(Item::Node(d)) => Some(d.clone()),
+                        _ => None,
+                    };
+                    let (resource, bundle, store) = (node(env.root), node(env.bundle), node(env.store));
                     let mut out = Vec::new();
                     for it in &coll {
                         let reference = match it {
@@ -1175,10 +1202,16 @@ fn eval<D: Document>(e: &Expr, ctx: &Item<D>, env: &Env<'_, D>) -> Result<Vec<It
                             },
                             _ => return Err(Unsupported),
                         };
-                        match resolve_reference(&reference, resource, bundle) {
-                            Some(target) => out.push(Item::Node(target)),
-                            None if reference.starts_with('#') || bundle.is_some() => {}
-                            None => return Err(Unsupported),
+                        // nothing found is the empty collection, whatever the
+                        // shape — a relative `Type/id`, an absolute URL, a
+                        // `urn:uuid:`, a `/_history/` version, a `#local` that
+                        // names no contained resource, inside a Bundle or not:
+                        // validator_cli 6.10.4, offline, evaluates each so
+                        // (probed, `conformance/probes/resolve-*`)
+                        if let Some(target) =
+                            resolve_reference_in(&reference, resource.as_ref(), bundle.as_ref(), store.as_ref())
+                        {
+                            out.push(Item::Node(target));
                         }
                     }
                     out
@@ -1391,7 +1424,16 @@ fn eval<D: Document>(e: &Expr, ctx: &Item<D>, env: &Env<'_, D>) -> Result<Vec<It
                 // `iif(cond, then[, else])` — the input item is `$this` for all three.
                 ("iif", 2 | 3) => {
                     let Some(this) = single(&coll)? else {
-                        return Ok(vec![]);
+                        // an empty input: the criterion (and the branch it
+                        // picks) is evaluated on the empty collection, as the
+                        // reference validator does — `iif(empty(), true, …)`
+                        // is `true` (probed, `ctm-1`)
+                        let empty = Env { empty_focus: true, ..env.inner() };
+                        return Ok(match truth(&eval(&args[0], ctx, &empty)?)? {
+                            Some(true) => eval(&args[1], ctx, &empty)?,
+                            _ if args.len() == 3 => eval(&args[2], ctx, &empty)?,
+                            _ => vec![],
+                        });
                     };
                     let inner = env.inner();
                     match truth(&eval(&args[0], this, &inner)?)? {
@@ -1555,7 +1597,13 @@ pub(crate) fn context_nodes<D: Document>(expr: &Expr, resource: &D, bundle: Opti
     }
     let root_item = Item::Node(resource.clone());
     let bundle_item = bundle.map(|d| Item::Node(d.clone()));
-    let env = Env { this_type: resource.fhir_type(), root: Some(&root_item), bundle: bundle_item.as_ref() };
+    let env = Env {
+        this_type: resource.fhir_type(),
+        root: Some(&root_item),
+        bundle: bundle_item.as_ref(),
+        store: None,
+        empty_focus: false,
+    };
     Ok(eval(expr, &root_item, &env)?
         .into_iter()
         .filter_map(|item| match item {
@@ -1585,7 +1633,7 @@ pub fn check_in<D: Document>(
     root: Option<&D>,
     bundle: Option<&D>,
 ) -> Verdict {
-    check_result(expr, ctx, this_type, root, bundle, true)
+    check_result(expr, ctx, this_type, root, bundle, None, true)
 }
 
 /// Profile constraints require a non-empty true result, as validator_cli
@@ -1597,8 +1645,9 @@ pub(crate) fn check_constraint_in<D: Document>(
     this_type: Option<&str>,
     root: Option<&D>,
     bundle: Option<&D>,
+    store: Option<&D>,
 ) -> Verdict {
-    check_result(expr, ctx, this_type, root, bundle, false)
+    check_result(expr, ctx, this_type, root, bundle, store, false)
 }
 
 fn check_result<D: Document>(
@@ -1607,11 +1656,19 @@ fn check_result<D: Document>(
     this_type: Option<&str>,
     root: Option<&D>,
     bundle: Option<&D>,
+    store: Option<&D>,
     empty_passes: bool,
 ) -> Verdict {
     let root_item = root.map(|r| Item::Node(r.clone()));
     let bundle_item = bundle.map(|b| Item::Node(b.clone()));
-    let env = Env { this_type, root: root_item.as_ref(), bundle: bundle_item.as_ref() };
+    let store_item = store.map(|b| Item::Node(b.clone()));
+    let env = Env {
+        this_type,
+        root: root_item.as_ref(),
+        bundle: bundle_item.as_ref(),
+        store: store_item.as_ref(),
+        empty_focus: false,
+    };
     match eval(expr, &Item::Node(ctx.clone()), &env).and_then(|coll| truth(&coll)) {
         Err(Unsupported) => Verdict::Unsupported,
         Ok(Some(false)) => Verdict::Fail,

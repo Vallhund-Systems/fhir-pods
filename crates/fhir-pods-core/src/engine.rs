@@ -81,19 +81,39 @@ type Entry<D> = (String, String, String, String, D);
 pub(crate) struct Memo<D> {
     /// The bundle's entries, once built.
     entries: core::cell::RefCell<Option<Vec<Entry<D>>>>,
+    /// The host's resource store, as a Bundle of what it loaded
+    /// ([`crate::Validator::load_resource`]): what a reference found neither
+    /// contained nor in the document Bundle is looked up in.
+    pub(crate) store: Option<D>,
+    /// The store's entries, once built.
+    store_entries: core::cell::RefCell<Option<Vec<Entry<D>>>>,
     /// (target identity, profile address, valid?)
     conformance: core::cell::RefCell<Vec<(usize, usize, bool)>>,
 }
 
 impl<D> Memo<D> {
-    pub(crate) fn new() -> Self {
-        Memo { entries: core::cell::RefCell::new(None), conformance: core::cell::RefCell::new(Vec::new()) }
+    /// A memo for one validation; `store`, the host's resource store as a
+    /// Bundle, when references reach one.
+    pub(crate) fn with_store(store: Option<D>) -> Self {
+        Memo {
+            entries: core::cell::RefCell::new(None),
+            store,
+            store_entries: core::cell::RefCell::new(None),
+            conformance: core::cell::RefCell::new(Vec::new()),
+        }
     }
 }
 
 impl<D: Document> Memo<D> {
     fn entries<'a>(&'a self, bundle: &D) -> core::cell::Ref<'a, Vec<Entry<D>>> {
-        if self.entries.borrow().is_none() {
+        Self::index(&self.entries, bundle)
+    }
+
+    fn index<'a>(
+        cell: &'a core::cell::RefCell<Option<Vec<Entry<D>>>>,
+        bundle: &D,
+    ) -> core::cell::Ref<'a, Vec<Entry<D>>> {
+        if cell.borrow().is_none() {
             let mut out = Vec::new();
             for entry in bundle.child_instances("entry") {
                 let full = entry.scalars("$this.fullUrl").first().map(|s| String::from(*s)).unwrap_or_default();
@@ -103,20 +123,29 @@ impl<D: Document> Memo<D> {
                 let version = res.scalars("$this.meta.versionId").first().map(|s| String::from(*s)).unwrap_or_default();
                 out.push((full, rt, id, version, res));
             }
-            *self.entries.borrow_mut() = Some(out);
+            *cell.borrow_mut() = Some(out);
         }
-        core::cell::Ref::map(self.entries.borrow(), |e| e.as_ref().expect("built above"))
+        core::cell::Ref::map(cell.borrow(), |e| e.as_ref().expect("built above"))
     }
 
     /// [`path::resolve_reference`] by index: the same answer, without the walk.
     fn resolve(&self, reference: &str, bundle: &D) -> Option<D> {
+        Self::lookup(&self.entries(bundle), reference)
+    }
+
+    /// The host's store by index, as [`Memo::resolve`] the bundle.
+    fn resolve_stored(&self, reference: &str) -> Option<D> {
+        let store = self.store.as_ref()?;
+        Self::lookup(&Self::index(&self.store_entries, store), reference)
+    }
+
+    fn lookup(entries: &[Entry<D>], reference: &str) -> Option<D> {
         let (identity, version) = match reference.rsplit_once("/_history/") {
             Some((identity, version)) if !version.is_empty() && !version.contains('/') => (identity, Some(version)),
             Some(_) => return None,
             None => (reference, None),
         };
         let relative = identity.split_once('/').filter(|(ty, id)| !ty.is_empty() && !id.contains('/'));
-        let entries = self.entries(bundle);
         for (full, rt, id, v, res) in entries.iter() {
             if version.is_some_and(|want| v != want) {
                 continue;
@@ -169,7 +198,8 @@ fn validate_in<D: Document>(
     for el in profile.elements {
         check_element(el, el.path, doc, tx, &mut r);
     }
-    let scope = Scope { root, bundle, tx, depth, cache, evaluated, profile: profile.url, datatype };
+    let store = evaluated.and_then(|e| e.memo).and_then(|m| m.store.as_ref());
+    let scope = Scope { root, bundle, store, tx, depth, cache, evaluated, profile: profile.url, datatype };
     for (_, _, path, ty, url) in datatype_profile_elements().filter(|(p, s, ..)| *p == profile.url && s.is_empty()) {
         check_datatype_profiles(path, path, ty, url, doc, &scope, &mut r);
     }
@@ -312,6 +342,8 @@ struct Scope<'s, D> {
     root: &'s D,
     /// The document Bundle around it, if any.
     bundle: Option<&'s D>,
+    /// The host's resource store (a Bundle of what it loaded), if any.
+    store: Option<&'s D>,
     tx: &'s dyn TerminologyProvider,
     depth: usize,
     cache: Option<&'s crate::Validator>,
@@ -360,15 +392,19 @@ impl<D: Document> Scope<'_, D> {
         ok
     }
 
-    /// What the Reference `inst` points at, inside the document.
+    /// What the Reference `inst` points at: a contained resource, a
+    /// document Bundle entry, else a resource the host stored — in that order.
     fn resolved(&self, inst: &D) -> Option<D> {
         let reference = inst.scalars("$this.reference").into_iter().next()?;
         if !reference.starts_with('#') {
-            if let (Some(memo), Some(bundle)) = (self.memo(), self.bundle) {
-                return memo.resolve(reference, bundle);
+            if let Some(memo) = self.memo() {
+                return self
+                    .bundle
+                    .and_then(|bundle| memo.resolve(reference, bundle))
+                    .or_else(|| memo.resolve_stored(reference));
             }
         }
-        path::resolve_reference(reference, Some(self.root), self.bundle)
+        path::resolve_reference_in(reference, Some(self.root), self.bundle, self.store)
     }
 }
 
@@ -391,7 +427,7 @@ fn contained_orphans<D: Document>(label: &str, doc: &D, scope: &Scope<'_, D>, r:
         );
         let refers_back = "descendants().where(reference = '#').exists()";
         let verdict = |expr: &str, ctx: &D| match path::parse_constraint(expr) {
-            Ok(e) => path::check_constraint_in(&e, ctx, None, Some(scope.root), scope.bundle),
+            Ok(e) => path::check_constraint_in(&e, ctx, None, Some(scope.root), scope.bundle, scope.store),
             Err(_) => Verdict::Unsupported,
         };
         // a narrative link to it (`<a href="#id">`, `<img src="#id">`) is a
@@ -458,7 +494,7 @@ fn check_invariant<D: Document>(inv: &ProfileInvariant, label: &str, doc: &D, sc
     };
     let mut skipped = false;
     for (ctx, this_type, at) in invariant_contexts(inv, doc) {
-        match path::check_constraint_in(expr, &ctx, this_type, Some(scope.root), scope.bundle) {
+        match path::check_constraint_in(expr, &ctx, this_type, Some(scope.root), scope.bundle, scope.store) {
             Verdict::Fail => {
                 let severity = match inv.severity {
                     InvariantSeverity::Error => Severity::Error,
@@ -749,7 +785,7 @@ fn check_datatype_profiles<D: Document>(
         }
         for (key, is_error, human, expression) in *invariants {
             let verdict = match path::parse_invariant(key, expression) {
-                Ok(e) => path::check_constraint_in(&e, &inst, Some(ty), Some(scope.root), scope.bundle),
+                Ok(e) => path::check_constraint_in(&e, &inst, Some(ty), Some(scope.root), scope.bundle, scope.store),
                 Err(_) => Verdict::Unsupported,
             };
             match verdict {
@@ -1256,10 +1292,24 @@ fn matches_one<D: Document>(d: &Discriminator, inst: &D, scope: &Scope<'_, D>) -
 
 /// `Bundle`'s own invariants (bdl-1 … bdl-12) on a Bundle no compiled
 /// profile applies to.
-pub(crate) fn bundle_invariants<D: Document>(doc: &D, cache: Option<&crate::Validator>, bundle: Option<&D>) -> Report {
+pub(crate) fn bundle_invariants<D: Document>(
+    doc: &D,
+    cache: Option<&crate::Validator>,
+    bundle: Option<&D>,
+    store: Option<&D>,
+) -> Report {
     let mut r = Report::default();
-    let scope =
-        Scope { root: doc, bundle, tx: &Bundled, depth: 0, cache, evaluated: None, profile: "", datatype: false };
+    let scope = Scope {
+        root: doc,
+        bundle,
+        store,
+        tx: &Bundled,
+        depth: 0,
+        cache,
+        evaluated: None,
+        profile: "",
+        datatype: false,
+    };
     for (path, key, is_error, human, expression) in crate::typemap::BUNDLE_INVARIANTS {
         let inv = ProfileInvariant {
             path,
@@ -1284,10 +1334,20 @@ pub(crate) fn resource_invariants<D: Document>(
     rt: &'static str,
     cache: Option<&crate::Validator>,
     bundle: Option<&D>,
+    store: Option<&D>,
 ) -> Report {
     let mut r = Report::default();
-    let scope =
-        Scope { root: doc, bundle, tx: &Bundled, depth: 0, cache, evaluated: None, profile: "", datatype: false };
+    let scope = Scope {
+        root: doc,
+        bundle,
+        store,
+        tx: &Bundled,
+        depth: 0,
+        cache,
+        evaluated: None,
+        profile: "",
+        datatype: false,
+    };
     for (ty, path, key, is_error, human, expression, types) in crate::typemap::RESOURCE_INVARIANTS {
         if *ty != rt {
             continue;
@@ -1310,10 +1370,20 @@ pub(crate) fn domain_invariants<D: Document>(
     rt: &'static str,
     cache: Option<&crate::Validator>,
     bundle: Option<&D>,
+    store: Option<&D>,
 ) -> Report {
     let mut r = Report::default();
-    let scope =
-        Scope { root: doc, bundle, tx: &Bundled, depth: 0, cache, evaluated: None, profile: "", datatype: false };
+    let scope = Scope {
+        root: doc,
+        bundle,
+        store,
+        tx: &Bundled,
+        depth: 0,
+        cache,
+        evaluated: None,
+        profile: "",
+        datatype: false,
+    };
     for (key, is_error, human, expression) in crate::typemap::DOMAIN_INVARIANTS {
         if matches!(*key, "dom-2" | "dom-4" | "dom-5") {
             continue;
@@ -1949,6 +2019,7 @@ mod datatype_profile_rows {
         let scope = Scope {
             root: &doc,
             bundle: None,
+            store: None,
             tx: &Bundled,
             depth: 0,
             cache: None,

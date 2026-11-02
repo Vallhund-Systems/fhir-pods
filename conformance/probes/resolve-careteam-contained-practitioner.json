@@ -1,0 +1,20 @@
+{
+  "resourceType": "CareTeam",
+  "id": "resolve-careteam-contained-practitioner",
+  "contained": [
+    {
+      "resourceType": "Practitioner",
+      "id": "r1"
+    }
+  ],
+  "participant": [
+    {
+      "member": {
+        "reference": "#r1"
+      },
+      "onBehalfOf": {
+        "display": "An organisation"
+      }
+    }
+  ]
+}

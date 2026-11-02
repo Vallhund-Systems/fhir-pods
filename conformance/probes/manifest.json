@@ -429,5 +429,76 @@
     "ig": "hl7.fhir.ca.baseline#1.2.0",
     "expect": false,
     "reason": "CA Baseline holds Practitioner.identifier to profile-identifier alone: an identifier without a system is one error from it (validator_cli 6.10.4, at Practitioner.identifier[0])."
+  },
+  {
+    "file": "resolve-careteam-relative.json",
+    "profile": null,
+    "expect": true,
+    "reason": "resolve() of a relative Practitioner/r1 nothing holds is the empty collection, offline: ctm-1's iif(empty(), true, ...) is true, evaluated, not skipped."
+  },
+  {
+    "file": "resolve-careteam-absolute.json",
+    "profile": null,
+    "expect": true,
+    "reason": "resolve() of an absolute https URL nothing holds is the empty collection: ctm-1 holds."
+  },
+  {
+    "file": "resolve-careteam-urn.json",
+    "profile": null,
+    "expect": true,
+    "reason": "resolve() of a urn:uuid outside any Bundle is the empty collection: ctm-1 holds."
+  },
+  {
+    "file": "resolve-careteam-contained-missing.json",
+    "profile": null,
+    "expect": false,
+    "reason": "A #missing local reference: ref-1 fails; resolve() is empty, so ctm-1 holds (the oracle also reports 'Unable to resolve resource with reference')."
+  },
+  {
+    "file": "resolve-careteam-contained-patient.json",
+    "profile": null,
+    "expect": false,
+    "reason": "ctm-1 on what resolves: a contained Patient member with onBehalfOf fails it."
+  },
+  {
+    "file": "resolve-careteam-contained-practitioner.json",
+    "profile": null,
+    "expect": true,
+    "reason": "ctm-1 on what resolves: a contained Practitioner member with onBehalfOf holds."
+  },
+  {
+    "file": "resolve-provenance-relative.json",
+    "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance",
+    "expect": true,
+    "reason": "US Core provenance-1, who.exists((resolve() is Practitioner) or (resolve() is Device)) implies onBehalfOf.exists(): a relative reference nothing holds is empty, so the invariant holds.",
+    "ig": "hl7.fhir.us.core#6.1.0"
+  },
+  {
+    "file": "resolve-provenance-absolute.json",
+    "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance",
+    "expect": true,
+    "reason": "provenance-1 on an absolute https URL nothing holds: empty, holds.",
+    "ig": "hl7.fhir.us.core#6.1.0"
+  },
+  {
+    "file": "resolve-provenance-urn.json",
+    "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance",
+    "expect": true,
+    "reason": "provenance-1 on a urn:uuid outside any Bundle: empty, holds.",
+    "ig": "hl7.fhir.us.core#6.1.0"
+  },
+  {
+    "file": "resolve-provenance-contained-missing.json",
+    "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance",
+    "expect": false,
+    "reason": "A #missing local reference: ref-1 fails; provenance-1 holds on the empty collection.",
+    "ig": "hl7.fhir.us.core#6.1.0"
+  },
+  {
+    "file": "resolve-provenance-contained-practitioner.json",
+    "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance",
+    "expect": false,
+    "reason": "provenance-1 on what resolves: a contained Practitioner agent without onBehalfOf fails it.",
+    "ig": "hl7.fhir.us.core#6.1.0"
   }
 ]

@@ -3,7 +3,7 @@
 // WebAssembly does (browser, edge runtimes, Node, Bun, Deno).
 
 /** The ABI this wrapper speaks; a module reporting anything else is refused. */
-export const ABI_VERSION = 14;
+export const ABI_VERSION = 15;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -164,6 +164,21 @@ export async function instantiate(source, options = {}) {
     // complete offline table. Other global tables/providers are not borrowed.
     // false on refusal without replacing the prior entry; "" clears all contexts.
     loadQuestionnaire: (json) => callInt(ex.fhir_pods_questionnaire_load, json) === 1,
+    // Load a resource (JSON) — or every entry resource of a Bundle, each under
+    // its `fullUrl` — into the resource store, for every call that follows: a
+    // reference that names no contained resource and no entry of the document
+    // Bundle is looked up there by the rules a Bundle entry is (its `fullUrl`;
+    // `Type/id` against a `fullUrl` ending so or the resource's type and id;
+    // `/_history/version` selecting `meta.versionId`), the first match in load
+    // order. `resolve()` finds a stored resource, and a stored target is held to
+    // the element's `targetProfile`s by conformance, as a Bundle entry is.
+    // Validation reads the store; lower, lift, export, document, audit, v2 and
+    // deidentify do not. A second load of the same `fullUrl`, or of the same
+    // `Type/id` with the same `meta.versionId` (or none), replaces that entry.
+    // `false` when the JSON is not a resource or a Bundle of resources (the store
+    // is unchanged); "" clears the store. The runtime never fetches: the host
+    // retrieves what it stores, with its own authorisation and consent.
+    loadResource: (json) => callInt(ex.fhir_pods_resource_load, json) === 1,
     // What to resolve for a verdict free of terminology warnings.
     terminologyNeeds: (json) => JSON.parse(call(ex.fhir_pods_terminology_needs, json)).needs,
     validateText: (json) => call(validate, json),

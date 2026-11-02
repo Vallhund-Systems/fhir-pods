@@ -129,6 +129,26 @@ int main(void) {
     printf("options: default %.40s...; strict %.40s...\n", o_default, o_strict);
     free(o_default); free(o_strict); free(o_kept); free(o_cleared);
 
+    /* The host's resource store (ABI 15): what resolve() finds when a
+       reference names no contained resource and no Bundle entry. ctm-1 — a
+       CareTeam member who is a Patient may not have onBehalfOf — passes on a
+       member nothing resolves (the empty collection), fails once the host
+       stores that Patient, and passes again once the store is cleared. */
+    const char *team = "{\"resourceType\":\"CareTeam\",\"participant\":[{\"member\":{\"reference\":\"Patient/p1\"},"
+                       "\"onBehalfOf\":{\"display\":\"An organisation\"}}]}";
+    const char *stored = "{\"resourceType\":\"Patient\",\"id\":\"p1\"}";
+    char *s_empty = call(fhir_pods_validate, team);
+    ok = ok && strstr(s_empty, "\"valid\":true") && !strstr(s_empty, "ctm-1");
+    ok = ok && fhir_pods_resource_load((const uint8_t *)stored, strlen(stored)) == 1;
+    char *s_loaded = call(fhir_pods_validate, team);
+    ok = ok && strstr(s_loaded, "\"valid\":false") && strstr(s_loaded, "ctm-1");
+    ok = ok && fhir_pods_resource_load((const uint8_t *)"[]", 2) == 0;
+    ok = ok && fhir_pods_resource_load(NULL, 0) == 1;
+    char *s_cleared = call(fhir_pods_validate, team);
+    ok = ok && strstr(s_cleared, "\"valid\":true");
+    printf("resource store: empty %.40s...; loaded %.40s...\n", s_empty, s_loaded);
+    free(s_empty); free(s_loaded); free(s_cleared);
+
     /* Must-support: information, separate from validation. */
     const char *us = "{\"resourceType\":\"Patient\",\"meta\":{\"profile\":[\"http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient\"]},"
                      "\"identifier\":[{\"system\":\"http://h.example.org/mrn\",\"value\":\"1\"}],\"name\":[{\"family\":\"D\"}],\"gender\":\"male\"}";

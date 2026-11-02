@@ -1,0 +1,22 @@
+{
+  "resourceType": "Provenance",
+  "id": "resolve-provenance-urn",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance"
+    ]
+  },
+  "target": [
+    {
+      "reference": "Observation/o1"
+    }
+  ],
+  "recorded": "2026-01-01T00:00:00Z",
+  "agent": [
+    {
+      "who": {
+        "reference": "urn:uuid:5b2f3a4e-1c9d-4e7a-9b2f-0a1b2c3d4e5f"
+      }
+    }
+  ]
+}

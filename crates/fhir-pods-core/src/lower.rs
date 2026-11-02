@@ -599,7 +599,7 @@ pub fn lower_with(
     let mut resource = String::new();
     root.write(&mut resource);
     let mut validation = match validator {
-        Some(v) => v.validate_with(resource.as_bytes(), tx),
+        Some(v) => v.validate_unstored(resource.as_bytes(), tx),
         None => crate::validate_bytes_with(resource.as_bytes(), tx),
     };
     // input problems come first; the conformance findings follow

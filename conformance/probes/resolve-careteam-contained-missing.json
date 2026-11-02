@@ -1,0 +1,14 @@
+{
+  "resourceType": "CareTeam",
+  "id": "resolve-careteam-contained-missing",
+  "participant": [
+    {
+      "member": {
+        "reference": "#missing"
+      },
+      "onBehalfOf": {
+        "display": "An organisation"
+      }
+    }
+  ]
+}

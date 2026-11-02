@@ -722,7 +722,7 @@ pub fn export_with(
         let bytes = node.to_json();
         let as_given =
             |note: String, notes: Vec<String>, resources: &mut Vec<ExportedResource>| -> Result<(), ExportError> {
-                let validation = validator.validate_with(bytes.as_bytes(), tx);
+                let validation = validator.validate_unstored(bytes.as_bytes(), tx);
                 if validation.report.issues.iter().any(|i| i.path == "resourceType") {
                     return Err(ExportError::NotAResource(index));
                 }
@@ -781,7 +781,7 @@ pub fn export_with(
                     }
                 }
                 let resource = out.to_json();
-                let validation = validator.validate_with(resource.as_bytes(), tx);
+                let validation = validator.validate_unstored(resource.as_bytes(), tx);
                 let also_missing = match also {
                     Some(second) => lift::lift_with(second, resource.as_bytes(), validator, tx)
                         .map(|l| l.missing)

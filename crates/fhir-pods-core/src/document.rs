@@ -742,7 +742,14 @@ fn datatype_invariants<'v, 'a>(v: &'v Value<'a>, ctx: &'static str, w: &mut Walk
                 alloc::format!("{key} not evaluated: outside the supported FHIRPath core"),
             )),
             Some(expr) => {
-                match crate::path::check_constraint_in(expr, &here, Some(this_type), root.as_ref(), bundle.as_ref()) {
+                match crate::path::check_constraint_in(
+                    expr,
+                    &here,
+                    Some(this_type),
+                    root.as_ref(),
+                    bundle.as_ref(),
+                    None,
+                ) {
                     crate::path::Verdict::Pass => {}
                     crate::path::Verdict::Fail => {
                         let finding = (label, Invariant, alloc::format!("{key}: {human}"));
@@ -814,7 +821,7 @@ fn datatype_profile<'v, 'a>(v: &'v Value<'a>, w: &mut Walk<'v, 'a, '_>) {
             }
         };
         let verdict = match &w.profile_invariants[cached].1 {
-            Ok(expr) => crate::path::check_constraint_in(expr, &here, Some(ty), root.as_ref(), bundle.as_ref()),
+            Ok(expr) => crate::path::check_constraint_in(expr, &here, Some(ty), root.as_ref(), bundle.as_ref(), None),
             Err(()) => crate::path::Verdict::Unsupported,
         };
         match verdict {

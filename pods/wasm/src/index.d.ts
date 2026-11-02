@@ -458,6 +458,23 @@ export interface Pod {
    */
   loadQuestionnaire(json: string): boolean;
   /**
+   * Load a resource (JSON) — or every entry resource of a Bundle, each under
+   * its `fullUrl` — into the resource store, for every call that follows: a
+   * reference that names no contained resource and no entry of the document
+   * Bundle is looked up there by the rules a Bundle entry is (its `fullUrl`;
+   * `Type/id` against a `fullUrl` ending so or the resource's type and id;
+   * `/_history/version` selecting `meta.versionId`), the first match in load
+   * order. `resolve()` finds a stored resource, and a stored target is held to
+   * the element's `targetProfile`s by conformance, as a Bundle entry is.
+   * Validation reads the store; lower, lift, export, document, audit, v2 and
+   * deidentify do not. A second load of the same `fullUrl`, or of the same
+   * `Type/id` with the same `meta.versionId` (or none), replaces that entry.
+   * `false` when the JSON is not a resource or a Bundle of resources (the store
+   * is unchanged); "" clears the store. The runtime never fetches: the host
+   * retrieves what it stores, with its own authorisation and consent.
+   */
+  loadResource(json: string): boolean;
+  /**
    * What to resolve for this resource to validate without terminology
    * warnings: the bindings neither the bundled sets nor the loaded table
    * could decide. Resolve them (`$validate-code`, or `$expand` and compile

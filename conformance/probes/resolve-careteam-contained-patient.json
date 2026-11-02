@@ -1,0 +1,20 @@
+{
+  "resourceType": "CareTeam",
+  "id": "resolve-careteam-contained-patient",
+  "contained": [
+    {
+      "resourceType": "Patient",
+      "id": "p1"
+    }
+  ],
+  "participant": [
+    {
+      "member": {
+        "reference": "#p1"
+      },
+      "onBehalfOf": {
+        "display": "An organisation"
+      }
+    }
+  ]
+}
