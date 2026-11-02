@@ -1,6 +1,6 @@
 {
-  "recorded_at": "2026-11-02T22:36:11.242611+00:00",
-  "source_revision": "ffa2938df0ea1ea864b493c5fac4b8245058cc4d",
+  "recorded_at": "2026-11-02T23:15:35.293068+00:00",
+  "source_revision": "22e2a46bb4ecc0b94509ea949e4d690c3113051d",
   "source_dirty": false,
   "oracle_version": "6.10.4",
   "oracle_sha256": "1106b9d58f9e363e47bea7c4fc065841e5fc91fe9d062775c3bfdd212bd653cc",
@@ -26,9 +26,9 @@
   },
   "note": "Terminology service disabled; the oracle may still resolve unknown profile URLs. One oracle run per guide (`ig`). Verdict parity only; a reviewed difference counts only while its input hash, oracle signature and local verdict match the review. Issues retained for inspection.",
   "counts": {
-    "total": 81,
+    "total": 82,
     "agree": 81,
-    "reviewed": 0,
+    "reviewed": 1,
     "differ": 0
   },
   "probes": [
@@ -4448,6 +4448,104 @@
       },
       "status": "agree",
       "agrees": true
+    },
+    {
+      "file": "resolve-heartrate-contained-bare-patient.json",
+      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate",
+      "expect": false,
+      "reason": "A contained target is held to the element's targetProfile by conformance in the oracle: AU Core heart rate's subject is an AU Core Patient, and a contained Patient with nothing but an id is none ('Unable to find a profile match for #p1 among choices: \u2026au-core-patient').",
+      "reviewed": {
+        "sha256": "492e90949d01b9f7124a0e6d69a0bbafc0466d292f5fb15d944edd2f4bc7274f",
+        "oracle": "5f9098c108db501478d9da1b18ee586895561ea8d6f786012041f280adde0546",
+        "local_valid": true,
+        "reason": "Lenient, declared in docs/scope.md (Reference target types): the pod judges a contained reference target by type only, under any profile; the oracle holds it to conformance under every targetProfile that names a profile. Not fixed in 0.29.0; its own task."
+      },
+      "ig": "hl7.fhir.au.core#2.0.0",
+      "sha256": "492e90949d01b9f7124a0e6d69a0bbafc0466d292f5fb15d944edd2f4bc7274f",
+      "oracle_valid": false,
+      "oracle_signature": "5f9098c108db501478d9da1b18ee586895561ea8d6f786012041f280adde0546",
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code '/min' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "Observation.value.ofType(Quantity)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Observation"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "Validate Observation against the Heart rate profile (http://hl7.org/fhir/StructureDefinition/heartrate) which is required by the FHIR specification because the LOINC code 8867-4 was found",
+          "paths": [
+            "Observation"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "code-invalid",
+          "text": "Could not confirm that the codes provided are from the extensible value set http://hl7.org/fhir/ValueSet/observation-vitalsignresult|4.0.1 because there is no terminology service",
+          "paths": [
+            "Observation.code"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "text": "Best Practice Recommendation: In general, all observations should have a performer",
+          "paths": [
+            "Observation"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Unable to find a profile match for #p1 among choices: http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+          "paths": [
+            "Observation.subject"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "structure",
+          "text": "Details for #p1 matching against profile http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0",
+          "paths": [
+            "Observation.subject"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Observation",
+        "profile": "AU Core Heart Rate",
+        "valid": true,
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "Observation",
+            "message": "dom-6: A resource should have narrative for robust management"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "Observation.contained[0].Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "status": "reviewed",
+      "agrees": true,
+      "note": "Lenient, declared in docs/scope.md (Reference target types): the pod judges a contained reference target by type only, under any profile; the oracle holds it to conformance under every targetProfile that names a profile. Not fixed in 0.29.0; its own task."
     }
   ]
 }
