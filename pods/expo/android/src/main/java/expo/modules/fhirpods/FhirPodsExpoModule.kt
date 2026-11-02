@@ -15,7 +15,7 @@ class FhirPodsExpoModule : Module() {
      *  were packed or vendored — reported at module creation rather than left
      *  to surface at the first call. Mirrored in `FhirPodsExpoModule.swift`
      *  and `src/index.ts`. */
-    const val EXPECTED_ABI = 14
+    const val EXPECTED_ABI = 15
   }
 
   override fun definition() = ModuleDefinition {
@@ -101,6 +101,15 @@ class FhirPodsExpoModule : Module() {
     // (1 = loaded, 0 = not a Questionnaire; "" clears).
     Function("questionnaireLoad") { json: String ->
       FhirPodsNative.questionnaireLoad(json.toByteArray(Charsets.UTF_8))
+    }
+
+    // A resource (or every entry resource of a Bundle) for resolve() and the
+    // reference-target check to find when a reference names no contained
+    // resource and no Bundle entry; validation reads it, lower/lift/export/
+    // document/audit/v2/deidentify do not (1 = loaded, 0 = not a resource
+    // or a Bundle of resources, the store unchanged; "" clears).
+    Function("resourceLoad") { json: String ->
+      FhirPodsNative.resourceLoad(json.toByteArray(Charsets.UTF_8))
     }
 
     // Host options for every call that follows: {"unknownProfile":

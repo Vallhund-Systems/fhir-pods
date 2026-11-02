@@ -60,7 +60,7 @@ report = {
     'abi': int(re.search(r'#define FHIR_PODS_ABI_VERSION (\d+)u', Path(paths[1]).read_text())[1]),
     'ndebug': True, 'cSanitizers': os.environ.get('SANITIZE') == '1',
     'rustInstrumented': False, 'timeoutSeconds': 60,
-    'resultBuffers': sum(n for entry,n in counts.items() if entry not in ['pod_alloc','pod_free','fhir_pods_abi_version','fhir_pods_terminology_load','fhir_pods_questionnaire_load']),
+    'resultBuffers': sum(n for entry,n in counts.items() if entry not in ['pod_alloc','pod_free','fhir_pods_abi_version','fhir_pods_terminology_load','fhir_pods_questionnaire_load','fhir_pods_resource_load','fhir_pods_options']),
     'entrypoints': dict(sorted(counts.items())),
     'sha256': {path:digest(path) for path in paths},
     'resultStreamSha256': hashlib.sha256(result.stdout).hexdigest(),

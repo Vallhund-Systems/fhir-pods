@@ -9,10 +9,10 @@
 extern "C" {
 #endif
 
-/* ABI version; a host refuses a mismatched module. This header is ABI 14.
+/* ABI version; a host refuses a mismatched module. This header is ABI 15.
  * It rises whenever the exported surface changes, a new entrypoint included:
  * a wrapper that calls one must not be handed a module without it. */
-#define FHIR_PODS_ABI_VERSION 14u
+#define FHIR_PODS_ABI_VERSION 15u
 uint32_t fhir_pods_abi_version(void);
 
 /* Allocate `len` bytes in the module for the host to fill. */
@@ -211,6 +211,29 @@ int32_t fhir_pods_terminology_load(const uint8_t *ptr, size_t len);
  * complete offline terminology table. Plain loads retain global/provider
  * behavior; empty input clears all forms and their owned contexts. */
 int32_t fhir_pods_questionnaire_load(const uint8_t *ptr, size_t len);
+
+/* A resource (JSON), or every entry resource of a Bundle (each under its
+ * fullUrl), held in this module's resource store for its lifetime (ABI 15).
+ * A reference that names no contained resource and no entry of the document
+ * Bundle is looked up there by the rules a Bundle entry is: its fullUrl;
+ * Type/id against a fullUrl ending so or the resource's type and id;
+ * /_history/version selecting meta.versionId; the first match in load order
+ * (so an unversioned reference to a resource stored in two versions finds
+ * the one loaded first). resolve() finds a stored resource, and a stored
+ * target is held to the element's targetProfiles by conformance and to its
+ * base target types, as a Bundle entry is; a reference is looked up when it
+ * is written in the validated resource or in a stored resource it reaches.
+ * Validation reads the store (validate, operation_outcome, terminology_needs
+ * and their _tx variants); lower, lift, export, document, audit, v2 and
+ * deidentify do not. Returns 1 when loaded, 0 when the bytes are not a
+ * resource or a Bundle of resources (an entry that is not an array of
+ * objects included; the store is unchanged). An entry loaded under a fullUrl
+ * is identified by it alone (a second load of that fullUrl replaces it); one
+ * without is identified by its Type/id and meta.versionId (or none) and
+ * replaces only another without a fullUrl. Empty input clears the store. The
+ * runtime never fetches: the host retrieves what it stores, with its own
+ * authorisation and consent. */
+int32_t fhir_pods_resource_load(const uint8_t *ptr, size_t len);
 
 /* Host options, for every call that follows (this module, its lifetime):
  *   {"unknownProfile": "warning" | "error",

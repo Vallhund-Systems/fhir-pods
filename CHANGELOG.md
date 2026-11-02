@@ -1,5 +1,147 @@
 # Changelog
 
+## 0.29.0
+
+**A reference that resolves to nothing is the empty collection, and a host
+can store the resources references name.** ABI 15: one new entrypoint,
+`fhir_pods_resource_load`.
+
+`resolve()` on a reference no contained resource and no entry of the
+Bundle being validated holds evaluates to the empty collection, and the
+invariant is evaluated on it, as validator_cli 6.10.4 does offline. Until
+0.29.0 a resource validated alone skipped such an invariant (an
+information `not evaluated` issue). Probed first, one JVM (`-tx n/a`, no
+fetcher), with a synthetic profile on `Basic` carrying three invariants —
+`subject.resolve().exists()` and `subject.resolve() is Patient` (false on
+empty), `subject.resolve().empty()` (true on empty): for a relative
+`Patient/p1`, an absolute `https://records.example.invalid/fhir/Patient/p1`,
+a `urn:uuid:` outside any Bundle, `Patient/p1/_history/2`, a `#missing`
+local reference, and `Patient/none` inside a collection Bundle that does not
+hold it, the oracle fails the two false-on-empty invariants and passes the
+true-on-empty one — every shape evaluated on empty, none skipped; a
+contained Patient, a contained Practitioner and a Bundle entry resolve and
+are judged as resolved. So no shape keeps a skip. The pod's own evaluation
+of the same three expressions on the same resources is the integration test
+`a_reference_nothing_resolves_is_the_empty_collection`. `iif` on an empty
+input evaluates its criterion and the branch it picks with the empty
+collection as their implicit input and `$this` still the item `iif` was
+called in, as the oracle does — probed on a Basic with no extension:
+`extension.iif($this.exists(), true, false)`, `extension.iif(empty(), true,
+false)`, `extension.iif(true, $this.exists(), true)`, `code.iif(empty(),
+false, true)` and `extension.iif(%resource.code.exists(), true, false)`
+hold, `extension.iif(exists(), true)` fails (the unit test
+`iif_on_an_empty_input_matches_the_oracle`); written-out `$this` is now its
+own node in the parsed expression (`Expr::ThisVar`). So `ctm-1` (`onBehalfOf.exists() implies (member.resolve().iif(empty(),
+true, ofType(Practitioner).exists()))`) is true on a member nothing
+resolves; before, it was skipped there, and on a `#missing` member the pod
+failed it where the oracle passes it (both sides fail `ref-1`). `ctm-1` and
+US Core's `provenance-1` are the registry's two invariants that call
+`resolve()`; eleven new probes (`conformance/probes/resolve-*`) hold them
+to the oracle for a relative, an absolute and a `urn:uuid:` reference, a
+`#missing` one, and what does resolve (a contained Patient fails `ctm-1`, a
+contained Practitioner passes it and fails `provenance-1` without
+`onBehalfOf`), and each agrees.
+
+The probes found one difference this release does not change, and it is
+general: the oracle holds a `#contained` target to conformance under any
+`targetProfile` that names a profile — AU Core heart rate, US Core heart
+rate and US Core Provenance, each with a contained Patient that has only an
+id, are invalid there ("Unable to find a profile match for #p1 among
+choices: …"), valid in the pod, which judges a contained target by type
+only; a contained Patient that conforms is valid on both sides. Declared in
+`docs/scope.md` (Reference target types) and recorded as the probe lane's
+one reviewed difference, `resolve-heartrate-contained-bare-patient`.
+
+**The resource store.** `fhir_pods_resource_load(ptr, len)` takes one
+resource (JSON) or a Bundle — every entry resource, under its `fullUrl` —
+and holds it on the module for its lifetime, under the Questionnaire
+store's lock (`Arc` snapshot; a call in flight keeps the snapshot it took;
+with none in flight the context is taken over rather than copied). It
+returns 1 when loaded and 0 when the bytes are not a resource or a Bundle of
+resources — a Bundle whose `entry` is not an array of objects, or one entry
+`resource` without an R4 `resourceType`, refuses the whole load and leaves
+the store unchanged; empty input clears it. A stored resource is found by
+the rules a Bundle entry is: its `fullUrl` exactly; a relative `Type/id`
+against a `fullUrl` ending `/Type/id` or the resource's own type and id;
+`/_history/version` selecting `meta.versionId`; the first match in load
+order, so an unversioned reference to a resource stored in two versions
+finds the one loaded first. Precedence is contained, then the Bundle being
+validated, then the store; a `#local` reference never reaches the store. An
+entry loaded under a `fullUrl` is identified by it alone — two entries under
+different `fullUrl`s are two entries though both are `Patient/1`, and each
+absolute reference finds its own, in either load order — and a second load
+of that `fullUrl` replaces it; an entry without one is identified by its
+`Type/id` and `meta.versionId` (both absent counts as the same) and replaces
+only another without a `fullUrl`. A resource with neither an `id` nor a
+`fullUrl` is taken and not stored (no reference could name it).
+`resolve()` finds a stored resource; a stored target is held to the
+element's `targetProfile`s by conformance, as a Bundle entry is (`Unable to
+find a profile match for Patient/1 among choices` for a stored Patient that
+is no AU Core Patient under AU Core heart rate); and an unprofiled
+resource's references are held to their base target types against the store
+as a Bundle entry's are ("Invalid Resource target type. Found Medication…"
+for an Observation validated alone whose subject is a stored Medication;
+inside a Bundle, after the entries). A reference is looked up when it is
+written in the validated resource or in a stored resource it reaches;
+validation parses only those stored resources, and none when nothing in the
+input names one. Validation reads the store (`fhir_pods_validate`,
+`_operation_outcome`, `_terminology_needs` and their `_tx` variants); lower,
+lift, export, document assembly, audit, v2 and de-identification validate
+their own output without it. The pod never fetches: the host retrieves what
+it stores, with its own authorisation and consent. In the core it is
+`Validator::load_resource` / `with_resource` / `clear_resources` /
+`resource_count`; on the wasm pod `loadResource(json): boolean`; on the Expo
+pod `loadResource(json): boolean` (Swift `resourceLoad`, Kotlin
+`FhirPodsNative.resourceLoad` and its JNI twin). The C smoke and the abuse
+harness exercise it (the abuse harness now also covers `fhir_pods_options`,
+which its header-coverage check requires). `Validator` clones now share the
+parsed invariants and the stored resources' content.
+
+Cost, measured through the C ABI on a debug build (stored Patients loaded
+as one Bundle; a Basic with no reference, and a CareTeam naming
+`Patient/p7`, each validated 200 times):
+
+| Stored | Basic, per validation | CareTeam naming a stored Patient |
+| ---: | ---: | ---: |
+| 0 | 29 µs | 47 µs |
+| 10 | 29 µs | 79 µs |
+| 100 | 29 µs | 82 µs |
+| 1,000 | 29 µs | 84 µs |
+| 5,000 | 30 µs | 84 µs |
+| 20,000 | 29 µs | 83 µs |
+
+Loading 1,000 resources one at a time takes 7.2 ms in all; a Bundle of
+1,000 takes 6.7 ms, of 5,000 37 ms, of 20,000 152 ms.
+
+Lanes, measured on this tree: probes **82/82** (70 + 12; 81 agree and one
+reviewed difference, `resolve-heartrate-contained-bare-patient`), oracle
+fresh; release gate **1,840/1,840**, oracle fresh (1,823, plus the eleven
+agreeing probes, plus the lowered and de-identified copies of the three
+valid Provenance probes; a reviewed probe difference is no longer a
+release-gate case, since that gate wants agreement); reasons 0 untriaged on
+1,840, 4 triaged (the new one: the contained Practitioner probe's missed
+"Unable to find a profile match for #r1", the contained-target difference
+above). Pod against pod (0.28.0's probe and this one, every JSON input of
+the base, release, reasons, questionnaire, supporting, test-case, v2,
+probe, narrative, coded-answer, unprofiled, de-identification, document,
+lowering, audit, terminology, mutation, instrument and Synthea lanes,
+27,635 files): **0 verdict moves**. 120 outputs differ. 118 of them lose
+only an information `ctm-1 not evaluated` or `provenance-1 not evaluated`
+issue, gone because the invariant now evaluates: 83 mutation-lane files
+(62 CareTeam, 21 Provenance), 8 R4 examples (`CareTeam-example` and seven
+CarePlans with a contained CareTeam), 21 release-corpus files (US Core's
+two CareTeam and one Provenance examples, the new probes, and their lowered
+and de-identified copies) and 6 probe-lane files. The other two are
+`resolve-careteam-contained-missing` and its release-corpus copy, which lose
+the `ctm-1` error the pod no longer raises there; the oracle passes `ctm-1`
+on that file. So the published R4 examples stay **5,155/5,287**
+(132 lenient, 0 stricter; `base.py --reuse-oracle`), the mutation lane
+21,353/21,371 and every other lane's count as recorded; those lanes were not
+re-run against the oracle. The wasm artefact was not rebuilt, so the wasm
+Node tests and the browser harness (which now check `loadResource`) were not
+run for this entry; the C smoke and abuse harness ran against a debug
+staticlib.
+
 ## 0.28.0
 
 **A coding with a code and no system is placed as the reference validator

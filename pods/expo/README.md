@@ -315,6 +315,39 @@ the app process, so the host should load the forms needed for that process and
 clear them when its data boundary changes. An unresolved form is reported as
 such; its item rules are not guessed.
 
+## Referenced resources
+
+`resolve()` and the reference-target check find a target that is contained,
+or an entry of the Bundle being validated. For a resource validated alone
+that names one the host holds elsewhere, store it first:
+
+```ts
+import { loadResource, validate } from "fhir-pods-expo";
+
+loadResource(JSON.stringify(patient)); // true; or a Bundle: every entry resource, under its fullUrl
+const report = validate(JSON.stringify(observation)); // its subject resolves to the stored Patient
+loadResource(""); // clear the resource store
+```
+
+A stored resource is found by the rules a Bundle entry is: its `fullUrl`;
+`Type/id` against a `fullUrl` ending so or the resource's own type and id;
+`/_history/version` selecting `meta.versionId`; the first match in load
+order (so an unversioned reference to a resource stored in two versions finds
+the one loaded first), after contained resources and the Bundle being
+validated. A stored target is held to the element's `targetProfile`s by
+conformance and to its base target types, as a Bundle entry is. A reference
+is looked up when it is written in the validated resource or in a stored
+resource it reaches. An entry loaded under a `fullUrl` is identified by it
+alone, and a second load of that `fullUrl` replaces it; one without is
+identified by its `Type/id` and `meta.versionId` (or none) and replaces only
+another without a `fullUrl`. JSON that is not a resource or a Bundle of
+resources returns `false` and leaves the store as it was. Validation reads
+the store; lower, lift, export, document, audit, v2 and deidentify do not.
+The store belongs to the native runtime in the app process, like the loaded
+forms; the runtime never fetches, so the host retrieves what it stores with
+its own authorisation and consent, and clears it when its data boundary
+changes.
+
 ## Host options
 
 Two strictness calls are the host's, and both default to what the HL7

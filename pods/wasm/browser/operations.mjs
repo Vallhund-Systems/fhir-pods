@@ -1,4 +1,4 @@
-// Bounded synthetic ABI 14 checks shared by Chrome and Node.
+// Bounded synthetic ABI 15 checks shared by Chrome and Node.
 import { ABI_VERSION, instantiate } from "../src/index.js";
 import { fixtures, patient, patientProfile, practitioner, heartRate } from "../bench/fixtures.mjs";
 
@@ -17,7 +17,7 @@ export async function checkOperations(bytes) {
   const pod = await instantiate(bytes);
   const checks = [];
   const check = (name, fn) => { try { fn(); checks.push({ name, pass: true }); } catch (e) { throw new Error(`${name}: ${e.message}`, { cause: e }); } };
-  check("ABI matches wrapper", () => assert(pod.abiVersion === ABI_VERSION && pod.abiVersion === 14, "ABI mismatch"));
+  check("ABI matches wrapper", () => assert(pod.abiVersion === ABI_VERSION && pod.abiVersion === 15, "ABI mismatch"));
   for (const fixture of fixtures) check(`validate ${fixture.name}`, () => assert(pod.validate(fixture.json).valid === fixture.valid, "Unexpected verdict"));
   check("OperationOutcome", () => assert(pod.operationOutcome("{").issue.some(i => i.severity === "fatal"), "Fatal parse finding missing"));
   check("discovery regions and profile kinds", () => {
@@ -82,6 +82,19 @@ export async function checkOperations(bytes) {
     for (const verdict of Object.values(responseVerdicts(undefined))) {
       assert(verdict.valid && messages(verdict).includes("could not be resolved"), "Cleared form still resolved");
     }
+  });
+  check("resource store reaches resolve() and is clearable", () => {
+    // ctm-1: a member that is a Patient may not have onBehalfOf. Nothing
+    // resolves Patient/p1 until the host stores it: the empty collection, so
+    // ctm-1 holds; stored, it fails; cleared, it holds again.
+    const team = JSON.stringify({ resourceType: "CareTeam", participant: [{ member: { reference: "Patient/p1" }, onBehalfOf: { display: "An organisation" } }] });
+    const ctm1 = (v) => v.issues.some(i => i.message.startsWith("ctm-1"));
+    assert(!ctm1(pod.validate(team)), "Unresolved member was not the empty collection");
+    assert(pod.loadResource(JSON.stringify({ resourceType: "Patient", id: "p1" })), "Resource load failed");
+    assert(ctm1(pod.validate(team)), "Stored resource was not resolved");
+    assert(!pod.loadResource("[]") && ctm1(pod.validate(team)), "A refused load changed the store");
+    assert(!ctm1(isolatedPod.validate(team)), "Resource store leaked between instances");
+    assert(pod.loadResource("") && !ctm1(pod.validate(team)), "Resource clear failed");
   });
   check("lift conflicts cross the ABI", () => {
     const conflict = structuredClone(heartRate); conflict.valueQuantity.code = "Hz";

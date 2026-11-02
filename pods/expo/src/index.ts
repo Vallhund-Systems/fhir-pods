@@ -8,7 +8,7 @@ import FhirPodsExpoModule from "./FhirPodsExpoModule";
  * import, rather than left to surface as a wrong result at the first call.
  * The native modules log the same mismatch on creation.
  */
-export const ABI_VERSION = 14;
+export const ABI_VERSION = 15;
 
 const abi = FhirPodsExpoModule.abiVersion();
 if (abi !== ABI_VERSION) {
@@ -504,6 +504,32 @@ export function loadTerminology(table: string): boolean {
  */
 export function loadQuestionnaire(json: string): boolean {
   return FhirPodsExpoModule.questionnaireLoad(json) === 1;
+}
+
+/**
+ * Load a resource (JSON) — or every entry resource of a Bundle, each under
+ * its `fullUrl` — into the resource store, for every call that follows: a
+ * reference that names no contained resource and no entry of the document
+ * Bundle is looked up there by the rules a Bundle entry is (its `fullUrl`;
+ * `Type/id` against a `fullUrl` ending so or the resource's type and id;
+ * `/_history/version` selecting `meta.versionId`), the first match in load
+ * order — so an unversioned reference to a resource stored in two versions
+ * finds the one loaded first. `resolve()` finds a stored resource, and a
+ * stored target is held to the element's `targetProfile`s by conformance
+ * and to its base target types, as a Bundle entry is; a reference is looked
+ * up when it is written in the validated resource or in a stored resource
+ * it reaches. Validation reads the store; lower, lift, export, document,
+ * audit, v2 and deidentify do not. An entry loaded under a `fullUrl` is
+ * identified by it alone (a second load of that `fullUrl` replaces it); one
+ * without is identified by its `Type/id` and `meta.versionId` (or none) and
+ * replaces only another without a `fullUrl`. `false` when the JSON is not a
+ * resource or a Bundle of resources (an `entry` that is not an array of
+ * objects included; the store is unchanged); "" clears the store. The
+ * runtime never fetches: the host retrieves what it stores, with its own
+ * authorisation and consent.
+ */
+export function loadResource(json: string): boolean {
+  return FhirPodsExpoModule.resourceLoad(json) === 1;
 }
 
 /**

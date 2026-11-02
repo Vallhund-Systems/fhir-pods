@@ -688,7 +688,7 @@ pub fn assemble_with(
         ("entry".into(), Node::Array(entries)),
     ]);
     let document = bundle.to_json();
-    let validation = validator.validate_with(document.as_bytes(), tx);
+    let validation = validator.validate_unstored(document.as_bytes(), tx);
     Ok(Assembled { document, placed, omitted, validation })
 }
 

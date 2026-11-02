@@ -1,6 +1,6 @@
 {
-  "recorded_at": "2026-10-28T04:29:07.671381+00:00",
-  "source_revision": "39257a52a033bb67391dd37af12d034baeff622e",
+  "recorded_at": "2026-11-02T23:15:35.293068+00:00",
+  "source_revision": "22e2a46bb4ecc0b94509ea949e4d690c3113051d",
   "source_dirty": false,
   "oracle_version": "6.10.4",
   "oracle_sha256": "1106b9d58f9e363e47bea7c4fc065841e5fc91fe9d062775c3bfdd212bd653cc",
@@ -15,18 +15,20 @@
   "oracle_igs": [
     "fhir.org.nz.ig.base#3.1.0",
     "hl7.fhir.au.core#2.0.0",
-    "hl7.fhir.ca.baseline#1.2.0"
+    "hl7.fhir.ca.baseline#1.2.0",
+    "hl7.fhir.us.core#6.1.0"
   ],
   "oracle_exit_codes": {
     "hl7.fhir.au.core#2.0.0": 0,
     "fhir.org.nz.ig.base#3.1.0": 0,
-    "hl7.fhir.ca.baseline#1.2.0": 0
+    "hl7.fhir.ca.baseline#1.2.0": 0,
+    "hl7.fhir.us.core#6.1.0": 0
   },
   "note": "Terminology service disabled; the oracle may still resolve unknown profile URLs. One oracle run per guide (`ig`). Verdict parity only; a reviewed difference counts only while its input hash, oracle signature and local verdict match the review. Issues retained for inspection.",
   "counts": {
-    "total": 70,
-    "agree": 70,
-    "reviewed": 0,
+    "total": 82,
+    "agree": 81,
+    "reviewed": 1,
     "differ": 0
   },
   "probes": [
@@ -3903,6 +3905,647 @@
       },
       "status": "agree",
       "agrees": true
+    },
+    {
+      "file": "resolve-careteam-relative.json",
+      "profile": null,
+      "expect": true,
+      "reason": "resolve() of a relative Practitioner/r1 nothing holds is the empty collection, offline: ctm-1's iif(empty(), true, ...) is true, evaluated, not skipped.",
+      "ig": "hl7.fhir.au.core#2.0.0",
+      "sha256": "7d614a3b54ecd8b3cface54cedc0e312a4e021efb4a6d4ffeb4d7307a753eab3",
+      "oracle_valid": true,
+      "oracle_signature": "f2e6221bac7112ea123f706c89500b263e72f0f9bc7068fb74bdbaf8c51fbc38",
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "CareTeam"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "CareTeam",
+        "valid": true,
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "CareTeam",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "resolve-careteam-absolute.json",
+      "profile": null,
+      "expect": true,
+      "reason": "resolve() of an absolute https URL nothing holds is the empty collection: ctm-1 holds.",
+      "ig": "hl7.fhir.au.core#2.0.0",
+      "sha256": "8af289686b8bc604620b8343fd92097a42319d4e8cbe37c27e099f2ccd26b352",
+      "oracle_valid": true,
+      "oracle_signature": "f2e6221bac7112ea123f706c89500b263e72f0f9bc7068fb74bdbaf8c51fbc38",
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "CareTeam"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "CareTeam",
+        "valid": true,
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "CareTeam",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "resolve-careteam-urn.json",
+      "profile": null,
+      "expect": true,
+      "reason": "resolve() of a urn:uuid outside any Bundle is the empty collection: ctm-1 holds.",
+      "ig": "hl7.fhir.au.core#2.0.0",
+      "sha256": "efaf131a5cccb3a6dbe0598ab75ca23495c913fb497304179cbeb4b8c87a6d6c",
+      "oracle_valid": true,
+      "oracle_signature": "f2e6221bac7112ea123f706c89500b263e72f0f9bc7068fb74bdbaf8c51fbc38",
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "CareTeam"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "CareTeam",
+        "valid": true,
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "CareTeam",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "resolve-careteam-contained-missing.json",
+      "profile": null,
+      "expect": false,
+      "reason": "A #missing local reference: ref-1 fails; resolve() is empty, so ctm-1 holds (the oracle also reports 'Unable to resolve resource with reference').",
+      "ig": "hl7.fhir.au.core#2.0.0",
+      "sha256": "5df227f38bddecfb8e2f3d1400b942553c294eba44a9ebc43955d4a93cd59db0",
+      "oracle_valid": false,
+      "oracle_signature": "51fae4ab2b18d077cea6461d81255cb4843314aa1635ff322931c1a5497863b6",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Unable to resolve resource with reference '#missing'",
+          "paths": [
+            "CareTeam.participant[0].member"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: ref-1: 'SHALL have a contained resource if a local reference is provided' (url: missing; ids: ) (log:  (url: missing; ids: ))",
+          "paths": [
+            "CareTeam.participant[0].member"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "CareTeam"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "CareTeam",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.ref-1",
+            "path": "CareTeam.participant.member.reference",
+            "message": "ref-1: reference '#missing' names no contained resource of CareTeam"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "CareTeam",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "resolve-careteam-contained-patient.json",
+      "profile": null,
+      "expect": false,
+      "reason": "ctm-1 on what resolves: a contained Patient member with onBehalfOf fails it.",
+      "ig": "hl7.fhir.au.core#2.0.0",
+      "sha256": "2638e983de2df910b0723890e5d03a8fdf7c0f0d677d52124f31b08bd09b0c22",
+      "oracle_valid": false,
+      "oracle_signature": "a0e52fa5c491deba2e32be850ab259296e6aef88c9de51751490422bd19c42fe",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: ctm-1: 'CareTeam.participant.onBehalfOf can only be populated when CareTeam.participant.member is a Practitioner'",
+          "paths": [
+            "CareTeam.participant[0]"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "CareTeam"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "CareTeam",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "CareTeam",
+            "message": "dom-6: A resource should have narrative for robust management"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.ctm-1",
+            "path": "CareTeam.participant",
+            "message": "ctm-1: CareTeam.participant.onBehalfOf can only be populated when CareTeam.participant.member is a Practitioner"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "CareTeam.contained[0].Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "resolve-careteam-contained-practitioner.json",
+      "profile": null,
+      "expect": true,
+      "reason": "ctm-1 on what resolves: a contained Practitioner member with onBehalfOf holds.",
+      "ig": "hl7.fhir.au.core#2.0.0",
+      "sha256": "d7a81cd85ada02b3d80883822d93e7099e37261ec11f6949d1d96756a679d7d8",
+      "oracle_valid": true,
+      "oracle_signature": "f2e6221bac7112ea123f706c89500b263e72f0f9bc7068fb74bdbaf8c51fbc38",
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "CareTeam"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "CareTeam",
+        "valid": true,
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "CareTeam",
+            "message": "dom-6: A resource should have narrative for robust management"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "CareTeam.contained[0].Practitioner",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "resolve-provenance-relative.json",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance",
+      "expect": true,
+      "reason": "US Core provenance-1, who.exists((resolve() is Practitioner) or (resolve() is Device)) implies onBehalfOf.exists(): a relative reference nothing holds is empty, so the invariant holds.",
+      "ig": "hl7.fhir.us.core#6.1.0",
+      "sha256": "7e2519e4d0bd40d2b5717a59fc4a5d2c9459a8b84ed985713ed288e68c899b42",
+      "oracle_valid": true,
+      "oracle_signature": "f2e6221bac7112ea123f706c89500b263e72f0f9bc7068fb74bdbaf8c51fbc38",
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Provenance"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance|6.1.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Provenance.agent[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Provenance",
+        "profile": "US Core Provenance Profile",
+        "valid": true,
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "Provenance",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "resolve-provenance-absolute.json",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance",
+      "expect": true,
+      "reason": "provenance-1 on an absolute https URL nothing holds: empty, holds.",
+      "ig": "hl7.fhir.us.core#6.1.0",
+      "sha256": "1d223a0e5e544a8481c0c3839693952c36961c04ed2999192ae0e160fc4af962",
+      "oracle_valid": true,
+      "oracle_signature": "f2e6221bac7112ea123f706c89500b263e72f0f9bc7068fb74bdbaf8c51fbc38",
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Provenance"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance|6.1.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Provenance.agent[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Provenance",
+        "profile": "US Core Provenance Profile",
+        "valid": true,
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "Provenance",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "resolve-provenance-urn.json",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance",
+      "expect": true,
+      "reason": "provenance-1 on a urn:uuid outside any Bundle: empty, holds.",
+      "ig": "hl7.fhir.us.core#6.1.0",
+      "sha256": "b2e499eed1ec3333e4d809adbfab2065265414f4d0385ecf5b7c51cba5a7af13",
+      "oracle_valid": true,
+      "oracle_signature": "f2e6221bac7112ea123f706c89500b263e72f0f9bc7068fb74bdbaf8c51fbc38",
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Provenance"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance|6.1.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Provenance.agent[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Provenance",
+        "profile": "US Core Provenance Profile",
+        "valid": true,
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "Provenance",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "resolve-provenance-contained-missing.json",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance",
+      "expect": false,
+      "reason": "A #missing local reference: ref-1 fails; provenance-1 holds on the empty collection.",
+      "ig": "hl7.fhir.us.core#6.1.0",
+      "sha256": "84a6d92ed12d1ef059ca8c9916182bcc6a13a7c1fd65ceb933c36b53f31b79ed",
+      "oracle_valid": false,
+      "oracle_signature": "93c5e8a73290a80385e7a0b41705dca8dcfe55c6999618e8e812ce225cb8b105",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Unable to resolve resource with reference '#missing'",
+          "paths": [
+            "Provenance.agent[0].who"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: ref-1: 'SHALL have a contained resource if a local reference is provided' (url: missing; ids: ) (log:  (url: missing; ids: ))",
+          "paths": [
+            "Provenance.agent[0].who"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Provenance"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance|6.1.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Provenance.agent[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Provenance",
+        "profile": "US Core Provenance Profile",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.ref-1",
+            "path": "Provenance.agent.who.reference",
+            "message": "ref-1: reference '#missing' names no contained resource of Provenance"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "Provenance",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "resolve-provenance-contained-practitioner.json",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance",
+      "expect": false,
+      "reason": "provenance-1 on what resolves: a contained Practitioner agent without onBehalfOf fails it.",
+      "ig": "hl7.fhir.us.core#6.1.0",
+      "sha256": "b938dd2b0f6471be0af1040d71cc07ff59058d9f086f73d0624c04de28cc1063",
+      "oracle_valid": false,
+      "oracle_signature": "638ae74e5fdc552ea0b34bdb9da8da0290237f09419080bca926b01a52f74476",
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Provenance"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance|6.1.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Provenance.agent[0]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "invariant",
+          "text": "Constraint failed: provenance-1: 'onBehalfOf SHALL be present when Provenance.agent.who is a Practitioner or Device'",
+          "paths": [
+            "Provenance.agent[0]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Unable to find a profile match for #r1 among choices: http://hl7.org/fhir/StructureDefinition/Device, http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization, http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient, http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitioner, http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitionerrole, http://hl7.org/fhir/us/core/StructureDefinition/us-core-relatedperson",
+          "paths": [
+            "Provenance.agent[0].who"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "structure",
+          "text": "Details for #r1 matching against profile http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitioner|6.1.0",
+          "paths": [
+            "Provenance.agent[0].who"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Provenance",
+        "profile": "US Core Provenance Profile",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "Provenance",
+            "message": "dom-6: A resource should have narrative for robust management"
+          },
+          {
+            "severity": "error",
+            "code": "invariant",
+            "id": "inv.provenance-1",
+            "path": "Provenance.agent",
+            "message": "provenance-1: onBehalfOf SHALL be present when Provenance.agent.who is a Practitioner or Device"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "Provenance.contained[0].Practitioner",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "resolve-heartrate-contained-bare-patient.json",
+      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate",
+      "expect": false,
+      "reason": "A contained target is held to the element's targetProfile by conformance in the oracle: AU Core heart rate's subject is an AU Core Patient, and a contained Patient with nothing but an id is none ('Unable to find a profile match for #p1 among choices: \u2026au-core-patient').",
+      "reviewed": {
+        "sha256": "492e90949d01b9f7124a0e6d69a0bbafc0466d292f5fb15d944edd2f4bc7274f",
+        "oracle": "5f9098c108db501478d9da1b18ee586895561ea8d6f786012041f280adde0546",
+        "local_valid": true,
+        "reason": "Lenient, declared in docs/scope.md (Reference target types): the pod judges a contained reference target by type only, under any profile; the oracle holds it to conformance under every targetProfile that names a profile. Not fixed in 0.29.0; its own task."
+      },
+      "ig": "hl7.fhir.au.core#2.0.0",
+      "sha256": "492e90949d01b9f7124a0e6d69a0bbafc0466d292f5fb15d944edd2f4bc7274f",
+      "oracle_valid": false,
+      "oracle_signature": "5f9098c108db501478d9da1b18ee586895561ea8d6f786012041f280adde0546",
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code '/min' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "Observation.value.ofType(Quantity)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Observation"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "Validate Observation against the Heart rate profile (http://hl7.org/fhir/StructureDefinition/heartrate) which is required by the FHIR specification because the LOINC code 8867-4 was found",
+          "paths": [
+            "Observation"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "code-invalid",
+          "text": "Could not confirm that the codes provided are from the extensible value set http://hl7.org/fhir/ValueSet/observation-vitalsignresult|4.0.1 because there is no terminology service",
+          "paths": [
+            "Observation.code"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "text": "Best Practice Recommendation: In general, all observations should have a performer",
+          "paths": [
+            "Observation"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Unable to find a profile match for #p1 among choices: http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+          "paths": [
+            "Observation.subject"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "structure",
+          "text": "Details for #p1 matching against profile http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0",
+          "paths": [
+            "Observation.subject"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Observation",
+        "profile": "AU Core Heart Rate",
+        "valid": true,
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "Observation",
+            "message": "dom-6: A resource should have narrative for robust management"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "Observation.contained[0].Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "status": "reviewed",
+      "agrees": true,
+      "note": "Lenient, declared in docs/scope.md (Reference target types): the pod judges a contained reference target by type only, under any profile; the oracle holds it to conformance under every targetProfile that names a profile. Not fixed in 0.29.0; its own task."
     }
   ]
 }

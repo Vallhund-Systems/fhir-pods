@@ -21,7 +21,7 @@ const collection = (one, two) => ({ resourceType: "Bundle", id: "mixed", type: "
 
 test("exact questionnaire contexts isolate mixed versions through validation, lower, lift and export", async () => {
   const pod = await instantiate(wasm);
-  assert.equal(pod.abiVersion, 14);
+  assert.equal(pod.abiVersion, 15);
   assert.equal(pod.loadQuestionnaire(context("1", table("one"))), true);
   assert.equal(pod.loadQuestionnaire(context("2", table("two"))), true);
   for (const identity of ["resourceType", "url", "version"].flatMap((key) =>
