@@ -500,5 +500,33 @@
     "profile": null,
     "expect": false,
     "reason": "patient-citizenship with two period sub-extensions valued with strings: validator_cli 6.10.4 reports max 1 at Patient.extension[0] and one type error at each instance, Patient.extension[0].extension[0] and [1] (value.ofType(string)); the pod now reports each instance at its index (was one finding at the slice's label)."
+  },
+  {
+    "file": "nz-deceased-boolean-source-wrong-type.json",
+    "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+    "ig": "fhir.org.nz.ig.base#3.1.0",
+    "expect": false,
+    "reason": "NzPatient slices information-source only beneath its deceased[x]:deceasedDateTime type slice; one valued with an integer on _deceasedBoolean is still held to its definition: validator_cli 6.10.4 refuses it at Patient.deceased.ofType(boolean).extension[0]. The pod had taken the type slice to cover every type of the choice (valid); it now refuses it, once."
+  },
+  {
+    "file": "nz-deceased-datetime-source-wrong-type.json",
+    "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+    "ig": "fhir.org.nz.ig.base#3.1.0",
+    "expect": false,
+    "reason": "Control: the same information-source on _deceasedDateTime, where NzPatient's type slice does hold it: one error at Patient.deceased.ofType(dateTime).extension[0] (validator_cli 6.10.4), as the pod has it."
+  },
+  {
+    "file": "nz-name-and-deceased-source-wrong-type.json",
+    "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+    "ig": "fhir.org.nz.ig.base#3.1.0",
+    "expect": false,
+    "reason": "A bad information-source on name[0] (sliced by NzPatient) and on _deceasedBoolean (not sliced there): validator_cli 6.10.4 reports both; the pod had reported the name's only."
+  },
+  {
+    "file": "nz-birthdate-source-wrong-type.json",
+    "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+    "ig": "fhir.org.nz.ig.base#3.1.0",
+    "expect": false,
+    "reason": "An information-source valued with a string on _birthDate, where NzPatient slices it: one error at Patient.birthDate.extension[0] (validator_cli 6.10.4), the instance's index, as the pod now locates it (was Patient.birthDate.extension.value[x])."
   }
 ]

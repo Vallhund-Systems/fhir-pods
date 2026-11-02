@@ -1771,6 +1771,29 @@ pub(crate) fn extension_finding_path<D: Document>(label: &str, rel: &str, id: &s
     out
 }
 
+/// Is the element at `path` one per resource (or the instance itself,
+/// `$this`): no segment of it repeats, so its label needs no index
+/// (`Patient`, `Patient.birthDate`)? A path the typing table cannot follow
+/// is taken to repeat.
+fn single_parent(path: &str) -> bool {
+    let mut segs = path.split('.');
+    let Some(first) = segs.next() else { return false };
+    if first == "$this" {
+        return segs.next().is_none();
+    }
+    let Some(mut ctx) = crate::typing::known_type(first) else { return false };
+    for seg in segs {
+        if crate::typing::repeats(ctx, seg) {
+            return false;
+        }
+        match crate::typing::child(ctx, seg) {
+            Some(c) => ctx = c.ctx,
+            None => return false,
+        }
+    }
+    true
+}
+
 /// A slice's own checks on one instance it matched, reported under `at`:
 /// its sub-element constraints, the datatype profiles on its sub-elements
 /// (`profiled`, the sparse table's rows for the slice), its invariants, its
@@ -1905,7 +1928,7 @@ fn check_slicing<D: Document>(slicing: &Slicing, doc: &D, scope: &Scope<'_, D>, 
             // reference validator reports it — the slice's label only for its
             // cardinality. A slicing beneath a repeating element (a name's
             // extensions) keeps the slice's label: the parent has no index here.
-            let indexed: Vec<Option<usize>> = if !parent_path.contains('.')
+            let indexed: Vec<Option<usize>> = if single_parent(parent_path)
                 && matches!(last, "extension" | "modifierExtension")
                 && type_key(slice).is_none()
             {

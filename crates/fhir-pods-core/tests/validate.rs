@@ -2059,6 +2059,44 @@ fn an_extension_sliced_elsewhere_is_held_where_it_sits() {
     );
 }
 
+/// A type slice of a choice covers only that type: NzPatient slices
+/// information-source beneath `deceased[x]:deceasedDateTime`, so one valued
+/// with an integer on `_deceasedBoolean` is the walk's to refuse, as
+/// validator_cli 6.10.4 refuses it (at
+/// `Patient.deceased.ofType(boolean).extension[0]`); on `_deceasedDateTime`
+/// the slice refuses it, once. With a bad one on a name as well, both are
+/// said. Probes `nz-deceased-*`, `nz-name-and-deceased-source-wrong-type`.
+#[test]
+fn a_type_slice_of_a_choice_covers_only_its_type() {
+    let errors = |json: &str| -> Vec<String> {
+        let mut found: Vec<String> = fhir_pods_core::validate_bytes(json.as_bytes())
+            .report
+            .issues
+            .iter()
+            .filter(|i| i.severity == fhir_pods_core::validate::Severity::Error)
+            .map(|i| format!("{} | {}", i.id, fhir_pods_core::wire::expression(&i.path, i.code)))
+            .collect();
+        found.sort();
+        found
+    };
+    assert_eq!(
+        errors(include_str!("../../../conformance/probes/nz-deceased-boolean-source-wrong-type.json")),
+        ["structure.choice | Patient.deceasedBoolean.extension[0]"]
+    );
+    assert_eq!(
+        errors(include_str!("../../../conformance/probes/nz-deceased-datetime-source-wrong-type.json")),
+        ["structure.choice | Patient.deceased.ofType(dateTime).extension[0]"]
+    );
+    assert_eq!(
+        errors(include_str!("../../../conformance/probes/nz-name-and-deceased-source-wrong-type.json")).len(),
+        2
+    );
+    assert_eq!(
+        errors(include_str!("../../../conformance/probes/nz-birthdate-source-wrong-type.json")),
+        ["structure.choice | Patient.birthDate.extension[0]"]
+    );
+}
+
 /// Each instance an extension slice matched is reported at its index, and
 /// the slice's cardinality at the element the extensions are on, as
 /// validator_cli 6.10.4 reports them: patient-citizenship with two `period`

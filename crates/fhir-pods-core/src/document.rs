@@ -428,11 +428,14 @@ const COVER_DEPTH: usize = 8;
 
 /// Does a compiled profile check an extension of `url` at `element` — the
 /// extension's element path from its resource, unindexed, a choice by its
-/// `[x]` stem (`Patient.contact.address.extension`,
-/// `Patient.deceased[x].extension`)? It does where one of its slicings is on
+/// concrete key (`Patient.contact.address.extension`,
+/// `Patient.deceasedBoolean.extension`)? It does where one of its slicings is on
 /// that element (an absolute path, or `$this.…` beneath `under`) with a slice
 /// holding the url to its profile, or through a slice's own profile whose
-/// slicings cover what lies beneath the slice. A slicing of the same url on
+/// slicings cover what lies beneath the slice. Beneath a type slice of a
+/// choice is only that type: NzPatient slices information-source under
+/// `deceased[x]:deceasedDateTime`, which covers `deceasedDateTime`'s
+/// extensions and not `deceasedBoolean`'s. A slicing of the same url on
 /// another element (NzPatient's `Patient.extension:domicile-code`) covers
 /// nothing at `Patient.contact.address.extension`: the reference validator
 /// holds that instance to the extension's definition, and the walk does.
@@ -459,45 +462,77 @@ pub(crate) fn profile_covers(
                 || s.discriminators
                     .iter()
                     .any(|d| matches!(d, crate::compiled::Discriminator::Profile { url: u, .. } if *u == url));
-            if holds && at == element {
+            if holds && path_matches(&at, element) {
                 return true;
             }
-            if profile_covers(s.slicings, &at, element, url, depth) {
+            // a type slice of a choice (`deceased[x]:deceasedDateTime`) is
+            // the instances of that one type: what it slices beneath it lies
+            // under the concrete key, not under every type of the choice
+            let here = match s.discriminators.iter().find_map(|d| match d {
+                crate::compiled::Discriminator::Type { key } => Some(*key),
+                _ => None,
+            }) {
+                Some(key) => match at.rsplit_once('.') {
+                    Some((parent, _)) => alloc::format!("{parent}.{key}"),
+                    None => String::from(key),
+                },
+                None => at.clone(),
+            };
+            if profile_covers(s.slicings, &here, element, url, depth) {
                 return true;
             }
             // beneath the slice, its own profile's slicings (a complex
             // extension slicing its own extensions; an identifier profile)
-            match (s.profile.filter(|p| *p != url && depth < COVER_DEPTH), element.strip_prefix(at.as_str())) {
-                (Some(p), Some(rest)) if rest.starts_with('.') => {
-                    crate::REGISTRY.iter().find(|c| c.url == p).is_some_and(|c| {
-                        let inner = alloc::format!("{}{rest}", c.resource_type);
-                        profile_covers(c.slicings, c.resource_type, &inner, url, depth + 1)
-                    })
-                }
+            match (s.profile.filter(|p| *p != url && depth < COVER_DEPTH), beneath(&here, element)) {
+                (Some(p), Some(rest)) => crate::REGISTRY.iter().find(|c| c.url == p).is_some_and(|c| {
+                    let inner = alloc::format!("{}.{rest}", c.resource_type);
+                    profile_covers(c.slicings, c.resource_type, &inner, url, depth + 1)
+                }),
                 _ => false,
             }
         })
     })
 }
 
+/// One path segment of a profile against one of an instance's element path:
+/// equal, or a choice's `[x]` stem against one of its concrete keys
+/// (`value[x]` / `valueQuantity`).
+fn segment_matches(profile: &str, instance: &str) -> bool {
+    profile == instance
+        || profile.strip_suffix("[x]").is_some_and(|stem| {
+            instance.strip_prefix(stem).is_some_and(|rest| rest.chars().next().is_some_and(|c| c.is_ascii_uppercase()))
+        })
+}
+
+/// Is the instance's element path `element` the profile's path `at`?
+fn path_matches(at: &str, element: &str) -> bool {
+    let (a, e): (Vec<&str>, Vec<&str>) = (at.split('.').collect(), element.split('.').collect());
+    a.len() == e.len() && a.iter().zip(&e).all(|(p, i)| segment_matches(p, i))
+}
+
+/// What of `element` lies beneath the profile's path `at`, if it does.
+fn beneath<'e>(at: &str, element: &'e str) -> Option<&'e str> {
+    let a: Vec<&str> = at.split('.').collect();
+    let mut segs = element.splitn(a.len() + 1, '.');
+    for p in &a {
+        if !segs.next().is_some_and(|i| segment_matches(p, i)) {
+            return None;
+        }
+    }
+    segs.next()
+}
+
 /// The element path of the extension being walked, from its resource:
-/// unindexed, a choice element by its `[x]` stem, as a compiled profile's
-/// slicings name it (`Patient.contact.address.extension`).
+/// unindexed, a choice element by its concrete key (`Patient.deceasedBoolean.extension`),
+/// matched against a profile's `[x]` paths segment by segment.
 fn extension_element(w: &Walk<'_, '_, '_>) -> alloc::string::String {
     let n = w.ctxs.len();
     let start = w.ctxs.iter().rposition(|(c, _)| crate::typemap::RESOURCES.binary_search(c).is_ok()).unwrap_or(0);
     let mut p = alloc::string::String::from(w.ctxs[start].0);
     for k in start + 1..n {
         let key = w.ctxs[k].1;
-        let name = key.strip_prefix('_').unwrap_or(key);
         p.push('.');
-        match crate::typing::child(w.ctxs[k - 1].0, name).and_then(|c| c.choice) {
-            Some(stem) => {
-                p.push_str(stem);
-                p.push_str("[x]");
-            }
-            None => p.push_str(name),
-        }
+        p.push_str(key.strip_prefix('_').unwrap_or(key));
     }
     p
 }

@@ -667,7 +667,9 @@ an export mapping, the way `uk`/`ca`/`nz` came in 0.13.0.
   resource declares (compiled for its type) slices that url, which that
   slice checks (`document::profile_covers`, by the extension's element path:
   NzPatient's `Patient.extension:domicile-code` covers `Patient.extension`,
-  not `Patient.contact.address.extension` or `Patient.name.extension`).
+  not `Patient.contact.address.extension` or `Patient.name.extension`; a type
+  slice of a choice, `deceased[x]:deceasedDateTime`, covers that type's
+  extensions and not `deceasedBoolean`'s).
   Each finding is therefore said once, as the reference validator says it. Where the walk meets such an element it validates each
   instance against that compiled profile and reports its findings at the
   instance, indexed (`Patient.address[1].extension:suburb`, written

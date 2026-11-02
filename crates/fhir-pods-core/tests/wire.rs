@@ -94,6 +94,11 @@ fn wire_expression_writes_an_extension_value_by_its_type() {
         expression("Patient.modifierExtension[0].valueDateTime", IssueType::Value),
         "Patient.modifierExtension[0].value.ofType(dateTime)"
     );
+    // a primitive type of a choice by its lower-case type code
+    assert_eq!(
+        expression("Patient.deceased[x]:deceasedDateTime.extension[0]", IssueType::Structure),
+        "Patient.deceased.ofType(dateTime).extension[0]"
+    );
     // an extension slice's cardinality is located at the element its extensions are on
     assert_eq!(expression("Patient.address[0].extension:suburb", IssueType::Structure), "Patient.address[0]");
     assert_eq!(expression("Observation.category:VSCat", IssueType::Structure), "Observation.category");

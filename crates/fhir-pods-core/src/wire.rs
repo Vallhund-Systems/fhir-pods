@@ -110,7 +110,11 @@ pub fn expression(path: &str, code: IssueType) -> String {
                     out.push_str(base);
                     if let Some(ty) = key.strip_prefix(base) {
                         out.push_str(".ofType(");
-                        out.push_str(ty);
+                        // a primitive's type code is lower-case (`dateTime`)
+                        match crate::typing::child("Extension", &format!("value{ty}")) {
+                            Some(c) if c.choice.is_some() => out.push_str(c.ty),
+                            _ => out.push_str(ty),
+                        }
                         out.push(')');
                     }
                 }

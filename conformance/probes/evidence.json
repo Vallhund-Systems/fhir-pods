@@ -1,6 +1,6 @@
 {
-  "recorded_at": "2026-11-02T23:11:40.314964+00:00",
-  "source_revision": "c6e1161472e47dccf00267514e16eef0e0a14a84",
+  "recorded_at": "2026-11-02T23:35:44.143880+00:00",
+  "source_revision": "fe9acda9364a23e692862f12ece61f8212089534",
   "source_dirty": true,
   "oracle_version": "6.10.4",
   "oracle_sha256": "1106b9d58f9e363e47bea7c4fc065841e5fc91fe9d062775c3bfdd212bd653cc",
@@ -24,8 +24,8 @@
   },
   "note": "Terminology service disabled; the oracle may still resolve unknown profile URLs. One oracle run per guide (`ig`). Verdict parity only; a reviewed difference counts only while its input hash, oracle signature and local verdict match the review. Issues retained for inspection.",
   "counts": {
-    "total": 81,
-    "agree": 81,
+    "total": 85,
+    "agree": 85,
     "reviewed": 0,
     "differ": 0
   },
@@ -4450,6 +4450,181 @@
             "id": "structure.choice",
             "path": "Patient.extension[0].extension[1].valueString",
             "message": "Extension.value[x] allows the types [Period]; found valueString"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "nz-deceased-boolean-source-wrong-type.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
+      "expect": false,
+      "reason": "NzPatient slices information-source only beneath its deceased[x]:deceasedDateTime type slice; one valued with an integer on _deceasedBoolean is still held to its definition: validator_cli 6.10.4 refuses it at Patient.deceased.ofType(boolean).extension[0]. The pod had taken the type slice to cover every type of the choice (valid); it now refuses it, once.",
+      "sha256": "de89564d22a8337a4b146db6b7e120f1efbfae8883c828dc81183439225ec1e3",
+      "oracle_valid": false,
+      "oracle_signature": "c14d621f04a823c763a6cab18407c764f454bee48cd84290b796e914faeacdc1",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/information-source' definition allows for the types [CodeableConcept] but found type integer",
+          "paths": [
+            "Patient.deceased.ofType(boolean).extension[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org.nz/fhir/StructureDefinition/NzPatient|1.0.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Patient.deceased.ofType(boolean)"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.deceasedBoolean.extension[0]",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueInteger"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "nz-deceased-datetime-source-wrong-type.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
+      "expect": false,
+      "reason": "Control: the same information-source on _deceasedDateTime, where NzPatient's type slice does hold it: one error at Patient.deceased.ofType(dateTime).extension[0] (validator_cli 6.10.4), as the pod has it.",
+      "sha256": "e617239f500b381abe78ebf88561a47a0701cb82e5e0fa6d022b48d8ad8108b2",
+      "oracle_valid": false,
+      "oracle_signature": "dd7de8846f19c81011dfff943dd4473c824ffe66a179a02af208372dbac01662",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/information-source' definition allows for the types [CodeableConcept] but found type integer",
+          "paths": [
+            "Patient.deceased.ofType(dateTime).extension[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.deceased[x]:deceasedDateTime.extension[0]",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueInteger"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "nz-name-and-deceased-source-wrong-type.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
+      "expect": false,
+      "reason": "A bad information-source on name[0] (sliced by NzPatient) and on _deceasedBoolean (not sliced there): validator_cli 6.10.4 reports both; the pod had reported the name's only.",
+      "sha256": "f0e728906aed64e93ef5c0fb6797a26e748171a56833e37b6ab58d1e9da0c79c",
+      "oracle_valid": false,
+      "oracle_signature": "fe364507329d580857aa466d9744b75bb2d7c6e175638285daba36bd58d081b7",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/information-source' definition allows for the types [CodeableConcept] but found type integer",
+          "paths": [
+            "Patient.name[0].extension[0]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/information-source' definition allows for the types [CodeableConcept] but found type integer",
+          "paths": [
+            "Patient.deceased.ofType(boolean).extension[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org.nz/fhir/StructureDefinition/NzPatient|1.0.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Patient.deceased.ofType(boolean)"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.name.extension:information-source.value[x]",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueInteger"
+          },
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.deceasedBoolean.extension[0]",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueInteger"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "nz-birthdate-source-wrong-type.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
+      "expect": false,
+      "reason": "An information-source valued with a string on _birthDate, where NzPatient slices it: one error at Patient.birthDate.extension[0] (validator_cli 6.10.4), the instance's index, as the pod now locates it (was Patient.birthDate.extension.value[x]).",
+      "sha256": "c29ab46e4498566c2f99223c9f51841bfa0b25c48832e6a999935281a28ec671",
+      "oracle_valid": false,
+      "oracle_signature": "16f5ca5a441342d6521696d6826337591d93cc34ecf115a0e5e5d4df857468e3",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/information-source' definition allows for the types [CodeableConcept] but found type string",
+          "paths": [
+            "Patient.birthDate.extension[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.birthDate.extension[0]",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueString"
           }
         ]
       },

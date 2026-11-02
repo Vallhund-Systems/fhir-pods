@@ -15,8 +15,13 @@ types [CodeableConcept] but found type string" at
 The walk now leaves an instance to a declared profile (compiled for the
 resource's type) only where one of its slicings is on that instance's
 element (`document::profile_covers`, by the element path from the resource;
-through nested slicings and a slice's own profile, not through a datatype
-profile an element is held to, whose extension slices are the walk's). That
+through nested slicings and a slice's own profile, a type slice of a choice
+covering only its own type, not through a datatype profile an element is
+held to, whose extension slices are the walk's). NzPatient slices
+information-source only beneath `deceased[x]:deceasedDateTime`, so one of the
+wrong type on `_deceasedBoolean` was valid here and is now refused, as the
+oracle refuses it (`Patient.deceased.ofType(boolean).extension[0]`; probes
+`nz-deceased-*`, `nz-name-and-deceased-source-wrong-type`). That
 also says a suburb of the wrong type once where a Patient declares NzAddress
 beside NzPatient (it was twice; the oracle once, at
 `Patient.address[0].extension[0]`). Probes `nz-domicile-*`,
@@ -42,11 +47,17 @@ had `MedicationDispense.extension[0].Extension.valueQuantity`,
 names the value by its concrete key, and labels each instance an extension
 slicing matched by its index; the slice's own label stays for its
 cardinality. `wire::expression` writes an extension's value as
-`value.ofType(<type>)` and a slice's cardinality at its parent. Residue: an
-extension slicing beneath a repeating element (NzPatient's
-`Patient.name.extension`) keeps the slice's label, since the engine does not
-carry the parent's index there; the walk's context finding is located at
-`Patient.name.extension` where the oracle says `Patient.name[0]`. Same rule
+`value.ofType(<type>)` and a slice's cardinality at its parent. An extension slicing on an element that does not repeat
+(`Patient.birthDate.extension`) is indexed too (`Patient.birthDate.extension[0]`,
+as the oracle has it), and a primitive choice type in a slice label is
+written by its type code (`deceased.ofType(dateTime)`, was `ofType(DateTime)`).
+Residue, location only, verdict-preserving: an extension slicing beneath a
+repeating element (NzPatient's `Patient.name.extension`) keeps the slice's
+label, since the engine does not carry the parent's index there; the walk's
+context finding is located at `Patient.name.extension` where the oracle says
+`Patient.name[0]`; and the walk names a choice by its concrete key
+(`Patient.deceasedBoolean.extension[0]`, the oracle's
+`Patient.deceased.ofType(boolean).extension[0]`). Same rule
 ids; the only verdicts that move are the two domicile-code shapes above.
 
 **A held code with no system says why it was not checked.** Under a host's
