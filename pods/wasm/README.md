@@ -347,16 +347,21 @@ pod.loadResource("");                      // clear the store
 A stored resource is found by the rules a Bundle entry is: its `fullUrl`;
 `Type/id` against a `fullUrl` ending so or the resource's own type and id;
 `/_history/version` selecting `meta.versionId`; the first match in load
-order. Contained resources come first, then the Bundle being validated, then
-the store. A stored target is held to the element's `targetProfile`s by
-conformance, as a Bundle entry is. A second load of the same `fullUrl`, or of
-the same `Type/id` with the same `meta.versionId` (or none), replaces that
-entry; JSON that is not a resource or a Bundle of resources returns `false`
-and leaves the store as it was. Validation reads the store; lower, lift,
-export, document, audit, v2 and deidentify do not. The pod never fetches: the
-host retrieves what it stores, with its own authorisation and consent. A
-reference nothing resolves is the empty collection, as the reference
-validator evaluates it offline.
+order, so an unversioned reference to a resource stored in two versions finds
+the one loaded first. Contained resources come first, then the Bundle being
+validated, then the store. A stored target is held to the element's
+`targetProfile`s by conformance and to its base target types, as a Bundle
+entry is. A reference is looked up when it is written in the validated
+resource or in a stored resource it reaches. An entry loaded under a
+`fullUrl` is identified by it alone, and a second load of that `fullUrl`
+replaces it; one without is identified by its `Type/id` and
+`meta.versionId` (or none) and replaces only another without a `fullUrl`.
+JSON that is not a resource or a Bundle of resources (an `entry` that is not
+an array of objects included) returns `false` and leaves the store as it was.
+Validation reads the store; lower, lift, export, document, audit, v2 and
+deidentify do not. The pod never fetches: the host retrieves what it stores,
+with its own authorisation and consent. A reference that resolves to nothing
+is the empty collection, as the reference validator evaluates it offline.
 
 ### Terminology
 

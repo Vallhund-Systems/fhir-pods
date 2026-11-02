@@ -647,33 +647,44 @@ pub unsafe extern "C" fn fhir_pods_questionnaire_load(ptr: *const u8, len: usize
 /// Bundle is looked up there by the rules a Bundle entry is (its `fullUrl`;
 /// `Type/id` against a `fullUrl` ending so or the resource's type and id;
 /// `/_history/version` selecting `meta.versionId`), the first match in load
-/// order. `resolve()` finds a stored resource, and a stored target is held to
-/// the element's `targetProfile`s by conformance, as a Bundle entry is.
-/// Validation reads the store (`fhir_pods_validate`, `_operation_outcome`,
-/// `_terminology_needs` and their `_tx` variants); lower, lift, export,
-/// documents, audit, v2 and de-identification do not. Returns 1 when loaded
-/// (a second load of the same `fullUrl`, or of the same `Type/id` with the
-/// same `meta.versionId` or none, replaces that entry), 0 when the bytes are
-/// not a resource or a Bundle of resources (the store is unchanged). Empty
-/// input clears the store. The runtime never fetches: the host retrieves
-/// what it stores, with its own authorisation and consent.
+/// order — so an unversioned reference to a resource stored in two versions
+/// finds the one loaded first. `resolve()` finds a stored resource, and a
+/// stored target is held to the element's `targetProfile`s by conformance
+/// and to its base target types, as a Bundle entry is; a reference is looked
+/// up when it is written in the validated resource or in a stored resource
+/// it reaches. Validation reads the store (`fhir_pods_validate`,
+/// `_operation_outcome`, `_terminology_needs` and their `_tx` variants);
+/// lower, lift, export, documents, audit, v2 and de-identification do not.
+/// Returns 1 when loaded, 0 when the bytes are not a resource or a Bundle of
+/// resources (a Bundle whose `entry` is not an array of objects included;
+/// the store is unchanged). An entry loaded under a `fullUrl` is identified
+/// by it alone (a second load of that `fullUrl` replaces it); one without is
+/// identified by its `Type/id` and `meta.versionId` (or none) and replaces
+/// only another without a `fullUrl`. Empty input clears the store. The
+/// runtime never fetches: the host retrieves what it stores, with its own
+/// authorisation and consent.
 #[no_mangle]
 pub unsafe extern "C" fn fhir_pods_resource_load(ptr: *const u8, len: usize) -> i32 {
     let bytes = input(ptr, len);
     // the whole replacement under the write lock, as a Questionnaire load is:
-    // calls in flight keep the snapshot they took
+    // calls in flight keep the snapshot they took. With none in flight the
+    // context is taken over rather than copied, so loading resources one at a
+    // time costs each one's own size, not the store's.
     let mut slot = VALIDATOR.write().unwrap_or_else(|e| e.into_inner());
-    let mut next = match slot.as_deref() {
-        Some(v) => v.clone(),
+    let mut next = match slot.take() {
+        Some(v) => std::sync::Arc::try_unwrap(v).unwrap_or_else(|shared| (*shared).clone()),
         None => Validator::new(),
     };
-    if bytes.is_empty() {
+    // a refused load changes nothing in the store (the core refuses before
+    // it writes), so the context goes back either way
+    let taken = if bytes.is_empty() {
         next.clear_resources();
-    } else if !next.load_resource(bytes) {
-        return 0;
-    }
+        true
+    } else {
+        next.load_resource(bytes)
+    };
     *slot = Some(std::sync::Arc::new(next));
-    1
+    i32::from(taken)
 }
 
 /// Set the host options for every call that follows — on this module, for

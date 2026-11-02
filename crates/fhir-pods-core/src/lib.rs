@@ -228,17 +228,44 @@ fn validate_bytes_in(
     let bundle = (rt == "Bundle").then_some(&doc);
     if let Some(b) = bundle {
         engine::check_document(b, &mut report);
-        engine::check_reference_targets_base(b, &mut report);
     }
     let defaults = cache.map(|v| v.defaults.as_slice()).unwrap_or(&[]);
     // one memo for the whole document: entries indexed once, each target's
-    // conformance to each profile remembered; the host's resource store, when
-    // it loaded one, parsed once for the call
-    let store = match cache.filter(|_| stored).and_then(|v| v.resources.bundle()) {
-        Some(json) => document::Parsed::parse(json.as_bytes()).ok(),
-        None => None,
+    // conformance to each profile remembered; of the host's resource store,
+    // only the stored resources a string in this input could name (and,
+    // transitively, a string in one of those) are parsed, once for the call;
+    // none when nothing in the input names one
+    let reached = match cache.filter(|_| stored) {
+        Some(v) if !v.resources.is_empty() => v.resources.reachable(parsed.value()),
+        _ => Vec::new(),
     };
-    let memo = engine::Memo::with_store(store.as_ref().map(|s| s.doc()));
+    let reached_parsed: Vec<Option<document::Parsed<'_>>> =
+        reached.iter().map(|e| document::Parsed::parse(e.json.as_bytes()).ok()).collect();
+    let store_entries = reached
+        .iter()
+        .zip(&reached_parsed)
+        .filter_map(|(e, p)| {
+            let p = p.as_ref()?;
+            Some((
+                e.full_url.clone().unwrap_or_default(),
+                e.resource_type.clone(),
+                e.id.clone().unwrap_or_default(),
+                e.version.clone().unwrap_or_default(),
+                p.doc(),
+            ))
+        })
+        .collect();
+    let memo = engine::Memo::with_store(store_entries);
+    // the base's reference targets: a Bundle's entries against the entries
+    // (then the store), a resource alone against the store
+    match bundle {
+        Some(b) => engine::check_reference_targets_base(b, memo.stored(), &mut report),
+        None => {
+            if let Some(store) = memo.stored() {
+                engine::check_reference_targets_stored(&doc, store, &mut report);
+            }
+        }
+    }
     let profiles = validate_resource(rt, &doc, "", tx, cache, bundle, defaults, &memo, &mut report);
     // a QuestionnaireResponse against its Questionnaire (a contained one, a
     // bundle entry, or one loaded into the validator); a Questionnaire's own
@@ -361,7 +388,7 @@ fn validate_resource<D: Document>(
     if profiles.is_empty() {
         // the base's own rules for a domain resource: dom-3 (contained
         // resources referenced) and dom-6 (narrative); dom-2/4/5 are in the walk
-        let store = memo.store.as_ref();
+        let store = memo.stored();
         if rt == "Bundle" {
             issues.extend(engine::bundle_invariants(doc, cache, bundle, store).issues);
         } else if !matches!(rt, "Binary" | "Parameters") {
@@ -669,15 +696,18 @@ pub mod compiled;
 /// `Validator` API name. Parses the registry's invariant expressions once for
 /// reuse by validation, lift/lower, de-identification, documents, audit, and v2.
 /// The free [`validate_bytes`] / [`validate_bytes_with`] functions parse
-/// invariant expressions on each call. `Clone` copies the parsed
-/// expressions (a host that holds one behind a lock clones it to load a
-/// Questionnaire into a fresh, consistent one).
+/// invariant expressions on each call. `Clone` shares the parsed
+/// expressions and the stored resources' content (a host that holds one
+/// behind a lock clones it to load a Questionnaire or a resource into a
+/// fresh, consistent one).
 #[derive(Clone)]
 pub struct Validator {
     /// Parsed ASTs keyed by the expression's `'static` address — the registry
     /// shares expression strings, so this is small and the lookup is a binary
     /// search on an integer.
-    invariants: Vec<(usize, Option<path::Expr>)>,
+    /// Shared, so a clone (a host loading a form, a resource or options into
+    /// a fresh context) does not copy them.
+    invariants: alloc::sync::Arc<Vec<(usize, Option<path::Expr>)>>,
     /// Profiles applied to resources that declare none, per resource type —
     /// a jurisdiction's "this is what a Patient means here". Empty by default:
     /// the spec's behaviour, and the reference validator's.
@@ -724,7 +754,9 @@ impl Validator {
         keys.sort_unstable_by_key(|k| k.0);
         keys.dedup_by_key(|k| k.0);
         Self {
-            invariants: keys.into_iter().map(|(k, key, e)| (k, path::parse_invariant(key, e).ok())).collect(),
+            invariants: alloc::sync::Arc::new(
+                keys.into_iter().map(|(k, key, e)| (k, path::parse_invariant(key, e).ok())).collect(),
+            ),
             defaults: Vec::new(),
             questionnaires: Vec::new(),
             options: options::Options::default(),
@@ -781,15 +813,22 @@ impl Validator {
     /// no entry of the document Bundle is looked up there, by the rules a
     /// Bundle entry is (its `fullUrl`; `Type/id` against a `fullUrl` ending
     /// so or the resource's type and id; `/_history/version` selecting
-    /// `meta.versionId`), the first match in load order. `resolve()` finds a
-    /// stored resource, and a stored target is held to the element's
-    /// `targetProfile`s by conformance, as a Bundle entry is. Returns whether
-    /// the bytes were taken: `false` (the store unchanged) when they are not a
-    /// resource or a Bundle of resources. A second load of the same `fullUrl`,
-    /// or of the same `Type/id` with the same `meta.versionId` (or none),
-    /// replaces that entry. Nothing is fetched: the host retrieves what it
-    /// stores. Lower, lift, export, documents, audit, v2 and
-    /// de-identification do not read the store.
+    /// `meta.versionId`), the first match in load order — so an unversioned
+    /// reference to a resource stored in two versions finds the one loaded
+    /// first. `resolve()` finds a stored resource, and a stored target is
+    /// held to the element's `targetProfile`s by conformance and to its base
+    /// target types, as a Bundle entry is. A reference is looked up when it
+    /// is written in the validated resource or in a stored resource it
+    /// reaches (only those stored resources are parsed for a validation).
+    /// Returns whether the bytes were taken: `false` (the store unchanged)
+    /// when they are not a resource or a Bundle of resources, a Bundle whose
+    /// `entry` is not an array of objects included. An entry loaded under a
+    /// `fullUrl` is identified by it alone, and a second load of that
+    /// `fullUrl` replaces it; one without is identified by its `Type/id` and
+    /// `meta.versionId` (or none) and replaces only another without a
+    /// `fullUrl`. Nothing is fetched: the host retrieves what it stores.
+    /// Lower, lift, export, documents, audit, v2 and de-identification do
+    /// not read the store.
     pub fn load_resource(&mut self, bytes: &[u8]) -> bool {
         self.resources.load(bytes)
     }

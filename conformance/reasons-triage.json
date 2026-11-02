@@ -13,6 +13,6 @@
   },
   "probe-resolve-provenance-contained-practitioner.json": {
     "missed": ["Provenance.agent.who"],
-    "reason": "a contained reference target is judged by type only (documented leniency, docs/scope.md, Reference target types): under US Core Provenance the oracle holds the contained agent.who Practitioner, which is no US Core Practitioner, to conformance ('Unable to find a profile match for #r1 among choices'); the pod does not. The verdict agrees: the file is invalid for both on provenance-1."
+    "reason": "a contained reference target is judged by type only (documented leniency, general, docs/scope.md, Reference target types): the oracle holds a contained target to conformance under any targetProfile that names a profile, here US Core Provenance's agent.who, whose contained Practitioner is no US Core Practitioner ('Unable to find a profile match for #r1 among choices'); the pod does not. The verdict agrees: the file is invalid for both on provenance-1."
   }
 }

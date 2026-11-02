@@ -500,5 +500,17 @@
     "expect": false,
     "reason": "provenance-1 on what resolves: a contained Practitioner agent without onBehalfOf fails it.",
     "ig": "hl7.fhir.us.core#6.1.0"
+  },
+  {
+    "file": "resolve-heartrate-contained-bare-patient.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate",
+    "expect": false,
+    "reason": "A contained target is held to the element's targetProfile by conformance in the oracle: AU Core heart rate's subject is an AU Core Patient, and a contained Patient with nothing but an id is none ('Unable to find a profile match for #p1 among choices: …au-core-patient').",
+    "reviewed": {
+      "sha256": "492e90949d01b9f7124a0e6d69a0bbafc0466d292f5fb15d944edd2f4bc7274f",
+      "oracle": "5f9098c108db501478d9da1b18ee586895561ea8d6f786012041f280adde0546",
+      "local_valid": true,
+      "reason": "Lenient, declared in docs/scope.md (Reference target types): the pod judges a contained reference target by type only, under any profile; the oracle holds it to conformance under every targetProfile that names a profile. Not fixed in 0.29.0; its own task."
+    }
   }
 ]

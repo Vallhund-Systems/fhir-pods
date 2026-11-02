@@ -52,7 +52,13 @@ pub enum Op {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
+    /// The focus an expression is evaluated on: the implicit input of a
+    /// bare name or function (`code`, `exists()`).
     This,
+    /// `$this` written out. The same item as [`Expr::This`] everywhere but
+    /// inside `iif` on an empty input, where the implicit input is the empty
+    /// collection and `$this` stays the item `iif` was called in (probed).
+    ThisVar,
     /// An environment variable: `%resource`.
     Var(String),
     Lit(Lit),
@@ -541,7 +547,7 @@ impl P {
             Some(Tok::Ident(s)) => match s.as_str() {
                 "true" => Ok(Expr::Lit(Lit::Bool(true))),
                 "false" => Ok(Expr::Lit(Lit::Bool(false))),
-                "$this" => Ok(Expr::This),
+                "$this" => Ok(Expr::ThisVar),
                 // A bare identifier navigates from `$this`; a bare call applies to it.
                 _ if matches!(self.peek(), Some(Tok::LParen)) => Ok(Expr::Call(Box::new(Expr::This), s, self.args()?)),
                 _ => Ok(Expr::Nav(Box::new(Expr::This), s)),
@@ -666,13 +672,13 @@ pub(crate) struct Env<'e, D> {
     /// The document `Bundle` that resource sits in, when it does: what
     /// `resolve()` looks references up in.
     pub bundle: Option<&'e Item<D>>,
-    /// The host's resource store (a Bundle of what it loaded), searched by
+    /// The host's stored resources in reach of this validation, searched by
     /// `resolve()` after the contained resources and the document Bundle.
-    pub store: Option<&'e Item<D>>,
-    /// `$this` is the empty collection: `iif`'s arguments on an empty input
-    /// (its criterion is evaluated on the input collection, as the
-    /// reference validator evaluates it — `ctm-1`'s `iif(empty(), true, …)`
-    /// on a reference that resolves to nothing).
+    pub(crate) store: Option<&'e [Entry<D>]>,
+    /// The implicit input ([`Expr::This`]) is the empty collection while
+    /// `$this` ([`Expr::ThisVar`]) is unchanged: `iif`'s arguments on an
+    /// empty input, as the reference validator evaluates them — `ctm-1`'s
+    /// `iif(empty(), true, …)` on a reference that resolves to nothing.
     empty_focus: bool,
 }
 
@@ -691,20 +697,50 @@ pub fn resolve_reference<D: Document>(reference: &str, resource: Option<&D>, bun
     resolve_reference_in(reference, resource, bundle, None)
 }
 
+/// A resource as references are resolved against it: `fullUrl`, resource
+/// type, id, `meta.versionId` (each empty when absent), and the resource.
+pub(crate) type Entry<D> = (String, String, String, String, D);
+
 /// [`resolve_reference`], then the host's resource store: a reference that
 /// is not `#local` and is not found in the Bundle is looked up among the
-/// stored resources by the same rules a Bundle entry is (`store` is a Bundle
-/// of them). Precedence: contained, then the document Bundle, then the store.
+/// stored resources by the same rules a Bundle entry is. Precedence:
+/// contained, then the document Bundle, then the store.
 pub(crate) fn resolve_reference_in<D: Document>(
     reference: &str,
     resource: Option<&D>,
     bundle: Option<&D>,
-    store: Option<&D>,
+    store: Option<&[Entry<D>]>,
 ) -> Option<D> {
     if let Some(local) = reference.strip_prefix('#') {
         return resolve_local(local, resource?);
     }
-    bundle.and_then(|b| resolve_entry(reference, b)).or_else(|| store.and_then(|s| resolve_entry(reference, s)))
+    bundle.and_then(|b| resolve_entry(reference, b)).or_else(|| store.and_then(|s| resolve_in_entries(s, reference)))
+}
+
+/// The first of `entries` (in order) that `reference` names, by the rules a
+/// Bundle entry is named by — [`resolve_entry`] over an index.
+pub(crate) fn resolve_in_entries<D: Clone>(entries: &[Entry<D>], reference: &str) -> Option<D> {
+    let (identity, version) = match reference.rsplit_once("/_history/") {
+        Some((identity, version)) if !version.is_empty() && !version.contains('/') => (identity, Some(version)),
+        Some(_) => return None,
+        None => (reference, None),
+    };
+    let relative = identity.split_once('/').filter(|(ty, id)| !ty.is_empty() && !id.contains('/'));
+    for (full, rt, id, v, res) in entries.iter() {
+        if version.is_some_and(|want| v != want) {
+            continue;
+        }
+        if full == identity {
+            return Some(res.clone());
+        }
+        if let Some((ty, rid)) = relative {
+            let ends = full.strip_suffix(rid).and_then(|s| s.strip_suffix('/')).is_some_and(|s| s.ends_with(ty));
+            if ends || (rt == ty && id == rid) {
+                return Some(res.clone());
+            }
+        }
+    }
+    None
 }
 
 /// `#local`: a contained resource of `resource` (a local reference never
@@ -812,7 +848,7 @@ fn items_equal<D: Document>(a: &Item<D>, b: &Item<D>) -> bool {
 /// the engine supplied one, else what the document adapter knows, else
 /// the system type of a literal. Unknown → unsupported, never guessed.
 fn item_type<'a, D: Document>(it: &'a Item<D>, operand: &Expr, env: &Env<'a, D>) -> Result<&'a str, Unsupported> {
-    if matches!(operand, Expr::This) {
+    if matches!(operand, Expr::This | Expr::ThisVar) {
         if let Some(t) = env.this_type {
             return Ok(t);
         }
@@ -1112,7 +1148,7 @@ fn logic(op: Op, a: Option<bool>, b: Option<bool>) -> Option<bool> {
 fn eval<D: Document>(e: &Expr, ctx: &Item<D>, env: &Env<'_, D>) -> Result<Vec<Item<D>>, Unsupported> {
     Ok(match e {
         Expr::This if env.empty_focus => vec![],
-        Expr::This => vec![ctx.clone()],
+        Expr::This | Expr::ThisVar => vec![ctx.clone()],
         Expr::Var(name) => match (name.as_str(), env.root) {
             ("resource", Some(root)) => vec![root.clone()],
             _ => return Err(Unsupported),
@@ -1188,7 +1224,7 @@ fn eval<D: Document>(e: &Expr, ctx: &Item<D>, env: &Env<'_, D>) -> Result<Vec<It
                         Some(Item::Node(d)) => Some(d.clone()),
                         _ => None,
                     };
-                    let (resource, bundle, store) = (node(env.root), node(env.bundle), node(env.store));
+                    let (resource, bundle) = (node(env.root), node(env.bundle));
                     let mut out = Vec::new();
                     for it in &coll {
                         let reference = match it {
@@ -1209,7 +1245,7 @@ fn eval<D: Document>(e: &Expr, ctx: &Item<D>, env: &Env<'_, D>) -> Result<Vec<It
                         // validator_cli 6.10.4, offline, evaluates each so
                         // (probed, `conformance/probes/resolve-*`)
                         if let Some(target) =
-                            resolve_reference_in(&reference, resource.as_ref(), bundle.as_ref(), store.as_ref())
+                            resolve_reference_in(&reference, resource.as_ref(), bundle.as_ref(), env.store)
                         {
                             out.push(Item::Node(target));
                         }
@@ -1424,10 +1460,14 @@ fn eval<D: Document>(e: &Expr, ctx: &Item<D>, env: &Env<'_, D>) -> Result<Vec<It
                 // `iif(cond, then[, else])` — the input item is `$this` for all three.
                 ("iif", 2 | 3) => {
                     let Some(this) = single(&coll)? else {
-                        // an empty input: the criterion (and the branch it
-                        // picks) is evaluated on the empty collection, as the
-                        // reference validator does — `iif(empty(), true, …)`
-                        // is `true` (probed, `ctm-1`)
+                        // an empty input: the criterion and the branch it
+                        // picks are evaluated with the empty collection as
+                        // their implicit input and `$this` still the item
+                        // `iif` was called in, as validator_cli 6.10.4 does —
+                        // on a Basic with no extension `extension.iif(empty(),
+                        // true, false)` and `extension.iif($this.exists(),
+                        // true, false)` hold, `extension.iif(exists(), true)`
+                        // fails (probed; `ctm-1`'s `iif(empty(), true, …)`)
                         let empty = Env { empty_focus: true, ..env.inner() };
                         return Ok(match truth(&eval(&args[0], ctx, &empty)?)? {
                             Some(true) => eval(&args[1], ctx, &empty)?,
@@ -1645,7 +1685,7 @@ pub(crate) fn check_constraint_in<D: Document>(
     this_type: Option<&str>,
     root: Option<&D>,
     bundle: Option<&D>,
-    store: Option<&D>,
+    store: Option<&[Entry<D>]>,
 ) -> Verdict {
     check_result(expr, ctx, this_type, root, bundle, store, false)
 }
@@ -1656,23 +1696,44 @@ fn check_result<D: Document>(
     this_type: Option<&str>,
     root: Option<&D>,
     bundle: Option<&D>,
-    store: Option<&D>,
+    store: Option<&[Entry<D>]>,
     empty_passes: bool,
 ) -> Verdict {
     let root_item = root.map(|r| Item::Node(r.clone()));
     let bundle_item = bundle.map(|b| Item::Node(b.clone()));
-    let store_item = store.map(|b| Item::Node(b.clone()));
-    let env = Env {
-        this_type,
-        root: root_item.as_ref(),
-        bundle: bundle_item.as_ref(),
-        store: store_item.as_ref(),
-        empty_focus: false,
-    };
+    let env = Env { this_type, root: root_item.as_ref(), bundle: bundle_item.as_ref(), store, empty_focus: false };
     match eval(expr, &Item::Node(ctx.clone()), &env).and_then(|coll| truth(&coll)) {
         Err(Unsupported) => Verdict::Unsupported,
         Ok(Some(false)) => Verdict::Fail,
         Ok(None) if !empty_passes => Verdict::Fail,
         Ok(_) => Verdict::Pass,
+    }
+}
+
+#[cfg(test)]
+mod iif_tests {
+    use super::*;
+
+    /// `iif` on an empty input, each expression a constraint (a non-empty
+    /// `true` required) on a Basic with no extension, with validator_cli
+    /// 6.10.4's answer (a synthetic profile on Basic, `-tx n/a`): the
+    /// implicit input is the empty collection, `$this` is still the Basic.
+    #[test]
+    fn iif_on_an_empty_input_matches_the_oracle() {
+        let basic = br#"{"resourceType":"Basic","id":"iif-q","code":{"text":"probe"}}"#;
+        let parsed = crate::document::Parsed::parse(basic).unwrap();
+        let doc = parsed.doc();
+        for (key, expression, oracle_passes) in [
+            ("iv-1", "extension.iif($this.exists(), true, false)", true),
+            ("iv-2", "extension.iif(empty(), true, false)", true),
+            ("iv-3", "extension.iif(exists(), true)", false),
+            ("iv-4", "extension.iif(true, $this.exists(), true)", true),
+            ("iv-5", "code.iif(empty(), false, true)", true),
+            ("iv-6", "extension.iif(%resource.code.exists(), true, false)", true),
+        ] {
+            let e = parse_constraint(expression).unwrap();
+            let verdict = check_constraint_in(&e, &doc, None, Some(&doc), None, None);
+            assert_eq!(verdict == Verdict::Pass, oracle_passes, "{key} {expression}: {verdict:?}");
+        }
     }
 }

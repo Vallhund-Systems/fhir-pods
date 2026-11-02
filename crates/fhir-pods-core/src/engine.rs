@@ -76,31 +76,28 @@ impl<'m, D> Evaluated<'m, D> {
 /// is validated once). A memo lives for one validation; nothing outlives it.
 /// A bundle entry as the memo indexes it: fullUrl, resource type, id,
 /// versionId, and the resource.
-type Entry<D> = (String, String, String, String, D);
+use path::Entry;
 
 pub(crate) struct Memo<D> {
     /// The bundle's entries, once built.
     entries: core::cell::RefCell<Option<Vec<Entry<D>>>>,
-    /// The host's resource store, as a Bundle of what it loaded
-    /// ([`crate::Validator::load_resource`]): what a reference found neither
-    /// contained nor in the document Bundle is looked up in.
-    pub(crate) store: Option<D>,
-    /// The store's entries, once built.
-    store_entries: core::cell::RefCell<Option<Vec<Entry<D>>>>,
+    /// The stored resources in reach of this validation
+    /// ([`crate::Validator::load_resource`]), in load order: what a reference
+    /// found neither contained nor in the document Bundle is looked up in.
+    pub(crate) store: Vec<Entry<D>>,
     /// (target identity, profile address, valid?)
     conformance: core::cell::RefCell<Vec<(usize, usize, bool)>>,
 }
 
 impl<D> Memo<D> {
-    /// A memo for one validation; `store`, the host's resource store as a
-    /// Bundle, when references reach one.
-    pub(crate) fn with_store(store: Option<D>) -> Self {
-        Memo {
-            entries: core::cell::RefCell::new(None),
-            store,
-            store_entries: core::cell::RefCell::new(None),
-            conformance: core::cell::RefCell::new(Vec::new()),
-        }
+    /// A memo for one validation; `store`, the stored resources in reach.
+    pub(crate) fn with_store(store: Vec<Entry<D>>) -> Self {
+        Memo { entries: core::cell::RefCell::new(None), store, conformance: core::cell::RefCell::new(Vec::new()) }
+    }
+
+    /// The stored resources in reach, `None` when there are none.
+    pub(crate) fn stored(&self) -> Option<&[Entry<D>]> {
+        (!self.store.is_empty()).then_some(self.store.as_slice())
     }
 }
 
@@ -130,37 +127,12 @@ impl<D: Document> Memo<D> {
 
     /// [`path::resolve_reference`] by index: the same answer, without the walk.
     fn resolve(&self, reference: &str, bundle: &D) -> Option<D> {
-        Self::lookup(&self.entries(bundle), reference)
+        path::resolve_in_entries(&self.entries(bundle), reference)
     }
 
-    /// The host's store by index, as [`Memo::resolve`] the bundle.
+    /// The host's store, as [`Memo::resolve`] the bundle.
     fn resolve_stored(&self, reference: &str) -> Option<D> {
-        let store = self.store.as_ref()?;
-        Self::lookup(&Self::index(&self.store_entries, store), reference)
-    }
-
-    fn lookup(entries: &[Entry<D>], reference: &str) -> Option<D> {
-        let (identity, version) = match reference.rsplit_once("/_history/") {
-            Some((identity, version)) if !version.is_empty() && !version.contains('/') => (identity, Some(version)),
-            Some(_) => return None,
-            None => (reference, None),
-        };
-        let relative = identity.split_once('/').filter(|(ty, id)| !ty.is_empty() && !id.contains('/'));
-        for (full, rt, id, v, res) in entries.iter() {
-            if version.is_some_and(|want| v != want) {
-                continue;
-            }
-            if full == identity {
-                return Some(res.clone());
-            }
-            if let Some((ty, rid)) = relative {
-                let ends = full.strip_suffix(rid).and_then(|s| s.strip_suffix('/')).is_some_and(|s| s.ends_with(ty));
-                if ends || (rt == ty && id == rid) {
-                    return Some(res.clone());
-                }
-            }
-        }
-        None
+        path::resolve_in_entries(&self.store, reference)
     }
 }
 
@@ -198,7 +170,7 @@ fn validate_in<D: Document>(
     for el in profile.elements {
         check_element(el, el.path, doc, tx, &mut r);
     }
-    let store = evaluated.and_then(|e| e.memo).and_then(|m| m.store.as_ref());
+    let store = evaluated.and_then(|e| e.memo).and_then(|m| m.stored());
     let scope = Scope { root, bundle, store, tx, depth, cache, evaluated, profile: profile.url, datatype };
     for (_, _, path, ty, url) in datatype_profile_elements().filter(|(p, s, ..)| *p == profile.url && s.is_empty()) {
         check_datatype_profiles(path, path, ty, url, doc, &scope, &mut r);
@@ -342,8 +314,8 @@ struct Scope<'s, D> {
     root: &'s D,
     /// The document Bundle around it, if any.
     bundle: Option<&'s D>,
-    /// The host's resource store (a Bundle of what it loaded), if any.
-    store: Option<&'s D>,
+    /// The host's stored resources in reach, if any.
+    store: Option<&'s [Entry<D>]>,
     tx: &'s dyn TerminologyProvider,
     depth: usize,
     cache: Option<&'s crate::Validator>,
@@ -1296,7 +1268,7 @@ pub(crate) fn bundle_invariants<D: Document>(
     doc: &D,
     cache: Option<&crate::Validator>,
     bundle: Option<&D>,
-    store: Option<&D>,
+    store: Option<&[Entry<D>]>,
 ) -> Report {
     let mut r = Report::default();
     let scope = Scope {
@@ -1334,7 +1306,7 @@ pub(crate) fn resource_invariants<D: Document>(
     rt: &'static str,
     cache: Option<&crate::Validator>,
     bundle: Option<&D>,
-    store: Option<&D>,
+    store: Option<&[Entry<D>]>,
 ) -> Report {
     let mut r = Report::default();
     let scope = Scope {
@@ -1370,7 +1342,7 @@ pub(crate) fn domain_invariants<D: Document>(
     rt: &'static str,
     cache: Option<&crate::Validator>,
     bundle: Option<&D>,
-    store: Option<&D>,
+    store: Option<&[Entry<D>]>,
 ) -> Report {
     let mut r = Report::default();
     let scope = Scope {
@@ -1589,7 +1561,7 @@ fn references_in<D: Document>(node: &D, path: &str, out: &mut Vec<(String, Strin
 /// against a RESTful `fullUrl` ending so (among `urn:uuid` entries it names
 /// nothing and is not judged). A resource declaring a compiled profile is
 /// the profile's to hold to its own targets.
-pub(crate) fn check_reference_targets_base<D: Document>(bundle: &D, r: &mut Report) {
+pub(crate) fn check_reference_targets_base<D: Document>(bundle: &D, store: Option<&[Entry<D>]>, r: &mut Report) {
     let entries: Vec<(Option<String>, Option<D>)> = bundle
         .instances("$this.entry")
         .into_iter()
@@ -1600,11 +1572,11 @@ pub(crate) fn check_reference_targets_base<D: Document>(bundle: &D, r: &mut Repo
             )
         })
         .collect();
-    let resolve = |reference: &str| -> Option<&'static str> {
+    let in_bundle = |reference: &str| -> Option<Option<D>> {
         let identity = reference.rsplit_once("/_history/").map(|(i, _)| i).unwrap_or(reference);
         let relative = !identity.contains(':');
         if relative && !identity.contains('/') {
-            return None; // a bare id names no entry (the format rule reports it)
+            return Some(None); // a bare id names no entry (the format rule reports it)
         }
         entries
             .iter()
@@ -1613,41 +1585,70 @@ pub(crate) fn check_reference_targets_base<D: Document>(bundle: &D, r: &mut Repo
                     f == identity || (relative && f.ends_with(identity) && f[..f.len() - identity.len()].ends_with('/'))
                 })
             })
-            .and_then(|(_, res)| res.as_ref())
-            .and_then(|res| res.scalars("$this.resourceType").first().copied())
-            .and_then(|rt| crate::typemap::RESOURCES.binary_search(&rt).ok().map(|k| crate::typemap::RESOURCES[k]))
+            .map(|(_, res)| res.clone())
+    };
+    // an entry first; what no entry holds, the host's store (by the rules
+    // a stored resource is found by)
+    let resolve = |reference: &str| -> Option<D> {
+        match in_bundle(reference) {
+            Some(found) => found,
+            None => store.and_then(|s| path::resolve_in_entries(s, reference)),
+        }
     };
     for (i, (_, res)) in entries.iter().enumerate() {
         let Some(res) = res else { continue };
-        let Some(rt) = res.scalars("$this.resourceType").first().copied() else { continue };
-        let profiled = res
-            .scalars("$this.meta.profile")
-            .iter()
-            .any(|u| crate::REGISTRY.iter().any(|p| p.url == u.split('|').next().unwrap_or(u)));
-        if profiled {
+        base_targets_of(res, &format!("Bundle.entry[{i}].resource."), &resolve, r);
+    }
+}
+
+/// The base's reference targets on a resource validated alone, against what
+/// the host stored: a reference to a stored resource is held to its
+/// element's base target types, as it would be were the resource a Bundle
+/// entry (`#local` references are the contained resources', never the
+/// store's).
+pub(crate) fn check_reference_targets_stored<D: Document>(doc: &D, store: &[Entry<D>], r: &mut Report) {
+    base_targets_of(doc, "", &|reference: &str| path::resolve_in_entries(store, reference), r);
+}
+
+/// "Invalid Resource target type": every base Reference element of an
+/// unprofiled `res` whose reference `resolve`s to a resource of a type the
+/// element does not allow, reported at `prefix` + the element path.
+fn base_targets_of<D: Document>(res: &D, prefix: &str, resolve: &dyn Fn(&str) -> Option<D>, r: &mut Report) {
+    let Some(rt) = res.scalars("$this.resourceType").first().copied() else { return };
+    let profiled = res
+        .scalars("$this.meta.profile")
+        .iter()
+        .any(|u| crate::REGISTRY.iter().any(|p| p.url == u.split('|').next().unwrap_or(u)));
+    if profiled {
+        return;
+    }
+    for (path, targets) in crate::typemap::REFERENCE_TARGETS {
+        if !(path.starts_with(rt) && path.as_bytes().get(rt.len()) == Some(&b'.')) {
             continue;
         }
-        for (path, targets) in crate::typemap::REFERENCE_TARGETS {
-            if !(path.starts_with(rt) && path.as_bytes().get(rt.len()) == Some(&b'.')) {
+        for (j, inst) in res.instances(path).iter().enumerate() {
+            let Some(reference) = inst.scalars("$this.reference").first().copied() else { continue };
+            if reference.starts_with('#') {
                 continue;
             }
-            for (j, inst) in res.instances(path).iter().enumerate() {
-                let Some(reference) = inst.scalars("$this.reference").first().copied() else { continue };
-                if reference.starts_with('#') {
-                    continue;
-                }
-                let Some(target) = resolve(reference) else { continue };
-                if !targets.split('|').any(|t| t == target) {
-                    r.push(
-                        Severity::Error,
-                        IssueType::Structure,
-                        &format!("Bundle.entry[{i}].resource.{path}[{j}]"),
-                        format!(
-                            "Invalid Resource target type. Found {target}, but expected one of ([{}])",
-                            targets.replace('|', ", ")
-                        ),
-                    );
-                }
+            let Some(target) = resolve(reference)
+                .and_then(|t| t.scalars("$this.resourceType").first().copied().map(String::from))
+                .and_then(|rt| {
+                    crate::typemap::RESOURCES.binary_search(&rt.as_str()).ok().map(|k| crate::typemap::RESOURCES[k])
+                })
+            else {
+                continue;
+            };
+            if !targets.split('|').any(|t| t == target) {
+                r.push(
+                    Severity::Error,
+                    IssueType::Structure,
+                    &format!("{prefix}{path}[{j}]"),
+                    format!(
+                        "Invalid Resource target type. Found {target}, but expected one of ([{}])",
+                        targets.replace('|', ", ")
+                    ),
+                );
             }
         }
     }

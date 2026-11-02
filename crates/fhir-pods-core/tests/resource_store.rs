@@ -184,3 +184,77 @@ fn a_refused_load_leaves_the_store_unchanged() {
     }
     assert_eq!(v.resource_count(), 1);
 }
+
+/// Two stored entries under different `fullUrl`s are two entries, though
+/// both are `Patient/1`: each absolute reference finds its own, in either
+/// load order, as the same two entries of a document Bundle are found.
+#[test]
+fn entries_under_two_full_urls_are_two_entries() {
+    let conforming =
+        common::PATIENT_OK.replacen(r#""resourceType":"Patient","#, r#""resourceType":"Patient","id":"1","#, 1);
+    let bare = r#"{"resourceType":"Patient","id":"1"}"#;
+    let a = "https://a.example.invalid/fhir/Patient/1";
+    let b = "https://b.example.invalid/fhir/Patient/1";
+    let hr = |subject: &str| common::HEARTRATE_OK.replace("\"Patient/1\"", &format!("\"{subject}\""));
+    let pair = |first: (&str, &str), second: (&str, &str)| {
+        format!(
+            r#"{{"resourceType":"Bundle","type":"collection","entry":[{{"fullUrl":"{}","resource":{}}},{{"fullUrl":"{}","resource":{}}}]}}"#,
+            first.0, first.1, second.0, second.1
+        )
+    };
+    for bundle in [pair((a, bare), (b, &conforming)), pair((b, &conforming), (a, bare))] {
+        let v = Validator::new().with_resource(bundle.as_bytes());
+        assert_eq!(v.resource_count(), 2, "{bundle}");
+        let to_a = v.validate(hr(a).as_bytes());
+        assert!(has(&to_a, &format!("Unable to find a profile match for {a}")), "{}", wire::report(&to_a));
+        let to_b = v.validate(hr(b).as_bytes());
+        assert!(to_b.is_valid(), "{}", wire::report(&to_b));
+    }
+}
+
+/// An unprofiled resource validated alone is held to its elements' base
+/// target types against what the host stored, as a Bundle entry is
+/// ("Invalid Resource target type", probed in a Bundle: `bn-obs-med`).
+#[test]
+fn a_stored_target_is_held_to_the_base_target_types() {
+    let obs = r#"{"resourceType":"Observation","id":"o1","status":"final","code":{"text":"x"},"subject":{"reference":"Medication/m1"}}"#;
+    let mut v = Validator::new();
+    assert!(!has(&v.validate(obs.as_bytes()), "Invalid Resource target type"));
+    assert!(v.load_resource(br#"{"resourceType":"Medication","id":"m1"}"#));
+    let r = v.validate(obs.as_bytes());
+    assert!(
+        has(
+            &r,
+            "Invalid Resource target type. Found Medication, but expected one of ([Device, Group, Location, Patient])"
+        ),
+        "{}",
+        wire::report(&r)
+    );
+    // inside a Bundle, an entry the Bundle does not hold is looked up in the store too
+    let bundle = format!(
+        r#"{{"resourceType":"Bundle","type":"collection","entry":[{{"fullUrl":"https://s.example.invalid/fhir/Observation/o1","resource":{obs}}}]}}"#
+    );
+    let r = v.validate(bundle.as_bytes());
+    assert!(has(&r, "Invalid Resource target type. Found Medication"), "{}", wire::report(&r));
+    // and the Bundle's own entry comes first
+    let held = format!(
+        r#"{{"resourceType":"Bundle","type":"collection","entry":[{{"fullUrl":"https://s.example.invalid/fhir/Observation/o1","resource":{obs}}},{{"fullUrl":"https://s.example.invalid/fhir/Medication/m1","resource":{{"resourceType":"Patient","id":"m1"}}}}]}}"#
+    );
+    assert!(!has(&v.validate(held.as_bytes()), "Invalid Resource target type"));
+}
+
+/// A stored resource's own references reach the store too: its conformance
+/// is judged with what it names in reach.
+#[test]
+fn what_a_stored_resource_names_is_in_reach() {
+    let mut v = Validator::new();
+    assert!(!v.load_resource(br#"{"resourceType":"Bundle","entry":"notarray"}"#));
+    assert_eq!(v.resource_count(), 0);
+    assert!(v.load_resource(br#"{"resourceType":"Practitioner","id":"r1"}"#));
+    assert!(v.load_resource(
+        br#"{"resourceType":"Patient","id":"p1","generalPractitioner":[{"reference":"Medication/m1"}]}"#
+    ));
+    assert!(v.load_resource(br#"{"resourceType":"Medication","id":"m1"}"#));
+    let r = v.validate(team("Patient/p1", "").as_bytes());
+    assert!(has(&r, "ctm-1: "), "{}", wire::report(&r));
+}

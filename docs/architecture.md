@@ -210,11 +210,14 @@ holds the target elsewhere loads it (`Validator::load_resource`,
 entry resource of a Bundle under its `fullUrl`. The store is data on the
 operation context, replaced whole on each load under the same lock as a
 Questionnaire load, so a call in flight keeps the snapshot it took; empty
-input clears it. Per validation it is parsed once and searched as the
-entries of one Bundle, by the rules a Bundle entry is, after the contained
-resources and the Bundle being validated: `resolve()` finds a stored
-resource, and the reference-target check holds a stored target to the
-element's `targetProfile`s by conformance. Validation reads it; lower, lift,
+input clears it. Each resource's JSON is held once, indexed at load by its
+`fullUrl` and by the id a relative reference could name it by, so a load
+costs its own size. A validation parses only the stored resources a string
+in its input could name, and transitively those a string in one of them
+could name, and searches them by the rules a Bundle entry is, after the
+contained resources and the Bundle being validated: `resolve()` finds a
+stored resource, and the reference-target checks hold a stored target to
+the element's `targetProfile`s by conformance and to its base target types. Validation reads it; lower, lift,
 export, documents, audit, v2 and de-identification validate their own output
 without it. The runtime never fetches: the host retrieves what it stores,
 with its own authorisation and consent. See
