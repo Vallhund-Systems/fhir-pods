@@ -330,10 +330,10 @@ tests also check extracted values, transformations, content, and reporting.
 Verdict agreement alone does not establish semantic correctness or complete
 compliance.
 
-| Lane | Measured (ABI 14; each row names its release) |
+| Lane | Measured (ABI 15; each row names its release) |
 | --- | --- |
-| Release corpus | **1,823/1,823** verdicts agree at 0.27.0 (UK Core, CA Baseline and NZ Base examples, six regions' export outputs, the base's binding fixtures, the probes; `conformance/run.py`); `conformance/reasons.py` puts every error-level issue side by side — three triaged residues on 1,823 files, 0 untriaged |
-| Probes | **70/70** agree three ways at 0.27.0 (expectation, oracle, pod) — synthetic fixtures for JSON shapes, primitive limits, extensions, contained resources, unknown profiles, offline references, required coded content, a de-identified age over 89, the base's `SimpleQuantity` and an IG's own datatype profiles (`NzAddress`, `NzContactpoint`, CA's `profile-identifier`, `au-address`, the AU identifier profiles), each against the oracle loaded with its own guide (`conformance/probes/run.py`) |
+| Release corpus | **1,840/1,840** verdicts agree at 0.29.0 (UK Core, CA Baseline and NZ Base examples, six regions' export outputs, the base's binding fixtures, the probes; `conformance/run.py`); `conformance/reasons.py` puts every error-level issue side by side — four triaged residues on 1,840 files, 0 untriaged |
+| Probes | **81/81** agree three ways at 0.29.0 (expectation, oracle, pod) — synthetic fixtures for JSON shapes, primitive limits, extensions, contained resources, unknown profiles, offline references, required coded content, a de-identified age over 89, the base's `SimpleQuantity` and an IG's own datatype profiles (`NzAddress`, `NzContactpoint`, CA's `profile-identifier`, `au-address`, the AU identifier profiles), `resolve()` on a reference that resolves to nothing and on one that does (`ctm-1`, US Core `provenance-1`), each against the oracle loaded with its own guide (`conformance/probes/run.py`) |
 | Narrative | **42/42** agree three ways at 0.22.0 — synthetic `Narrative.div` cases: text ending mid-markup, quoted `>` and unterminated attribute values, what an image's source is checked for (`conformance/narrative/run.py`) |
 | Published R4 examples | **5,155/5,287** compared verdicts agree at 0.27.0 (re-judged against the cached oracle); **132** lenient differences, every one reviewed; **0** stricter; out of 5,292 selected inputs, **2** explicit oracle exclusions and **3** order-dependent oracle cases (`StructureDefinition-Parameters`, `-Task`, `-TestReport` — the oracle's own iteration order decides which definition it names), and the allergy extension's order-dependent message accepted only as the mechanism allows; none counted as agreement (`conformance/base.py`) |
 | Published validator base tests | **84** of 492 R4 JSON cases compare at 0.22.0 (408 excluded: terminology service, fetchers, packages, policies, separate lanes): **64/84** agree with stored Java outcomes, **14/20** with stored Firely outcomes; 18 lenient, 2 stricter than the stored Java outcome, 0 stricter than both stored engines — every difference reviewed (`conformance/testcases.py`) |
@@ -344,6 +344,12 @@ compliance.
 | Instrument-path scenario | **71/71** verdicts agree at 0.22.0 — one synthetic end-to-end scenario: a sixteen-part questionnaire instrument with its own code systems and value sets (placeholder content, no real instrument), responses held to it, the derived resources (observations, a flag, a summary `Composition`, a referral, a consent, an export bundle, an audit event), each lifted and lowered, de-identified and exported for the AU region; judged three ways with the definitions loaded into the oracle as an IG folder; 70 agree on every error path, one triaged residue (`conformance/instrument.py --chain`). `--host-profile` compiles the scenario's own score profile into a feature build and judges **7/7** more against the oracle given the same definition |
 | Synthea cohort | **14/14** bundles (10 seeded patients + hospital + practitioner, 27.3 MB, 9,482 US Core entries) agree at 0.22.0 on the verdict and on every error-level issue; the pod validates the whole cohort in 4.39 s (6.2 MB/s; largest bundle 9.7 MB in 1.65 s), measured on a loaded machine. The oracle side is one JVM over the 14 bundles; larger cohorts are not measured (`conformance/synthea.py`) |
 | Ad-hoc profile tests | **13 of 53** cases compare at 0.22.0: **12/13** agree with Java and **7/7** with Firely where available; 1 reviewed lenient, 0 stricter; 40 have compiler (28), snapshot, package, policy, SMART Health Card or cross-version exclusions (`conformance/testcases.py --profiles`) |
+
+At 0.29.0 the release corpus (**1,840/1,840**), the probes (**81/81**) and
+the reasons lane were re-run against the oracle; every other lane was
+measured pod against pod (0.28.0's probe and 0.29.0's over all 27,572 lane
+inputs): no verdict moved, so every other count above stands. See the
+[changelog](CHANGELOG.md).
 
 At 0.28.0 (merged over 0.27.0) the lanes the `CodeableConcept` no-system
 rule could reach were re-run. Against the oracle, fresh: the release corpus

@@ -1,13 +1,16 @@
 # Adversarial validation probes
 
-These 70 synthetic fixtures cover valid controls, JSON shapes, primitive limits,
+These 81 synthetic fixtures cover valid controls, JSON shapes, primitive limits,
 extensions, contained resources, unknown profiles, offline references, required
 coded content, recursive content-reference validation, the shape a
 de-identified age over 89 goes out as, the datatype profile R4 puts on
 an element (`sq-*`: a `SimpleQuantity` with and without a comparator), and an
 IG's own datatype profiles (`nz-*`, `ca-*`, `au-*`: `NzAddress`,
 `NzContactpoint`, CA's `profile-identifier`, `au-address` and the AU
-identifier profiles).
+identifier profiles), and `resolve()` (`resolve-*`: `ctm-1` and US Core
+`provenance-1` on a relative, an absolute, a `urn:uuid:` and a `#missing`
+reference nothing resolves — the empty collection, evaluated — and on a
+contained target that does resolve).
 `manifest.json` records an expected verdict and reason for each fixture. The
 shared corpus builder automatically includes them as `probe-*` cases.
 
