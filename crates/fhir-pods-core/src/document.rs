@@ -510,6 +510,19 @@ fn report_base_binding(
     label: alloc::string::String,
     w: &mut Walk<'_, '_, '_>,
 ) {
+    report_base_binding_held(m, b, what, label, false, w)
+}
+
+/// [`report_base_binding`]; `held_code_only` when a provider holding the
+/// set left a code with no system undecided (`engine::not_checked`).
+fn report_base_binding_held(
+    m: crate::terminology::Membership,
+    b: &crate::compiled::Binding,
+    what: &str,
+    label: alloc::string::String,
+    held_code_only: bool,
+    w: &mut Walk<'_, '_, '_>,
+) {
     use crate::validate::IssueType::{CodeInvalid, NotSupported};
     match m {
         crate::terminology::Membership::Member => {}
@@ -525,11 +538,9 @@ fn report_base_binding(
                 )
             },
         )),
-        crate::terminology::Membership::Unknown => w.warnings.push((
-            label,
-            NotSupported,
-            alloc::format!("no bundled terminology for {}; '{what}' not checked", b.value_set),
-        )),
+        crate::terminology::Membership::Unknown => {
+            w.warnings.push((label, NotSupported, crate::engine::not_checked(b.value_set, what, held_code_only)))
+        }
     }
 }
 
@@ -565,7 +576,10 @@ fn base_binding_object<'v, 'a>(v: &'v Value<'a>, ctx: &'static str, w: &mut Walk
     let (m, seen) = crate::engine::membership_of(b, &doc, &w.provider());
     if seen {
         let label = w.label(w.root);
-        report_base_binding(m, b, crate::engine::CODINGS, label, w);
+        let held = m == crate::terminology::Membership::Unknown
+            && ctx == "CodeableConcept"
+            && crate::engine::held_code_only(&w.provider(), b.value_set, &doc.instances("$this.coding"));
+        report_base_binding_held(m, b, crate::engine::CODINGS, label, held, w);
     } else if ctx == "CodeableConcept" {
         // Coding objects exist, but none carries a code. The Coding itself is
         // permitted to be partial; the parent concept still has no member of

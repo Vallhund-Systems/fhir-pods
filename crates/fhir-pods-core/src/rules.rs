@@ -227,7 +227,7 @@ pub fn rule_id(code: IssueType, message: &str) -> &'static str {
     {
         return "binding.not-member";
     }
-    if starts("no bundled terminology") {
+    if starts("no bundled terminology") || starts("a code with no system cannot be placed in") {
         return "binding.unknown";
     }
     if starts("Unknown code") {

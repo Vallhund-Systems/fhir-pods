@@ -1861,7 +1861,7 @@ fn an_ig_datatype_profile_an_element_is_held_to_alone_is_applied() {
         errors(&nz(
             r#""address":[{"city":"x","extension":[{"url":"http://hl7.org.nz/fhir/StructureDefinition/suburb","valueCode":"abc"}]}]"#
         )),
-        ["structure.choice | Patient.address[0].extension[0].Extension.value[x]"]
+        ["structure.choice | Patient.address[0].extension[0]"]
     );
     assert_eq!(
         errors(&nz(&format!(
@@ -1880,6 +1880,139 @@ fn an_ig_datatype_profile_an_element_is_held_to_alone_is_applied() {
     // breaking every au-address rule is valid on both sides (probed)
     let au = r#"{"resourceType":"Patient","meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},"identifier":[{"system":"https://example.org/mrn","value":"v"}],"name":[{"family":"Example"}],"gender":"unknown","birthDate":"1980-02-29","address":[{"city":"x","postalCode":"12345","country":"NZ"}]}"#;
     assert!(errors(au).is_empty(), "{:?}", errors(au));
+}
+
+/// A finding of an extension's own profile is located as validator_cli
+/// 6.10.4 locates it (probed, `-ig hl7.fhir.au.core#2.0.0`, `-tx n/a`;
+/// `conformance/probes/ext-*`, `sq-extension-value-comparator`): under the extension's indexed path, its value
+/// by type (`extension[0].value.ofType(Quantity)`, a primitive by its type
+/// code, `value.ofType(code)`), a nested extension by the instance its slice
+/// matched (`extension[0].extension[1]`), and a value of a type the extension
+/// does not allow at the extension itself, or at the value of a nested one.
+/// Was `extension[0].Extension.valueQuantity` here, a second path style.
+#[test]
+fn an_extension_profile_finding_is_located_as_the_oracle_locates_it() {
+    let text =
+        r#""text":{"status":"generated","div":"<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Probe</p></div>"}"#;
+    let errors = |json: &str| -> Vec<(String, String, String)> {
+        let v = fhir_pods_core::validate_bytes(json.as_bytes());
+        let outcome = v.to_operation_outcome();
+        let parsed = fhir_pods_core::json::parse(outcome.as_bytes()).expect("outcome parses");
+        let fhir_pods_core::json::Value::Object(o) = parsed else { panic!("{outcome}") };
+        let expressions: Vec<String> = match o.iter().find(|(k, _)| k.as_ref() == "issue") {
+            Some((_, fhir_pods_core::json::Value::Array(issues))) => issues
+                .iter()
+                .map(|i| match i {
+                    fhir_pods_core::json::Value::Object(i) => {
+                        match i.iter().find(|(k, _)| k.as_ref() == "expression") {
+                            Some((_, fhir_pods_core::json::Value::Array(e))) => match &e[0] {
+                                fhir_pods_core::json::Value::Str(s) => s.to_string(),
+                                _ => String::new(),
+                            },
+                            _ => String::new(),
+                        }
+                    }
+                    _ => String::new(),
+                })
+                .collect(),
+            _ => Vec::new(),
+        };
+        v.report
+            .issues
+            .iter()
+            .zip(expressions)
+            .filter(|(i, _)| i.severity == fhir_pods_core::validate::Severity::Error)
+            .map(|(i, e)| (i.id.to_string(), i.path.clone(), e))
+            .collect()
+    };
+    let owned = |rows: &[(&str, &str, &str)]| -> Vec<(String, String, String)> {
+        rows.iter().map(|(a, b, c)| (a.to_string(), b.to_string(), c.to_string())).collect()
+    };
+    // a SimpleQuantity value (medicationdispense-quantityRemaining) with a comparator
+    let quantity = format!(
+        r#"{{"resourceType":"MedicationDispense","id":"x1",{text},"extension":[{{"url":"http://hl7.org/fhir/StructureDefinition/medicationdispense-quantityRemaining","valueQuantity":{{"value":20,"comparator":"<","unit":"mg","system":"http://unitsofmeasure.org","code":"mg"}}}}],"status":"completed","medicationCodeableConcept":{{"text":"probe"}},"subject":{{"reference":"Patient/example"}}}}"#
+    );
+    let at = "MedicationDispense.extension[0].valueQuantity";
+    let oracle = "MedicationDispense.extension[0].value.ofType(Quantity)";
+    assert_eq!(errors(&quantity), owned(&[("structure.max", at, oracle), ("inv.sqty-1", at, oracle)]));
+    // a CodeableConcept value outside its required set (questionnaireresponse-completionMode)
+    let concept = format!(
+        r#"{{"resourceType":"QuestionnaireResponse","id":"x2",{text},"extension":[{{"url":"http://hl7.org/fhir/StructureDefinition/questionnaireresponse-completionMode","valueCodeableConcept":{{"coding":[{{"system":"http://terminology.hl7.org/CodeSystem/v3-ParticipationMode","code":"PHYSICAL"}}]}}}}],"status":"completed"}}"#
+    );
+    assert_eq!(
+        errors(&concept),
+        owned(&[(
+            "binding.not-member",
+            "QuestionnaireResponse.extension[0].valueCodeableConcept",
+            "QuestionnaireResponse.extension[0].value.ofType(CodeableConcept)"
+        )])
+    );
+    // a primitive value of a type the extension does not allow, and a code outside its set (data-absent-reason)
+    let reason = |value: &str| {
+        format!(
+            r#"{{"resourceType":"Patient","id":"x3",{text},"name":[{{"family":"Probe","extension":[{{"url":"http://hl7.org/fhir/StructureDefinition/data-absent-reason",{value}}}]}}]}}"#
+        )
+    };
+    assert_eq!(
+        errors(&reason(r#""valueString":"unknown""#)),
+        owned(&[("structure.choice", "Patient.name[0].extension[0]", "Patient.name[0].extension[0]")])
+    );
+    assert_eq!(
+        errors(&reason(r#""valueCode":"zz-not-a-reason""#)),
+        owned(&[(
+            "binding.not-member",
+            "Patient.name[0].extension[0].valueCode",
+            "Patient.name[0].extension[0].value.ofType(code)"
+        )])
+    );
+    // a nested extension's value: of a type its slice does not allow
+    // (patient-nationality `code`), and outside its required set
+    // (patient-sexParameterForClinicalUse `value`)
+    let nested = format!(
+        r#"{{"resourceType":"Patient","id":"x5",{text},"extension":[{{"url":"http://hl7.org/fhir/StructureDefinition/patient-nationality","extension":[{{"url":"period","valuePeriod":{{"start":"2020-01-01"}}}},{{"url":"code","valueString":"probe"}}]}}],"name":[{{"family":"Probe"}}]}}"#
+    );
+    assert_eq!(
+        errors(&nested),
+        owned(&[(
+            "structure.choice",
+            "Patient.extension[0].extension[1].valueString",
+            "Patient.extension[0].extension[1].value.ofType(string)"
+        )])
+    );
+    let nested = format!(
+        r#"{{"resourceType":"Patient","id":"x6",{text},"extension":[{{"url":"http://hl7.org/fhir/StructureDefinition/patient-sexParameterForClinicalUse","extension":[{{"url":"value","valueCodeableConcept":{{"coding":[{{"system":"http://terminology.hl7.org/CodeSystem/sex-parameter-for-clinical-use","code":"zz-not-a-code"}}]}}}}]}}],"name":[{{"family":"Probe"}}]}}"#
+    );
+    let found = errors(&nested);
+    assert!(
+        found.contains(&(
+            "binding.not-member".into(),
+            "Patient.extension[0].extension[0].valueCodeableConcept".into(),
+            "Patient.extension[0].extension[0].value.ofType(CodeableConcept)".into()
+        )),
+        "{found:?}"
+    );
+}
+
+/// An NzPatient that also declares NzAddress, a profile of another type the
+/// resource is not held to (`profile.wrong-type`): a suburb valued with a
+/// code is one finding, from the shape walk, as validator_cli 6.10.4 has it
+/// (one "The Extension '…/suburb' definition allows for the types [string]
+/// but found type code" at `Patient.address[0].extension[0]`; probe
+/// `nz-declares-address-profile-too`). The declared NzAddress reaches the
+/// suburb extension, but the walk does not apply it, so the extension is not
+/// left to it; it had been checked by both, and said twice.
+#[test]
+fn a_declared_profile_of_another_type_does_not_take_an_extension_from_the_walk() {
+    let p = include_str!("../../../conformance/probes/nz-declares-address-profile-too.json");
+    let mut errors: Vec<String> = fhir_pods_core::validate_bytes(p.as_bytes())
+        .report
+        .issues
+        .iter()
+        .filter(|i| i.severity == fhir_pods_core::validate::Severity::Error)
+        .map(|i| format!("{} | {}", i.id, i.path))
+        .collect();
+    errors.sort();
+    assert_eq!(errors, ["profile.wrong-type | meta.profile", "structure.choice | Patient.address[0].extension[0]"]);
 }
 
 /// A `CodeableConcept` coding with a code and no system under a required
@@ -2036,6 +2169,31 @@ fn a_code_with_no_system_under_a_host_table_is_refused_only_when_absent() {
     assert_eq!(at("11778-8", Severity::Error), 0);
     assert_eq!(at("11778-8", Severity::Warning), 1, "held but not placeable: not checked");
     assert_eq!(at("zzz-1", Severity::Error), 1);
+    // the warning says why: the table holds the set, not its compose; with
+    // no table, that no terminology here holds it (same rule id)
+    let warning = |tx: &dyn TerminologyProvider| -> Vec<(&'static str, String)> {
+        fhir_pods_core::validate_bytes_with(host_only.replace("CODE", "11778-8").as_bytes(), tx)
+            .report
+            .issues
+            .into_iter()
+            .filter(|i| i.severity == Severity::Warning && i.path == "Observation.code")
+            .map(|i| (i.id, i.message))
+            .collect()
+    };
+    let set = "http://hl7.org/fhir/uv/ips/ValueSet/edd-method-uv-ips|2.0.1";
+    assert_eq!(
+        warning(&Chain(&[&Bundled, &edd])),
+        [(
+            "binding.unknown",
+            format!(
+                "a code with no system cannot be placed in {set}: the terminology holds its members, not its compose; 'the codings' not checked"
+            )
+        )]
+    );
+    assert_eq!(
+        warning(&Bundled),
+        [("binding.unknown", format!("no bundled terminology for {set}; 'the codings' not checked"))]
+    );
 }
 
 /// A standalone `Coding` under a required binding with a code and no system

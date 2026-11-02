@@ -1,0 +1,22 @@
+{
+  "resourceType": "QuestionnaireResponse",
+  "id": "ext-concept",
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Probe</p></div>"
+  },
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/questionnaireresponse-completionMode",
+      "valueCodeableConcept": {
+        "coding": [
+          {
+            "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationMode",
+            "code": "PHYSICAL"
+          }
+        ]
+      }
+    }
+  ],
+  "status": "completed"
+}

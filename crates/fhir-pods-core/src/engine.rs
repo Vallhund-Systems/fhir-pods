@@ -629,14 +629,20 @@ fn datatype_instances<D: Document>(path: &str, label: &str, ty: &str, doc: &D) -
 }
 
 /// Does the shape walk hold an extension of `url` in `root` to its compiled
-/// profile? It does unless a profile the resource declares reaches that url
-/// through a slice (`document::profile_reaches`), which then checks it.
+/// profile? It does unless a profile the walk applies to the resource — one
+/// it declares, compiled for its type (`document::compiled_profiles_of`) —
+/// reaches that url through a slice (`document::profile_reaches`), which
+/// then checks it. A declared profile of another type (an NzPatient that
+/// also declares NzAddress) is not applied to the resource
+/// (`profile.wrong-type`), so it reaches nothing: the walk holds the
+/// extension, and the finding is said once, as validator_cli 6.10.4 says it.
 fn walk_applies<D: Document>(root: &D, url: &str) -> bool {
+    let rt = root.scalars("$this.resourceType");
     !root.scalars("$this.meta.profile").iter().any(|declared| {
         let declared = declared.split('|').next().unwrap_or(declared);
         crate::REGISTRY
             .iter()
-            .find(|p| p.url == declared)
+            .find(|p| p.url == declared && rt == [p.resource_type])
             .is_some_and(|p| crate::document::profile_reaches(p.slicings, url))
     })
 }
@@ -731,6 +737,12 @@ fn check_datatype_profiles<D: Document>(
         }
         return;
     };
+    // each invariant parsed once for every instance — a validator holds them
+    // parsed already, as it holds the registry's
+    let parsed: Vec<Option<path::Expr>> = match scope.cache {
+        Some(_) => Vec::new(),
+        None => invariants.iter().map(|(key, _, _, expression)| path::parse_invariant(key, expression).ok()).collect(),
+    };
     for (at, inst) in instances {
         for element in *prohibited {
             let mut p = String::from("$this.");
@@ -747,10 +759,14 @@ fn check_datatype_profiles<D: Document>(
                 );
             }
         }
-        for (key, is_error, human, expression) in *invariants {
-            let verdict = match path::parse_invariant(key, expression) {
-                Ok(e) => path::check_constraint_in(&e, &inst, Some(ty), Some(scope.root), scope.bundle),
-                Err(_) => Verdict::Unsupported,
+        for (n, (key, is_error, human, expression)) in invariants.iter().enumerate() {
+            let expr = match scope.cache {
+                Some(v) => v.expr(expression),
+                None => parsed[n].as_ref(),
+            };
+            let verdict = match expr {
+                Some(e) => path::check_constraint_in(e, &inst, Some(ty), Some(scope.root), scope.bundle),
+                None => Verdict::Unsupported,
             };
             match verdict {
                 Verdict::Pass => {}
@@ -940,7 +956,8 @@ fn check_element<D: Document>(
                     }
                 }
                 if let Some(v) = verdict {
-                    report_membership(v, vs, CODINGS, label, r);
+                    let held = v == Membership::Unknown && held_code_only(tx, vs, &codings);
+                    report_membership_held(v, vs, CODINGS, label, held, r);
                 } else if codeable_concept {
                     // Coding objects exist, none with a code: no member of the
                     // set — where the set can be decided at all. Where it
@@ -1160,7 +1177,33 @@ pub(crate) fn no_coding_in_set(vs: &str) -> String {
     format!("None of the codings provided are in the value set '{vs}', and a coding from this value set is required")
 }
 
+/// What an undecided binding says. A set the provider holds (a host's
+/// terminology table) that still cannot decide a concept is one whose coding
+/// has a code and no system: the table holds the set's members, not the
+/// compose validator_cli 6.10.4 places such a code by
+/// (`TerminologyProvider::validate_code_only`), so the code is not checked;
+/// anything else undecided is a set no terminology here holds.
+pub(crate) fn not_checked(vs: &str, what: &str, held_code_only: bool) -> String {
+    if held_code_only {
+        format!(
+            "a code with no system cannot be placed in {vs}: the terminology holds its members, not its compose; '{what}' not checked"
+        )
+    } else {
+        format!("no bundled terminology for {vs}; '{what}' not checked")
+    }
+}
+
+/// Is an undecided concept one a provider holding the set leaves undecided
+/// for a coding with a code and no system ([`not_checked`])?
+pub(crate) fn held_code_only<D: Document>(tx: &dyn TerminologyProvider, vs: &str, codings: &[D]) -> bool {
+    codings.iter().any(|c| coding_of(c).is_some_and(|(system, _)| system.is_empty())) && tx.knows_set(vs)
+}
+
 fn report_membership(m: Membership, vs: &str, what: &str, label: &str, r: &mut Report) {
+    report_membership_held(m, vs, what, label, false, r)
+}
+
+fn report_membership_held(m: Membership, vs: &str, what: &str, label: &str, held_code_only: bool, r: &mut Report) {
     match m {
         Membership::Member => {}
         Membership::NotMember if what == CODINGS => {
@@ -1169,12 +1212,9 @@ fn report_membership(m: Membership, vs: &str, what: &str, label: &str, r: &mut R
         Membership::NotMember => {
             r.push(Severity::Error, IssueType::CodeInvalid, label, format!("'{what}' is not in the bound value set"))
         }
-        Membership::Unknown => r.push(
-            Severity::Warning,
-            IssueType::NotSupported,
-            label,
-            format!("no bundled terminology for {vs}; '{what}' not checked"),
-        ),
+        Membership::Unknown => {
+            r.push(Severity::Warning, IssueType::NotSupported, label, not_checked(vs, what, held_code_only))
+        }
     }
 }
 
@@ -1944,13 +1984,93 @@ mod datatype_profile_rows {
     use super::*;
 
     fn issues(json: &str, url: &str) -> Vec<(Severity, IssueType, String)> {
+        row_issues(json, "Patient.address", "Address", url, 0, None)
+    }
+
+    /// One row applied at `depth`, with or without a validator's parsed
+    /// invariants.
+    fn row_issues(
+        json: &str,
+        path: &str,
+        ty: &str,
+        url: &str,
+        depth: usize,
+        cache: Option<&crate::Validator>,
+    ) -> Vec<(Severity, IssueType, String)> {
         let parsed = crate::document::Parsed::parse(json.as_bytes()).expect("parses");
         let doc = parsed.doc();
         let scope = Scope {
             root: &doc,
             bundle: None,
             tx: &Bundled,
-            depth: 0,
+            depth,
+            cache,
+            evaluated: None,
+            profile: "",
+            datatype: false,
+        };
+        let mut r = Report::default();
+        check_datatype_profiles(path, path, ty, url, &doc, &scope, &mut r);
+        r.issues.into_iter().map(|i| (i.severity, i.code, i.path)).collect()
+    }
+
+    /// How many times `key` was parsed on this thread since the last call.
+    fn parses_of(key: &str) -> usize {
+        crate::path::PARSES.with(|p| {
+            let n = p.borrow().iter().filter(|k| k.as_str() == key).count();
+            p.borrow_mut().clear();
+            n
+        })
+    }
+
+    /// A base datatype profile's invariant is parsed once for every instance
+    /// of the element (none at all under a validator, which parsed it when
+    /// it was made), not once per instance: three `SimpleQuantity` values
+    /// with a comparator are three `sqty-1` findings from one parse.
+    #[test]
+    fn a_datatype_profile_invariant_is_parsed_once_for_every_instance() {
+        let url = "http://hl7.org/fhir/StructureDefinition/SimpleQuantity";
+        let q = r#"{"url":"https://example.org/q","valueQuantity":{"value":1,"comparator":"<"}}"#;
+        let json = format!(r#"{{"resourceType":"Patient","extension":[{q},{q},{q}]}}"#);
+        let sqty = |found: &[(Severity, IssueType, String)]| {
+            found
+                .iter()
+                .filter(|(_, code, _)| *code == IssueType::Invariant)
+                .map(|(.., at)| at.clone())
+                .collect::<Vec<_>>()
+        };
+        let expected: Vec<String> = (0..3).map(|i| format!("Patient.extension[{i}].valueQuantity")).collect();
+        parses_of("sqty-1");
+        let free = row_issues(&json, "Patient.extension.value[x]", "Quantity", url, 0, None);
+        assert_eq!(sqty(&free), expected);
+        assert_eq!(parses_of("sqty-1"), 1);
+        let validator = crate::Validator::new();
+        parses_of("sqty-1");
+        let held = row_issues(&json, "Patient.extension.value[x]", "Quantity", url, 0, Some(&validator));
+        assert_eq!(held, free);
+        assert_eq!(parses_of("sqty-1"), 0);
+    }
+
+    /// At the inherit depth cap a compiled IG datatype profile is not
+    /// followed, and that is said where the element is (`not-supported`),
+    /// never a silently weaker verdict.
+    #[test]
+    fn a_datatype_profile_past_the_depth_cap_is_said_where_the_element_is() {
+        let url = "http://hl7.org.nz/fhir/StructureDefinition/NzAddress";
+        let suburb = r#"{"url":"http://hl7.org.nz/fhir/StructureDefinition/suburb","valueString":"s"}"#;
+        let two = format!(r#"{{"resourceType":"Patient","address":[{{"city":"x","extension":[{suburb},{suburb}]}}]}}"#);
+        let below = row_issues(&two, "Patient.address", "Address", url, MAX_INHERIT - 1, None);
+        assert_eq!(
+            below,
+            [(Severity::Error, IssueType::Structure, String::from("Patient.address[0].extension:suburb"))]
+        );
+        let parsed = crate::document::Parsed::parse(two.as_bytes()).expect("parses");
+        let doc = parsed.doc();
+        let scope = Scope {
+            root: &doc,
+            bundle: None,
+            tx: &Bundled,
+            depth: MAX_INHERIT,
             cache: None,
             evaluated: None,
             profile: "",
@@ -1958,7 +2078,17 @@ mod datatype_profile_rows {
         };
         let mut r = Report::default();
         check_datatype_profiles("Patient.address", "Patient.address", "Address", url, &doc, &scope, &mut r);
-        r.issues.into_iter().map(|i| (i.severity, i.code, i.path)).collect()
+        let capped: Vec<_> =
+            r.issues.iter().map(|i| (i.severity, i.code, i.path.as_str(), i.message.as_str())).collect();
+        assert_eq!(
+            capped,
+            [(
+                Severity::Information,
+                IssueType::NotSupported,
+                "Patient.address[0]",
+                "Patient.address[0] is held to the datatype profile http://hl7.org.nz/fhir/StructureDefinition/NzAddress, which was not checked: profiles nest deeper than the engine follows"
+            )]
+        );
     }
 
     /// A row the engine cannot apply — an any-of of IG profiles with no base

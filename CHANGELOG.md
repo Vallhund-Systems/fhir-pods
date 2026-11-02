@@ -1,5 +1,75 @@
 # Changelog
 
+## Unreleased
+
+**A finding inside an extension is located as the reference validator
+locates it.** A finding of an extension's own profile was labelled under the
+profile's root, `MedicationDispense.extension[0].Extension.valueQuantity`, a
+second path style beside the shape walk's; validator_cli 6.10.4 says
+`MedicationDispense.extension[0].value.ofType(Quantity)`. Probed first
+(`-ig hl7.fhir.au.core#2.0.0`, `-tx n/a`; five new probes,
+`conformance/probes/ext-*`, beside `sq-extension-value-comparator`), the
+oracle locates: a value by its type (`value.ofType(Quantity)`,
+`value.ofType(CodeableConcept)`, a primitive by its type code,
+`value.ofType(code)`); a nested extension by the instance its slice matched
+(`extension[0].extension[1].value.ofType(string)`); and a top-level value of
+a type the extension does not allow at the extension itself
+(`Patient.name[0].extension[0]`, "The Extension '…' definition allows for the
+types [code] but found type string"). The pod now gives each of those
+locations: `Issue.path` drops the `Extension` segment, names the value by its
+concrete key (`extension[0].valueQuantity`) and a nested slice by its one
+matched instance (a slice matched by none or several keeps its label), and
+`wire::expression` writes an extension's value as `value.ofType(<type>)` —
+for the shape walk's findings under an extension too. Same rule ids, same
+verdicts.
+
+**A suburb of the wrong type is said once where a Patient also declares
+NzAddress.** `walk_applies` read every declared `meta.profile`, while the
+shape walk applies only those compiled for the resource's type, so an
+NzPatient also declaring NzAddress (refused, `profile.wrong-type`) had its
+suburb extension checked by both and its `structure.choice` reported twice.
+validator_cli 6.10.4 reports it once, at `Patient.address[0].extension[0]`
+(probe `nz-declares-address-profile-too`, `-ig fhir.org.nz.ig.base#3.1.0`);
+so does the pod.
+
+**A held code with no system says why it was not checked.** Under a host's
+terminology table that holds the set, a `CodeableConcept` coding with a code
+and no system is not checked (the table holds members, not the compose that
+would place the code); the warning said "no bundled terminology for … not
+checked" and now says "a code with no system cannot be placed in …: the
+terminology holds its members, not its compose; 'the codings' not checked".
+Rule id `binding.unknown` either way. `docs/scope.md` now names the host
+callbacks (the C ABI's `TxCallback`, the Java provider, the wasm import) as
+behaving the same way: a code-only coding is asked with an empty system, an
+answer of not a member refuses it, a member is not checked, and the warning
+under a callback stays the general one, since the core never asks a callback
+whether it holds a set.
+
+Also: a base datatype profile's invariant (`sqty-1`) is parsed once for all
+instances of an element, and not at all under a `Validator`, which now parses
+`DATATYPE_PROFILES`' invariants with the registry's (a unit test counts the
+parses); the depth-cap `not-supported` branch of an IG datatype profile has a
+test; `scripts/gen-host-profiles.sh` names a host definition without a
+snapshot at the path the host gave, not the staged temporary copy; the
+mutation lane splits a family only partly triaged into its triaged count and
+the untriaged files it lists by name (`conformance/test_mutate_triage.py`).
+
+Lanes, measured on this tree against main's pod on the same inputs and the
+same oracle evidence: release gate **1,829/1,829** (1,823 plus the six new
+probes; main's pod gives the same verdict on every one); reasons 0 untriaged
+on 1,829, 4 triaged (the new `nz-declares-address-profile-too`, the oracle
+applying NzAddress to the Patient element by element where the pod refuses
+the declaration once, as for `patient-declares-observation-profile`); its
+error and warning families are main's; probes **76/76**; mutation lane
+(`--reuse-oracle`, `systemless` judged fresh) 21,371 derived, 0 untriaged, 18
+triaged, every verdict main's, 14 `emptystr` files moving from "missed" to
+agree (an empty extension value now located at `extension.value[x]` on both
+sides). Pod against pod on the release corpus, 51 of 1,829 outcomes moved,
+each an extension finding's location (the shapes above) or the r14-shaped
+duplicate gone; no exit status moved. The published-examples lane
+(`base.py`, which builds release) was not run. ABI 14 is unchanged; no rule
+id is added.
+
 ## 0.28.0
 
 **A coding with a code and no system is placed as the reference validator

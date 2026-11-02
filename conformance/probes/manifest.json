@@ -429,5 +429,42 @@
     "ig": "hl7.fhir.ca.baseline#1.2.0",
     "expect": false,
     "reason": "CA Baseline holds Practitioner.identifier to profile-identifier alone: an identifier without a system is one error from it (validator_cli 6.10.4, at Practitioner.identifier[0])."
+  },
+  {
+    "file": "ext-concept-not-member.json",
+    "profile": null,
+    "expect": false,
+    "reason": "An extension's CodeableConcept value outside its required set (questionnaireresponse-completionMode): validator_cli 6.10.4 locates it at QuestionnaireResponse.extension[0].value.ofType(CodeableConcept), as the pod now does (was extension[0].Extension.value[x])."
+  },
+  {
+    "file": "ext-value-wrong-type.json",
+    "profile": null,
+    "expect": false,
+    "reason": "A data-absent-reason valued with a string where it allows a code: validator_cli 6.10.4 locates it at the extension, Patient.name[0].extension[0], as the pod now does."
+  },
+  {
+    "file": "ext-code-not-member.json",
+    "profile": null,
+    "expect": false,
+    "reason": "A data-absent-reason code outside its required set: validator_cli 6.10.4 locates it at Patient.name[0].extension[0].value.ofType(code), a primitive by its type code, as the pod now does."
+  },
+  {
+    "file": "ext-nested-wrong-type.json",
+    "profile": null,
+    "expect": false,
+    "reason": "A nested extension (patient-nationality code) valued with a string where its slice allows a CodeableConcept: validator_cli 6.10.4 locates it at the matched instance's value, Patient.extension[0].extension[1].value.ofType(string), as the pod now does (was extension[0].Extension.extension:code.value[x])."
+  },
+  {
+    "file": "ext-nested-concept-not-member.json",
+    "profile": null,
+    "expect": false,
+    "reason": "A nested extension's CodeableConcept value (patient-sexParameterForClinicalUse value) outside its required set: validator_cli 6.10.4 locates it at Patient.extension[0].extension[0].value.ofType(CodeableConcept), as the pod now does."
+  },
+  {
+    "file": "nz-declares-address-profile-too.json",
+    "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+    "ig": "fhir.org.nz.ig.base#3.1.0",
+    "expect": false,
+    "reason": "An NzPatient that also declares NzAddress, with a suburb valued with a code: validator_cli 6.10.4 reports the suburb's type once, at Patient.address[0].extension[0], and refuses the NzAddress declaration on a Patient; the pod reports the suburb once (the declared NzAddress is not applied to a Patient, so it takes nothing from the shape walk) beside profile.wrong-type."
   }
 ]

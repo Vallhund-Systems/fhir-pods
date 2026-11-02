@@ -10,5 +10,10 @@
   "time-with-zone.json": {
     "extra": ["Observation.valueTime"],
     "reason": "two keys for one choice (valueString, valueTime): the oracle drops the second unread ('Unrecognized property') and never judges its format; the pod reports the duplication the same way and also that the time carries a zone. The verdict agrees; the extra error is a true statement about the value."
+  },
+  "probe-nz-declares-address-profile-too.json": {
+    "missed": ["Patient.address", "Patient.birthDate", "Patient.gender", "Patient.meta", "Patient.name", "Patient.text", "Patient.text.div", "Patient.text.status"],
+    "extra": ["(root)"],
+    "reason": "a declared profile for another type (NzAddress on a Patient, beside NzPatient): the oracle applies NzAddress to the Patient element by element (each Patient element 'not allowed by the profile', Patient.text not a string …); the pod refuses the declaration in one error at meta.profile ('applies to Address, not to a Patient'), as for patient-declares-observation-profile. One finding, two spellings; the verdict agrees. The suburb's wrong type is one finding on both sides, at Patient.address[0].extension[0] (the probe's point)."
   }
 }

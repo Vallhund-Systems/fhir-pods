@@ -349,6 +349,27 @@ def family(detail):
     return "(no error text)"
 
 
+def family_lines(kind, fam, rs, taken, gated, show):
+    """One family's report lines and how many of its files gate the lane.
+    A gated family is split by what a triage entry accepts: the accepted
+    files are counted `triaged`, the rest `UNTRIAGED` and listed by name, so
+    a family only partly accepted names the files still owed a review, not
+    the ones already reviewed."""
+    def listed(rows):
+        return [f"             {r['file']}" + (f" missed {r['missed']}" if kind == "missed" else "") for r in rows[:show]]
+    if not gated:
+        return [f"  {kind:8} {len(rs):4}  {'reported':9} {fam}", *listed(rs)], 0
+    accepted = {id(r) for r in taken}
+    owed = [r for r in rs if id(r) not in accepted]
+    lines = []
+    if taken:
+        lines.append(f"  {kind:8} {len(taken):4}  {'triaged':9} {fam}")
+    if owed:
+        lines.append(f"  {kind:8} {len(owed):4}  {'UNTRIAGED':9} {fam}")
+        lines.extend(listed(owed))
+    return lines, len(owed)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--class", dest="classes", default=",".join(CLASSES))
@@ -422,13 +443,10 @@ def main():
                 gated = kind in ("lenient", "stricter", "error")
                 taken = [r for r in rs if gated and accepts(triage.get(f"{cls}:{r['file']}"), r)]
                 used.update(f"{cls}:{r['file']}" for r in taken)
-                tag = ("triaged" if len(taken) == len(rs) else "UNTRIAGED") if gated else "reported"
+                lines, open_count = family_lines(kind, fam, rs, taken, gated, a.show)
                 # a verdict disagreement, or no verdict at all, gates the lane
-                ungated += len(rs) - len(taken) if gated else 0
-                print(f"  {kind:8} {len(rs):4}  {tag:9} {fam}")
-                for r in rs[: a.show]:
-                    extra = f" missed {r['missed']}" if kind == "missed" else ""
-                    print(f"             {r['file']}{extra}")
+                ungated += open_count
+                print("\n".join(lines))
         evidence[cls] = rows
     json.dump({"oracle": run.JAR_VERSION, "classes": evidence}, open(os.path.join(OUT, "evidence.json"), "w"), indent=1)
     # an entry for a class just run that accepted nothing is stale: the file,

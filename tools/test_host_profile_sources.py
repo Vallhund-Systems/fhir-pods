@@ -100,6 +100,13 @@ class HostDatatypeProfiles(unittest.TestCase):
         # unreferenced, the same definition is nothing the generator compiles
         self.write(["http://hl7.org/fhir/StructureDefinition/ContactPoint", CP], host_contactpoint(snapshot=False))
         precheck(set(), [self.package])
+    def test_a_staged_package_is_refused_at_the_hosts_own_path(self):
+        self.write([CP], host_contactpoint(snapshot=False))
+        staged = stage_packages(Path(self.temp.name) / "staged", [self.package])
+        with self.assertRaises(SystemExit) as refused:
+            precheck(set(), staged, [self.package])
+        self.assertIn(str(self.package / "contactpoint.json"), str(refused.exception))
+        self.assertNotIn(str(staged[0]), str(refused.exception))
     def test_held_alone_reusing_a_shipped_canonical_is_refused(self):
         self.write([CP], host_contactpoint())
         with self.assertRaisesRegex(SystemExit, "redefines shipped canonicals"):
