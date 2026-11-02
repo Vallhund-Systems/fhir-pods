@@ -94,6 +94,9 @@ fn wire_expression_writes_an_extension_value_by_its_type() {
         expression("Patient.modifierExtension[0].valueDateTime", IssueType::Value),
         "Patient.modifierExtension[0].value.ofType(dateTime)"
     );
+    // an extension slice's cardinality is located at the element its extensions are on
+    assert_eq!(expression("Patient.address[0].extension:suburb", IssueType::Structure), "Patient.address[0]");
+    assert_eq!(expression("Observation.category:VSCat", IssueType::Structure), "Observation.category");
     // only an extension's value: an element's own concrete key is as before
     assert_eq!(expression("Observation.valueQuantity", IssueType::Value), "Observation.valueQuantity");
 }

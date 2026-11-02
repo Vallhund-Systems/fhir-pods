@@ -422,19 +422,84 @@ struct Walk<'v, 'a, 't> {
     refuse_external_links: bool,
 }
 
-/// Does a profile reach an extension of this url through a slice (an
-/// inherited extension profile, or a profile discriminator)?
-pub(crate) fn profile_reaches(slicings: &[crate::compiled::Slicing], url: &str) -> bool {
+/// How deep [`profile_covers`] follows a slice's profile (the engine's own
+/// bound, `engine::MAX_INHERIT`).
+const COVER_DEPTH: usize = 8;
+
+/// Does a compiled profile check an extension of `url` at `element` — the
+/// extension's element path from its resource, unindexed, a choice by its
+/// `[x]` stem (`Patient.contact.address.extension`,
+/// `Patient.deceased[x].extension`)? It does where one of its slicings is on
+/// that element (an absolute path, or `$this.…` beneath `under`) with a slice
+/// holding the url to its profile, or through a slice's own profile whose
+/// slicings cover what lies beneath the slice. A slicing of the same url on
+/// another element (NzPatient's `Patient.extension:domicile-code`) covers
+/// nothing at `Patient.contact.address.extension`: the reference validator
+/// holds that instance to the extension's definition, and the walk does.
+/// A datatype profile an element is held to (`NzAddress` on
+/// `Patient.address`) is not followed: its extension slices are the walk's
+/// (`engine::check_datatype_profiles` leaves them to it).
+pub(crate) fn profile_covers(
+    slicings: &[crate::compiled::Slicing],
+    under: &str,
+    element: &str,
+    url: &str,
+    depth: usize,
+) -> bool {
+    use alloc::string::String;
     slicings.iter().any(|sl| {
+        let plain: String =
+            sl.path.split('.').map(|seg| seg.split(':').next().unwrap_or(seg)).collect::<Vec<_>>().join(".");
+        let at = match plain.strip_prefix("$this") {
+            Some(rest) => alloc::format!("{under}{rest}"),
+            None => plain,
+        };
         sl.slices.iter().any(|s| {
-            s.profile == Some(url)
-                || s.profiles.iter().any(|(_, urls)| urls.contains(&url))
+            let holds = s.profile == Some(url)
                 || s.discriminators
                     .iter()
-                    .any(|d| matches!(d, crate::compiled::Discriminator::Profile { url: u, .. } if *u == url))
-                || profile_reaches(s.slicings, url)
+                    .any(|d| matches!(d, crate::compiled::Discriminator::Profile { url: u, .. } if *u == url));
+            if holds && at == element {
+                return true;
+            }
+            if profile_covers(s.slicings, &at, element, url, depth) {
+                return true;
+            }
+            // beneath the slice, its own profile's slicings (a complex
+            // extension slicing its own extensions; an identifier profile)
+            match (s.profile.filter(|p| *p != url && depth < COVER_DEPTH), element.strip_prefix(at.as_str())) {
+                (Some(p), Some(rest)) if rest.starts_with('.') => {
+                    crate::REGISTRY.iter().find(|c| c.url == p).is_some_and(|c| {
+                        let inner = alloc::format!("{}{rest}", c.resource_type);
+                        profile_covers(c.slicings, c.resource_type, &inner, url, depth + 1)
+                    })
+                }
+                _ => false,
+            }
         })
     })
+}
+
+/// The element path of the extension being walked, from its resource:
+/// unindexed, a choice element by its `[x]` stem, as a compiled profile's
+/// slicings name it (`Patient.contact.address.extension`).
+fn extension_element(w: &Walk<'_, '_, '_>) -> alloc::string::String {
+    let n = w.ctxs.len();
+    let start = w.ctxs.iter().rposition(|(c, _)| crate::typemap::RESOURCES.binary_search(c).is_ok()).unwrap_or(0);
+    let mut p = alloc::string::String::from(w.ctxs[start].0);
+    for k in start + 1..n {
+        let key = w.ctxs[k].1;
+        let name = key.strip_prefix('_').unwrap_or(key);
+        p.push('.');
+        match crate::typing::child(w.ctxs[k - 1].0, name).and_then(|c| c.choice) {
+            Some(stem) => {
+                p.push_str(stem);
+                p.push_str("[x]");
+            }
+            None => p.push_str(name),
+        }
+    }
+    p
 }
 
 impl<'v, 'a, 't> Walk<'v, 'a, 't> {
@@ -1322,8 +1387,15 @@ fn structure_object<'v, 'a>(
                         ),
                     ));
                 }
-                let reached = w.profiles.last().is_some_and(|ps| ps.iter().any(|p| profile_reaches(p.slicings, base)));
-                if !reached {
+                // the extension is a declared profile's to check only where
+                // one of its slicings covers this very element; anywhere
+                // else in the resource the walk holds it
+                let element = extension_element(w);
+                let covered = w
+                    .profiles
+                    .last()
+                    .is_some_and(|ps| ps.iter().any(|p| profile_covers(p.slicings, "", &element, base, 0)));
+                if !covered {
                     let label = w.label(w.root);
                     w.extensions.push((label, v, p));
                 }

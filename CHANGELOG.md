@@ -2,35 +2,52 @@
 
 ## Unreleased
 
-**A finding inside an extension is located as the reference validator
-locates it.** A finding of an extension's own profile was labelled under the
-profile's root, `MedicationDispense.extension[0].Extension.valueQuantity`, a
-second path style beside the shape walk's; validator_cli 6.10.4 says
-`MedicationDispense.extension[0].value.ofType(Quantity)`. Probed first
-(`-ig hl7.fhir.au.core#2.0.0`, `-tx n/a`; five new probes,
-`conformance/probes/ext-*`, beside `sq-extension-value-comparator`), the
-oracle locates: a value by its type (`value.ofType(Quantity)`,
-`value.ofType(CodeableConcept)`, a primitive by its type code,
-`value.ofType(code)`); a nested extension by the instance its slice matched
-(`extension[0].extension[1].value.ofType(string)`); and a top-level value of
-a type the extension does not allow at the extension itself
-(`Patient.name[0].extension[0]`, "The Extension '…' definition allows for the
-types [code] but found type string"). The pod now gives each of those
-locations: `Issue.path` drops the `Extension` segment, names the value by its
-concrete key (`extension[0].valueQuantity`) and a nested slice by its one
-matched instance (a slice matched by none or several keeps its label), and
-`wire::expression` writes an extension's value as `value.ofType(<type>)` —
-for the shape walk's findings under an extension too. Same rule ids, same
-verdicts.
+**An extension sliced on one element is held to its definition everywhere
+else.** The shape walk left an extension to a declared profile whenever one
+of its slices named the url, wherever the instance sat, and the profile only
+checks the element its slicing is on. NzPatient slices
+`Patient.extension:domicile-code`, so a domicile-code valued with a string on
+a contact's address was valid here (on main too) and one on a name drew only
+the context error; validator_cli 6.10.4 (`-ig fhir.org.nz.ig.base#3.1.0`)
+refuses both ("The Extension '…/domicile-code' definition allows for the
+types [CodeableConcept] but found type string" at
+`Patient.contact[0].address.extension[0]`, `Patient.name[0].extension[0]`).
+The walk now leaves an instance to a declared profile (compiled for the
+resource's type) only where one of its slicings is on that instance's
+element (`document::profile_covers`, by the element path from the resource;
+through nested slicings and a slice's own profile, not through a datatype
+profile an element is held to, whose extension slices are the walk's). That
+also says a suburb of the wrong type once where a Patient declares NzAddress
+beside NzPatient (it was twice; the oracle once, at
+`Patient.address[0].extension[0]`). Probes `nz-domicile-*`,
+`nz-address-domicile-wrong-type`, `nz-declares-address-profile-too`.
 
-**A suburb of the wrong type is said once where a Patient also declares
-NzAddress.** `walk_applies` read every declared `meta.profile`, while the
-shape walk applies only those compiled for the resource's type, so an
-NzPatient also declaring NzAddress (refused, `profile.wrong-type`) had its
-suburb extension checked by both and its `structure.choice` reported twice.
-validator_cli 6.10.4 reports it once, at `Patient.address[0].extension[0]`
-(probe `nz-declares-address-profile-too`, `-ig fhir.org.nz.ig.base#3.1.0`);
-so does the pod.
+**A finding inside an extension is located as the reference validator
+locates it**, wherever the extension is checked from: its own definition
+(the walk), a declared profile's extension slice, or a nested slice of a
+complex extension. Probed first (`conformance/probes/ext-*`,
+`sq-extension-value-comparator`, `nz-*-domicile-*`), the oracle locates a
+value by its type (`extension[0].value.ofType(Quantity)`,
+`value.ofType(CodeableConcept)`, a primitive by its type code,
+`value.ofType(code)`); each instance a slice matched at its own index
+(`Patient.extension[0].extension[0].value.ofType(string)` and
+`…extension[1]…` for two `period`s of patient-citizenship); a top-level value
+of a type the extension does not allow at the extension itself
+(`Patient.name[0].extension[0]`, `Patient.extension[0]`), a nested one at
+its value; and an extension slice's cardinality at the element the
+extensions are on (`Patient.extension[0]`, `Patient.address[0]`). The pod
+had `MedicationDispense.extension[0].Extension.valueQuantity`,
+`Patient.extension.value[x]`, one finding for two instances, and
+`…extension[0].extension`. `Issue.path` now drops the `Extension` segment,
+names the value by its concrete key, and labels each instance an extension
+slicing matched by its index; the slice's own label stays for its
+cardinality. `wire::expression` writes an extension's value as
+`value.ofType(<type>)` and a slice's cardinality at its parent. Residue: an
+extension slicing beneath a repeating element (NzPatient's
+`Patient.name.extension`) keeps the slice's label, since the engine does not
+carry the parent's index there; the walk's context finding is located at
+`Patient.name.extension` where the oracle says `Patient.name[0]`. Same rule
+ids; the only verdicts that move are the two domicile-code shapes above.
 
 **A held code with no system says why it was not checked.** Under a host's
 terminology table that holds the set, a `CodeableConcept` coding with a code
@@ -55,18 +72,23 @@ mutation lane splits a family only partly triaged into its triaged count and
 the untriaged files it lists by name (`conformance/test_mutate_triage.py`).
 
 Lanes, measured on this tree against main's pod on the same inputs and the
-same oracle evidence: release gate **1,829/1,829** (1,823 plus the six new
-probes; main's pod gives the same verdict on every one); reasons 0 untriaged
-on 1,829, 4 triaged (the new `nz-declares-address-profile-too`, the oracle
-applying NzAddress to the Patient element by element where the pod refuses
-the declaration once, as for `patient-declares-observation-profile`); its
-error and warning families are main's; probes **76/76**; mutation lane
-(`--reuse-oracle`, `systemless` judged fresh) 21,371 derived, 0 untriaged, 18
-triaged, every verdict main's, 14 `emptystr` files moving from "missed" to
-agree (an empty extension value now located at `extension.value[x]` on both
-sides). Pod against pod on the release corpus, 51 of 1,829 outcomes moved,
-each an extension finding's location (the shapes above) or the r14-shaped
-duplicate gone; no exit status moved. The published-examples lane
+same oracle evidence: release gate **1,834/1,834** (1,823 plus eleven new
+probes; main's pod gives the same verdict on all but one,
+`nz-domicile-on-contact-address-wrong-type`, which it found valid and the
+oracle refuses); reasons 0 untriaged on 1,834, 4 triaged (the new
+`nz-declares-address-profile-too`, the oracle applying NzAddress to the
+Patient element by element where the pod refuses the declaration once, as
+for `patient-declares-observation-profile`), its error and warning families
+main's; probes **81/81**; mutation lane (`--reuse-oracle`) 21,371 derived, 0
+untriaged, 18 triaged, every verdict main's, 14 `emptystr` files moving from
+"missed" to agree (an empty extension value now located at
+`extension.value[x]` on both sides). Pod against pod on the release corpus:
+122 of 1,834 outcomes moved — the one verdict above, the five type errors the
+new probes add or relocate, and otherwise extension-finding locations (the
+shapes above) with no change in count, except two duplicate not-checked
+warnings gone on each AU Core Patient carrying IHI status extensions (now
+reported once, through `Patient.identifier:ihi`'s `au-ihi` profile, where
+the walk had reported them a second time). The published-examples lane
 (`base.py`, which builds release) was not run. ABI 14 is unchanged; no rule
 id is added.
 

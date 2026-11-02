@@ -2015,6 +2015,79 @@ fn a_declared_profile_of_another_type_does_not_take_an_extension_from_the_walk()
     assert_eq!(errors, ["profile.wrong-type | meta.profile", "structure.choice | Patient.address[0].extension[0]"]);
 }
 
+/// An extension a declared profile slices on one element is still held to
+/// its definition everywhere else in the resource: NzPatient slices
+/// `Patient.extension:domicile-code`, and a domicile-code valued with a
+/// string on a contact's address or on a name is refused there, as
+/// validator_cli 6.10.4 refuses it ("The Extension '…/domicile-code'
+/// definition allows for the types [CodeableConcept] but found type string",
+/// `-ig fhir.org.nz.ig.base#3.1.0`). The walk had skipped every instance of
+/// the url once any declared slice named it, and nothing checked these two.
+/// Where the slice does cover it (`Patient.extension`), and under the
+/// NzAddress datatype profile (`Patient.address[0].extension`), it is one
+/// finding at the instance, as there. Probes `nz-domicile-*`,
+/// `nz-address-domicile-wrong-type`.
+#[test]
+fn an_extension_sliced_elsewhere_is_held_where_it_sits() {
+    let errors = |json: &str| -> Vec<String> {
+        let v = fhir_pods_core::validate_bytes(json.as_bytes());
+        let mut found: Vec<String> = v
+            .report
+            .issues
+            .iter()
+            .filter(|i| i.severity == fhir_pods_core::validate::Severity::Error)
+            .map(|i| format!("{} | {}", i.id, fhir_pods_core::wire::expression(&i.path, i.code)))
+            .collect();
+        found.sort();
+        found
+    };
+    assert_eq!(
+        errors(include_str!("../../../conformance/probes/nz-domicile-on-contact-address-wrong-type.json")),
+        ["structure.choice | Patient.contact[0].address.extension[0]"]
+    );
+    let name = errors(include_str!("../../../conformance/probes/nz-domicile-on-name-wrong-type.json"));
+    assert_eq!(name.len(), 2, "{name:?}");
+    assert!(name.contains(&"structure.choice | Patient.name[0].extension[0]".to_string()), "{name:?}");
+    assert!(name.iter().any(|e| e.starts_with("extension.context | ")), "{name:?}");
+    assert_eq!(
+        errors(include_str!("../../../conformance/probes/nz-domicile-wrong-type.json")),
+        ["structure.choice | Patient.extension[0]"]
+    );
+    assert_eq!(
+        errors(include_str!("../../../conformance/probes/nz-address-domicile-wrong-type.json")),
+        ["structure.choice | Patient.address[0].extension[0]"]
+    );
+}
+
+/// Each instance an extension slice matched is reported at its index, and
+/// the slice's cardinality at the element the extensions are on, as
+/// validator_cli 6.10.4 reports them: patient-citizenship with two `period`
+/// sub-extensions valued with strings is max 1 at `Patient.extension[0]` and
+/// one type error at each of `extension[0]` and `extension[1]`
+/// (`value.ofType(string)`). Probe `ext-nested-two-periods-wrong-type`.
+#[test]
+fn each_instance_an_extension_slice_matched_is_reported_at_its_index() {
+    let v = fhir_pods_core::validate_bytes(
+        include_str!("../../../conformance/probes/ext-nested-two-periods-wrong-type.json").as_bytes(),
+    );
+    let mut found: Vec<String> = v
+        .report
+        .issues
+        .iter()
+        .filter(|i| i.severity == fhir_pods_core::validate::Severity::Error)
+        .map(|i| format!("{} | {}", i.id, fhir_pods_core::wire::expression(&i.path, i.code)))
+        .collect();
+    found.sort();
+    assert_eq!(
+        found,
+        [
+            "structure.choice | Patient.extension[0].extension[0].value.ofType(string)",
+            "structure.choice | Patient.extension[0].extension[1].value.ofType(string)",
+            "structure.max | Patient.extension[0]",
+        ]
+    );
+}
+
 /// A `CodeableConcept` coding with a code and no system under a required
 /// binding is placed as validator_cli 6.10.4 places it (probed 0.28.0): the
 /// oracle infers the system only where the set's compose is ONE include that

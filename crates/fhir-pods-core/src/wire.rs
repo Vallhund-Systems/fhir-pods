@@ -64,7 +64,8 @@ pub fn operation_outcome(r: &Report) -> String {
 /// `OperationOutcome.issue.expression` — the location as the reference
 /// validator reports it, so issue-level diffs are apples to apples:
 /// * a **missing** element (`Required`) is located at its **parent** — there
-///   is no node to point at (`Patient.gender` missing → `Patient`);
+///   is no node to point at (`Patient.gender` missing → `Patient`), and so is
+///   an extension slice's cardinality (`…address[0].extension:suburb` → `…address[0]`);
 /// * our slice labels become FHIRPath: `value[x]:valueQuantity` →
 ///   `value.ofType(Quantity)`, and a plain `:slice` label is dropped;
 /// * an extension's value, named by its concrete key, is its `value[x]` of
@@ -74,8 +75,19 @@ pub fn operation_outcome(r: &Report) -> String {
 ///
 /// The ergonomic `Issue.path` keeps the precise, labelled location.
 pub fn expression(path: &str, code: IssueType) -> String {
-    let located =
-        if code == IssueType::Required { path.rsplit_once('.').map_or(path, |(parent, _)| parent) } else { path };
+    // an extension slice's cardinality is located at the element its
+    // extensions are on, as the reference validator locates it
+    // (`Patient.address[0].extension:suburb` exceeding max 1 → `Patient.address[0]`)
+    let slice_count = code == IssueType::Structure
+        && path
+            .rsplit('.')
+            .next()
+            .is_some_and(|last| last.starts_with("extension:") || last.starts_with("modifierExtension:"));
+    let located = if code == IssueType::Required || slice_count {
+        path.rsplit_once('.').map_or(path, |(parent, _)| parent)
+    } else {
+        path
+    };
     let mut out = String::with_capacity(located.len());
     let mut previous = "";
     for (i, seg) in located.split('.').enumerate() {

@@ -628,25 +628,6 @@ fn datatype_instances<D: Document>(path: &str, label: &str, ty: &str, doc: &D) -
     here
 }
 
-/// Does the shape walk hold an extension of `url` in `root` to its compiled
-/// profile? It does unless a profile the walk applies to the resource — one
-/// it declares, compiled for its type (`document::compiled_profiles_of`) —
-/// reaches that url through a slice (`document::profile_reaches`), which
-/// then checks it. A declared profile of another type (an NzPatient that
-/// also declares NzAddress) is not applied to the resource
-/// (`profile.wrong-type`), so it reaches nothing: the walk holds the
-/// extension, and the finding is said once, as validator_cli 6.10.4 says it.
-fn walk_applies<D: Document>(root: &D, url: &str) -> bool {
-    let rt = root.scalars("$this.resourceType");
-    !root.scalars("$this.meta.profile").iter().any(|declared| {
-        let declared = declared.split('|').next().unwrap_or(declared);
-        crate::REGISTRY
-            .iter()
-            .find(|p| p.url == declared && rt == [p.resource_type])
-            .is_some_and(|p| crate::document::profile_reaches(p.slicings, url))
-    })
-}
-
 /// Every element a compiled profile holds to a base datatype profile its
 /// base definition does not name — the shipped registry's sparse table
 /// (`generated::DATATYPE_PROFILE_ELEMENTS`), then a host's and the test
@@ -1749,6 +1730,107 @@ pub(crate) fn check_document<D: Document>(bundle: &D, r: &mut Report) {
     }
 }
 
+/// Where a finding inside an extension is located, as validator_cli 6.10.4
+/// locates it: under the extension instance's own indexed `label`, `rel`
+/// being its path inside the extension (`value[x]`, `extension[1].value[x]`,
+/// `extension:period` for a slice's cardinality). The value is named by the
+/// instance's concrete key (`extension[0].valueQuantity`, which
+/// `wire::expression` writes `extension[0].value.ofType(Quantity)`); a nested
+/// extension by its index, the engine labelling each instance an extension
+/// slice matched (`extension[0].extension[1].valueString`). A value of a
+/// type the extension does not allow is located at the extension itself
+/// (the oracle's "The Extension '…' definition allows for the types [code]
+/// but found type string" at `extension[0]`); under a nested extension it is
+/// at the value (`extension[1].value.ofType(string)`), as there.
+pub(crate) fn extension_finding_path<D: Document>(label: &str, rel: &str, id: &str, ext: &D) -> String {
+    if rel.is_empty() || (rel == "value[x]" && id == "structure.choice") {
+        return String::from(label);
+    }
+    let mut out = String::from(label);
+    let mut node = Some(ext.clone());
+    for seg in rel.split('.') {
+        out.push('.');
+        let here = node.take();
+        let indexed = seg
+            .strip_suffix(']')
+            .and_then(|s| s.split_once('['))
+            .filter(|(key, _)| matches!(*key, "extension" | "modifierExtension"))
+            .and_then(|(key, i)| i.parse::<usize>().ok().map(|i| (key, i)));
+        match (indexed, here) {
+            (Some((key, i)), Some(n)) => {
+                node = n.child_instances_indexed(key).into_iter().find(|(j, _)| *j == Some(i)).map(|(_, c)| c);
+                out.push_str(seg);
+            }
+            (None, Some(n)) if seg == "value[x]" => match n.choice_keys("value").as_slice() {
+                [key] => out.push_str(key),
+                _ => out.push_str(seg),
+            },
+            _ => out.push_str(seg),
+        }
+    }
+    out
+}
+
+/// A slice's own checks on one instance it matched, reported under `at`:
+/// its sub-element constraints, the datatype profiles on its sub-elements
+/// (`profiled`, the sparse table's rows for the slice), its invariants, its
+/// profile, and the slicings declared inside it.
+#[allow(clippy::type_complexity)]
+fn check_slice_instance<D: Document>(
+    slice: &Slice,
+    at: &str,
+    profiled: &[&(&'static str, &'static str, &'static str, &'static str, &'static str)],
+    inst: &D,
+    scope: &Scope<'_, D>,
+    r: &mut Report,
+) {
+    let (root, tx, depth, cache) = (scope.root, scope.tx, scope.depth, scope.cache);
+    let mut label = String::from(at);
+    let base_len = label.len();
+    for el in slice.elements {
+        label.truncate(base_len);
+        label.push('.');
+        label.push_str(el.path.trim_start_matches("$this."));
+        check_element(el, &label, inst, tx, r);
+    }
+    label.truncate(base_len);
+    for &&(_, _, path, ty, url) in profiled {
+        label.truncate(base_len);
+        label.push('.');
+        label.push_str(path.trim_start_matches("$this."));
+        check_datatype_profiles(path, &label, ty, url, inst, scope, r);
+    }
+    for inv in slice.invariants {
+        label.truncate(base_len);
+        if let Some(rel) = inv.path.strip_prefix("$this.") {
+            label.push('.');
+            label.push_str(rel);
+        }
+        check_invariant(inv, &label, inst, scope, r);
+    }
+    label.truncate(base_len);
+    if let Some(url) = slice.profile.filter(|_| depth < MAX_INHERIT) {
+        if let Some(profile) = crate::REGISTRY
+            .iter()
+            .find(|p| p.url == url)
+            // inside an IG datatype profile an extension slice's
+            // profile is the shape walk's: no declared profile
+            // follows a datatype profile's slicings
+            // (`document::profile_covers`), so the walk holds
+            // every such instance at its own indexed path
+            .filter(|p| !(scope.datatype && p.resource_type == "Extension"))
+        {
+            let rep = validate_at(profile, inst, root, tx, depth + 1, cache, scope.bundle);
+            forward(rep, profile, &label, r);
+        }
+    }
+    // slicings declared inside this slice, on this instance
+    for nested in slice.slicings {
+        label.truncate(base_len);
+        check_slicing(nested, inst, scope, &label, r);
+    }
+}
+
 /// Re-label a profile's findings under the element they were checked at.
 fn forward(rep: Report, profile: &CompiledProfile, label: &str, r: &mut Report) {
     for issue in rep.issues {
@@ -1773,7 +1855,7 @@ fn check_slicing<D: Document>(slicing: &Slicing, doc: &D, scope: &Scope<'_, D>, 
     let Some((parent_path, last)) = slicing.path.rsplit_once('.') else {
         return;
     };
-    let (root, tx, depth, cache) = (scope.root, scope.tx, scope.depth, scope.cache);
+    let depth = scope.depth;
     // the reported path: absolute at the top, `Outer:slice.inner` when nested
     let base = if prefix.is_empty() {
         String::from(slicing.path)
@@ -1817,6 +1899,20 @@ fn check_slicing<D: Document>(slicing: &Slicing, doc: &D, scope: &Scope<'_, D>, 
             };
             matched += insts.len();
             let count = insts.len() as u32;
+            // an extension slicing on the resource or on the instance being
+            // checked: each instance it matched is reported at its own index
+            // (`Patient.extension[0]`, `extension[0].extension[1]`), as the
+            // reference validator reports it — the slice's label only for its
+            // cardinality. A slicing beneath a repeating element (a name's
+            // extensions) keeps the slice's label: the parent has no index here.
+            let indexed: Vec<Option<usize>> = if !parent_path.contains('.')
+                && matches!(last, "extension" | "modifierExtension")
+                && type_key(slice).is_none()
+            {
+                insts.iter().map(|inst| all.iter().position(|a| a.same(inst))).collect()
+            } else {
+                Vec::new()
+            };
             // an undecided instance may be this slice's: its minimum is not
             // an error while that stands (the warning below says so)
             let could_be_here =
@@ -1843,44 +1939,29 @@ fn check_slicing<D: Document>(slicing: &Slicing, doc: &D, scope: &Scope<'_, D>, 
             // the sparse table's rows for this slice (none, almost always)
             let profiled: Vec<_> =
                 datatype_profile_elements().filter(|(p, s, ..)| *p == scope.profile && *s == label.as_str()).collect();
-            for inst in &insts {
-                for el in slice.elements {
-                    label.truncate(base_len);
-                    label.push('.');
-                    label.push_str(el.path.trim_start_matches("$this."));
-                    check_element(el, &label, inst, tx, r);
-                }
-                label.truncate(base_len);
-                for (_, _, path, ty, url) in &profiled {
-                    label.truncate(base_len);
-                    label.push('.');
-                    label.push_str(path.trim_start_matches("$this."));
-                    check_datatype_profiles(path, &label, ty, url, inst, scope, r);
-                }
-                for inv in slice.invariants {
-                    label.truncate(base_len);
-                    if let Some(rel) = inv.path.strip_prefix("$this.") {
-                        label.push('.');
-                        label.push_str(rel);
+            for (n, inst) in insts.iter().enumerate() {
+                if let Some(Some(i)) = indexed.get(n) {
+                    let parent = base.rsplit_once('.').map_or(base.as_str(), |(p, _)| p);
+                    let at = format!("{parent}.{last}[{i}]");
+                    // an extension inside an extension: a value of the wrong
+                    // type is located at the value there, not at the extension
+                    let nested = parent.rsplit('.').next().is_some_and(|s| {
+                        s == "Extension" || s.starts_with("extension") || s.starts_with("modifierExtension")
+                    });
+                    let mut sub = Report::default();
+                    check_slice_instance(slice, "Extension", &profiled, inst, scope, &mut sub);
+                    for issue in sub.issues {
+                        let rel = issue
+                            .path
+                            .strip_prefix("Extension")
+                            .map_or(issue.path.as_str(), |r| r.trim_start_matches('.'));
+                        let path = extension_finding_path(&at, rel, if nested { "" } else { issue.id }, inst);
+                        r.push(issue.severity, issue.code, &path, issue.message);
                     }
-                    check_invariant(inv, &label, inst, scope, r);
+                    continue;
                 }
+                check_slice_instance(slice, &label[..base_len], &profiled, inst, scope, r);
                 label.truncate(base_len);
-                if let Some(url) = slice.profile.filter(|_| depth < MAX_INHERIT) {
-                    if let Some(profile) = crate::REGISTRY
-                        .iter()
-                        .find(|p| p.url == url)
-                        .filter(|p| !(scope.datatype && p.resource_type == "Extension" && walk_applies(root, url)))
-                    {
-                        let rep = validate_at(profile, inst, root, tx, depth + 1, cache, scope.bundle);
-                        forward(rep, profile, &label, r);
-                    }
-                }
-                // slicings declared inside this slice, on this instance
-                for nested in slice.slicings {
-                    label.truncate(base_len);
-                    check_slicing(nested, inst, scope, &label, r);
-                }
                 // a sub-element that must conform to one of some profiles (a
                 // Bundle entry's resource): checked only when every one is
                 // compiled. A datatype profile there (a section's `code` held

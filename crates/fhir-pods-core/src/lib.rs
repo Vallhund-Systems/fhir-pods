@@ -284,7 +284,11 @@ fn validate_bytes_in(
             .map_or(&doc, |(_, owner)| owner);
         let evaluated = engine::Evaluated::new(Some(&memo));
         for mut issue in engine::validate_at_with(profile, &ext, owner, tx, 0, cache, bundle, Some(&evaluated)).issues {
-            issue.path = extension_finding_path(&label, &issue, &ext, profile);
+            let rel = match issue.path.strip_prefix(profile.resource_type) {
+                Some(rest) if rest.is_empty() || rest.starts_with('.') => rest.trim_start_matches('.'),
+                _ => issue.path.as_str(),
+            };
+            issue.path = engine::extension_finding_path(&label, rel, issue.id, &ext);
             if !report.issues.contains(&issue) {
                 report.issues.push(issue);
             }
@@ -302,76 +306,6 @@ fn validate_bytes_in(
         profiles: profiles.iter().map(|p| p.name).collect(),
         report,
     }
-}
-
-/// Where a finding of an extension's own profile is located: under the
-/// extension's indexed path, as the shape walk names the rest of the
-/// resource, and as validator_cli 6.10.4 locates it. The profile's own root
-/// (`Extension`) is not a segment; its value is the instance's concrete key
-/// (`extension[0].valueQuantity`, which `wire::expression` writes
-/// `extension[0].value.ofType(Quantity)`); a nested extension's slice is the
-/// one instance it matched (`extension[0].extension[1].valueString`), and
-/// stays the slice's label where it matched none or several. A value of a
-/// type the extension does not allow is located at the extension itself
-/// (the oracle's "The Extension '…' definition allows for the types [code]
-/// but found type string" at `extension[0]`); under a nested extension it is
-/// at the value (`extension[1].value.ofType(string)`), as there.
-fn extension_finding_path<D: Document>(
-    label: &str,
-    issue: &validate::Issue,
-    ext: &D,
-    profile: &CompiledProfile,
-) -> String {
-    let rel = match issue.path.strip_prefix(profile.resource_type) {
-        Some(rest) if rest.is_empty() || rest.starts_with('.') => rest.trim_start_matches('.'),
-        _ => issue.path.as_str(),
-    };
-    if rel.is_empty() || (rel == "value[x]" && issue.id == "structure.choice") {
-        return String::from(label);
-    }
-    let mut out = String::from(label);
-    let mut node = Some(ext.clone());
-    let mut slicings = profile.slicings;
-    let mut sliced = "Extension.extension";
-    for seg in rel.split('.') {
-        out.push('.');
-        let here = node.take();
-        match (seg.split_once(':'), here) {
-            (Some(("extension", name)), Some(n)) => {
-                let slice =
-                    slicings.iter().filter(|s| s.path == sliced).flat_map(|s| s.slices.iter()).find(|s| s.name == name);
-                let url = slice.and_then(|s| {
-                    s.discriminators.iter().find_map(|d| match d {
-                        compiled::Discriminator::Value { path: "$this.url", value } => Some(*value),
-                        _ => None,
-                    })
-                });
-                let matched: Vec<(Option<usize>, D)> = match url {
-                    Some(url) => n
-                        .child_instances_indexed("extension")
-                        .into_iter()
-                        .filter(|(_, e)| e.scalars("$this.url") == [url])
-                        .collect(),
-                    None => Vec::new(),
-                };
-                match (matched.as_slice(), slice) {
-                    ([(Some(i), one)], Some(slice)) => {
-                        out.push_str(&format!("extension[{i}]"));
-                        node = Some(one.clone());
-                        slicings = slice.slicings;
-                        sliced = "$this.extension";
-                    }
-                    _ => out.push_str(seg),
-                }
-            }
-            (None, Some(n)) if seg == "value[x]" => match n.choice_keys("value").as_slice() {
-                [key] => out.push_str(key),
-                _ => out.push_str(seg),
-            },
-            _ => out.push_str(seg),
-        }
-    }
-    out
 }
 
 /// Validate one resource (the root, or one nested in it, at `label`) against
