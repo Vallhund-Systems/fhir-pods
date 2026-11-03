@@ -382,7 +382,13 @@ impl<D: Document> Scope<'_, D> {
                 }
             }
         }
-        let ok = self.conformance_of(profile, target, reference).is_valid() && target.shape_ok(self.tx);
+        // a contained target's shape is judged as contained in its container:
+        // its own `#local` references name its siblings (ref-1)
+        let shape = match reference.starts_with('#') {
+            true => target.shape_ok_in(self.tx, self.local_scope()),
+            false => target.shape_ok(self.tx),
+        };
+        let ok = shape && self.conformance_of(profile, target, reference).is_valid();
         if key.0 != 0 {
             if let Some(memo) = self.memo() {
                 memo.conformance.borrow_mut().push((key.0, key.1, ok));
@@ -1652,7 +1658,7 @@ pub(crate) fn check_reference_targets_base<D: Document>(bundle: &D, store: Optio
     };
     for (i, (_, res)) in entries.iter().enumerate() {
         let Some(res) = res else { continue };
-        base_targets_of(res, &format!("Bundle.entry[{i}].resource."), &resolve, r);
+        base_targets_of(res, &format!("Bundle.entry[{i}].resource."), &resolve, None, r);
     }
 }
 
@@ -1662,13 +1668,31 @@ pub(crate) fn check_reference_targets_base<D: Document>(bundle: &D, store: Optio
 /// entry (`#local` references are the contained resources', never the
 /// store's).
 pub(crate) fn check_reference_targets_stored<D: Document>(doc: &D, store: &[Entry<D>], r: &mut Report) {
-    base_targets_of(doc, "", &|reference: &str| path::resolve_in_entries(store, reference), r);
+    base_targets_of(doc, "", &|reference: &str| path::resolve_in_entries(store, reference), None, r);
+}
+
+/// The base's reference targets of an unprofiled `res` for its `#local`
+/// references: each names a contained resource of `container` (`res`
+/// itself, or the resource holding it when `res` is contained) and is held
+/// to its element's base target types by type, as the reference validator
+/// holds it ("Invalid Resource target type"; probed,
+/// `conformance/probes/contained-target-unprofiled-*`).
+pub(crate) fn check_local_targets_base<D: Document>(res: &D, prefix: &str, container: &D, r: &mut Report) {
+    base_targets_of(res, prefix, &|_: &str| None, Some(container), r);
 }
 
 /// "Invalid Resource target type": every base Reference element of an
 /// unprofiled `res` whose reference `resolve`s to a resource of a type the
-/// element does not allow, reported at `prefix` + the element path.
-fn base_targets_of<D: Document>(res: &D, prefix: &str, resolve: &dyn Fn(&str) -> Option<D>, r: &mut Report) {
+/// element does not allow, reported at `prefix` + the element path. With
+/// `local`, only the `#local` references, each a contained resource of
+/// `local`; without, only the others.
+fn base_targets_of<D: Document>(
+    res: &D,
+    prefix: &str,
+    resolve: &dyn Fn(&str) -> Option<D>,
+    local: Option<&D>,
+    r: &mut Report,
+) {
     let Some(rt) = res.scalars("$this.resourceType").first().copied() else { return };
     let profiled = res
         .scalars("$this.meta.profile")
@@ -1683,12 +1707,13 @@ fn base_targets_of<D: Document>(res: &D, prefix: &str, resolve: &dyn Fn(&str) ->
         }
         for (j, inst) in res.instances(path).iter().enumerate() {
             let Some(reference) = inst.scalars("$this.reference").first().copied() else { continue };
-            if reference.starts_with('#') {
-                continue;
-            }
-            let Some(target) = resolve(reference)
-                .and_then(|t| t.scalars("$this.resourceType").first().copied().map(String::from))
-                .and_then(|rt| {
+            let found = match (reference.starts_with('#'), local) {
+                (true, Some(container)) => path::resolve_reference_in(reference, Some(container), None, None),
+                (false, None) => resolve(reference),
+                _ => continue,
+            };
+            let Some(target) =
+                found.and_then(|t| t.scalars("$this.resourceType").first().copied().map(String::from)).and_then(|rt| {
                     crate::typemap::RESOURCES.binary_search(&rt.as_str()).ok().map(|k| crate::typemap::RESOURCES[k])
                 })
             else {

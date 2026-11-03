@@ -269,6 +269,7 @@ fn validate_bytes_in(
             }
         }
     }
+    engine::check_local_targets_base(&doc, "", &doc, &mut report);
     let profiles = validate_resource(rt, &doc, "", None, tx, cache, bundle, defaults, &memo, &mut report);
     // a QuestionnaireResponse against its Questionnaire (a contained one, a
     // bundle entry, or one loaded into the validator); a Questionnaire's own
@@ -316,6 +317,7 @@ fn validate_bytes_in(
                 .max_by_key(|(path, _)| path.len())
                 .map_or(&doc, |(_, owner)| owner)
         });
+        engine::check_local_targets_base(nested, &format!("{label}."), container.unwrap_or(nested), &mut report);
         validate_resource(nrt, nested, label, container, tx, cache, bundle, &[], &memo, &mut report);
         by_kind(nrt, nested.value(), &format!("{label}.{nrt}"), &mut report);
     }

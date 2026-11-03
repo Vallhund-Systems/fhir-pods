@@ -1,6 +1,6 @@
 # Adversarial validation probes
 
-These 112 synthetic fixtures cover valid controls, JSON shapes, primitive limits,
+These 120 synthetic fixtures cover valid controls, JSON shapes, primitive limits,
 extensions, contained resources, unknown profiles, offline references, required
 coded content, recursive content-reference validation, the shape a
 de-identified age over 89 goes out as, the datatype profile R4 puts on
@@ -18,8 +18,10 @@ allow, at the top and in a nested extension), and a contained
 reference target held to its element's `targetProfile` (`contained-target-*`:
 by conformance under AU Core and US Core heart rate, US Core Provenance and
 US Core Encounter, with and without a declared `meta.profile`, under two
-allowed profiles of one type, named from inside another contained resource;
-by type where the target is a base resource type).
+allowed profiles of one type, named from inside another contained resource,
+a contained target naming its own sibling under US Core DiagnosticReport
+and Encounter; by type where the target is a base resource type, and an
+unprofiled resource's contained targets).
 `manifest.json` records an expected verdict and reason for each fixture. The
 shared corpus builder automatically includes them as `probe-*` cases.
 

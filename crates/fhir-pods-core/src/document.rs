@@ -55,6 +55,13 @@ pub trait Document: Sized + Clone {
         let _ = tx;
         true
     }
+    /// [`Document::shape_ok`] for a resource contained in `container`: its
+    /// `#local` references name the container's contained resources (ref-1),
+    /// as they do when the container is walked.
+    fn shape_ok_in(&self, tx: &dyn crate::terminology::TerminologyProvider, container: &Self) -> bool {
+        let _ = container;
+        self.shape_ok(tx)
+    }
     /// A stable identity for this node within one validation (its address),
     /// `0` where the document has none — what a memo keys on.
     fn identity(&self) -> usize {
@@ -1817,32 +1824,66 @@ impl<'v, 'a> TreeDoc<'v, 'a> {
     }
 }
 
+/// The base spec's shape rules on `root` alone ([`Document::shape_ok`]); with
+/// `container`, `root` is walked as a resource contained in it, so its
+/// `#local` references name the container's contained resources (ref-1).
+fn shape_walk<'v, 'a>(
+    root: &'v Value<'a>,
+    tx: &dyn crate::terminology::TerminologyProvider,
+    container: Option<&'v Value<'a>>,
+) -> bool {
+    let Some(rt) = resource_ctx(root) else { return true };
+    let mut w = Walk {
+        root: rt,
+        tx,
+        resource_keys: Vec::new(),
+        gaps: Vec::new(),
+        warnings: Vec::new(),
+        invariants: Vec::new(),
+        profile_invariants: Vec::new(),
+        nested: Vec::new(),
+        extensions: Vec::new(),
+        ctxs: Vec::new(),
+        nodes: Vec::new(),
+        segs: Vec::new(),
+        profiled: Vec::new(),
+        profiles: Vec::new(),
+        contained: Vec::new(),
+        refuse_external_links: false,
+    };
+    match container {
+        Some(Value::Object(kvs)) => {
+            let ids = match kvs.iter().find(|(k, _)| k.as_ref() == "contained") {
+                Some((_, Value::Array(xs))) => xs
+                    .iter()
+                    .filter_map(|x| match x {
+                        Value::Object(c) => c.iter().find(|(k, _)| k.as_ref() == "id").and_then(|(_, v)| match v {
+                            Value::Str(s) => Some(alloc::string::String::from(s.as_ref())),
+                            _ => None,
+                        }),
+                        _ => None,
+                    })
+                    .collect(),
+                _ => Vec::new(),
+            };
+            w.contained.push((false, ids, None));
+            structure_at(root, rt, rt, "", true, true, &mut w);
+        }
+        _ => structure_in(root, rt, rt, &mut w),
+    }
+    !w.gaps.iter().any(|(_, kind, _)| *kind != crate::validate::IssueType::NotSupported)
+}
+
 impl<'v, 'a> Document for TreeDoc<'v, 'a> {
     fn identity(&self) -> usize {
         self.root as *const Value<'a> as usize
     }
     fn shape_ok(&self, tx: &dyn crate::terminology::TerminologyProvider) -> bool {
-        let Some(rt) = resource_ctx(self.root) else { return true };
-        let mut w = Walk {
-            root: rt,
-            tx,
-            resource_keys: Vec::new(),
-            gaps: Vec::new(),
-            warnings: Vec::new(),
-            invariants: Vec::new(),
-            profile_invariants: Vec::new(),
-            nested: Vec::new(),
-            extensions: Vec::new(),
-            ctxs: Vec::new(),
-            nodes: Vec::new(),
-            segs: Vec::new(),
-            profiled: Vec::new(),
-            profiles: Vec::new(),
-            contained: Vec::new(),
-            refuse_external_links: false,
-        };
-        structure_in(self.root, rt, rt, &mut w);
-        !w.gaps.iter().any(|(_, kind, _)| *kind != crate::validate::IssueType::NotSupported)
+        shape_walk(self.root, tx, None)
+    }
+
+    fn shape_ok_in(&self, tx: &dyn crate::terminology::TerminologyProvider, container: &Self) -> bool {
+        shape_walk(self.root, tx, Some(container.root))
     }
 
     fn child_counts(&self, path: &str) -> Vec<usize> {

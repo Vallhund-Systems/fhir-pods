@@ -49,8 +49,9 @@ The probes found one difference, and it is general: the oracle holds a
 rate and US Core Provenance, each with a contained Patient that has only an
 id, are invalid there ("Unable to find a profile match for #p1 among
 choices: …"), valid in the pod, which judges a contained target by type
-only; a contained Patient that conforms is valid on both sides. Held by
-conformance since: see the contained-target paragraph below.
+only; a contained Patient that conforms is valid on both sides. The pod now
+holds a contained target by conformance too (the contained-target paragraph
+below).
 
 **The resource store.** `fhir_pods_resource_load(ptr, len)` takes one
 resource (JSON) or a Bundle — every entry resource, under its `fullUrl` —
@@ -247,7 +248,9 @@ changes. They add no rule id and do not move the ABI.
 by conformance**, as a Bundle entry and a stored resource are; until 0.29.0
 it was judged by type only, so a contained target that is no instance of the
 allowed profile passed. Probed first, validator_cli 6.10.4 (`-tx n/a`), one
-JVM per guide, fifteen new probes (`conformance/probes/contained-target-*`)
+JVM per guide, twenty-three new probes
+(`conformance/probes/contained-target-*`; eight of them added after review:
+a target naming its own sibling, an unprofiled resource's contained targets)
 and the one that found it (`resolve-heartrate-contained-bare-patient`): a
 contained Patient with only an id is invalid under AU Core heart rate, US
 Core 6.1.0 heart rate and US Core Provenance (`agent.who`) ("Unable to find
@@ -264,18 +267,37 @@ not; a contained AU Core heart rate inside a List whose subject names its
 sibling, a contained Patient with only an id, is invalid, and with a
 conforming sibling valid — a contained resource's own `#local` reference
 names a contained resource of its container, and the target is held the
-same; a target whose allowed type is a base resource type only (AU Core
-heart rate's `specimen`, an unprofiled Observation's `subject`) is held by
-type (a contained Specimen with only an id passes, a contained Patient as
-`specimen` and a contained Medication as `subject` are "Invalid Resource
-target type"). The pod now gives each of the sixteen the oracle's verdict.
+same; under US Core DiagnosticReport (lab), a contained lab Observation in
+`result` whose `specimen` names a sibling contained Specimen, or whose
+`subject` names a conforming sibling Patient, is valid, and with a sibling
+Patient that has only an id invalid; the same under US Core Encounter's
+`reasonReference` with a contained encounter-diagnosis Condition; a target
+whose allowed type is a base resource type only is held by type — AU Core
+heart rate's `specimen` (a contained Specimen with only an id passes, a
+contained Patient is "Invalid Resource target type"), an Observation with no
+`meta.profile` that carries heart rate's LOINC code (the base heart rate
+profile applies; a contained Medication `subject` is "Invalid Resource
+target type" twice), and a resource no profile applies to: an unprofiled
+Observation (LOINC 2345-7) with a contained Medication `subject` and an
+unprofiled Encounter with a contained Location `subject` are invalid
+("Invalid Resource target type. Found Medication, but expected one of
+([Group, Device, Patient, Location])", "Found Location, but expected one of
+([Group, Patient])"), with a contained Patient valid. The pod now gives each
+of the twenty-four the oracle's verdict.
 Precedence is unchanged: contained, then the Bundle, then the store; a
 `#local` reference never reaches the store. In the core, a contained
 resource is validated with the resource holding it in scope
-(`Evaluated::contained_in`), so its `#local` references are resolved there,
-and a contained target is checked for conformance the same way; the
-integration test `a_contained_target_is_held_to_the_target_profile` holds
-both. `docs/scope.md` (Reference target types) says so; the reviewed probe
+(`Evaluated::contained_in`): its reference-target and slice-discriminator
+checks resolve its `#local` references there, and a contained target is
+checked for conformance the same way — its profile, and its shape with the
+container's contained ids in scope for ref-1 (`Document::shape_ok_in`). An
+unprofiled resource's `#local` references are held to its base target types
+(`check_local_targets_base`), at the top and for each contained resource.
+FHIRPath `resolve()` inside a contained resource's own invariants still
+takes the contained resource as its root, so there a `#local` reference
+does not see its siblings (`docs/scope.md`). The integration tests
+`a_contained_target_is_held_to_the_target_profile` and
+`a_contained_target_names_its_siblings_in_the_container` hold this. `docs/scope.md` (Reference target types) says so; the reviewed probe
 difference is gone, and the probe re-enters the release gate.
 
 Lanes, measured on the final tree (the rest of 0.29.0 merged): probes

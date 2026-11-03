@@ -646,13 +646,13 @@
     "file": "contained-target-base-observation-bare-patient.json",
     "profile": null,
     "expect": true,
-    "reason": "An unprofiled Observation whose subject is a contained Patient with only an id: the base targets are types, held by type."
+    "reason": "An Observation with no meta.profile carrying heart rate's LOINC code, so the base heart rate profile applies to it, whose subject is a contained Patient with only an id: the base heart rate's subject target is the base Patient, held by type, and passes."
   },
   {
     "file": "contained-target-base-observation-medication.json",
     "profile": null,
     "expect": false,
-    "reason": "An unprofiled Observation whose subject is a contained Medication: not a type the subject allows."
+    "reason": "The same Observation (the base heart rate profile applies) whose subject is a contained Medication: 'Invalid Resource target type' twice, once for the base Observation's targets and once for the heart rate profile's."
   },
   {
     "file": "contained-target-nested-bare-patient.json",
@@ -700,5 +700,58 @@
     "expect": false,
     "reason": "The same contained Condition without a category conforms to neither Condition profile: 'Unable to find a profile match for #c1'.",
     "ig": "hl7.fhir.us.core#6.1.0"
+  },
+  {
+    "file": "contained-target-us-diagnosticreport-sibling-specimen.json",
+    "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-diagnosticreport-lab",
+    "expect": true,
+    "reason": "US Core DiagnosticReport (lab) result #o1: a contained lab Observation whose specimen names its sibling, a contained Specimen. The target is held by conformance as contained in the DiagnosticReport, so its #sp resolves (ref-1 holds) and it matches.",
+    "ig": "hl7.fhir.us.core#6.1.0"
+  },
+  {
+    "file": "contained-target-us-diagnosticreport-sibling-conforming-patient.json",
+    "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-diagnosticreport-lab",
+    "expect": true,
+    "reason": "The same with the Observation's subject naming its sibling, a contained Patient that conforms to US Core Patient: it matches.",
+    "ig": "hl7.fhir.us.core#6.1.0"
+  },
+  {
+    "file": "contained-target-us-diagnosticreport-sibling-bare-patient.json",
+    "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-diagnosticreport-lab",
+    "expect": false,
+    "reason": "The same with the sibling Patient carrying only an id: the Observation is no US Core lab Observation ('Unable to find a profile match for #o1').",
+    "ig": "hl7.fhir.us.core#6.1.0"
+  },
+  {
+    "file": "contained-target-us-encounter-condition-sibling-conforming-patient.json",
+    "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-encounter",
+    "expect": true,
+    "reason": "US Core Encounter reasonReference #c1: a contained encounter-diagnosis Condition whose subject names its sibling, a conforming contained Patient: it matches.",
+    "ig": "hl7.fhir.us.core#6.1.0"
+  },
+  {
+    "file": "contained-target-us-encounter-condition-sibling-bare-patient.json",
+    "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-encounter",
+    "expect": false,
+    "reason": "The same with the sibling Patient carrying only an id: the Condition conforms to neither allowed profile ('Unable to find a profile match for #c1').",
+    "ig": "hl7.fhir.us.core#6.1.0"
+  },
+  {
+    "file": "contained-target-unprofiled-observation-medication.json",
+    "profile": null,
+    "expect": false,
+    "reason": "An Observation no profile applies to (LOINC 2345-7, no meta.profile) whose subject is a contained Medication: held to the base targets by type ('Invalid Resource target type. Found Medication, but expected one of ([Group, Device, Patient, Location])')."
+  },
+  {
+    "file": "contained-target-unprofiled-encounter-location.json",
+    "profile": null,
+    "expect": false,
+    "reason": "An unprofiled Encounter whose subject is a contained Location: 'Invalid Resource target type. Found Location, but expected one of ([Group, Patient])'."
+  },
+  {
+    "file": "contained-target-unprofiled-encounter-bare-patient.json",
+    "profile": null,
+    "expect": true,
+    "reason": "An unprofiled Encounter whose subject is a contained Patient with only an id: the base target is a type, and it passes."
   }
 ]
