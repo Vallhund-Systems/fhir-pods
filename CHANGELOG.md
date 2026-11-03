@@ -278,6 +278,25 @@ integration test `a_contained_target_is_held_to_the_target_profile` holds
 both. `docs/scope.md` (Reference target types) says so; the reviewed probe
 difference is gone, and the probe re-enters the release gate.
 
+Lanes, measured on the final tree (the rest of 0.29.0 merged): probes
+**112/112** agree, none reviewed, oracle fresh; release gate **1,879/1,879**,
+oracle fresh (the sixteen probes above and the lowered and de-identified
+copies of four valid ones join it); reasons 0 untriaged on 1,879, 4 triaged
+(the contained Practitioner probe's triaged "Unable to find a profile match
+for #r1" is now the pod's too, so its entry goes); published R4 examples
+**5,155/5,287** unchanged (132 lenient, 0 stricter; `base.py
+--reuse-oracle` with the debug probe in place of the release build); mutation
+lane **21,353/21,371** unchanged (`--reuse-oracle`, its `systemless` class
+judged by the oracle fresh; 18 triaged, 0 untriaged). Pod against pod
+before the merge (`93afc9d` against this change, 31,896 lane inputs): 12
+verdicts moved, all invalid now and invalid in the oracle — the six probes
+whose verdict this changes (`resolve-heartrate-contained-bare-patient`
+and five `contained-target-*`) and their release-corpus copies; 8 more
+outputs differ only by an added "Unable to find a profile match" on files
+invalid on both sides (`resolve-provenance-contained-practitioner`, two new
+probes, two de-identified copies, and their release-corpus copies), each one
+the oracle reports. No rule id is added and the ABI does not move.
+
 ## 0.28.0
 
 **A coding with a code and no system is placed as the reference validator
