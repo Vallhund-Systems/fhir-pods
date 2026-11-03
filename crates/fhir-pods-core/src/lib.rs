@@ -266,7 +266,7 @@ fn validate_bytes_in(
             }
         }
     }
-    let profiles = validate_resource(rt, &doc, "", tx, cache, bundle, defaults, &memo, &mut report);
+    let profiles = validate_resource(rt, &doc, "", None, tx, cache, bundle, defaults, &memo, &mut report);
     // a QuestionnaireResponse against its Questionnaire (a contained one, a
     // bundle entry, or one loaded into the validator); a Questionnaire's own
     // enableWhen wiring
@@ -298,12 +298,22 @@ fn validate_bytes_in(
     by_kind(rt, parsed.value(), rt, &mut report);
     // every resource nested in this one (Bundle entries, contained resources,
     // Parameters) is held to its own declared profiles, in this bundle's scope
+    let enclosing = &nested;
     for (label, nested) in &nested {
         let Some(nrt) = nested.scalars("$this.resourceType").first().copied() else { continue };
         let Some(nrt) = typing::known_type(nrt).filter(|t| typemap::RESOURCES.binary_search(t).is_ok()) else {
             continue;
         };
-        validate_resource(nrt, nested, label, tx, cache, bundle, &[], &memo, &mut report);
+        // a contained resource's `#local` references name the contained
+        // resources of the resource that holds it (its nearest enclosing one)
+        let container = label.rsplit('.').next().is_some_and(|seg| seg.starts_with("contained[")).then(|| {
+            enclosing
+                .iter()
+                .filter(|(path, _)| label.strip_prefix(path.as_str()).is_some_and(|tail| tail.starts_with('.')))
+                .max_by_key(|(path, _)| path.len())
+                .map_or(&doc, |(_, owner)| owner)
+        });
+        validate_resource(nrt, nested, label, container, tx, cache, bundle, &[], &memo, &mut report);
         by_kind(nrt, nested.value(), &format!("{label}.{nrt}"), &mut report);
     }
     // every extension whose url names a compiled extension profile is held
@@ -341,13 +351,15 @@ fn validate_bytes_in(
 /// Validate one resource (the root, or one nested in it, at `label`) against
 /// the profiles it declares: unknown ones are warned about, a compiled one
 /// for another resource type is an error, the rest are applied; with none
-/// applied, `DomainResource`'s own invariants stand in. Returns the profiles
-/// applied.
+/// applied, `DomainResource`'s own invariants stand in. `container`, for a
+/// contained resource, is the resource holding it (what its `#local`
+/// references name). Returns the profiles applied.
 #[allow(clippy::too_many_arguments)]
 fn validate_resource<D: Document>(
     rt: &'static str,
     doc: &D,
     label: &str,
+    container: Option<&D>,
     tx: &dyn terminology::TerminologyProvider,
     cache: Option<&Validator>,
     bundle: Option<&D>,
@@ -383,7 +395,7 @@ fn validate_resource<D: Document>(
         }
     }
     let profiles = select_profiles(rt, doc, defaults);
-    let evaluated = engine::Evaluated::new(Some(memo));
+    let evaluated = engine::Evaluated::contained_in(Some(memo), container.cloned());
     let mut issues = Vec::new();
     if profiles.is_empty() {
         // the base's own rules for a domain resource: dom-3 (contained

@@ -10,9 +10,5 @@
   "time-with-zone.json": {
     "extra": ["Observation.valueTime"],
     "reason": "two keys for one choice (valueString, valueTime): the oracle drops the second unread ('Unrecognized property') and never judges its format; the pod reports the duplication the same way and also that the time carries a zone. The verdict agrees; the extra error is a true statement about the value."
-  },
-  "probe-resolve-provenance-contained-practitioner.json": {
-    "missed": ["Provenance.agent.who"],
-    "reason": "a contained reference target is judged by type only (documented leniency, general, docs/scope.md, Reference target types): the oracle holds a contained target to conformance under any targetProfile that names a profile, here US Core Provenance's agent.who, whose contained Practitioner is no US Core Practitioner ('Unable to find a profile match for #r1 among choices'); the pod does not. The verdict agrees: the file is invalid for both on provenance-1."
   }
 }

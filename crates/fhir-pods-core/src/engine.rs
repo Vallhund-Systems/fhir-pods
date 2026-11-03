@@ -61,11 +61,20 @@ pub(crate) struct Evaluated<'m, D> {
     done: core::cell::RefCell<Vec<(&'static str, &'static str)>>,
     /// What one validation of a whole document remembers across its resources.
     memo: Option<&'m Memo<D>>,
+    /// The resource this one is contained in, when it is a contained
+    /// resource: what its `#local` references name (a contained resource
+    /// holds none of its own, dom-2).
+    container: Option<D>,
 }
 
 impl<'m, D> Evaluated<'m, D> {
     pub(crate) fn new(memo: Option<&'m Memo<D>>) -> Self {
-        Evaluated { done: core::cell::RefCell::new(Vec::new()), memo }
+        Evaluated { done: core::cell::RefCell::new(Vec::new()), memo, container: None }
+    }
+
+    /// [`Evaluated::new`] for a resource contained in `container`.
+    pub(crate) fn contained_in(memo: Option<&'m Memo<D>>, container: Option<D>) -> Self {
+        Evaluated { done: core::cell::RefCell::new(Vec::new()), memo, container }
     }
 }
 
@@ -282,18 +291,17 @@ fn check_reference_targets<D: Document>(
             );
             continue;
         }
-        // a base type among the allowed of this type: the type is enough —
-        // and so is it for a contained resource (`#id`): the reference
-        // validator judges a contained target by type, a bundle entry by
-        // conformance (its 6.10.4 behaviour on the corpus; matched, not
-        // second-guessed)
-        if of_type.iter().any(|(_, p)| p.is_none()) || reference.starts_with('#') {
+        // a base type among the allowed of this type: the type is enough
+        if of_type.iter().any(|(_, p)| p.is_none()) {
             continue;
         }
         // a target conforms when the profile's own constraints hold and the
         // resource is sound on its own (the reference validator's whole
-        // verdict on the target, not the profile's alone)
-        let conforms = of_type.iter().any(|(_, p)| p.is_some_and(|p| scope.conforms(p, &target)));
+        // verdict on the target, not the profile's alone) — a contained
+        // target (`#id`) as a bundle entry or a stored resource is: held to
+        // the profiles by conformance, not by type (validator_cli 6.10.4,
+        // probed: `conformance/probes/contained-target-*`)
+        let conforms = of_type.iter().any(|(_, p)| p.is_some_and(|p| scope.conforms(p, &target, reference)));
         if !conforms {
             r.push(
                 Severity::Error,
@@ -344,9 +352,28 @@ impl<D: Document> Scope<'_, D> {
         validate_at_with(profile, target, target, self.tx, self.depth + 1, self.cache, self.bundle, Some(&fresh))
     }
 
-    /// Does `target` conform to `profile` — its constraints and the
-    /// resource's own shape — remembered per target for the validation.
-    fn conforms(&self, profile: &CompiledProfile, target: &D) -> bool {
+    /// [`Scope::conformance`] of the target `reference` names: a contained
+    /// one (`#id`) is validated as contained in the resource that holds it,
+    /// so its own `#local` references name its siblings.
+    fn conformance_of(&self, profile: &CompiledProfile, target: &D, reference: &str) -> Report {
+        if !reference.starts_with('#') {
+            return self.conformance(profile, target);
+        }
+        let fresh = Evaluated::contained_in(self.memo(), Some(self.local_scope().clone()));
+        validate_at_with(profile, target, target, self.tx, self.depth + 1, self.cache, self.bundle, Some(&fresh))
+    }
+
+    /// What a `#local` reference here names a contained resource of: the
+    /// container when the resource being validated is itself contained,
+    /// else the resource.
+    fn local_scope(&self) -> &D {
+        self.evaluated.and_then(|e| e.container.as_ref()).unwrap_or(self.root)
+    }
+
+    /// Does `target`, which `reference` names, conform to `profile` — its
+    /// constraints and the resource's own shape — remembered per target for
+    /// the validation.
+    fn conforms(&self, profile: &CompiledProfile, target: &D, reference: &str) -> bool {
         let key = (target.identity(), profile as *const CompiledProfile as usize);
         if key.0 != 0 {
             if let Some(memo) = self.memo() {
@@ -355,7 +382,7 @@ impl<D: Document> Scope<'_, D> {
                 }
             }
         }
-        let ok = self.conformance(profile, target).is_valid() && target.shape_ok(self.tx);
+        let ok = self.conformance_of(profile, target, reference).is_valid() && target.shape_ok(self.tx);
         if key.0 != 0 {
             if let Some(memo) = self.memo() {
                 memo.conformance.borrow_mut().push((key.0, key.1, ok));
@@ -364,7 +391,8 @@ impl<D: Document> Scope<'_, D> {
         ok
     }
 
-    /// What the Reference `inst` points at: a contained resource, a
+    /// What the Reference `inst` points at: a contained resource (of the
+    /// container, when the resource being validated is itself contained), a
     /// document Bundle entry, else a resource the host stored — in that order.
     fn resolved(&self, inst: &D) -> Option<D> {
         let reference = inst.scalars("$this.reference").into_iter().next()?;
@@ -376,7 +404,7 @@ impl<D: Document> Scope<'_, D> {
                     .or_else(|| memo.resolve_stored(reference));
             }
         }
-        path::resolve_reference_in(reference, Some(self.root), self.bundle, self.store)
+        path::resolve_reference_in(reference, Some(self.local_scope()), self.bundle, self.store)
     }
 }
 
@@ -1240,7 +1268,13 @@ fn matches_one<D: Document>(d: &Discriminator, inst: &D, scope: &Scope<'_, D>) -
                     && scope.resolved(inst).is_some_and(|target| {
                         urls.iter().filter_map(|u| crate::REGISTRY.iter().find(|p| p.url == *u)).any(|p| {
                             target.scalars("$this.resourceType") == [p.resource_type]
-                                && scope.conformance(p, &target).is_valid()
+                                && scope
+                                    .conformance_of(
+                                        p,
+                                        &target,
+                                        inst.scalars("$this.reference").first().copied().unwrap_or(""),
+                                    )
+                                    .is_valid()
                         })
                     })
             }

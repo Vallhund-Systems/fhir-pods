@@ -1,0 +1,28 @@
+{
+  "resourceType": "Provenance",
+  "id": "us-provenance-bare-patient",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance"
+    ]
+  },
+  "contained": [
+    {
+      "resourceType": "Patient",
+      "id": "p1"
+    }
+  ],
+  "target": [
+    {
+      "reference": "Observation/o1"
+    }
+  ],
+  "recorded": "2026-01-01T00:00:00Z",
+  "agent": [
+    {
+      "who": {
+        "reference": "#p1"
+      }
+    }
+  ]
+}

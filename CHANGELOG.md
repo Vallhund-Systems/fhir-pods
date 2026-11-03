@@ -2,8 +2,9 @@
 
 ## 0.29.0
 
-**A reference that resolves to nothing is the empty collection, and a host
-can store the resources references name.** ABI 15: one new entrypoint,
+**A reference that resolves to nothing is the empty collection, a host
+can store the resources references name, and a contained reference target
+is held to its `targetProfile` by conformance.** ABI 15: one new entrypoint,
 `fhir_pods_resource_load`.
 
 `resolve()` on a reference no contained resource and no entry of the
@@ -42,15 +43,40 @@ to the oracle for a relative, an absolute and a `urn:uuid:` reference, a
 contained Practitioner passes it and fails `provenance-1` without
 `onBehalfOf`), and each agrees.
 
-The probes found one difference this release does not change, and it is
-general: the oracle holds a `#contained` target to conformance under any
-`targetProfile` that names a profile — AU Core heart rate, US Core heart
-rate and US Core Provenance, each with a contained Patient that has only an
-id, are invalid there ("Unable to find a profile match for #p1 among
-choices: …"), valid in the pod, which judges a contained target by type
-only; a contained Patient that conforms is valid on both sides. Declared in
-`docs/scope.md` (Reference target types) and recorded as the probe lane's
-one reviewed difference, `resolve-heartrate-contained-bare-patient`.
+**A contained reference target is held to the element's `targetProfile`s
+by conformance**, as a Bundle entry and a stored resource are; until 0.29.0
+it was judged by type only, so a contained target that is no instance of the
+allowed profile passed. Probed first, validator_cli 6.10.4 (`-tx n/a`), one
+JVM per guide, fifteen new probes (`conformance/probes/contained-target-*`)
+and the one that found it (`resolve-heartrate-contained-bare-patient`): a
+contained Patient with only an id is invalid under AU Core heart rate, US
+Core 6.1.0 heart rate and US Core Provenance (`agent.who`) ("Unable to find
+a profile match for #p1 among choices: …"), and a contained Organization with
+only an id under US Core Provenance's `onBehalfOf` fails org-1 and the
+profile match; a contained Patient that conforms to AU Core Patient is valid
+with no `meta.profile` and with one naming AU Base Patient, while a Patient
+with only an id that declares AU Base Patient still finds no AU Core Patient
+match, and one that declares AU Core Patient fails that profile at the
+contained resource as well; under US Core Encounter's `reasonReference`, which
+allows two Condition profiles, a contained Condition that conforms to the
+second (encounter diagnosis) matches and one that conforms to neither does
+not; a contained AU Core heart rate inside a List whose subject names its
+sibling, a contained Patient with only an id, is invalid, and with a
+conforming sibling valid — a contained resource's own `#local` reference
+names a contained resource of its container, and the target is held the
+same; a target whose allowed type is a base resource type only (AU Core
+heart rate's `specimen`, an unprofiled Observation's `subject`) is held by
+type (a contained Specimen with only an id passes, a contained Patient as
+`specimen` and a contained Medication as `subject` are "Invalid Resource
+target type"). The pod now gives each of the sixteen the oracle's verdict.
+Precedence is unchanged: contained, then the Bundle, then the store; a
+`#local` reference never reaches the store. In the core, a contained
+resource is validated with the resource holding it in scope
+(`Evaluated::contained_in`), so its `#local` references are resolved there,
+and a contained target is checked for conformance the same way; the
+integration test `a_contained_target_is_held_to_the_target_profile` holds
+both. `docs/scope.md` (Reference target types) says so; the reviewed probe
+difference is gone, and the probe re-enters the release gate.
 
 **The resource store.** `fhir_pods_resource_load(ptr, len)` takes one
 resource (JSON) or a Bundle — every entry resource, under its `fullUrl` —
