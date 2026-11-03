@@ -15,5 +15,9 @@
     "missed": ["Patient.address", "Patient.birthDate", "Patient.gender", "Patient.meta", "Patient.name", "Patient.text", "Patient.text.div", "Patient.text.status"],
     "extra": ["(root)"],
     "reason": "a declared profile for another type (NzAddress on a Patient, beside NzPatient): the oracle applies NzAddress to the Patient element by element (each Patient element 'not allowed by the profile', Patient.text not a string …); the pod refuses the declaration in one error at meta.profile ('applies to Address, not to a Patient'), as for patient-declares-observation-profile. One finding, two spellings; the verdict agrees. The suburb's wrong type is one finding on both sides, at Patient.address[0].extension[0] (the probe's point)."
+  },
+  "probe-resolve-provenance-contained-practitioner.json": {
+    "missed": ["Provenance.agent.who"],
+    "reason": "a contained reference target is judged by type only (documented leniency, general, docs/scope.md, Reference target types): the oracle holds a contained target to conformance under any targetProfile that names a profile, here US Core Provenance's agent.who, whose contained Practitioner is no US Core Practitioner ('Unable to find a profile match for #r1 among choices'); the pod does not. The verdict agrees: the file is invalid for both on provenance-1."
   }
 }

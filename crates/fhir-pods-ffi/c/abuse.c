@@ -26,6 +26,8 @@ static const char questionnaire_profile[] = "http://hl7.org/fhir/StructureDefini
 static const char questionnaire[] = "{\"resourceType\":\"Questionnaire\",\"url\":\"http://forms.example.net/Questionnaire/abi-intake\",\"version\":\"1\",\"status\":\"active\",\"item\":[{\"linkId\":\"age\",\"type\":\"integer\",\"required\":true}]}";
 static const char questionnaire_response[] = "{\"resourceType\":\"QuestionnaireResponse\",\"questionnaire\":\"http://forms.example.net/Questionnaire/abi-intake|1\",\"status\":\"completed\",\"item\":[{\"linkId\":\"age\",\"answer\":[{\"valueString\":\"forty-two\"}]}]}";
 static const char questionnaire_inputs[] = "{\"questionnaire\":\"http://forms.example.net/Questionnaire/abi-intake|1\",\"status\":\"completed\",\"item\":[{\"linkId\":\"age\",\"answer\":[{\"valueString\":\"forty-two\"}]}]}";
+static const char care_team[] = "{\"resourceType\":\"CareTeam\",\"id\":\"synthetic\",\"participant\":[{\"member\":{\"reference\":\"Patient/synthetic\"},\"onBehalfOf\":{\"display\":\"Synthetic\"}}]}";
+static const char stored_patient[] = "{\"resourceType\":\"Patient\",\"id\":\"synthetic\"}";
 static size_t documents, callback_calls, reentrant_calls;
 static int32_t callback_answer = -1;
 
@@ -111,6 +113,14 @@ static void exercise(const char *label, const uint8_t *p, size_t n, int invalid_
     int32_t questionnaire_loaded = fhir_pods_questionnaire_load(p, n);
     CHECK(questionnaire_loaded == 0 || questionnaire_loaded == 1);
     scalar("fhir_pods_questionnaire_load", questionnaire_loaded);
+    int32_t resource_loaded = fhir_pods_resource_load(p, n);
+    CHECK(resource_loaded == 0 || resource_loaded == 1);
+    scalar("fhir_pods_resource_load", resource_loaded);
+    CHECK(fhir_pods_resource_load(NULL, 0) == 1);
+    int32_t options_taken = fhir_pods_options(p, n);
+    CHECK(options_taken == 0 || options_taken == 1);
+    scalar("fhir_pods_options", options_taken);
+    CHECK(fhir_pods_options(NULL, 0) == 1);
     int32_t loaded = fhir_pods_terminology_load(p, n);
     CHECK(loaded == 0 || loaded == 1);
     scalar("fhir_pods_terminology_load", loaded);
@@ -194,6 +204,22 @@ int main(void) {
     CHECK(fhir_pods_questionnaire_load(NULL, 0) == 1);
     scalar("fhir_pods_questionnaire_load", 1);
     RESULT(fhir_pods_validate, "could not be resolved", BYTES(questionnaire_response));
+
+    /* A stored resource is what resolve() finds (ctm-1: the member is a
+     * Patient, so onBehalfOf may not be there); a refused load leaves the
+     * store as it was; empty input clears it. */
+    CHECK(fhir_pods_resource_load(NULL, 0) == 1);
+    scalar("fhir_pods_resource_load", 1);
+    RESULT(fhir_pods_validate, "\"valid\":true", BYTES(care_team));
+    CHECK(fhir_pods_resource_load(BYTES(stored_patient)) == 1);
+    scalar("fhir_pods_resource_load", 1);
+    RESULT(fhir_pods_validate, "ctm-1", BYTES(care_team));
+    CHECK(fhir_pods_resource_load(BYTES("{\"id\":\"x\"}")) == 0);
+    scalar("fhir_pods_resource_load", 0);
+    RESULT(fhir_pods_validate, "ctm-1", BYTES(care_team));
+    CHECK(fhir_pods_resource_load(NULL, 0) == 1);
+    scalar("fhir_pods_resource_load", 1);
+    RESULT(fhir_pods_validate, "\"valid\":true", BYTES(care_team));
 
     /* The callback loads terminology and validates recursively. A stale read
      * lock would deadlock; the runner has a bounded process timeout. */

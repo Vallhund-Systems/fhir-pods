@@ -1,0 +1,14 @@
+{
+  "resourceType": "CareTeam",
+  "id": "resolve-careteam-absolute",
+  "participant": [
+    {
+      "member": {
+        "reference": "https://records.example.invalid/fhir/Practitioner/r1"
+      },
+      "onBehalfOf": {
+        "display": "An organisation"
+      }
+    }
+  ]
+}

@@ -14,7 +14,7 @@ public typealias FhirPodsTerminology = (_ valueSet: String, _ system: String, _ 
 /// packed or vendored — reported at module creation rather than left to
 /// surface as a missing symbol or a wrong result at the first call. Mirrored
 /// in `FhirPodsExpoModule.kt` and `src/index.ts`.
-private let FHIR_PODS_EXPECTED_ABI: UInt32 = 14
+private let FHIR_PODS_EXPECTED_ABI: UInt32 = 15
 
 public class FhirPodsExpoModule: Module {
   /// The host's terminology provider, if any. Native-side by design: the
@@ -114,6 +114,16 @@ public class FhirPodsExpoModule: Module {
     Function("questionnaireLoad") { (json: String) -> Int in
       let bytes = Array(json.utf8)
       return Int(bytes.withUnsafeBufferPointer { buf in fhir_pods_questionnaire_load(buf.baseAddress, buf.count) })
+    }
+
+    // A resource (or every entry resource of a Bundle) for resolve() and the
+    // reference-target check to find when a reference names no contained
+    // resource and no Bundle entry; validation reads it, lower/lift/export/
+    // document/audit/v2/deidentify do not (1 = loaded, 0 = not a resource
+    // or a Bundle of resources, the store unchanged; "" clears).
+    Function("resourceLoad") { (json: String) -> Int in
+      let bytes = Array(json.utf8)
+      return Int(bytes.withUnsafeBufferPointer { buf in fhir_pods_resource_load(buf.baseAddress, buf.count) })
     }
 
     // Host options for every call that follows: {"unknownProfile":

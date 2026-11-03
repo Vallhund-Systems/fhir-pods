@@ -57,6 +57,7 @@ support is a generation and conformance task, not a runtime package download.
 | `v2` | ER7 parsing, compiled conversion maps, message Bundle construction, and coverage reporting |
 | `terminology`, `value_sets`, `code_systems_table` | Bundled membership data, expansion tables, providers, and outstanding terminology needs |
 | `validate`, `wire` | Findings, validation reports, and FHIR `OperationOutcome` serialization |
+| `store` | The host's resource store: resources a host loaded for `resolve()` and the reference-target check |
 
 The core is `no_std` with `alloc`, zero external dependencies, and
 `#![forbid(unsafe_code)]`. It owns no filesystem, network connection, clock,
@@ -103,10 +104,10 @@ Kotlin reaches the same operation family through the FFI crate's Android
 JNI shim. The package vendors the native artifacts. Hosts consume the pod
 as a standalone dependency; application mappings stay in the host.
 
-The current shared C ABI is **14**. It includes validation, OperationOutcome,
+The current shared C ABI is **15**. It includes validation, OperationOutcome,
 slots, lift/lower, de-identification, documents, audit, export, HL7 v2,
-must-support inspection, discovery, host options, and terminology /
-Questionnaire loading and needs. See the
+must-support inspection, discovery, host options, terminology /
+Questionnaire / resource loading, and terminology needs. See the
 [header](../crates/fhir-pods-ffi/include/fhir_pods.h) for exact signatures.
 
 **Versioning the ABI.** `FHIR_PODS_ABI_VERSION` (the header, the FFI crate's
@@ -124,7 +125,7 @@ on creation. What does *not* move the number: a new member in a returned JSON
 document, a new rule id, a reworded message, a wider accepted input. Those are
 additive within an entrypoint's contract and a host that ignores them is
 unaffected. Each bump is recorded in the [changelog](../CHANGELOG.md) with
-what it added: 14 host options, 13 the Questionnaire store, 12 discovery, 11
+what it added: 15 the resource store, 14 host options, 13 the Questionnaire store, 12 discovery, 11
 export, 10 HL7 v2, 9 lift, 8 audit, 7 documents, 6 de-identification, 5
 terminology, 4 lower/slots, 3 the first cut.
 
@@ -199,6 +200,28 @@ accepted, or refused). They are data on the operation context
 document that does not say what it means — an unknown member or value — is
 refused whole, leaving the previous options in force. Nothing here changes
 *what* is checked; see [scope](scope.md#host-options).
+
+## The resource store
+
+A reference the runtime can follow is one whose target is in reach: a
+contained resource, or an entry of the Bundle being validated. A host that
+holds the target elsewhere loads it (`Validator::load_resource`,
+`fhir_pods_resource_load`, `loadResource(json)`): one resource, or every
+entry resource of a Bundle under its `fullUrl`. The store is data on the
+operation context, replaced whole on each load under the same lock as a
+Questionnaire load, so a call in flight keeps the snapshot it took; empty
+input clears it. Each resource's JSON is held once, indexed at load by its
+`fullUrl` and by the id a relative reference could name it by, so a load
+costs its own size. A validation parses only the stored resources a string
+in its input could name, and transitively those a string in one of them
+could name, and searches them by the rules a Bundle entry is, after the
+contained resources and the Bundle being validated: `resolve()` finds a
+stored resource, and the reference-target checks hold a stored target to
+the element's `targetProfile`s by conformance and to its base target types. Validation reads it; lower, lift,
+export, documents, audit, v2 and de-identification validate their own output
+without it. The runtime never fetches: the host retrieves what it stores,
+with its own authorisation and consent. See
+[scope](scope.md#what-we-skip-never-guess).
 
 ## Host responsibilities
 

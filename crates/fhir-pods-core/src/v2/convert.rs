@@ -1891,7 +1891,7 @@ pub fn convert_with(
         }
     }
     let text = Node::Object(bundle).to_json();
-    let validation = validator.validate_with(text.as_bytes(), tx);
+    let validation = validator.validate_unstored(text.as_bytes(), tx);
     Ok(Converted { bundle: text, validation, skipped, unplaced, unmapped })
 }
 

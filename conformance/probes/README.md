@@ -1,13 +1,18 @@
 # Adversarial validation probes
 
-These 85 synthetic fixtures cover valid controls, JSON shapes, primitive limits,
+These 97 synthetic fixtures cover valid controls, JSON shapes, primitive limits,
 extensions, contained resources, unknown profiles, offline references, required
 coded content, recursive content-reference validation, the shape a
 de-identified age over 89 goes out as, the datatype profile R4 puts on
 an element (`sq-*`: a `SimpleQuantity` with and without a comparator), an
 IG's own datatype profiles (`nz-*`, `ca-*`, `au-*`: `NzAddress`,
 `NzContactpoint`, CA's `profile-identifier`, `au-address` and the AU
-identifier profiles), and where a finding of an extension's own profile is
+identifier profiles), and `resolve()` (`resolve-*`: `ctm-1` and US Core
+`provenance-1` on a relative, an absolute, a `urn:uuid:` and a `#missing`
+reference nothing resolves — the empty collection, evaluated — and on a
+contained target that does resolve, among them AU Core heart rate's subject
+as a contained Patient that is no AU Core Patient),
+and where a finding of an extension's own profile is
 located (`ext-*`: a value outside its set or of a type the extension does not
 allow, at the top and in a nested extension).
 `manifest.json` records an expected verdict and reason for each fixture. The
@@ -42,8 +47,11 @@ ordered; each record in `evidence.json` carries the one it was given
 (`oracle_signature`). Such a difference counts as `reviewed`, not as a
 failure, only while all three still match: an edited fixture, a different
 oracle answer or a different pod verdict makes the review stale and fails the
-run, and so does a review of a probe whose verdicts now agree. None is
-recorded today (`conformance/test_probes.py` holds the mechanism). Use
+run, and so does a review of a probe whose verdicts now agree. One is
+recorded today, `resolve-heartrate-contained-bare-patient`: the oracle holds
+a contained target to its `targetProfile` by conformance, the pod by type
+(docs/scope.md, Reference target types; `conformance/test_probes.py` holds
+the mechanism). Use
 `--output /tmp/probe-evidence.json` to preserve the checked-in snapshot, or
 `--oracle-only` to establish reference verdicts without running the local engine.
 

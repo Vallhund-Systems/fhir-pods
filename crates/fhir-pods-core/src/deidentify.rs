@@ -1075,7 +1075,7 @@ pub fn deidentify(input: &[u8], policy: &Policy, validator: &Validator) -> Resul
         walker.walk_object(kvs, rt, rt);
     }
     let resource = root.to_json();
-    let validation = validator.validate(resource.as_bytes());
+    let validation = validator.validate_unstored(resource.as_bytes(), &crate::terminology::Bundled);
     let remaining = check(resource.as_bytes());
     Ok(Deidentified { resource, applied: walker.applied, validation, remaining, residual: walker.residual })
 }

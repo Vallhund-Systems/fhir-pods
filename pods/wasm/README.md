@@ -10,7 +10,7 @@ JS  ──operation inputs──►  JS wrapper  ──C ABI──►  Rust comp
     ◄──output + findings──            ◄─────────         (wasm32)
 ```
 
-The wrapper uses `pod_alloc` / `pod_free` and the shared ABI 14 entrypoints.
+The wrapper uses `pod_alloc` / `pod_free` and the shared ABI 15 entrypoints.
 The module carries 1,147 compiled profiles from the pinned IGs and R4
 extension/base definitions, 126 bundled value sets, base code-system
 membership tables, FHIRPath, transformation and assembly engines, and HL7 v2
@@ -331,6 +331,37 @@ it means (an unknown member, a value no option takes, or a member given
 twice) returns `false` and leaves the options already in force: a typo in a
 strictness setting must never read as "off". Full semantics:
 [docs/scope.md](../../docs/scope.md#host-options).
+
+### Referenced resources — the host's resource store
+
+`resolve()` and the reference-target check find a target that is
+contained, or an entry of the Bundle being validated. A resource validated
+alone, naming one the host holds elsewhere, finds it once the host stores it:
+
+```js
+pod.loadResource(JSON.stringify(patient)); // true; or a Bundle: every entry resource, under its fullUrl
+pod.validate(observation);                 // its subject resolves to the stored Patient
+pod.loadResource("");                      // clear the store
+```
+
+A stored resource is found by the rules a Bundle entry is: its `fullUrl`;
+`Type/id` against a `fullUrl` ending so or the resource's own type and id;
+`/_history/version` selecting `meta.versionId`; the first match in load
+order, so an unversioned reference to a resource stored in two versions finds
+the one loaded first. Contained resources come first, then the Bundle being
+validated, then the store. A stored target is held to the element's
+`targetProfile`s by conformance and to its base target types, as a Bundle
+entry is. A reference is looked up when it is written in the validated
+resource or in a stored resource it reaches. An entry loaded under a
+`fullUrl` is identified by it alone, and a second load of that `fullUrl`
+replaces it; one without is identified by its `Type/id` and
+`meta.versionId` (or none) and replaces only another without a `fullUrl`.
+JSON that is not a resource or a Bundle of resources (an `entry` that is not
+an array of objects included) returns `false` and leaves the store as it was.
+Validation reads the store; lower, lift, export, document, audit, v2 and
+deidentify do not. The pod never fetches: the host retrieves what it stores,
+with its own authorisation and consent. A reference that resolves to nothing
+is the empty collection, as the reference validator evaluates it offline.
 
 ### Terminology
 

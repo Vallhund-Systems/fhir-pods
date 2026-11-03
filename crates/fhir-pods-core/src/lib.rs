@@ -141,16 +141,21 @@ fn validate_bytes_impl(
     tx: &dyn terminology::TerminologyProvider,
     cache: Option<&Validator>,
 ) -> Validation {
-    validate_bytes_in(input, tx, cache, &[])
+    validate_bytes_in(input, tx, cache, &[], true)
 }
 
 /// [`validate_bytes_impl`] with Questionnaires beyond the validator's own —
-/// what a host loaded into a shared store (the C ABI's).
+/// what a host loaded into a shared store (the C ABI's). `stored`: whether
+/// references reach the validator's resource store
+/// ([`Validator::load_resource`]); the operations that validate their own
+/// output (lower, lift, export, documents, audit, v2, de-identification) do
+/// not read it.
 fn validate_bytes_in(
     input: &[u8],
     tx: &dyn terminology::TerminologyProvider,
     cache: Option<&Validator>,
     extra: &[questionnaire::Questionnaire],
+    stored: bool,
 ) -> Validation {
     // The scanner's contract, kept: a resource is a top-level object.
     let first = input.iter().position(|b| !matches!(b, b' ' | b'\t' | b'\n' | b'\r')).unwrap_or(input.len());
@@ -226,12 +231,44 @@ fn validate_bytes_in(
     let bundle = (rt == "Bundle").then_some(&doc);
     if let Some(b) = bundle {
         engine::check_document(b, &mut report);
-        engine::check_reference_targets_base(b, &mut report);
     }
     let defaults = cache.map(|v| v.defaults.as_slice()).unwrap_or(&[]);
     // one memo for the whole document: entries indexed once, each target's
-    // conformance to each profile remembered
-    let memo = engine::Memo::new();
+    // conformance to each profile remembered; of the host's resource store,
+    // only the stored resources a string in this input could name (and,
+    // transitively, a string in one of those) are parsed, once for the call;
+    // none when nothing in the input names one
+    let reached = match cache.filter(|_| stored) {
+        Some(v) if !v.resources.is_empty() => v.resources.reachable(parsed.value()),
+        _ => Vec::new(),
+    };
+    let reached_parsed: Vec<Option<document::Parsed<'_>>> =
+        reached.iter().map(|e| document::Parsed::parse(e.json.as_bytes()).ok()).collect();
+    let store_entries = reached
+        .iter()
+        .zip(&reached_parsed)
+        .filter_map(|(e, p)| {
+            let p = p.as_ref()?;
+            Some((
+                e.full_url.clone().unwrap_or_default(),
+                e.resource_type.clone(),
+                e.id.clone().unwrap_or_default(),
+                e.version.clone().unwrap_or_default(),
+                p.doc(),
+            ))
+        })
+        .collect();
+    let memo = engine::Memo::with_store(store_entries);
+    // the base's reference targets: a Bundle's entries against the entries
+    // (then the store), a resource alone against the store
+    match bundle {
+        Some(b) => engine::check_reference_targets_base(b, memo.stored(), &mut report),
+        None => {
+            if let Some(store) = memo.stored() {
+                engine::check_reference_targets_stored(&doc, store, &mut report);
+            }
+        }
+    }
     let profiles = validate_resource(rt, &doc, "", tx, cache, bundle, defaults, &memo, &mut report);
     // a QuestionnaireResponse against its Questionnaire (a contained one, a
     // bundle entry, or one loaded into the validator); a Questionnaire's own
@@ -358,12 +395,13 @@ fn validate_resource<D: Document>(
     if profiles.is_empty() {
         // the base's own rules for a domain resource: dom-3 (contained
         // resources referenced) and dom-6 (narrative); dom-2/4/5 are in the walk
+        let store = memo.stored();
         if rt == "Bundle" {
-            issues.extend(engine::bundle_invariants(doc, cache, bundle).issues);
+            issues.extend(engine::bundle_invariants(doc, cache, bundle, store).issues);
         } else if !matches!(rt, "Binary" | "Parameters") {
-            issues.extend(engine::domain_invariants(doc, rt, cache, bundle).issues);
+            issues.extend(engine::domain_invariants(doc, rt, cache, bundle, store).issues);
             // and the resource type's own (org-1, pat-1, cmp-1 …)
-            issues.extend(engine::resource_invariants(doc, rt, cache, bundle).issues);
+            issues.extend(engine::resource_invariants(doc, rt, cache, bundle, store).issues);
         }
     }
     for profile in &profiles {
@@ -656,21 +694,27 @@ pub mod document;
 /// A QuestionnaireResponse against its Questionnaire.
 pub mod questionnaire;
 
+/// The host's resource store (`Validator::load_resource`).
+mod store;
+
 pub mod compiled;
 
 /// Shared context for the compliance runtime's operations, retaining the
 /// `Validator` API name. Parses the registry's invariant expressions once for
 /// reuse by validation, lift/lower, de-identification, documents, audit, and v2.
 /// The free [`validate_bytes`] / [`validate_bytes_with`] functions parse
-/// invariant expressions on each call. `Clone` copies the parsed
-/// expressions (a host that holds one behind a lock clones it to load a
-/// Questionnaire into a fresh, consistent one).
+/// invariant expressions on each call. `Clone` shares the parsed
+/// expressions and the stored resources' content (a host that holds one
+/// behind a lock clones it to load a Questionnaire or a resource into a
+/// fresh, consistent one).
 #[derive(Clone)]
 pub struct Validator {
     /// Parsed ASTs keyed by the expression's `'static` address — the registry
     /// shares expression strings, so this is small and the lookup is a binary
     /// search on an integer.
-    invariants: Vec<(usize, Option<path::Expr>)>,
+    /// Shared, so a clone (a host loading a form, a resource or options into
+    /// a fresh context) does not copy them.
+    invariants: alloc::sync::Arc<Vec<(usize, Option<path::Expr>)>>,
     /// Profiles applied to resources that declare none, per resource type —
     /// a jurisdiction's "this is what a Patient means here". Empty by default:
     /// the spec's behaviour, and the reference validator's.
@@ -682,6 +726,9 @@ pub struct Validator {
     /// The host's strictness options; [`Default`] is the reference
     /// validator's own behaviour.
     options: options::Options,
+    /// Resources the host loaded ([`Validator::load_resource`]) for
+    /// `resolve()` and the reference-target check to find.
+    resources: store::ResourceStore,
 }
 
 impl Default for Validator {
@@ -721,10 +768,13 @@ impl Validator {
         keys.sort_unstable_by_key(|k| k.0);
         keys.dedup_by_key(|k| k.0);
         Self {
-            invariants: keys.into_iter().map(|(k, key, e)| (k, path::parse_invariant(key, e).ok())).collect(),
+            invariants: alloc::sync::Arc::new(
+                keys.into_iter().map(|(k, key, e)| (k, path::parse_invariant(key, e).ok())).collect(),
+            ),
             defaults: Vec::new(),
             questionnaires: Vec::new(),
             options: options::Options::default(),
+            resources: store::ResourceStore::default(),
         }
     }
 
@@ -771,6 +821,49 @@ impl Validator {
         self.questionnaires.clear();
     }
 
+    /// Load a resource (JSON) — or every entry resource of a Bundle, each
+    /// under its `fullUrl` — into this validator's resource store, for every
+    /// validation after it: a reference that names no contained resource and
+    /// no entry of the document Bundle is looked up there, by the rules a
+    /// Bundle entry is (its `fullUrl`; `Type/id` against a `fullUrl` ending
+    /// so or the resource's type and id; `/_history/version` selecting
+    /// `meta.versionId`), the first match in load order — so an unversioned
+    /// reference to a resource stored in two versions finds the one loaded
+    /// first. `resolve()` finds a stored resource, and a stored target is
+    /// held to the element's `targetProfile`s by conformance and to its base
+    /// target types, as a Bundle entry is. A reference is looked up when it
+    /// is written in the validated resource or in a stored resource it
+    /// reaches (only those stored resources are parsed for a validation).
+    /// Returns whether the bytes were taken: `false` (the store unchanged)
+    /// when they are not a resource or a Bundle of resources, a Bundle whose
+    /// `entry` is not an array of objects included. An entry loaded under a
+    /// `fullUrl` is identified by it alone, and a second load of that
+    /// `fullUrl` replaces it; one without is identified by its `Type/id` and
+    /// `meta.versionId` (or none) and replaces only another without a
+    /// `fullUrl`. Nothing is fetched: the host retrieves what it stores.
+    /// Lower, lift, export, documents, audit, v2 and de-identification do
+    /// not read the store.
+    pub fn load_resource(&mut self, bytes: &[u8]) -> bool {
+        self.resources.load(bytes)
+    }
+
+    /// [`load_resource`](Self::load_resource), builder-style; bytes the
+    /// loader refuses are ignored.
+    pub fn with_resource(mut self, bytes: &[u8]) -> Self {
+        self.load_resource(bytes);
+        self
+    }
+
+    /// Forget every stored resource.
+    pub fn clear_resources(&mut self) {
+        self.resources.clear();
+    }
+
+    /// How many resources the store holds.
+    pub fn resource_count(&self) -> usize {
+        self.resources.len()
+    }
+
     /// Unknown URLs are ignored: nothing is ever guessed.
     pub fn with_default_profile(mut self, url: &str) -> Self {
         if let Some(p) = crate::REGISTRY.iter().find(|p| p.url == url) {
@@ -807,7 +900,13 @@ impl Validator {
         tx: &dyn terminology::TerminologyProvider,
         questionnaires: &[questionnaire::Questionnaire],
     ) -> Validation {
-        validate_bytes_in(input, tx, Some(self), questionnaires)
+        validate_bytes_in(input, tx, Some(self), questionnaires, true)
+    }
+
+    /// [`validate_with`](Self::validate_with) without the resource store:
+    /// what an operation validating its own output uses.
+    pub(crate) fn validate_unstored(&self, input: &[u8], tx: &dyn terminology::TerminologyProvider) -> Validation {
+        validate_bytes_in(input, tx, Some(self), &[], false)
     }
 
     /// Build a conformant resource for the profile at `url` from its variable

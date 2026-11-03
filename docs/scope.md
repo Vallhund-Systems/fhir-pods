@@ -79,7 +79,7 @@ the current regression lanes track individual cases and evidence hashes.
 | **Best-practice recommendations** | 82 + 12 | "all observations should have a performer" (`obs-…` best practice), `dom-6` narrative | `dom-6` we evaluate as a warning (it is an ordinary invariant). The performer recommendation is validator policy, not a profile constraint; not emitted. |
 | **Multiple matching profiles** | 32 | The validator had to pick among candidate profiles (its own warning) | A resource that declares several profiles is validated against **every** one we have compiled (findings shared by two profiles are reported once; the report carries `profiles`). The oracle's warning here is about its own choice among *implicit* candidates, not declared ones. |
 | **Deprecation / advisories** | 5 + 2 | Deprecated extensions and concepts, "UCUM annotations like {T-Score} can be misleading" | Advisory, not conformance; not emitted. |
-| **Reference target types** | (none in corpus) | `subject` must reference a Patient | Enforced as the reference validator enforces it (0.15.0): a target it can reach — a bundle entry, a contained resource — is held to the element's `targetProfile`s (a bundle entry by conformance, "Unable to find a profile match for … among choices"; a `#contained` resource by type only, as the oracle judges it). A `Patient/x` nobody can resolve is not judged by either side (`heartrate-subject-wrong-type` expects *valid* as a guard). |
+| **Reference target types** | (none in corpus) | `subject` must reference a Patient | Enforced as the reference validator enforces it (0.15.0): a target it can reach — a bundle entry, a contained resource — is held to the element's `targetProfile`s (a bundle entry by conformance, "Unable to find a profile match for … among choices"; a `#contained` resource by type only). A `Patient/x` nobody can resolve is not judged by either side (`heartrate-subject-wrong-type` expects *valid* as a guard). Since 0.29.0 a resource the host stored (`fhir_pods_resource_load`, `loadResource`) is in reach too, after the contained resources and the bundle, and is held as a bundle entry is — to the `targetProfile`s by conformance, and an unprofiled resource's references to its base target types ("Invalid Resource target type"); the store holds only what the host gives it and nothing is fetched. **Lenient, in general: a contained target.** The oracle holds a `#contained` target to conformance under any `targetProfile` that names a profile, not by type alone as the 0.15.0 corpus suggested — measured at 0.29.0: AU Core heart rate, US Core heart rate and US Core Provenance each with a contained Patient that has only an id are invalid there ("Unable to find a profile match for #p1 among choices: …"), valid in the pod; a contained Patient that conforms, with no `meta.profile`, is valid on both sides. The pod judges a contained target by type only, so the verdict moves. Recorded as the reviewed probe difference `resolve-heartrate-contained-bare-patient` and triaged in the reasons lane (`resolve-provenance-contained-practitioner`); not fixed in 0.29.0. |
 | **Default profiles** | — | An undeclared profile means the base resource | Same: no profile claimed; the base resource's own rules (shape, its required elements, one key per choice, `dom-3` / `dom-6`) still apply. A jurisdiction default is opt-in (`Validator::with_default_profile`). |
 | **Attachment fetching** | 1 | "Attachment content cannot be checked … error accessing <url>" | Never: a library does no I/O. |
 | **A coding with no system, against a required binding** | probed (0.22.1, 0.28.0) | One coding of a required `CodeableConcept` with a code and no system: where the set's compose is one include listing its concepts the oracle infers the system and decides by the listed codes (a listed code valid, with a "Coding has no system" warning; any other refused) — `questionnaireresponse-mode`, `au-timezone`, IPS EDD methods (listed LOINC codes); under any other compose (a whole code system, two includes even of one system, a filter, an expansion alone) it refuses the code, listed or not: `Condition.clinicalStatus` `{"code": "active"}`, "None of the codings provided are in the value set … (codes = null#active)". Any coding decides (a19). A standalone required-bound `Coding` with no system (AU Base `medication-type`, US Core race `ombCategory`), extensible and preferred concepts: a warning only, member or not | **Applied (0.28.0)** for the sets the pod bundles (the 35 of one listed include decided by their listed codes, every other refusing) and the base definitions' and profiles' bindings alike (`binding.not-member`); a standalone `Coding` with no system is not judged against its required set; a slice discriminator still places one by its code (BALP `AuditEvent.subtype`); a bare `code` element is untouched. **Lenient, declared:** under a set the pod does not hold, a code-only coding is "not checked" (a warning) — the oracle refuses a non-member under IPS EDD methods (one listed LOINC include) and any code-only coding under US Core DocumentReference Type (two includes; 4 mutation files, triaged); under a host's terminology — a table it loads, or a callback it gives (the C ABI's `TxCallback`, the Java provider, the wasm `env.fhir_pods_host_tx` import) — a code-only coding is asked with an empty system: an answer of not a member (a table: the code is held under no system) refuses it; a member is "not checked" (a host answers by members, not by the compose that would place the code). The warning says which: under a table that holds the set, "a code with no system cannot be placed in … : the terminology holds its members, not its compose"; under a callback, which the core never asks whether it holds a set, the general "no bundled terminology for … not checked" (rule id `binding.unknown` either way). A Rust `TerminologyProvider` that does not override `knows_set` holds a set by the default answer (`validate_code(set, "", "")` is not unknown), so one that answers an empty code "not a member" gets the table's wording. Measured by the mutation lane's `systemless` class, `conformance/coded-answers/outside-*` and synthetic compose shapes (0.28.0 review evidence). |
@@ -591,9 +591,30 @@ an export mapping, the way `uk`/`ca`/`nz` came in 0.13.0.
 
 - FHIRPath outside the supported core: `memberOf`, equivalence `~`,
   decimal arithmetic. (`resolve()` resolves inside the resource and its
-  bundle — `#id`, `fullUrl`, `Type/id` — and string concatenation `&` is
-  supported, since 0.5.0; `htmlChecks()` since 0.20.1 — the narrative's
-  XHTML as the reference validator holds it, every rule probed: its
+  bundle — `#id`, `fullUrl`, `Type/id` — since 0.5.0, and in the host's
+  resource store since 0.29.0 (`fhir_pods_resource_load`: one resource, or
+  a Bundle's entry resources under their `fullUrl`s, searched by the rules
+  a bundle entry is, after the contained resources and the bundle, the
+  first match in load order; the store is read by validation, not by lower,
+  lift, export, document assembly, audit, v2 or de-identification). A
+  reference is looked up in the store when it is written in the validated
+  resource or in a stored resource it reaches — only those are parsed — so
+  a reference an expression builds from parts (`'Patient/' & id`) does not
+  reach the store; no registry invariant builds one. A reference that resolves to
+  nothing is the empty collection and the invariant is evaluated on it, as
+  validator_cli 6.10.4 does offline — probed for a relative `Type/id`, an
+  absolute `https://…/Type/id`, a `urn:uuid:` outside a Bundle, a
+  `/_history/` version, a `#local` naming no contained resource, and a
+  reference inside a Bundle that does not hold its target, each with an
+  invariant false on empty and one true on empty (`conformance/probes/`
+  `resolve-*`, and a synthetic profile's invariants, in the 0.29.0
+  changelog entry). No shape probed is skipped by the oracle, so none is
+  skipped here; until 0.29.0 every one but `#local` and the in-bundle
+  reference was skipped as not evaluated. `iif` on an empty input
+  evaluates its criterion on the empty collection, as the oracle does, so
+  `ctm-1`'s `iif(empty(), true, …)` is true there. String concatenation
+  `&` is supported, since 0.5.0; `htmlChecks()` since 0.20.1 — the
+  narrative's XHTML as the reference validator holds it, every rule probed: its
   element and attribute lists, the content model, XML's own entities (an
   HTML entity name is an invalid entity, any other a parse failure), the
   hyperlink rules on the decoded value, a `div` root with every element in
@@ -602,7 +623,7 @@ an export mapping, the way `uk`/`ca`/`nz` came in 0.13.0.
   reference validator reports them; the one difference left is the text
   of a Java exception it reports for an empty processing instruction.)
   Every one of the registry's invariant expressions parses and, on a typed
-  resource, evaluates — except `ctm-1`.
+  resource, evaluates (`ctm-1` too, since 0.29.0).
   Type tests and casts (`is`, `as`, `ofType`) resolve against the element's
   FHIR type — the profile's declared type for the invariant's own element,
   the element-type table for everything else (root `resourceType`, then key

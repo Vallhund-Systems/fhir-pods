@@ -503,7 +503,7 @@ pub fn lift_with(
     let inputs = Node::Object(inputs).to_json();
     // the verdict: the resource as it declares itself, and against this
     // profile when it does not declare it
-    let mut validation = validator.validate_with(resource, tx);
+    let mut validation = validator.validate_unstored(resource, tx);
     if !validation.profiles.contains(&profile.name) {
         let report = crate::engine::validate_at(profile, doc, doc, tx, 0, Some(validator), None);
         validation.profiles.push(profile.name);

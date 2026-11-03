@@ -8,7 +8,8 @@
 //! The entrypoints — those below in detail, and `fhir_pods_lift`,
 //! `fhir_pods_deidentify`, `fhir_pods_document`, `fhir_pods_audit`, `fhir_pods_export`,
 //! `fhir_pods_v2`, `fhir_pods_options`, `fhir_pods_terminology_load` /
-//! `_needs` alongside:
+//! `_needs`, `fhir_pods_questionnaire_load`, `fhir_pods_resource_load`
+//! alongside:
 //! - [`fhir_pods_validate`] — the `Validation` JSON (`valid`, `profile(s)`, `issues[]`).
 //! - [`fhir_pods_operation_outcome`] — the spec resource, for the wire.
 //! - [`fhir_pods_must_support`] — must-support gaps, information only.
@@ -40,7 +41,8 @@ use fhir_pods_core::{must_support_gaps, wire, Validator};
 
 /// One validator per process, built on first use (the registry's invariants
 /// parsed once, about half a millisecond) and replaced whole whenever the
-/// host loads a Questionnaire (`fhir_pods_questionnaire_load`): what a call
+/// host loads a Questionnaire (`fhir_pods_questionnaire_load`), a resource
+/// (`fhir_pods_resource_load`) or options (`fhir_pods_options`): what a call
 /// takes is a snapshot every operation of that call sees — validation,
 /// lowering, lifting, export, documents, v2 — so a response is held to a
 /// loaded form on every path, not only through `fhir_pods_validate`.
@@ -57,8 +59,8 @@ fn validator() -> std::sync::Arc<Validator> {
 /// Bump when the exported surface or the memory contract changes — a new
 /// entrypoint included, so a wrapper that calls it cannot be handed a module
 /// that lacks it (`docs/architecture.md`); the wrappers refuse a mismatched
-/// module. 14 added `fhir_pods_options`.
-pub const ABI_VERSION: u32 = 14;
+/// module. 14 added `fhir_pods_options`; 15 added `fhir_pods_resource_load`.
+pub const ABI_VERSION: u32 = 15;
 
 /// The compiled terminology table the host loaded (`fhir_pods_terminology_load`),
 /// consulted after the bundled sets and before any host callback.
@@ -639,6 +641,52 @@ pub unsafe extern "C" fn fhir_pods_questionnaire_load(ptr: *const u8, len: usize
     1
 }
 
+/// Load a resource (JSON) — or every entry resource of a Bundle, each under
+/// its `fullUrl` — into this module's resource store, for its lifetime: a
+/// reference that names no contained resource and no entry of the document
+/// Bundle is looked up there by the rules a Bundle entry is (its `fullUrl`;
+/// `Type/id` against a `fullUrl` ending so or the resource's type and id;
+/// `/_history/version` selecting `meta.versionId`), the first match in load
+/// order — so an unversioned reference to a resource stored in two versions
+/// finds the one loaded first. `resolve()` finds a stored resource, and a
+/// stored target is held to the element's `targetProfile`s by conformance
+/// and to its base target types, as a Bundle entry is; a reference is looked
+/// up when it is written in the validated resource or in a stored resource
+/// it reaches. Validation reads the store (`fhir_pods_validate`,
+/// `_operation_outcome`, `_terminology_needs` and their `_tx` variants);
+/// lower, lift, export, documents, audit, v2 and de-identification do not.
+/// Returns 1 when loaded, 0 when the bytes are not a resource or a Bundle of
+/// resources (a Bundle whose `entry` is not an array of objects included;
+/// the store is unchanged). An entry loaded under a `fullUrl` is identified
+/// by it alone (a second load of that `fullUrl` replaces it); one without is
+/// identified by its `Type/id` and `meta.versionId` (or none) and replaces
+/// only another without a `fullUrl`. Empty input clears the store. The
+/// runtime never fetches: the host retrieves what it stores, with its own
+/// authorisation and consent.
+#[no_mangle]
+pub unsafe extern "C" fn fhir_pods_resource_load(ptr: *const u8, len: usize) -> i32 {
+    let bytes = input(ptr, len);
+    // the whole replacement under the write lock, as a Questionnaire load is:
+    // calls in flight keep the snapshot they took. With none in flight the
+    // context is taken over rather than copied, so loading resources one at a
+    // time costs each one's own size, not the store's.
+    let mut slot = VALIDATOR.write().unwrap_or_else(|e| e.into_inner());
+    let mut next = match slot.take() {
+        Some(v) => std::sync::Arc::try_unwrap(v).unwrap_or_else(|shared| (*shared).clone()),
+        None => Validator::new(),
+    };
+    // a refused load changes nothing in the store (the core refuses before
+    // it writes), so the context goes back either way
+    let taken = if bytes.is_empty() {
+        next.clear_resources();
+        true
+    } else {
+        next.load_resource(bytes)
+    };
+    *slot = Some(std::sync::Arc::new(next));
+    i32::from(taken)
+}
+
 /// Set the host options for every call that follows — on this module, for
 /// its lifetime (`{"unknownProfile": "warning" | "error",
 /// "externalNarrativeLinks": "allow" | "refuse"}`; see
@@ -1175,6 +1223,16 @@ mod android {
     }
 
     #[no_mangle]
+    pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_resourceLoad<'l>(
+        mut env: JNIEnv<'l>,
+        _this: JObject<'l>,
+        json: JByteArray<'l>,
+    ) -> jint {
+        let r = bytes_in(&mut env, &json);
+        unsafe { fhir_pods_resource_load(r.as_ptr(), r.len()) as jint }
+    }
+
+    #[no_mangle]
     pub extern "system" fn Java_expo_modules_fhirpods_FhirPodsNative_options<'l>(
         mut env: JNIEnv<'l>,
         _this: JObject<'l>,
@@ -1638,6 +1696,40 @@ mod tests {
         unsafe {
             let ret = fhir_pods_validate(std::ptr::null(), 0);
             unpack(ret);
+        }
+    }
+
+    /// The host's resource store over the ABI: what `resolve()` finds where
+    /// a reference names no contained resource and no Bundle entry; a load
+    /// that is not a resource leaves it as it was; empty input clears it;
+    /// lowering does not read it. Process-wide state, so it runs alone.
+    #[test]
+    fn resource_store_over_the_abi() {
+        let _serial = TABLE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe {
+            let load = |json: &str| fhir_pods_resource_load(json.as_ptr(), json.len());
+            let team = r#"{"resourceType":"CareTeam","participant":[{"member":{"reference":"Patient/store-probe"},"onBehalfOf":{"display":"An organisation"}}]}"#;
+            assert_eq!(fhir_pods_resource_load(std::ptr::null(), 0), 1);
+            let r = call(fhir_pods_validate, team);
+            assert!(r.contains("\"valid\":true") && !r.contains("ctm-1"), "nothing resolves: empty, evaluated: {r}");
+            assert_eq!(load(r#"{"resourceType":"Patient","id":"store-probe"}"#), 1);
+            let r = call(fhir_pods_validate, team);
+            assert!(r.contains("\"valid\":false") && r.contains("ctm-1"), "{r}");
+            assert!(call(fhir_pods_operation_outcome, team).contains("ctm-1"));
+            for bad in ["[]", "nonsense", r#"{"resourceType":"Nope"}"#] {
+                assert_eq!(load(bad), 0, "{bad}");
+            }
+            assert!(call(fhir_pods_validate, team).contains("ctm-1"), "a refused load changes nothing");
+            // a Questionnaire load keeps the store (one validator, replaced whole)
+            assert_eq!(fhir_pods_questionnaire_load(std::ptr::null(), 0), 1);
+            assert!(call(fhir_pods_validate, team).contains("ctm-1"));
+            // lowering validates what it builds without the store
+            let hr = "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate";
+            let inputs = r#"{"status":"final","subject":"Patient/store-probe","effectiveDateTime":"2026-09-16","valueQuantity.value":72,"valueQuantity.unit":"/min"}"#;
+            let out = unpack(fhir_pods_lower(hr.as_ptr(), hr.len(), inputs.as_ptr(), inputs.len()));
+            assert!(out.contains("\"valid\":true"), "{out}");
+            assert_eq!(fhir_pods_resource_load(std::ptr::null(), 0), 1);
+            assert!(!call(fhir_pods_validate, team).contains("ctm-1"));
         }
     }
 

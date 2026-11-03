@@ -1,0 +1,14 @@
+{
+  "resourceType": "CareTeam",
+  "id": "resolve-careteam-relative",
+  "participant": [
+    {
+      "member": {
+        "reference": "Practitioner/r1"
+      },
+      "onBehalfOf": {
+        "display": "An organisation"
+      }
+    }
+  ]
+}

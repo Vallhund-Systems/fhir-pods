@@ -543,6 +543,11 @@ def main():
     probes_manifest = os.path.join(probes_dir, "manifest.json")
     if os.path.exists(probes_manifest):
         for p in json.load(open(probes_manifest)):
+            # a reviewed difference is a recorded disagreement, held to its
+            # review in the probe lane; the release gate wants agreement, so
+            # it is not one of its cases
+            if p.get("reviewed"):
+                continue
             d = json.load(open(os.path.join(probes_dir, p["file"])))
             emit("probe-" + p["file"][:-5], d, p.get("profile"), bool(p["expect"]), "probes")
 
