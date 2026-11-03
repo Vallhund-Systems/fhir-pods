@@ -198,7 +198,11 @@ context finding is located at `Patient.name.extension` where the oracle says
 `Patient.name[0]`; and the walk names a choice by its concrete key
 (`Patient.deceasedBoolean.extension[0]`, the oracle's
 `Patient.deceased.ofType(boolean).extension[0]`). Same rule
-ids; the only verdicts that move are the two domicile-code shapes above.
+ids; the only verdicts that move are a domicile-code of the wrong type on a
+contact's address and an information-source of the wrong type on
+`_deceasedBoolean`, both valid before and refused now, as the oracle refuses
+them (the domicile-code on a name was already invalid from its context
+error and gains the type error).
 
 **A held code with no system says why it was not checked.** Under a host's
 terminology table that holds the set, a `CodeableConcept` coding with a code
