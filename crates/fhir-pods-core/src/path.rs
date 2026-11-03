@@ -584,6 +584,8 @@ pub(crate) fn parse_constraint(src: &str) -> Result<Expr, Unsupported> {
 /// 6.10.4). Matching its verdicts means matching its rewrites — by key
 /// where it rewrites by key, by the exact published text otherwise.
 pub(crate) fn parse_invariant(key: &str, src: &str) -> Result<Expr, Unsupported> {
+    #[cfg(test)]
+    PARSES.with(|parses| parses.borrow_mut().push(String::from(key)));
     let fixed = match key {
         "opd-3" => {
             "targetProfile.exists() implies (type = 'Reference' or type = 'canonical' or type.memberOf('http://hl7.org/fhir/ValueSet/resource-types'))"
@@ -1708,6 +1710,13 @@ fn check_result<D: Document>(
         Ok(None) if !empty_passes => Verdict::Fail,
         Ok(_) => Verdict::Pass,
     }
+}
+
+// Every invariant key `parse_invariant` was asked to parse on this test
+// thread: how a test sees that a parsed expression is reused.
+#[cfg(test)]
+std::thread_local! {
+    pub(crate) static PARSES: core::cell::RefCell<Vec<String>> = const { core::cell::RefCell::new(Vec::new()) };
 }
 
 #[cfg(test)]

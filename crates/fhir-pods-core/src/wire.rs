@@ -64,18 +64,45 @@ pub fn operation_outcome(r: &Report) -> String {
 /// `OperationOutcome.issue.expression` — the location as the reference
 /// validator reports it, so issue-level diffs are apples to apples:
 /// * a **missing** element (`Required`) is located at its **parent** — there
-///   is no node to point at (`Patient.gender` missing → `Patient`);
+///   is no node to point at (`Patient.gender` missing → `Patient`), and so is
+///   an extension slice's cardinality (`…address[0].extension:suburb` → `…address[0]`);
 /// * our slice labels become FHIRPath: `value[x]:valueQuantity` →
-///   `value.ofType(Quantity)`, and a plain `:slice` label is dropped.
+///   `value.ofType(Quantity)`, and a plain `:slice` label is dropped;
+/// * an extension's value, named by its concrete key, is its `value[x]` of
+///   that type: `extension[0].valueQuantity` →
+///   `extension[0].value.ofType(Quantity)`, `extension[0].valueCode` →
+///   `extension[0].value.ofType(code)`.
 ///
 /// The ergonomic `Issue.path` keeps the precise, labelled location.
 pub fn expression(path: &str, code: IssueType) -> String {
-    let located =
-        if code == IssueType::Required { path.rsplit_once('.').map_or(path, |(parent, _)| parent) } else { path };
+    // an extension slice's cardinality is located at the element its
+    // extensions are on, as the reference validator locates it
+    // (`Patient.address[0].extension:suburb` exceeding max 1 → `Patient.address[0]`)
+    let slice_count = code == IssueType::Structure
+        && path
+            .rsplit('.')
+            .next()
+            .is_some_and(|last| last.starts_with("extension:") || last.starts_with("modifierExtension:"));
+    let located = if code == IssueType::Required || slice_count {
+        path.rsplit_once('.').map_or(path, |(parent, _)| parent)
+    } else {
+        path
+    };
     let mut out = String::with_capacity(located.len());
+    let mut previous = "";
     for (i, seg) in located.split('.').enumerate() {
         if i > 0 {
             out.push('.');
+        }
+        let under_extension = matches!(previous.split([':', '[']).next(), Some("extension" | "modifierExtension"));
+        previous = seg;
+        // an extension's value by its concrete key: `value.ofType(Quantity)`,
+        // a primitive by its type code (`value.ofType(string)`)
+        if let Some(c) = crate::typing::child("Extension", seg).filter(|c| under_extension && c.choice.is_some()) {
+            out.push_str("value.ofType(");
+            out.push_str(c.ty);
+            out.push(')');
+            continue;
         }
         match seg.split_once(':') {
             Some((name, key)) => match name.strip_suffix("[x]") {
@@ -83,7 +110,11 @@ pub fn expression(path: &str, code: IssueType) -> String {
                     out.push_str(base);
                     if let Some(ty) = key.strip_prefix(base) {
                         out.push_str(".ofType(");
-                        out.push_str(ty);
+                        // a primitive's type code is lower-case (`dateTime`)
+                        match crate::typing::child("Extension", &format!("value{ty}")) {
+                            Some(c) if c.choice.is_some() => out.push_str(c.ty),
+                            _ => out.push_str(ty),
+                        }
                         out.push(')');
                     }
                 }

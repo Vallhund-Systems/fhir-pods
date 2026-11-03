@@ -664,19 +664,6 @@ fn datatype_instances<D: Document>(path: &str, label: &str, ty: &str, doc: &D) -
     here
 }
 
-/// Does the shape walk hold an extension of `url` in `root` to its compiled
-/// profile? It does unless a profile the resource declares reaches that url
-/// through a slice (`document::profile_reaches`), which then checks it.
-fn walk_applies<D: Document>(root: &D, url: &str) -> bool {
-    !root.scalars("$this.meta.profile").iter().any(|declared| {
-        let declared = declared.split('|').next().unwrap_or(declared);
-        crate::REGISTRY
-            .iter()
-            .find(|p| p.url == declared)
-            .is_some_and(|p| crate::document::profile_reaches(p.slicings, url))
-    })
-}
-
 /// Every element a compiled profile holds to a base datatype profile its
 /// base definition does not name — the shipped registry's sparse table
 /// (`generated::DATATYPE_PROFILE_ELEMENTS`), then a host's and the test
@@ -767,6 +754,12 @@ fn check_datatype_profiles<D: Document>(
         }
         return;
     };
+    // each invariant parsed once for every instance — a validator holds them
+    // parsed already, as it holds the registry's
+    let parsed: Vec<Option<path::Expr>> = match scope.cache {
+        Some(_) => Vec::new(),
+        None => invariants.iter().map(|(key, _, _, expression)| path::parse_invariant(key, expression).ok()).collect(),
+    };
     for (at, inst) in instances {
         for element in *prohibited {
             let mut p = String::from("$this.");
@@ -783,10 +776,14 @@ fn check_datatype_profiles<D: Document>(
                 );
             }
         }
-        for (key, is_error, human, expression) in *invariants {
-            let verdict = match path::parse_invariant(key, expression) {
-                Ok(e) => path::check_constraint_in(&e, &inst, Some(ty), Some(scope.root), scope.bundle, scope.store),
-                Err(_) => Verdict::Unsupported,
+        for (n, (key, is_error, human, expression)) in invariants.iter().enumerate() {
+            let expr = match scope.cache {
+                Some(v) => v.expr(expression),
+                None => parsed[n].as_ref(),
+            };
+            let verdict = match expr {
+                Some(e) => path::check_constraint_in(e, &inst, Some(ty), Some(scope.root), scope.bundle, scope.store),
+                None => Verdict::Unsupported,
             };
             match verdict {
                 Verdict::Pass => {}
@@ -976,7 +973,8 @@ fn check_element<D: Document>(
                     }
                 }
                 if let Some(v) = verdict {
-                    report_membership(v, vs, CODINGS, label, r);
+                    let held = v == Membership::Unknown && held_code_only(tx, vs, &codings);
+                    report_membership_held(v, vs, CODINGS, label, held, r);
                 } else if codeable_concept {
                     // Coding objects exist, none with a code: no member of the
                     // set — where the set can be decided at all. Where it
@@ -1196,7 +1194,33 @@ pub(crate) fn no_coding_in_set(vs: &str) -> String {
     format!("None of the codings provided are in the value set '{vs}', and a coding from this value set is required")
 }
 
+/// What an undecided binding says. A set the provider holds (a host's
+/// terminology table) that still cannot decide a concept is one whose coding
+/// has a code and no system: the table holds the set's members, not the
+/// compose validator_cli 6.10.4 places such a code by
+/// (`TerminologyProvider::validate_code_only`), so the code is not checked;
+/// anything else undecided is a set no terminology here holds.
+pub(crate) fn not_checked(vs: &str, what: &str, held_code_only: bool) -> String {
+    if held_code_only {
+        format!(
+            "a code with no system cannot be placed in {vs}: the terminology holds its members, not its compose; '{what}' not checked"
+        )
+    } else {
+        format!("no bundled terminology for {vs}; '{what}' not checked")
+    }
+}
+
+/// Is an undecided concept one a provider holding the set leaves undecided
+/// for a coding with a code and no system ([`not_checked`])?
+pub(crate) fn held_code_only<D: Document>(tx: &dyn TerminologyProvider, vs: &str, codings: &[D]) -> bool {
+    codings.iter().any(|c| coding_of(c).is_some_and(|(system, _)| system.is_empty())) && tx.knows_set(vs)
+}
+
 fn report_membership(m: Membership, vs: &str, what: &str, label: &str, r: &mut Report) {
+    report_membership_held(m, vs, what, label, false, r)
+}
+
+fn report_membership_held(m: Membership, vs: &str, what: &str, label: &str, held_code_only: bool, r: &mut Report) {
     match m {
         Membership::Member => {}
         Membership::NotMember if what == CODINGS => {
@@ -1205,12 +1229,9 @@ fn report_membership(m: Membership, vs: &str, what: &str, label: &str, r: &mut R
         Membership::NotMember => {
             r.push(Severity::Error, IssueType::CodeInvalid, label, format!("'{what}' is not in the bound value set"))
         }
-        Membership::Unknown => r.push(
-            Severity::Warning,
-            IssueType::NotSupported,
-            label,
-            format!("no bundled terminology for {vs}; '{what}' not checked"),
-        ),
+        Membership::Unknown => {
+            r.push(Severity::Warning, IssueType::NotSupported, label, not_checked(vs, what, held_code_only))
+        }
     }
 }
 
@@ -1814,6 +1835,130 @@ pub(crate) fn check_document<D: Document>(bundle: &D, r: &mut Report) {
     }
 }
 
+/// Where a finding inside an extension is located, as validator_cli 6.10.4
+/// locates it: under the extension instance's own indexed `label`, `rel`
+/// being its path inside the extension (`value[x]`, `extension[1].value[x]`,
+/// `extension:period` for a slice's cardinality). The value is named by the
+/// instance's concrete key (`extension[0].valueQuantity`, which
+/// `wire::expression` writes `extension[0].value.ofType(Quantity)`); a nested
+/// extension by its index, the engine labelling each instance an extension
+/// slice matched (`extension[0].extension[1].valueString`). A value of a
+/// type the extension does not allow is located at the extension itself
+/// (the oracle's "The Extension '…' definition allows for the types [code]
+/// but found type string" at `extension[0]`); under a nested extension it is
+/// at the value (`extension[1].value.ofType(string)`), as there.
+pub(crate) fn extension_finding_path<D: Document>(label: &str, rel: &str, id: &str, ext: &D) -> String {
+    if rel.is_empty() || (rel == "value[x]" && id == "structure.choice") {
+        return String::from(label);
+    }
+    let mut out = String::from(label);
+    let mut node = Some(ext.clone());
+    for seg in rel.split('.') {
+        out.push('.');
+        let here = node.take();
+        let indexed = seg
+            .strip_suffix(']')
+            .and_then(|s| s.split_once('['))
+            .filter(|(key, _)| matches!(*key, "extension" | "modifierExtension"))
+            .and_then(|(key, i)| i.parse::<usize>().ok().map(|i| (key, i)));
+        match (indexed, here) {
+            (Some((key, i)), Some(n)) => {
+                node = n.child_instances_indexed(key).into_iter().find(|(j, _)| *j == Some(i)).map(|(_, c)| c);
+                out.push_str(seg);
+            }
+            (None, Some(n)) if seg == "value[x]" => match n.choice_keys("value").as_slice() {
+                [key] => out.push_str(key),
+                _ => out.push_str(seg),
+            },
+            _ => out.push_str(seg),
+        }
+    }
+    out
+}
+
+/// Is the element at `path` one per resource (or the instance itself,
+/// `$this`): no segment of it repeats, so its label needs no index
+/// (`Patient`, `Patient.birthDate`)? A path the typing table cannot follow
+/// is taken to repeat.
+fn single_parent(path: &str) -> bool {
+    let mut segs = path.split('.');
+    let Some(first) = segs.next() else { return false };
+    if first == "$this" {
+        return segs.next().is_none();
+    }
+    let Some(mut ctx) = crate::typing::known_type(first) else { return false };
+    for seg in segs {
+        if crate::typing::repeats(ctx, seg) {
+            return false;
+        }
+        match crate::typing::child(ctx, seg) {
+            Some(c) => ctx = c.ctx,
+            None => return false,
+        }
+    }
+    true
+}
+
+/// A slice's own checks on one instance it matched, reported under `at`:
+/// its sub-element constraints, the datatype profiles on its sub-elements
+/// (`profiled`, the sparse table's rows for the slice), its invariants, its
+/// profile, and the slicings declared inside it.
+#[allow(clippy::type_complexity)]
+fn check_slice_instance<D: Document>(
+    slice: &Slice,
+    at: &str,
+    profiled: &[&(&'static str, &'static str, &'static str, &'static str, &'static str)],
+    inst: &D,
+    scope: &Scope<'_, D>,
+    r: &mut Report,
+) {
+    let (root, tx, depth, cache) = (scope.root, scope.tx, scope.depth, scope.cache);
+    let mut label = String::from(at);
+    let base_len = label.len();
+    for el in slice.elements {
+        label.truncate(base_len);
+        label.push('.');
+        label.push_str(el.path.trim_start_matches("$this."));
+        check_element(el, &label, inst, tx, r);
+    }
+    label.truncate(base_len);
+    for &&(_, _, path, ty, url) in profiled {
+        label.truncate(base_len);
+        label.push('.');
+        label.push_str(path.trim_start_matches("$this."));
+        check_datatype_profiles(path, &label, ty, url, inst, scope, r);
+    }
+    for inv in slice.invariants {
+        label.truncate(base_len);
+        if let Some(rel) = inv.path.strip_prefix("$this.") {
+            label.push('.');
+            label.push_str(rel);
+        }
+        check_invariant(inv, &label, inst, scope, r);
+    }
+    label.truncate(base_len);
+    if let Some(url) = slice.profile.filter(|_| depth < MAX_INHERIT) {
+        if let Some(profile) = crate::REGISTRY
+            .iter()
+            .find(|p| p.url == url)
+            // inside an IG datatype profile an extension slice's
+            // profile is the shape walk's: no declared profile
+            // follows a datatype profile's slicings
+            // (`document::profile_covers`), so the walk holds
+            // every such instance at its own indexed path
+            .filter(|p| !(scope.datatype && p.resource_type == "Extension"))
+        {
+            let rep = validate_at(profile, inst, root, tx, depth + 1, cache, scope.bundle);
+            forward(rep, profile, &label, r);
+        }
+    }
+    // slicings declared inside this slice, on this instance
+    for nested in slice.slicings {
+        label.truncate(base_len);
+        check_slicing(nested, inst, scope, &label, r);
+    }
+}
+
 /// Re-label a profile's findings under the element they were checked at.
 fn forward(rep: Report, profile: &CompiledProfile, label: &str, r: &mut Report) {
     for issue in rep.issues {
@@ -1838,7 +1983,7 @@ fn check_slicing<D: Document>(slicing: &Slicing, doc: &D, scope: &Scope<'_, D>, 
     let Some((parent_path, last)) = slicing.path.rsplit_once('.') else {
         return;
     };
-    let (root, tx, depth, cache) = (scope.root, scope.tx, scope.depth, scope.cache);
+    let depth = scope.depth;
     // the reported path: absolute at the top, `Outer:slice.inner` when nested
     let base = if prefix.is_empty() {
         String::from(slicing.path)
@@ -1882,6 +2027,20 @@ fn check_slicing<D: Document>(slicing: &Slicing, doc: &D, scope: &Scope<'_, D>, 
             };
             matched += insts.len();
             let count = insts.len() as u32;
+            // an extension slicing on the resource or on the instance being
+            // checked: each instance it matched is reported at its own index
+            // (`Patient.extension[0]`, `extension[0].extension[1]`), as the
+            // reference validator reports it — the slice's label only for its
+            // cardinality. A slicing beneath a repeating element (a name's
+            // extensions) keeps the slice's label: the parent has no index here.
+            let indexed: Vec<Option<usize>> = if single_parent(parent_path)
+                && matches!(last, "extension" | "modifierExtension")
+                && type_key(slice).is_none()
+            {
+                insts.iter().map(|inst| all.iter().position(|a| a.same(inst))).collect()
+            } else {
+                Vec::new()
+            };
             // an undecided instance may be this slice's: its minimum is not
             // an error while that stands (the warning below says so)
             let could_be_here =
@@ -1908,44 +2067,29 @@ fn check_slicing<D: Document>(slicing: &Slicing, doc: &D, scope: &Scope<'_, D>, 
             // the sparse table's rows for this slice (none, almost always)
             let profiled: Vec<_> =
                 datatype_profile_elements().filter(|(p, s, ..)| *p == scope.profile && *s == label.as_str()).collect();
-            for inst in &insts {
-                for el in slice.elements {
-                    label.truncate(base_len);
-                    label.push('.');
-                    label.push_str(el.path.trim_start_matches("$this."));
-                    check_element(el, &label, inst, tx, r);
-                }
-                label.truncate(base_len);
-                for (_, _, path, ty, url) in &profiled {
-                    label.truncate(base_len);
-                    label.push('.');
-                    label.push_str(path.trim_start_matches("$this."));
-                    check_datatype_profiles(path, &label, ty, url, inst, scope, r);
-                }
-                for inv in slice.invariants {
-                    label.truncate(base_len);
-                    if let Some(rel) = inv.path.strip_prefix("$this.") {
-                        label.push('.');
-                        label.push_str(rel);
+            for (n, inst) in insts.iter().enumerate() {
+                if let Some(Some(i)) = indexed.get(n) {
+                    let parent = base.rsplit_once('.').map_or(base.as_str(), |(p, _)| p);
+                    let at = format!("{parent}.{last}[{i}]");
+                    // an extension inside an extension: a value of the wrong
+                    // type is located at the value there, not at the extension
+                    let nested = parent.rsplit('.').next().is_some_and(|s| {
+                        s == "Extension" || s.starts_with("extension") || s.starts_with("modifierExtension")
+                    });
+                    let mut sub = Report::default();
+                    check_slice_instance(slice, "Extension", &profiled, inst, scope, &mut sub);
+                    for issue in sub.issues {
+                        let rel = issue
+                            .path
+                            .strip_prefix("Extension")
+                            .map_or(issue.path.as_str(), |r| r.trim_start_matches('.'));
+                        let path = extension_finding_path(&at, rel, if nested { "" } else { issue.id }, inst);
+                        r.push(issue.severity, issue.code, &path, issue.message);
                     }
-                    check_invariant(inv, &label, inst, scope, r);
+                    continue;
                 }
+                check_slice_instance(slice, &label[..base_len], &profiled, inst, scope, r);
                 label.truncate(base_len);
-                if let Some(url) = slice.profile.filter(|_| depth < MAX_INHERIT) {
-                    if let Some(profile) = crate::REGISTRY
-                        .iter()
-                        .find(|p| p.url == url)
-                        .filter(|p| !(scope.datatype && p.resource_type == "Extension" && walk_applies(root, url)))
-                    {
-                        let rep = validate_at(profile, inst, root, tx, depth + 1, cache, scope.bundle);
-                        forward(rep, profile, &label, r);
-                    }
-                }
-                // slicings declared inside this slice, on this instance
-                for nested in slice.slicings {
-                    label.truncate(base_len);
-                    check_slicing(nested, inst, scope, &label, r);
-                }
                 // a sub-element that must conform to one of some profiles (a
                 // Bundle entry's resource): checked only when every one is
                 // compiled. A datatype profile there (a section's `code` held
@@ -2049,6 +2193,19 @@ mod datatype_profile_rows {
     use super::*;
 
     fn issues(json: &str, url: &str) -> Vec<(Severity, IssueType, String)> {
+        row_issues(json, "Patient.address", "Address", url, 0, None)
+    }
+
+    /// One row applied at `depth`, with or without a validator's parsed
+    /// invariants.
+    fn row_issues(
+        json: &str,
+        path: &str,
+        ty: &str,
+        url: &str,
+        depth: usize,
+        cache: Option<&crate::Validator>,
+    ) -> Vec<(Severity, IssueType, String)> {
         let parsed = crate::document::Parsed::parse(json.as_bytes()).expect("parses");
         let doc = parsed.doc();
         let scope = Scope {
@@ -2056,15 +2213,93 @@ mod datatype_profile_rows {
             bundle: None,
             store: None,
             tx: &Bundled,
-            depth: 0,
-            cache: None,
+            depth,
+            cache,
             evaluated: None,
             profile: "",
             datatype: false,
         };
         let mut r = Report::default();
-        check_datatype_profiles("Patient.address", "Patient.address", "Address", url, &doc, &scope, &mut r);
+        check_datatype_profiles(path, path, ty, url, &doc, &scope, &mut r);
         r.issues.into_iter().map(|i| (i.severity, i.code, i.path)).collect()
+    }
+
+    /// How many times `key` was parsed on this thread since the last call.
+    fn parses_of(key: &str) -> usize {
+        crate::path::PARSES.with(|p| {
+            let n = p.borrow().iter().filter(|k| k.as_str() == key).count();
+            p.borrow_mut().clear();
+            n
+        })
+    }
+
+    /// A base datatype profile's invariant is parsed once for every instance
+    /// of the element (none at all under a validator, which parsed it when
+    /// it was made), not once per instance: three `SimpleQuantity` values
+    /// with a comparator are three `sqty-1` findings from one parse.
+    #[test]
+    fn a_datatype_profile_invariant_is_parsed_once_for_every_instance() {
+        let url = "http://hl7.org/fhir/StructureDefinition/SimpleQuantity";
+        let q = r#"{"url":"https://example.org/q","valueQuantity":{"value":1,"comparator":"<"}}"#;
+        let json = format!(r#"{{"resourceType":"Patient","extension":[{q},{q},{q}]}}"#);
+        let sqty = |found: &[(Severity, IssueType, String)]| {
+            found
+                .iter()
+                .filter(|(_, code, _)| *code == IssueType::Invariant)
+                .map(|(.., at)| at.clone())
+                .collect::<Vec<_>>()
+        };
+        let expected: Vec<String> = (0..3).map(|i| format!("Patient.extension[{i}].valueQuantity")).collect();
+        parses_of("sqty-1");
+        let free = row_issues(&json, "Patient.extension.value[x]", "Quantity", url, 0, None);
+        assert_eq!(sqty(&free), expected);
+        assert_eq!(parses_of("sqty-1"), 1);
+        let validator = crate::Validator::new();
+        parses_of("sqty-1");
+        let held = row_issues(&json, "Patient.extension.value[x]", "Quantity", url, 0, Some(&validator));
+        assert_eq!(held, free);
+        assert_eq!(parses_of("sqty-1"), 0);
+    }
+
+    /// At the inherit depth cap a compiled IG datatype profile is not
+    /// followed, and that is said where the element is (`not-supported`),
+    /// never a silently weaker verdict.
+    #[test]
+    fn a_datatype_profile_past_the_depth_cap_is_said_where_the_element_is() {
+        let url = "http://hl7.org.nz/fhir/StructureDefinition/NzAddress";
+        let suburb = r#"{"url":"http://hl7.org.nz/fhir/StructureDefinition/suburb","valueString":"s"}"#;
+        let two = format!(r#"{{"resourceType":"Patient","address":[{{"city":"x","extension":[{suburb},{suburb}]}}]}}"#);
+        let below = row_issues(&two, "Patient.address", "Address", url, MAX_INHERIT - 1, None);
+        assert_eq!(
+            below,
+            [(Severity::Error, IssueType::Structure, String::from("Patient.address[0].extension:suburb"))]
+        );
+        let parsed = crate::document::Parsed::parse(two.as_bytes()).expect("parses");
+        let doc = parsed.doc();
+        let scope = Scope {
+            root: &doc,
+            bundle: None,
+            tx: &Bundled,
+            depth: MAX_INHERIT,
+            cache: None,
+            evaluated: None,
+            profile: "",
+            datatype: false,
+            store: None,
+        };
+        let mut r = Report::default();
+        check_datatype_profiles("Patient.address", "Patient.address", "Address", url, &doc, &scope, &mut r);
+        let capped: Vec<_> =
+            r.issues.iter().map(|i| (i.severity, i.code, i.path.as_str(), i.message.as_str())).collect();
+        assert_eq!(
+            capped,
+            [(
+                Severity::Information,
+                IssueType::NotSupported,
+                "Patient.address[0]",
+                "Patient.address[0] is held to the datatype profile http://hl7.org.nz/fhir/StructureDefinition/NzAddress, which was not checked: profiles nest deeper than the engine follows"
+            )]
+        );
     }
 
     /// A row the engine cannot apply — an any-of of IG profiles with no base

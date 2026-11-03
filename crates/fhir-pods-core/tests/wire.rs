@@ -74,6 +74,39 @@ fn wire_expression_rewrites_slice_labels_to_fhirpath() {
 }
 
 #[test]
+fn wire_expression_writes_an_extension_value_by_its_type() {
+    use fhir_pods_core::validate::IssueType;
+    use fhir_pods_core::wire::expression;
+    // validator_cli 6.10.4's spelling (conformance/probes/ext-*)
+    assert_eq!(
+        expression("MedicationDispense.extension[0].valueQuantity", IssueType::Structure),
+        "MedicationDispense.extension[0].value.ofType(Quantity)"
+    );
+    assert_eq!(
+        expression("Patient.name[0].extension[0].valueCode", IssueType::CodeInvalid),
+        "Patient.name[0].extension[0].value.ofType(code)"
+    );
+    assert_eq!(
+        expression("Patient.extension[0].extension[1].valueString", IssueType::Structure),
+        "Patient.extension[0].extension[1].value.ofType(string)"
+    );
+    assert_eq!(
+        expression("Patient.modifierExtension[0].valueDateTime", IssueType::Value),
+        "Patient.modifierExtension[0].value.ofType(dateTime)"
+    );
+    // a primitive type of a choice by its lower-case type code
+    assert_eq!(
+        expression("Patient.deceased[x]:deceasedDateTime.extension[0]", IssueType::Structure),
+        "Patient.deceased.ofType(dateTime).extension[0]"
+    );
+    // an extension slice's cardinality is located at the element its extensions are on
+    assert_eq!(expression("Patient.address[0].extension:suburb", IssueType::Structure), "Patient.address[0]");
+    assert_eq!(expression("Observation.category:VSCat", IssueType::Structure), "Observation.category");
+    // only an extension's value: an element's own concrete key is as before
+    assert_eq!(expression("Observation.valueQuantity", IssueType::Value), "Observation.valueQuantity");
+}
+
+#[test]
 fn f022_control_characters_are_escaped_never_replaced() {
     let mut out = String::new();
     fhir_pods_core::wire::escape(&mut out, "line one\nline two\ttab\rcr \u{1} \"q\" \\");

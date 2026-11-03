@@ -30,6 +30,9 @@
 // the thesis: a `std::fs` call here is a build error, not a code-review catch.
 #[macro_use]
 extern crate alloc;
+// tests only: a thread-local observes what the engine parses (`path::PARSES`)
+#[cfg(test)]
+extern crate std;
 
 use alloc::{string::String, vec::Vec};
 use compiled::CompiledProfile;
@@ -328,7 +331,11 @@ fn validate_bytes_in(
             .map_or(&doc, |(_, owner)| owner);
         let evaluated = engine::Evaluated::new(Some(&memo));
         for mut issue in engine::validate_at_with(profile, &ext, owner, tx, 0, cache, bundle, Some(&evaluated)).issues {
-            issue.path = format!("{label}.{}", issue.path);
+            let rel = match issue.path.strip_prefix(profile.resource_type) {
+                Some(rest) if rest.is_empty() || rest.starts_with('.') => rest.trim_start_matches('.'),
+                _ => issue.path.as_str(),
+            };
+            issue.path = engine::extension_finding_path(&label, rel, issue.id, &ext);
             if !report.issues.contains(&issue) {
                 report.issues.push(issue);
             }
@@ -756,6 +763,13 @@ impl Validator {
         }
         for (_, _, key, _, _, expr, _) in typemap::RESOURCE_INVARIANTS {
             keys.push((expr.as_ptr() as usize, key, expr));
+        }
+        // the base datatype profiles' own invariants (`sqty-1`), applied where
+        // a compiled profile holds an element to one (`check_datatype_profiles`)
+        for (_, _, _, _, invariants) in typemap::DATATYPE_PROFILES {
+            for (key, _, _, expr) in *invariants {
+                keys.push((expr.as_ptr() as usize, key, expr));
+            }
         }
         for p in crate::REGISTRY {
             let slice_invariants = p.slicings.iter().flat_map(|s| s.slices.iter()).flat_map(|sl| sl.invariants.iter());

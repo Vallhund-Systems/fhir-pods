@@ -1,6 +1,6 @@
 {
-  "recorded_at": "2026-11-02T23:50:32.139109+00:00",
-  "source_revision": "93afc9d8b13e9da810e2f1dab621abc366c53a8a",
+  "recorded_at": "2026-11-02T23:54:37.152059+00:00",
+  "source_revision": "4aab7897499a3d438a8a103bdcb526a972a12e6d",
   "source_dirty": true,
   "oracle_version": "6.10.4",
   "oracle_sha256": "1106b9d58f9e363e47bea7c4fc065841e5fc91fe9d062775c3bfdd212bd653cc",
@@ -27,8 +27,8 @@
   "note": "Terminology service disabled; the oracle may still resolve unknown profile URLs. One oracle run per guide (`ig`). Verdict parity only; a reviewed difference counts only while its input hash, oracle signature and local verdict match the review. Issues retained for inspection.",
   "counts": {
     "total": 97,
-    "agree": 97,
-    "reviewed": 0,
+    "agree": 96,
+    "reviewed": 1,
     "differ": 0
   },
   "probes": [
@@ -3227,14 +3227,14 @@
             "severity": "error",
             "code": "structure",
             "id": "structure.max",
-            "path": "MedicationDispense.extension[0].Extension.valueQuantity",
+            "path": "MedicationDispense.extension[0].valueQuantity",
             "message": "Extension.valueQuantity.comparator exceeds max 0 (found 1): Extension.valueQuantity is a SimpleQuantity (http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1), which prohibits Quantity.comparator"
           },
           {
             "severity": "error",
             "code": "invariant",
             "id": "inv.sqty-1",
-            "path": "MedicationDispense.extension[0].Extension.valueQuantity",
+            "path": "MedicationDispense.extension[0].valueQuantity",
             "message": "sqty-1: The comparator is not used on a SimpleQuantity (Extension.valueQuantity is a SimpleQuantity, http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)"
           }
         ]
@@ -3779,7 +3779,7 @@
             "severity": "error",
             "code": "structure",
             "id": "structure.choice",
-            "path": "Patient.address[0].extension[0].Extension.value[x]",
+            "path": "Patient.address[0].extension[0]",
             "message": "Extension.value[x] allows the types [string]; found valueCode"
           }
         ]
@@ -4424,13 +4424,6 @@
         "valid": false,
         "issues": [
           {
-            "severity": "error",
-            "code": "structure",
-            "id": "reference.target-profile",
-            "path": "Provenance.agent.who[0]",
-            "message": "Unable to find a profile match for #r1 among choices: http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitioner"
-          },
-          {
             "severity": "warning",
             "code": "invariant",
             "id": "inv.dom-6",
@@ -4460,7 +4453,13 @@
       "file": "resolve-heartrate-contained-bare-patient.json",
       "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate",
       "expect": false,
-      "reason": "A contained target is held to the element's targetProfile by conformance: AU Core heart rate's subject is an AU Core Patient, and a contained Patient with nothing but an id is none ('Unable to find a profile match for #p1 among choices: \u2026au-core-patient').",
+      "reason": "A contained target is held to the element's targetProfile by conformance in the oracle: AU Core heart rate's subject is an AU Core Patient, and a contained Patient with nothing but an id is none ('Unable to find a profile match for #p1 among choices: \u2026au-core-patient').",
+      "reviewed": {
+        "sha256": "492e90949d01b9f7124a0e6d69a0bbafc0466d292f5fb15d944edd2f4bc7274f",
+        "oracle": "5f9098c108db501478d9da1b18ee586895561ea8d6f786012041f280adde0546",
+        "local_valid": true,
+        "reason": "Lenient, declared in docs/scope.md (Reference target types): the pod judges a contained reference target by type only, under any profile; the oracle holds it to conformance under every targetProfile that names a profile. Not fixed in 0.29.0; its own task."
+      },
       "ig": "hl7.fhir.au.core#2.0.0",
       "sha256": "492e90949d01b9f7124a0e6d69a0bbafc0466d292f5fb15d944edd2f4bc7274f",
       "oracle_valid": false,
@@ -4526,88 +4525,6 @@
       "local": {
         "resourceType": "Observation",
         "profile": "AU Core Heart Rate",
-        "valid": false,
-        "issues": [
-          {
-            "severity": "error",
-            "code": "structure",
-            "id": "reference.target-profile",
-            "path": "Observation.subject[0]",
-            "message": "Unable to find a profile match for #p1 among choices: http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"
-          },
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Observation",
-            "message": "dom-6: A resource should have narrative for robust management"
-          },
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Observation.contained[0].Patient",
-            "message": "dom-6: A resource should have narrative for robust management"
-          }
-        ]
-      },
-      "status": "agree",
-      "agrees": true
-    },
-    {
-      "file": "contained-target-au-heartrate-conforming-patient.json",
-      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate",
-      "expect": true,
-      "reason": "A contained Patient that conforms to AU Core Patient, with no meta.profile: held by conformance, it matches.",
-      "ig": "hl7.fhir.au.core#2.0.0",
-      "sha256": "d55bc1eaa917eeb00b185c1908fed0a3c6476267e60f042d3b9d2b01e677b760",
-      "oracle_valid": true,
-      "oracle_signature": "f2e6221bac7112ea123f706c89500b263e72f0f9bc7068fb74bdbaf8c51fbc38",
-      "oracle_issues": [
-        {
-          "severity": "warning",
-          "code": "business-rule",
-          "text": "Unable to validate code '/min' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
-          "paths": [
-            "Observation.value.ofType(Quantity)"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "invariant",
-          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
-          "paths": [
-            "Observation"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "informational",
-          "text": "Validate Observation against the Heart rate profile (http://hl7.org/fhir/StructureDefinition/heartrate) which is required by the FHIR specification because the LOINC code 8867-4 was found",
-          "paths": [
-            "Observation"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "code-invalid",
-          "text": "Could not confirm that the codes provided are from the extensible value set http://hl7.org/fhir/ValueSet/observation-vitalsignresult|4.0.1 because there is no terminology service",
-          "paths": [
-            "Observation.code"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "invalid",
-          "text": "Best Practice Recommendation: In general, all observations should have a performer",
-          "paths": [
-            "Observation"
-          ]
-        }
-      ],
-      "local": {
-        "resourceType": "Observation",
-        "profile": "AU Core Heart Rate",
         "valid": true,
         "issues": [
           {
@@ -4626,710 +4543,54 @@
           }
         ]
       },
-      "status": "agree",
-      "agrees": true
+      "status": "reviewed",
+      "agrees": true,
+      "note": "Lenient, declared in docs/scope.md (Reference target types): the pod judges a contained reference target by type only, under any profile; the oracle holds it to conformance under every targetProfile that names a profile. Not fixed in 0.29.0; its own task."
     },
     {
-      "file": "contained-target-au-heartrate-conforming-patient-declares-au-base.json",
-      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate",
-      "expect": true,
-      "reason": "A contained Patient that conforms to AU Core Patient and declares only AU Base Patient: held to the targetProfile by conformance, not by what it declares; it matches.",
-      "ig": "hl7.fhir.au.core#2.0.0",
-      "sha256": "81d4ce41eb9e3061ab5062cc554d7cbcb14417c5687b153d54879b0c9457f9b1",
-      "oracle_valid": true,
-      "oracle_signature": "f2e6221bac7112ea123f706c89500b263e72f0f9bc7068fb74bdbaf8c51fbc38",
-      "oracle_issues": [
-        {
-          "severity": "warning",
-          "code": "business-rule",
-          "text": "Unable to validate code '/min' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
-          "paths": [
-            "Observation.value.ofType(Quantity)"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "invariant",
-          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
-          "paths": [
-            "Observation"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "informational",
-          "text": "Validate Observation against the Heart rate profile (http://hl7.org/fhir/StructureDefinition/heartrate) which is required by the FHIR specification because the LOINC code 8867-4 was found",
-          "paths": [
-            "Observation"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "code-invalid",
-          "text": "Could not confirm that the codes provided are from the extensible value set http://hl7.org/fhir/ValueSet/observation-vitalsignresult|4.0.1 because there is no terminology service",
-          "paths": [
-            "Observation.code"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "invalid",
-          "text": "Best Practice Recommendation: In general, all observations should have a performer",
-          "paths": [
-            "Observation"
-          ]
-        }
-      ],
-      "local": {
-        "resourceType": "Observation",
-        "profile": "AU Core Heart Rate",
-        "valid": true,
-        "issues": [
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Observation",
-            "message": "dom-6: A resource should have narrative for robust management"
-          },
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Observation.contained[0].Patient",
-            "message": "dom-6: A resource should have narrative for robust management"
-          }
-        ]
-      },
-      "status": "agree",
-      "agrees": true
-    },
-    {
-      "file": "contained-target-au-heartrate-bare-patient-declares-au-base.json",
-      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate",
-      "expect": false,
-      "reason": "A contained Patient with only an id that declares AU Base Patient: it conforms to what it declares, not to the targetProfile (AU Core Patient): 'Unable to find a profile match for #p1'.",
-      "ig": "hl7.fhir.au.core#2.0.0",
-      "sha256": "bbf4fe151e2c9fd1c9780da6936c668bac9a788c8de720b2bc3ed3831fb519d6",
-      "oracle_valid": false,
-      "oracle_signature": "5f9098c108db501478d9da1b18ee586895561ea8d6f786012041f280adde0546",
-      "oracle_issues": [
-        {
-          "severity": "warning",
-          "code": "business-rule",
-          "text": "Unable to validate code '/min' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
-          "paths": [
-            "Observation.value.ofType(Quantity)"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "invariant",
-          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
-          "paths": [
-            "Observation"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "informational",
-          "text": "Validate Observation against the Heart rate profile (http://hl7.org/fhir/StructureDefinition/heartrate) which is required by the FHIR specification because the LOINC code 8867-4 was found",
-          "paths": [
-            "Observation"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "code-invalid",
-          "text": "Could not confirm that the codes provided are from the extensible value set http://hl7.org/fhir/ValueSet/observation-vitalsignresult|4.0.1 because there is no terminology service",
-          "paths": [
-            "Observation.code"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "invalid",
-          "text": "Best Practice Recommendation: In general, all observations should have a performer",
-          "paths": [
-            "Observation"
-          ]
-        },
-        {
-          "severity": "error",
-          "code": "structure",
-          "text": "Unable to find a profile match for #p1 among choices: http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
-          "paths": [
-            "Observation.subject"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "structure",
-          "text": "Details for #p1 matching against profile http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0",
-          "paths": [
-            "Observation.subject"
-          ]
-        }
-      ],
-      "local": {
-        "resourceType": "Observation",
-        "profile": "AU Core Heart Rate",
-        "valid": false,
-        "issues": [
-          {
-            "severity": "error",
-            "code": "structure",
-            "id": "reference.target-profile",
-            "path": "Observation.subject[0]",
-            "message": "Unable to find a profile match for #p1 among choices: http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"
-          },
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Observation",
-            "message": "dom-6: A resource should have narrative for robust management"
-          },
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Observation.contained[0].Patient",
-            "message": "dom-6: A resource should have narrative for robust management"
-          }
-        ]
-      },
-      "status": "agree",
-      "agrees": true
-    },
-    {
-      "file": "contained-target-au-heartrate-bare-patient-declares-au-core.json",
-      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate",
-      "expect": false,
-      "reason": "A contained Patient with only an id that declares AU Core Patient: its declared profile fails at the contained resource, and the subject finds no profile match.",
-      "ig": "hl7.fhir.au.core#2.0.0",
-      "sha256": "e52762a51711fac1e6a232db26d5dad916eb0cdd7be836849aed627ca39ee046",
-      "oracle_valid": false,
-      "oracle_signature": "3f1807a70dc87467d76c3800159e93a015a27590ef139d9bdaaee99f352ea858",
-      "oracle_issues": [
-        {
-          "severity": "error",
-          "code": "structure",
-          "text": "Patient.identifier: minimum required = 1, but only found 0 (from http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0)",
-          "paths": [
-            "Observation.contained[0]/*Patient/p1*/"
-          ]
-        },
-        {
-          "severity": "error",
-          "code": "structure",
-          "text": "Patient.name: minimum required = 1, but only found 0 (from http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0)",
-          "paths": [
-            "Observation.contained[0]/*Patient/p1*/"
-          ]
-        },
-        {
-          "severity": "error",
-          "code": "structure",
-          "text": "Patient.gender: minimum required = 1, but only found 0 (from http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0)",
-          "paths": [
-            "Observation.contained[0]/*Patient/p1*/"
-          ]
-        },
-        {
-          "severity": "error",
-          "code": "structure",
-          "text": "Patient.birthDate: minimum required = 1, but only found 0 (from http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0)",
-          "paths": [
-            "Observation.contained[0]/*Patient/p1*/"
-          ]
-        },
-        {
-          "severity": "error",
-          "code": "invariant",
-          "text": "Constraint failed: au-core-pat-01: 'At least one patient identifier shall be valid, or if not available, the Data Absent Reason extension shall be present'",
-          "paths": [
-            "Observation.contained[0]/*Patient/p1*/"
-          ]
-        },
-        {
-          "severity": "error",
-          "code": "invariant",
-          "text": "Constraint failed: au-core-pat-02: 'At least one patient name shall have a family name, or if not available, the Data Absent Reason extension shall be present' (defined in http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient)",
-          "paths": [
-            "Observation.contained[0]/*Patient/p1*/"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "structure",
-          "text": "Details for #p1 matching against profile http://hl7.org/fhir/StructureDefinition/Patient|4.0.1",
-          "paths": [
-            "Observation.subject"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "business-rule",
-          "text": "Unable to validate code '/min' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
-          "paths": [
-            "Observation.value.ofType(Quantity)"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "invariant",
-          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
-          "paths": [
-            "Observation"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "informational",
-          "text": "Validate Observation against the Heart rate profile (http://hl7.org/fhir/StructureDefinition/heartrate) which is required by the FHIR specification because the LOINC code 8867-4 was found",
-          "paths": [
-            "Observation"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "code-invalid",
-          "text": "Could not confirm that the codes provided are from the extensible value set http://hl7.org/fhir/ValueSet/observation-vitalsignresult|4.0.1 because there is no terminology service",
-          "paths": [
-            "Observation.code"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "invalid",
-          "text": "Best Practice Recommendation: In general, all observations should have a performer",
-          "paths": [
-            "Observation"
-          ]
-        },
-        {
-          "severity": "error",
-          "code": "structure",
-          "text": "Unable to find a profile match for #p1 among choices: http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
-          "paths": [
-            "Observation.subject"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "structure",
-          "text": "Details for #p1 matching against profile http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0",
-          "paths": [
-            "Observation.subject"
-          ]
-        }
-      ],
-      "local": {
-        "resourceType": "Observation",
-        "profile": "AU Core Heart Rate",
-        "valid": false,
-        "issues": [
-          {
-            "severity": "error",
-            "code": "structure",
-            "id": "reference.target-profile",
-            "path": "Observation.subject[0]",
-            "message": "Unable to find a profile match for #p1 among choices: http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"
-          },
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Observation",
-            "message": "dom-6: A resource should have narrative for robust management"
-          },
-          {
-            "severity": "error",
-            "code": "required",
-            "id": "structure.required",
-            "path": "Observation.contained[0].Patient.birthDate",
-            "message": "Patient.birthDate is required (min 1, found 0)"
-          },
-          {
-            "severity": "error",
-            "code": "required",
-            "id": "structure.required",
-            "path": "Observation.contained[0].Patient.gender",
-            "message": "Patient.gender is required (min 1, found 0)"
-          },
-          {
-            "severity": "error",
-            "code": "required",
-            "id": "structure.required",
-            "path": "Observation.contained[0].Patient.identifier",
-            "message": "Patient.identifier is required (min 1, found 0)"
-          },
-          {
-            "severity": "error",
-            "code": "required",
-            "id": "structure.required",
-            "path": "Observation.contained[0].Patient.name",
-            "message": "Patient.name is required (min 1, found 0)"
-          },
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Observation.contained[0].Patient",
-            "message": "dom-6: A resource should have narrative for robust management"
-          },
-          {
-            "severity": "error",
-            "code": "invariant",
-            "id": "inv.au-core-pat-01",
-            "path": "Observation.contained[0].Patient",
-            "message": "au-core-pat-01: At least one patient identifier shall be valid, or if not available, the Data Absent Reason extension shall be present"
-          },
-          {
-            "severity": "error",
-            "code": "invariant",
-            "id": "inv.au-core-pat-02",
-            "path": "Observation.contained[0].Patient",
-            "message": "au-core-pat-02: At least one patient name shall have a family name, or if not available, the Data Absent Reason extension shall be present"
-          }
-        ]
-      },
-      "status": "agree",
-      "agrees": true
-    },
-    {
-      "file": "contained-target-au-heartrate-base-specimen.json",
-      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate",
-      "expect": true,
-      "reason": "Observation.specimen's targetProfile names the base Specimen only: a contained Specimen with only an id is held by type, and passes.",
-      "ig": "hl7.fhir.au.core#2.0.0",
-      "sha256": "009acfd8bde3baf11b0ecf9a8fb2fc5a65a9ed249e53c671007f0ecdd0d89a41",
-      "oracle_valid": true,
-      "oracle_signature": "f2e6221bac7112ea123f706c89500b263e72f0f9bc7068fb74bdbaf8c51fbc38",
-      "oracle_issues": [
-        {
-          "severity": "warning",
-          "code": "business-rule",
-          "text": "Unable to validate code '/min' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
-          "paths": [
-            "Observation.value.ofType(Quantity)"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "invariant",
-          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
-          "paths": [
-            "Observation"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "informational",
-          "text": "Validate Observation against the Heart rate profile (http://hl7.org/fhir/StructureDefinition/heartrate) which is required by the FHIR specification because the LOINC code 8867-4 was found",
-          "paths": [
-            "Observation"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "code-invalid",
-          "text": "Could not confirm that the codes provided are from the extensible value set http://hl7.org/fhir/ValueSet/observation-vitalsignresult|4.0.1 because there is no terminology service",
-          "paths": [
-            "Observation.code"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "invalid",
-          "text": "Best Practice Recommendation: In general, all observations should have a performer",
-          "paths": [
-            "Observation"
-          ]
-        }
-      ],
-      "local": {
-        "resourceType": "Observation",
-        "profile": "AU Core Heart Rate",
-        "valid": true,
-        "issues": [
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Observation",
-            "message": "dom-6: A resource should have narrative for robust management"
-          },
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Observation.contained[0].Specimen",
-            "message": "dom-6: A resource should have narrative for robust management"
-          }
-        ]
-      },
-      "status": "agree",
-      "agrees": true
-    },
-    {
-      "file": "contained-target-au-heartrate-specimen-wrong-type.json",
-      "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate",
-      "expect": false,
-      "reason": "A contained Patient where only a Specimen is allowed: the type is wrong ('Invalid Resource target type').",
-      "ig": "hl7.fhir.au.core#2.0.0",
-      "sha256": "40bd27347b810a10fa61a1fbf1c5d473733e9bfcda345732894ad5831a951c9c",
-      "oracle_valid": false,
-      "oracle_signature": "e4ea31ac6fa1d6afa3b101185130b21f96b2cda981717b8a7bac9bd9be49fd3d",
-      "oracle_issues": [
-        {
-          "severity": "warning",
-          "code": "business-rule",
-          "text": "Unable to validate code '/min' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
-          "paths": [
-            "Observation.value.ofType(Quantity)"
-          ]
-        },
-        {
-          "severity": "error",
-          "code": "structure",
-          "text": "Invalid Resource target type. Found Patient, but expected one of ([Specimen])",
-          "paths": [
-            "Observation.specimen"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "invariant",
-          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
-          "paths": [
-            "Observation"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "informational",
-          "text": "Validate Observation against the Heart rate profile (http://hl7.org/fhir/StructureDefinition/heartrate) which is required by the FHIR specification because the LOINC code 8867-4 was found",
-          "paths": [
-            "Observation"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "code-invalid",
-          "text": "Could not confirm that the codes provided are from the extensible value set http://hl7.org/fhir/ValueSet/observation-vitalsignresult|4.0.1 because there is no terminology service",
-          "paths": [
-            "Observation.code"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "invalid",
-          "text": "Best Practice Recommendation: In general, all observations should have a performer",
-          "paths": [
-            "Observation"
-          ]
-        }
-      ],
-      "local": {
-        "resourceType": "Observation",
-        "profile": "AU Core Heart Rate",
-        "valid": false,
-        "issues": [
-          {
-            "severity": "error",
-            "code": "structure",
-            "id": "reference.target-type",
-            "path": "Observation.specimen[0]",
-            "message": "Observation.specimen points at a Patient, not one of the types it allows (Specimen)"
-          },
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Observation",
-            "message": "dom-6: A resource should have narrative for robust management"
-          },
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Observation.contained[0].Patient",
-            "message": "dom-6: A resource should have narrative for robust management"
-          }
-        ]
-      },
-      "status": "agree",
-      "agrees": true
-    },
-    {
-      "file": "contained-target-base-observation-bare-patient.json",
-      "profile": null,
-      "expect": true,
-      "reason": "An unprofiled Observation whose subject is a contained Patient with only an id: the base targets are types, held by type.",
-      "ig": "hl7.fhir.au.core#2.0.0",
-      "sha256": "01d18ae77b889f295f5a653f8c8a947c5f0b22a12f6938cb5cd93f65be68e7bb",
-      "oracle_valid": true,
-      "oracle_signature": "f2e6221bac7112ea123f706c89500b263e72f0f9bc7068fb74bdbaf8c51fbc38",
-      "oracle_issues": [
-        {
-          "severity": "warning",
-          "code": "business-rule",
-          "text": "Unable to validate code '/min' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
-          "paths": [
-            "Observation.value.ofType(Quantity)"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "invariant",
-          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
-          "paths": [
-            "Observation"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "informational",
-          "text": "Validate Observation against the Heart rate profile (http://hl7.org/fhir/StructureDefinition/heartrate) which is required by the FHIR specification because the LOINC code 8867-4 was found",
-          "paths": [
-            "Observation"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "code-invalid",
-          "text": "Could not confirm that the codes provided are from the extensible value set http://hl7.org/fhir/ValueSet/observation-vitalsignresult|4.0.1 because there is no terminology service",
-          "paths": [
-            "Observation.code"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "invalid",
-          "text": "Best Practice Recommendation: In general, all observations should have a performer",
-          "paths": [
-            "Observation"
-          ]
-        }
-      ],
-      "local": {
-        "resourceType": "Observation",
-        "profile": "Observation Heart Rate Profile",
-        "valid": true,
-        "issues": [
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Observation",
-            "message": "dom-6: A resource should have narrative for robust management"
-          },
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Observation.contained[0].Patient",
-            "message": "dom-6: A resource should have narrative for robust management"
-          }
-        ]
-      },
-      "status": "agree",
-      "agrees": true
-    },
-    {
-      "file": "contained-target-base-observation-medication.json",
+      "file": "ext-concept-not-member.json",
       "profile": null,
       "expect": false,
-      "reason": "An unprofiled Observation whose subject is a contained Medication: not a type the subject allows.",
+      "reason": "An extension's CodeableConcept value outside its required set (questionnaireresponse-completionMode): validator_cli 6.10.4 locates it at QuestionnaireResponse.extension[0].value.ofType(CodeableConcept), as the pod now does (was extension[0].Extension.value[x]).",
       "ig": "hl7.fhir.au.core#2.0.0",
-      "sha256": "1e4bcb92e6ced4c5deae6f9206c048141a687440631a3bba15d6e7059507f57d",
+      "sha256": "fe2f9ea7584039fcd4f0a636efbf573beac08f536e8529bdae16bbf67fa6e6ef",
       "oracle_valid": false,
-      "oracle_signature": "99ace729e16e9267b3bb81b7de8b5d43afa985b61f2f0d3bfa5d793d8b0f85f9",
+      "oracle_signature": "3374a1865c999e402fe8000eca7f5b943d9572160f81e35f27b4d1b9f03c670f",
       "oracle_issues": [
         {
           "severity": "error",
-          "code": "structure",
-          "text": "Invalid Resource target type. Found Medication, but expected one of ([Group, Device, Patient, Location])",
-          "paths": [
-            "Observation.subject"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "business-rule",
-          "text": "Unable to validate code '/min' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
-          "paths": [
-            "Observation.value.ofType(Quantity)"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "invariant",
-          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
-          "paths": [
-            "Observation"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "informational",
-          "text": "Validate Observation against the Heart rate profile (http://hl7.org/fhir/StructureDefinition/heartrate) which is required by the FHIR specification because the LOINC code 8867-4 was found",
-          "paths": [
-            "Observation"
-          ]
-        },
-        {
-          "severity": "information",
           "code": "code-invalid",
-          "text": "Could not confirm that the codes provided are from the extensible value set http://hl7.org/fhir/ValueSet/observation-vitalsignresult|4.0.1 because there is no terminology service",
+          "text": "None of the codings provided are in the value set 'Questionnaire Response Mode' (http://hl7.org/fhir/ValueSet/questionnaireresponse-mode|5.4.0), and a coding from this value set is required) (codes = http://terminology.hl7.org/CodeSystem/v3-ParticipationMode#PHYSICAL)",
           "paths": [
-            "Observation.code"
+            "QuestionnaireResponse.extension[0].value.ofType(CodeableConcept)"
           ]
         },
         {
-          "severity": "error",
-          "code": "structure",
-          "text": "Invalid Resource target type. Found Medication, but expected one of ([Patient])",
+          "severity": "information",
+          "code": "required",
+          "text": "No questionnaire is identified, so no validation can be performed against the base questionnaire",
           "paths": [
-            "Observation.subject"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "invalid",
-          "text": "Best Practice Recommendation: In general, all observations should have a performer",
-          "paths": [
-            "Observation"
+            "QuestionnaireResponse"
           ]
         }
       ],
       "local": {
-        "resourceType": "Observation",
-        "profile": "Observation Heart Rate Profile",
+        "resourceType": "QuestionnaireResponse",
         "valid": false,
         "issues": [
           {
+            "severity": "information",
+            "code": "informational",
+            "id": "questionnaire.unresolved",
+            "path": "QuestionnaireResponse",
+            "message": "No questionnaire is identified, so no validation can be performed against the base questionnaire"
+          },
+          {
             "severity": "error",
-            "code": "structure",
-            "id": "reference.target-type",
-            "path": "Observation.subject[0]",
-            "message": "Observation.subject points at a Medication, not one of the types it allows (Patient)"
-          },
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Observation",
-            "message": "dom-6: A resource should have narrative for robust management"
-          },
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Observation.contained[0].Medication",
-            "message": "dom-6: A resource should have narrative for robust management"
+            "code": "code-invalid",
+            "id": "binding.not-member",
+            "path": "QuestionnaireResponse.extension[0].valueCodeableConcept",
+            "message": "None of the codings provided are in the value set 'http://hl7.org/fhir/ValueSet/questionnaireresponse-mode', and a coding from this value set is required"
           }
         ]
       },
@@ -5337,103 +4598,34 @@
       "agrees": true
     },
     {
-      "file": "contained-target-nested-bare-patient.json",
+      "file": "ext-value-wrong-type.json",
       "profile": null,
       "expect": false,
-      "reason": "A contained AU Core heart rate whose subject names its sibling, a contained Patient with only an id: held by conformance as at the top level ('Unable to find a profile match for #p1').",
+      "reason": "A data-absent-reason valued with a string where it allows a code: validator_cli 6.10.4 locates it at the extension, Patient.name[0].extension[0], as the pod now does.",
       "ig": "hl7.fhir.au.core#2.0.0",
-      "sha256": "31bc426b6fad4e960757cd2bc65ee4f40a33fc457f69208f64afcd48ccd5bec3",
+      "sha256": "8c2f88e50a4f7cd7570c3bb25e1d0e532234c8fe317bc2838242cf6fbb4662e9",
       "oracle_valid": false,
-      "oracle_signature": "be938f31c24e5e77b40f9837df86b1a28ef7971b6e340f1c41ab1cc933d6f195",
+      "oracle_signature": "8a7c0450dcba4ff9ffa53a36b279062fbb89e02ca2b5597ef75828cc0baf4291",
       "oracle_issues": [
-        {
-          "severity": "information",
-          "code": "informational",
-          "text": "Validate Observation against the Heart rate profile (http://hl7.org/fhir/StructureDefinition/heartrate) which is required by the FHIR specification because the LOINC code 8867-4 was found",
-          "paths": [
-            "List.contained[0]/*Observation/o1*/"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "code-invalid",
-          "text": "Could not confirm that the codes provided are from the extensible value set http://hl7.org/fhir/ValueSet/observation-vitalsignresult|4.0.1 because there is no terminology service",
-          "paths": [
-            "List.contained[0]/*Observation/o1*/.code"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "business-rule",
-          "text": "Unable to validate code '/min' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
-          "paths": [
-            "List.contained[0]/*Observation/o1*/.value.ofType(Quantity)"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "invalid",
-          "text": "Best Practice Recommendation: In general, all observations should have a performer",
-          "paths": [
-            "List.contained[0]/*Observation/o1*/"
-          ]
-        },
         {
           "severity": "error",
           "code": "structure",
-          "text": "Unable to find a profile match for #p1 among choices: http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+          "text": "The Extension 'http://hl7.org/fhir/StructureDefinition/data-absent-reason' definition allows for the types [code] but found type string",
           "paths": [
-            "List.contained[0]/*Observation/o1*/.subject"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "structure",
-          "text": "Details for #p1 matching against profile http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient|2.0.0",
-          "paths": [
-            "List.contained[0]/*Observation/o1*/.subject"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "invariant",
-          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
-          "paths": [
-            "List"
+            "Patient.name[0].extension[0]"
           ]
         }
       ],
       "local": {
-        "resourceType": "List",
+        "resourceType": "Patient",
         "valid": false,
         "issues": [
           {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "List",
-            "message": "dom-6: A resource should have narrative for robust management"
-          },
-          {
             "severity": "error",
             "code": "structure",
-            "id": "reference.target-profile",
-            "path": "List.contained[0].Observation.subject[0]",
-            "message": "Unable to find a profile match for #p1 among choices: http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"
-          },
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "List.contained[0].Observation",
-            "message": "dom-6: A resource should have narrative for robust management"
-          },
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "List.contained[1].Patient",
-            "message": "dom-6: A resource should have narrative for robust management"
+            "id": "structure.choice",
+            "path": "Patient.name[0].extension[0]",
+            "message": "Extension.value[x] allows the types [code]; found valueString"
           }
         ]
       },
@@ -5441,80 +4633,42 @@
       "agrees": true
     },
     {
-      "file": "contained-target-nested-conforming-patient.json",
+      "file": "ext-code-not-member.json",
       "profile": null,
-      "expect": true,
-      "reason": "A contained AU Core heart rate whose subject names its sibling, a conforming contained Patient: it matches.",
+      "expect": false,
+      "reason": "A data-absent-reason code outside its required set: validator_cli 6.10.4 locates it at Patient.name[0].extension[0].value.ofType(code), a primitive by its type code, as the pod now does.",
       "ig": "hl7.fhir.au.core#2.0.0",
-      "sha256": "b234c34d969463442519235f6f228f73ddd3337f9309a44d2fb39a8d874669ef",
-      "oracle_valid": true,
-      "oracle_signature": "f2e6221bac7112ea123f706c89500b263e72f0f9bc7068fb74bdbaf8c51fbc38",
+      "sha256": "4425517cb5a7afda3ff7627203afc0c44a2ea7108e8f7653957d9db7fbd89a71",
+      "oracle_valid": false,
+      "oracle_signature": "ca6ac42a4e344e8e0ac00d46663fb4b0c3260cafd86a43216d92c2cfb7c992ec",
       "oracle_issues": [
         {
-          "severity": "information",
-          "code": "informational",
-          "text": "Validate Observation against the Heart rate profile (http://hl7.org/fhir/StructureDefinition/heartrate) which is required by the FHIR specification because the LOINC code 8867-4 was found",
+          "severity": "error",
+          "code": "not-found",
+          "text": "The System URI could not be determined for the code 'zz-not-a-reason' in the ValueSet 'http://hl7.org/fhir/ValueSet/data-absent-reason|4.0.1'",
           "paths": [
-            "List.contained[0]/*Observation/o1*/"
+            "Patient.name[0].extension[0].value.ofType(code)"
           ]
         },
         {
-          "severity": "information",
+          "severity": "error",
           "code": "code-invalid",
-          "text": "Could not confirm that the codes provided are from the extensible value set http://hl7.org/fhir/ValueSet/observation-vitalsignresult|4.0.1 because there is no terminology service",
+          "text": "The value provided ('zz-not-a-reason') was not found in the value set 'DataAbsentReason' (http://hl7.org/fhir/ValueSet/data-absent-reason|4.0.1), and a code is required from this value set  (error message = The System URI could not be determined for the code 'zz-not-a-reason' in the ValueSet 'http://hl7.org/fhir/ValueSet/data-absent-reason|4.0.1'; The provided code '#zz-not-a-reason' was not found in the value set 'http://hl7.org/fhir/ValueSet/data-absent-reason|4.0.1')",
           "paths": [
-            "List.contained[0]/*Observation/o1*/.code"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "business-rule",
-          "text": "Unable to validate code '/min' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
-          "paths": [
-            "List.contained[0]/*Observation/o1*/.value.ofType(Quantity)"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "invalid",
-          "text": "Best Practice Recommendation: In general, all observations should have a performer",
-          "paths": [
-            "List.contained[0]/*Observation/o1*/"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "invariant",
-          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
-          "paths": [
-            "List"
+            "Patient.name[0].extension[0].value.ofType(code)"
           ]
         }
       ],
       "local": {
-        "resourceType": "List",
-        "valid": true,
+        "resourceType": "Patient",
+        "valid": false,
         "issues": [
           {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "List",
-            "message": "dom-6: A resource should have narrative for robust management"
-          },
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "List.contained[0].Observation",
-            "message": "dom-6: A resource should have narrative for robust management"
-          },
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "List.contained[1].Patient",
-            "message": "dom-6: A resource should have narrative for robust management"
+            "severity": "error",
+            "code": "code-invalid",
+            "id": "binding.not-member",
+            "path": "Patient.name[0].extension[0].valueCode",
+            "message": "'zz-not-a-reason' is not in the bound value set"
           }
         ]
       },
@@ -5522,117 +4676,34 @@
       "agrees": true
     },
     {
-      "file": "contained-target-us-heartrate-bare-patient.json",
-      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-heart-rate",
+      "file": "ext-nested-wrong-type.json",
+      "profile": null,
       "expect": false,
-      "reason": "US Core heart rate's subject is a US Core Patient; a contained Patient with only an id is none ('Unable to find a profile match for #p1').",
-      "ig": "hl7.fhir.us.core#6.1.0",
-      "sha256": "54ca6903d9b88882227390c7bd9e7a7dc2e91c4caf8d26b74b969bb141b78208",
+      "reason": "A nested extension (patient-nationality code) valued with a string where its slice allows a CodeableConcept: validator_cli 6.10.4 locates it at the matched instance's value, Patient.extension[0].extension[1].value.ofType(string), as the pod now does (was extension[0].Extension.extension:code.value[x]).",
+      "ig": "hl7.fhir.au.core#2.0.0",
+      "sha256": "dfc2b6d3b214386baff3b96957299da9c24e0349246f6f1e8da8aa41a43a42a7",
       "oracle_valid": false,
-      "oracle_signature": "e3ff0b7b3ac8d8f0697daf63fe4c415f3b803ea8c23dfb987b813ff231980023",
+      "oracle_signature": "8335ad9777cec1469c187c33d57c62c9c4e1e691a8419d4b5c1cb19d90210cdf",
       "oracle_issues": [
-        {
-          "severity": "warning",
-          "code": "business-rule",
-          "text": "Unable to validate code '/min' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
-          "paths": [
-            "Observation.value.ofType(Quantity)"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "invariant",
-          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
-          "paths": [
-            "Observation"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "informational",
-          "text": "Validate Observation against the Heart rate profile (http://hl7.org/fhir/StructureDefinition/heartrate) which is required by the FHIR specification because the LOINC code 8867-4 was found",
-          "paths": [
-            "Observation"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "code-invalid",
-          "text": "Could not confirm that the codes provided are from the extensible value set http://hl7.org/fhir/ValueSet/observation-vitalsignresult|4.0.1 because there is no terminology service",
-          "paths": [
-            "Observation.code"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "invalid",
-          "text": "Best Practice Recommendation: In general, all observations should have a performer",
-          "paths": [
-            "Observation"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "code-invalid",
-          "text": "Could not confirm that the codes provided are from the extensible value set http://hl7.org/fhir/us/core/ValueSet/us-core-vital-signs because there is no terminology service",
-          "paths": [
-            "Observation.code"
-          ]
-        },
         {
           "severity": "error",
           "code": "structure",
-          "text": "Unable to find a profile match for #p1 among choices: http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient",
+          "text": "The Profile 'http://hl7.org/fhir/StructureDefinition/patient-nationality|5.4.0' definition allows for the type CodeableConcept but found type string",
           "paths": [
-            "Observation.subject"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "structure",
-          "text": "Details for #p1 matching against profile http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient|6.1.0",
-          "paths": [
-            "Observation.subject"
-          ]
-        },
-        {
-          "severity": "warning",
-          "code": "code-invalid",
-          "text": "Unable to validate code without using server because: Resolved system http://unitsofmeasure.org (v3.0.1), but the definition doesn't include any codes, so the code has not been validated",
-          "paths": [
-            "Observation.value.ofType(Quantity)"
+            "Patient.extension[0].extension[1].value.ofType(string)"
           ]
         }
       ],
       "local": {
-        "resourceType": "Observation",
-        "profile": "US Core Heart Rate Profile",
-        "profiles": [
-          "US Core Heart Rate Profile",
-          "Observation Heart Rate Profile"
-        ],
+        "resourceType": "Patient",
         "valid": false,
         "issues": [
           {
             "severity": "error",
             "code": "structure",
-            "id": "reference.target-profile",
-            "path": "Observation.subject[0]",
-            "message": "Unable to find a profile match for #p1 among choices: http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"
-          },
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Observation",
-            "message": "dom-6: A resource should have narrative for robust management"
-          },
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Observation.contained[0].Patient",
-            "message": "dom-6: A resource should have narrative for robust management"
+            "id": "structure.choice",
+            "path": "Patient.extension[0].extension[1].valueString",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueString"
           }
         ]
       },
@@ -5640,73 +4711,251 @@
       "agrees": true
     },
     {
-      "file": "contained-target-us-provenance-bare-patient.json",
-      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance",
+      "file": "ext-nested-concept-not-member.json",
+      "profile": null,
       "expect": false,
-      "reason": "US Core Provenance agent.who: a contained Patient with only an id finds no profile match among the allowed profiles.",
-      "ig": "hl7.fhir.us.core#6.1.0",
-      "sha256": "1d5b614b5b67f9f9279765228c14ff5b3ed3267abb0bf388c0e767e4cc5079a5",
+      "reason": "A nested extension's CodeableConcept value (patient-sexParameterForClinicalUse value) outside its required set: validator_cli 6.10.4 locates it at Patient.extension[0].extension[0].value.ofType(CodeableConcept), as the pod now does.",
+      "ig": "hl7.fhir.au.core#2.0.0",
+      "sha256": "ae6cfb2d108b222bc10d69d19b8e0dddfa76d780f1a4bf6b89c64beea76b1902",
       "oracle_valid": false,
-      "oracle_signature": "71160759a4e56ba62306c37fc55b7a2b481bba7886d98843c61dbd11a591019c",
+      "oracle_signature": "871e12c09a97d2bc0146101c4fedb49958c994597d5e30c80e7f3e24084adb42",
       "oracle_issues": [
         {
-          "severity": "warning",
-          "code": "invariant",
-          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "severity": "error",
+          "code": "code-invalid",
+          "text": "Unknown code 'zz-not-a-code' in the CodeSystem 'http://terminology.hl7.org/CodeSystem/sex-parameter-for-clinical-use' version '2.0.0'",
           "paths": [
-            "Provenance"
+            "Patient.extension[0].extension[0].value.ofType(CodeableConcept).coding[0].code"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "text": "None of the codings provided are in the value set 'Sex Parameter for Clinical Use' (http://terminology.hl7.org/ValueSet/sex-parameter-for-clinical-use|2.0.0), and a coding from this value set is required) (codes = http://terminology.hl7.org/CodeSystem/sex-parameter-for-clinical-use#zz-not-a-code)",
+          "paths": [
+            "Patient.extension[0].extension[0].value.ofType(CodeableConcept)"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "code-invalid",
+            "id": "code.unknown",
+            "path": "Patient.extension.extension.valueCodeableConcept.coding.code",
+            "message": "Unknown code 'zz-not-a-code' in the CodeSystem 'http://terminology.hl7.org/CodeSystem/sex-parameter-for-clinical-use'"
+          },
+          {
+            "severity": "error",
+            "code": "code-invalid",
+            "id": "binding.not-member",
+            "path": "Patient.extension[0].extension[0].valueCodeableConcept",
+            "message": "None of the codings provided are in the value set 'http://terminology.hl7.org/ValueSet/sex-parameter-for-clinical-use', and a coding from this value set is required"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "nz-declares-address-profile-too.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
+      "expect": false,
+      "reason": "An NzPatient that also declares NzAddress, with a suburb valued with a code: validator_cli 6.10.4 reports the suburb's type once, at Patient.address[0].extension[0], and refuses the NzAddress declaration on a Patient; the pod reports the suburb once (the declared NzAddress is not applied to a Patient, so it takes nothing from the shape walk) beside profile.wrong-type.",
+      "sha256": "3150fdbd0fa5f2a074c7c8fd9e3299175c87745d7871ebfd08a09cc5bdda492c",
+      "oracle_valid": false,
+      "oracle_signature": "162ac86fcf034fba73beb6faf06d06bdcae210cfa5dc53038a855b61ecc36460",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/suburb' definition allows for the types [string] but found type code",
+          "paths": [
+            "Patient.address[0].extension[0]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "not-supported",
+          "text": "This element is not allowed by the profile http://hl7.org.nz/fhir/StructureDefinition/NzAddress|1.0.0",
+          "paths": [
+            "Patient.meta"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "not-supported",
+          "text": "This element is not allowed by the profile http://hl7.org.nz/fhir/StructureDefinition/NzAddress|1.0.0",
+          "paths": [
+            "Patient.name[0]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "not-supported",
+          "text": "This element is not allowed by the profile http://hl7.org.nz/fhir/StructureDefinition/NzAddress|1.0.0",
+          "paths": [
+            "Patient.gender"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "not-supported",
+          "text": "This element is not allowed by the profile http://hl7.org.nz/fhir/StructureDefinition/NzAddress|1.0.0",
+          "paths": [
+            "Patient.birthDate"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "not-supported",
+          "text": "This element is not allowed by the profile http://hl7.org.nz/fhir/StructureDefinition/NzAddress|1.0.0",
+          "paths": [
+            "Patient.address[0]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Profile 'http://hl7.org.nz/fhir/StructureDefinition/NzAddress|1.0.0' definition allows for the type string but found type Narrative",
+          "paths": [
+            "Patient.text"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "not-supported",
+          "text": "This element is not allowed by the profile http://hl7.org/fhir/StructureDefinition/string|4.0.1",
+          "paths": [
+            "Patient.text.status"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "not-supported",
+          "text": "This element is not allowed by the profile http://hl7.org/fhir/StructureDefinition/string|4.0.1",
+          "paths": [
+            "Patient.text.div"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "profile.wrong-type",
+            "path": "meta.profile",
+            "message": "declared profile 'http://hl7.org.nz/fhir/StructureDefinition/NzAddress' applies to Address, not to a Patient"
+          },
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.address[0].extension[0]",
+            "message": "Extension.value[x] allows the types [string]; found valueCode"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "nz-domicile-on-contact-address-wrong-type.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
+      "expect": false,
+      "reason": "NzPatient slices Patient.extension:domicile-code; a domicile-code valued with a string on a contact's address (plain Address) is still held to its definition: validator_cli 6.10.4 refuses it at Patient.contact[0].address.extension[0]. The pod had skipped every instance of a url a declared slice named (valid); it now holds this one where it sits.",
+      "sha256": "3c79b5226582eae4690b16f15de034d991dfde0c9c3d271fc745b628ad43ca6b",
+      "oracle_valid": false,
+      "oracle_signature": "e1a377fd64828e18235041b6d9a954d04aa744b62e2cd7b7624e0ecb2b85cf8f",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/domicile-code' definition allows for the types [CodeableConcept] but found type string",
+          "paths": [
+            "Patient.contact[0].address.extension[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.contact[0].address.extension[0]",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueString"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "nz-domicile-on-name-wrong-type.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
+      "expect": false,
+      "reason": "A domicile-code valued with a string on Patient.name[0] under NzPatient: validator_cli 6.10.4 reports the context and the type error at Patient.name[0].extension[0]; the pod had reported the context only.",
+      "sha256": "853abff149748c418eba1bacf9e4416c2f68d3017acd8eae6efbec773995889a",
+      "oracle_valid": false,
+      "oracle_signature": "132778a675512492c667fe92559341d06f72afb737beff602ae16c7441ca4953",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The extension http://hl7.org.nz/fhir/StructureDefinition/domicile-code v0.1.0 is not allowed to be used at this point (this element is [HumanName, Patient.name]; allowed for this version = e:Patient, e:Address)",
+          "paths": [
+            "Patient.name[0]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/domicile-code' definition allows for the types [CodeableConcept] but found type string",
+          "paths": [
+            "Patient.name[0].extension[0]"
           ]
         },
         {
           "severity": "information",
           "code": "informational",
-          "text": "This element does not match any known slice defined in the profile http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance|6.1.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org.nz/fhir/StructureDefinition/NzPatient|1.0.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
           "paths": [
-            "Provenance.agent[0]"
-          ]
-        },
-        {
-          "severity": "error",
-          "code": "structure",
-          "text": "Unable to find a profile match for #p1 among choices: http://hl7.org/fhir/StructureDefinition/Device, http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization, http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient, http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitioner, http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitionerrole, http://hl7.org/fhir/us/core/StructureDefinition/us-core-relatedperson",
-          "paths": [
-            "Provenance.agent[0].who"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "structure",
-          "text": "Details for #p1 matching against profile http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient|6.1.0",
-          "paths": [
-            "Provenance.agent[0].who"
+            "Patient.name[0].extension[0]"
           ]
         }
       ],
       "local": {
-        "resourceType": "Provenance",
-        "profile": "US Core Provenance Profile",
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
         "valid": false,
         "issues": [
           {
             "severity": "error",
             "code": "structure",
-            "id": "reference.target-profile",
-            "path": "Provenance.agent.who[0]",
-            "message": "Unable to find a profile match for #p1 among choices: http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"
+            "id": "extension.context",
+            "path": "Patient.name.extension",
+            "message": "The extension http://hl7.org.nz/fhir/StructureDefinition/domicile-code is not allowed to be used at this point (this element is [Element, HumanName, Patient.name]; allowed = [Patient, Address])"
           },
           {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Provenance",
-            "message": "dom-6: A resource should have narrative for robust management"
-          },
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Provenance.contained[0].Patient",
-            "message": "dom-6: A resource should have narrative for robust management"
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.name[0].extension[0]",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueString"
           }
         ]
       },
@@ -5714,96 +4963,180 @@
       "agrees": true
     },
     {
-      "file": "contained-target-us-provenance-bare-organization.json",
-      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance",
+      "file": "nz-domicile-wrong-type.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
       "expect": false,
-      "reason": "US Core Provenance agent.onBehalfOf: a contained Organization with only an id fails org-1 at the contained resource and finds no US Core Organization match.",
-      "ig": "hl7.fhir.us.core#6.1.0",
-      "sha256": "936dbfdb5b41f8a5c3cbdd6f09221d6a1d1859270d7c355b7577a311bed5c5de",
+      "reason": "A domicile-code valued with a string where NzPatient's own slice holds it (Patient.extension): one error, located by validator_cli 6.10.4 at the instance, Patient.extension[0], as the pod now locates it (was Patient.extension.value[x]).",
+      "sha256": "90100ac5e1cba100952a67da9ece02ec7b6927eea88bc3447b533539c6cbb670",
       "oracle_valid": false,
-      "oracle_signature": "d5b9ffb894edebe6841d2ff720dea5a3138c582730d1a7fcfa8b9950bb55ab6c",
+      "oracle_signature": "889cc59a5a7a5d4245c09e40a7f09f72c60ea06048d3f3686c48daa64986045d",
       "oracle_issues": [
         {
           "severity": "error",
-          "code": "invariant",
-          "text": "Constraint failed: org-1: 'The organization SHALL at least have a name or an identifier, and possibly more than one'",
-          "paths": [
-            "Provenance.contained[0]/*Organization/g1*/"
-          ]
-        },
-        {
-          "severity": "information",
           "code": "structure",
-          "text": "Details for #g1 matching against profile http://hl7.org/fhir/StructureDefinition/Organization|4.0.1",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/domicile-code' definition allows for the types [CodeableConcept] but found type string",
           "paths": [
-            "Provenance.agent[0].onBehalfOf"
+            "Patient.extension[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.extension[0]",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueString"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "nz-address-domicile-wrong-type.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
+      "expect": false,
+      "reason": "A domicile-code valued with a string on Patient.address[0], held to NzAddress: one error at Patient.address[0].extension[0] (validator_cli 6.10.4), from the shape walk, as the pod now locates it (was Patient.address[0].extension.value[x]).",
+      "sha256": "8b081debf48026b77a315f3a34c673951e453f2ee7232085acbe9128871e8052",
+      "oracle_valid": false,
+      "oracle_signature": "1fd1ad0302adcd86001d0f722d085bf39c58ff1d4cf1803a40c276c77dfaa151",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/domicile-code' definition allows for the types [CodeableConcept] but found type string",
+          "paths": [
+            "Patient.address[0].extension[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.address[0].extension[0]",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueString"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "ext-nested-two-periods-wrong-type.json",
+      "profile": null,
+      "expect": false,
+      "reason": "patient-citizenship with two period sub-extensions valued with strings: validator_cli 6.10.4 reports max 1 at Patient.extension[0] and one type error at each instance, Patient.extension[0].extension[0] and [1] (value.ofType(string)); the pod now reports each instance at its index (was one finding at the slice's label).",
+      "ig": "hl7.fhir.au.core#2.0.0",
+      "sha256": "1c1af24a4d456e9a59c352edc3ad48c637f33bcb8e91ea02c738f37f7f19443f",
+      "oracle_valid": false,
+      "oracle_signature": "2c727040b39d1ad9c86a17e7b147827e936994257416696bdf0ddd740708327e",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Extension.extension:period: max allowed = 1, but found 2 (from http://hl7.org/fhir/StructureDefinition/patient-citizenship|5.4.0)",
+          "paths": [
+            "Patient.extension[0]"
           ]
         },
         {
-          "severity": "warning",
-          "code": "invariant",
-          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "severity": "error",
+          "code": "structure",
+          "text": "The Profile 'http://hl7.org/fhir/StructureDefinition/patient-citizenship|5.4.0' definition allows for the type Period but found type string",
           "paths": [
-            "Provenance"
+            "Patient.extension[0].extension[0].value.ofType(string)"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Profile 'http://hl7.org/fhir/StructureDefinition/patient-citizenship|5.4.0' definition allows for the type Period but found type string",
+          "paths": [
+            "Patient.extension[0].extension[1].value.ofType(string)"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.max",
+            "path": "Patient.extension[0].extension:period",
+            "message": "Extension.extension:period exceeds max 1 (found 2)"
+          },
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.extension[0].extension[0].valueString",
+            "message": "Extension.value[x] allows the types [Period]; found valueString"
+          },
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.extension[0].extension[1].valueString",
+            "message": "Extension.value[x] allows the types [Period]; found valueString"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "nz-deceased-boolean-source-wrong-type.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
+      "expect": false,
+      "reason": "NzPatient slices information-source only beneath its deceased[x]:deceasedDateTime type slice; one valued with an integer on _deceasedBoolean is still held to its definition: validator_cli 6.10.4 refuses it at Patient.deceased.ofType(boolean).extension[0]. The pod had taken the type slice to cover every type of the choice (valid); it now refuses it, once.",
+      "sha256": "de89564d22a8337a4b146db6b7e120f1efbfae8883c828dc81183439225ec1e3",
+      "oracle_valid": false,
+      "oracle_signature": "c14d621f04a823c763a6cab18407c764f454bee48cd84290b796e914faeacdc1",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/information-source' definition allows for the types [CodeableConcept] but found type integer",
+          "paths": [
+            "Patient.deceased.ofType(boolean).extension[0]"
           ]
         },
         {
           "severity": "information",
           "code": "informational",
-          "text": "This element does not match any known slice defined in the profile http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance|6.1.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org.nz/fhir/StructureDefinition/NzPatient|1.0.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
           "paths": [
-            "Provenance.agent[0]"
-          ]
-        },
-        {
-          "severity": "error",
-          "code": "structure",
-          "text": "Unable to find a profile match for #g1 among choices: http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization",
-          "paths": [
-            "Provenance.agent[0].onBehalfOf"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "structure",
-          "text": "Details for #g1 matching against profile http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization|6.1.0",
-          "paths": [
-            "Provenance.agent[0].onBehalfOf"
+            "Patient.deceased.ofType(boolean)"
           ]
         }
       ],
       "local": {
-        "resourceType": "Provenance",
-        "profile": "US Core Provenance Profile",
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
         "valid": false,
         "issues": [
           {
             "severity": "error",
             "code": "structure",
-            "id": "reference.target-profile",
-            "path": "Provenance.agent.onBehalfOf[0]",
-            "message": "Unable to find a profile match for #g1 among choices: http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization"
-          },
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Provenance",
-            "message": "dom-6: A resource should have narrative for robust management"
-          },
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Provenance.contained[0].Organization",
-            "message": "dom-6: A resource should have narrative for robust management"
-          },
-          {
-            "severity": "error",
-            "code": "invariant",
-            "id": "inv.org-1",
-            "path": "Provenance.contained[0].Organization",
-            "message": "org-1: The organization SHALL at least have a name or an identifier, and possibly more than one"
+            "id": "structure.choice",
+            "path": "Patient.deceasedBoolean.extension[0]",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueInteger"
           }
         ]
       },
@@ -5811,132 +5144,130 @@
       "agrees": true
     },
     {
-      "file": "contained-target-us-encounter-second-choice.json",
-      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-encounter",
-      "expect": true,
-      "reason": "US Core Encounter reasonReference allows two Condition profiles; a contained Condition that conforms to the second (encounter diagnosis), not the first, matches.",
-      "ig": "hl7.fhir.us.core#6.1.0",
-      "sha256": "b9809e467c7439830e4c86604dd44a6e52da044271f7b43eb9f1dda01d8ef5a8",
-      "oracle_valid": true,
-      "oracle_signature": "f2e6221bac7112ea123f706c89500b263e72f0f9bc7068fb74bdbaf8c51fbc38",
-      "oracle_issues": [
-        {
-          "severity": "warning",
-          "code": "invariant",
-          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
-          "paths": [
-            "Encounter"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "code-invalid",
-          "text": "Could not confirm that the codes provided are from the extensible value set http://hl7.org/fhir/us/core/ValueSet/us-core-encounter-type because there is no terminology service",
-          "paths": [
-            "Encounter.type[0]"
-          ]
-        }
-      ],
-      "local": {
-        "resourceType": "Encounter",
-        "profile": "US Core Encounter Profile",
-        "valid": true,
-        "issues": [
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Encounter",
-            "message": "dom-6: A resource should have narrative for robust management"
-          },
-          {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Encounter.contained[0].Condition",
-            "message": "dom-6: A resource should have narrative for robust management"
-          }
-        ]
-      },
-      "status": "agree",
-      "agrees": true
-    },
-    {
-      "file": "contained-target-us-encounter-neither-choice.json",
-      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-encounter",
+      "file": "nz-deceased-datetime-source-wrong-type.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
       "expect": false,
-      "reason": "The same contained Condition without a category conforms to neither Condition profile: 'Unable to find a profile match for #c1'.",
-      "ig": "hl7.fhir.us.core#6.1.0",
-      "sha256": "ed3f0d16b7044f75047160e4786ef4daca72104270327691d30146986a3d02fc",
+      "reason": "Control: the same information-source on _deceasedDateTime, where NzPatient's type slice does hold it: one error at Patient.deceased.ofType(dateTime).extension[0] (validator_cli 6.10.4), as the pod has it.",
+      "sha256": "e617239f500b381abe78ebf88561a47a0701cb82e5e0fa6d022b48d8ad8108b2",
       "oracle_valid": false,
-      "oracle_signature": "721501b96e7ce122c3d50d1a1adaaf08e565485bc117c010f0fce0827aaca4cf",
+      "oracle_signature": "dd7de8846f19c81011dfff943dd4473c824ffe66a179a02af208372dbac01662",
       "oracle_issues": [
-        {
-          "severity": "warning",
-          "code": "invariant",
-          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
-          "paths": [
-            "Encounter"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "code-invalid",
-          "text": "Could not confirm that the codes provided are from the extensible value set http://hl7.org/fhir/us/core/ValueSet/us-core-encounter-type because there is no terminology service",
-          "paths": [
-            "Encounter.type[0]"
-          ]
-        },
         {
           "severity": "error",
           "code": "structure",
-          "text": "Unable to find a profile match for #c1 among choices: http://hl7.org/fhir/StructureDefinition/ImmunizationRecommendation, http://hl7.org/fhir/StructureDefinition/Observation, http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-encounter-diagnosis, http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns, http://hl7.org/fhir/us/core/StructureDefinition/us-core-procedure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/information-source' definition allows for the types [CodeableConcept] but found type integer",
           "paths": [
-            "Encounter.reasonReference[0]"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "structure",
-          "text": "Details for #c1 matching against profile http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
-          "paths": [
-            "Encounter.reasonReference[0]"
-          ]
-        },
-        {
-          "severity": "information",
-          "code": "structure",
-          "text": "Details for #c1 matching against profile http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-encounter-diagnosis|6.1.0",
-          "paths": [
-            "Encounter.reasonReference[0]"
+            "Patient.deceased.ofType(dateTime).extension[0]"
           ]
         }
       ],
       "local": {
-        "resourceType": "Encounter",
-        "profile": "US Core Encounter Profile",
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
         "valid": false,
         "issues": [
           {
             "severity": "error",
             "code": "structure",
-            "id": "reference.target-profile",
-            "path": "Encounter.reasonReference[0]",
-            "message": "Unable to find a profile match for #c1 among choices: http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns, http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-encounter-diagnosis"
+            "id": "structure.choice",
+            "path": "Patient.deceased[x]:deceasedDateTime.extension[0]",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueInteger"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "nz-name-and-deceased-source-wrong-type.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
+      "expect": false,
+      "reason": "A bad information-source on name[0] (sliced by NzPatient) and on _deceasedBoolean (not sliced there): validator_cli 6.10.4 reports both; the pod had reported the name's only.",
+      "sha256": "f0e728906aed64e93ef5c0fb6797a26e748171a56833e37b6ab58d1e9da0c79c",
+      "oracle_valid": false,
+      "oracle_signature": "fe364507329d580857aa466d9744b75bb2d7c6e175638285daba36bd58d081b7",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/information-source' definition allows for the types [CodeableConcept] but found type integer",
+          "paths": [
+            "Patient.name[0].extension[0]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/information-source' definition allows for the types [CodeableConcept] but found type integer",
+          "paths": [
+            "Patient.deceased.ofType(boolean).extension[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org.nz/fhir/StructureDefinition/NzPatient|1.0.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Patient.deceased.ofType(boolean)"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.name.extension:information-source.value[x]",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueInteger"
           },
           {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Encounter",
-            "message": "dom-6: A resource should have narrative for robust management"
-          },
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.deceasedBoolean.extension[0]",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueInteger"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "nz-birthdate-source-wrong-type.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
+      "expect": false,
+      "reason": "An information-source valued with a string on _birthDate, where NzPatient slices it: one error at Patient.birthDate.extension[0] (validator_cli 6.10.4), the instance's index, as the pod now locates it (was Patient.birthDate.extension.value[x]).",
+      "sha256": "c29ab46e4498566c2f99223c9f51841bfa0b25c48832e6a999935281a28ec671",
+      "oracle_valid": false,
+      "oracle_signature": "16f5ca5a441342d6521696d6826337591d93cc34ecf115a0e5e5d4df857468e3",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/information-source' definition allows for the types [CodeableConcept] but found type string",
+          "paths": [
+            "Patient.birthDate.extension[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
+        "valid": false,
+        "issues": [
           {
-            "severity": "warning",
-            "code": "invariant",
-            "id": "inv.dom-6",
-            "path": "Encounter.contained[0].Condition",
-            "message": "dom-6: A resource should have narrative for robust management"
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.birthDate.extension[0]",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueString"
           }
         ]
       },

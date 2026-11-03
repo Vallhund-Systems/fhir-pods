@@ -102,13 +102,27 @@ def compiled_definitions(packages):
     return compiled, missing
 
 
-def precheck(shipped, packages):
+def source_path(path, packages, sources):
+    """The host's own path for a staged file: `package-<i>/<name>` of the
+    staged copies is `<name>` in the i-th source package dir. A path outside
+    the staged packages, or with no sources given, is itself."""
+    path = Path(path)
+    for staged, source in zip(packages, sources or []):
+        if path.parent == Path(staged):
+            return str(Path(source) / path.name)
+    return str(path)
+
+
+def precheck(shipped, packages, sources=None):
     """Refuse, before anything is generated: a definition the generator would
-    compile but has no snapshot (by name), and a host canonical the shipped
-    registry already holds (pruning would serve the shipped copy instead)."""
+    compile but has no snapshot (by name, at the path the host gave —
+    `sources`, the package dirs `packages` were staged from, in order), and
+    a host canonical the shipped registry already holds (pruning would serve
+    the shipped copy instead)."""
     compiled, missing = compiled_definitions(packages)
     if missing:
-        raise SystemExit("definitions without a snapshot (refused — publish with snapshots):\n  " + "\n  ".join(missing))
+        named = [source_path(m, packages, sources) for m in missing]
+        raise SystemExit("definitions without a snapshot (refused — publish with snapshots):\n  " + "\n  ".join(named))
     both = sorted(set(compiled) & set(shipped))
     if both:
         raise SystemExit("host package redefines shipped canonicals (refused):\n  " + "\n  ".join(both))

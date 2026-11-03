@@ -422,19 +422,119 @@ struct Walk<'v, 'a, 't> {
     refuse_external_links: bool,
 }
 
-/// Does a profile reach an extension of this url through a slice (an
-/// inherited extension profile, or a profile discriminator)?
-pub(crate) fn profile_reaches(slicings: &[crate::compiled::Slicing], url: &str) -> bool {
+/// How deep [`profile_covers`] follows a slice's profile (the engine's own
+/// bound, `engine::MAX_INHERIT`).
+const COVER_DEPTH: usize = 8;
+
+/// Does a compiled profile check an extension of `url` at `element` — the
+/// extension's element path from its resource, unindexed, a choice by its
+/// concrete key (`Patient.contact.address.extension`,
+/// `Patient.deceasedBoolean.extension`)? It does where one of its slicings is on
+/// that element (an absolute path, or `$this.…` beneath `under`) with a slice
+/// holding the url to its profile, or through a slice's own profile whose
+/// slicings cover what lies beneath the slice. Beneath a type slice of a
+/// choice is only that type: NzPatient slices information-source under
+/// `deceased[x]:deceasedDateTime`, which covers `deceasedDateTime`'s
+/// extensions and not `deceasedBoolean`'s. A slicing of the same url on
+/// another element (NzPatient's `Patient.extension:domicile-code`) covers
+/// nothing at `Patient.contact.address.extension`: the reference validator
+/// holds that instance to the extension's definition, and the walk does.
+/// A datatype profile an element is held to (`NzAddress` on
+/// `Patient.address`) is not followed: its extension slices are the walk's
+/// (`engine::check_datatype_profiles` leaves them to it).
+pub(crate) fn profile_covers(
+    slicings: &[crate::compiled::Slicing],
+    under: &str,
+    element: &str,
+    url: &str,
+    depth: usize,
+) -> bool {
+    use alloc::string::String;
     slicings.iter().any(|sl| {
+        let plain: String =
+            sl.path.split('.').map(|seg| seg.split(':').next().unwrap_or(seg)).collect::<Vec<_>>().join(".");
+        let at = match plain.strip_prefix("$this") {
+            Some(rest) => alloc::format!("{under}{rest}"),
+            None => plain,
+        };
         sl.slices.iter().any(|s| {
-            s.profile == Some(url)
-                || s.profiles.iter().any(|(_, urls)| urls.contains(&url))
+            let holds = s.profile == Some(url)
                 || s.discriminators
                     .iter()
-                    .any(|d| matches!(d, crate::compiled::Discriminator::Profile { url: u, .. } if *u == url))
-                || profile_reaches(s.slicings, url)
+                    .any(|d| matches!(d, crate::compiled::Discriminator::Profile { url: u, .. } if *u == url));
+            if holds && path_matches(&at, element) {
+                return true;
+            }
+            // a type slice of a choice (`deceased[x]:deceasedDateTime`) is
+            // the instances of that one type: what it slices beneath it lies
+            // under the concrete key, not under every type of the choice
+            let here = match s.discriminators.iter().find_map(|d| match d {
+                crate::compiled::Discriminator::Type { key } => Some(*key),
+                _ => None,
+            }) {
+                Some(key) => match at.rsplit_once('.') {
+                    Some((parent, _)) => alloc::format!("{parent}.{key}"),
+                    None => String::from(key),
+                },
+                None => at.clone(),
+            };
+            if profile_covers(s.slicings, &here, element, url, depth) {
+                return true;
+            }
+            // beneath the slice, its own profile's slicings (a complex
+            // extension slicing its own extensions; an identifier profile)
+            match (s.profile.filter(|p| *p != url && depth < COVER_DEPTH), beneath(&here, element)) {
+                (Some(p), Some(rest)) => crate::REGISTRY.iter().find(|c| c.url == p).is_some_and(|c| {
+                    let inner = alloc::format!("{}.{rest}", c.resource_type);
+                    profile_covers(c.slicings, c.resource_type, &inner, url, depth + 1)
+                }),
+                _ => false,
+            }
         })
     })
+}
+
+/// One path segment of a profile against one of an instance's element path:
+/// equal, or a choice's `[x]` stem against one of its concrete keys
+/// (`value[x]` / `valueQuantity`).
+fn segment_matches(profile: &str, instance: &str) -> bool {
+    profile == instance
+        || profile.strip_suffix("[x]").is_some_and(|stem| {
+            instance.strip_prefix(stem).is_some_and(|rest| rest.chars().next().is_some_and(|c| c.is_ascii_uppercase()))
+        })
+}
+
+/// Is the instance's element path `element` the profile's path `at`?
+fn path_matches(at: &str, element: &str) -> bool {
+    let (a, e): (Vec<&str>, Vec<&str>) = (at.split('.').collect(), element.split('.').collect());
+    a.len() == e.len() && a.iter().zip(&e).all(|(p, i)| segment_matches(p, i))
+}
+
+/// What of `element` lies beneath the profile's path `at`, if it does.
+fn beneath<'e>(at: &str, element: &'e str) -> Option<&'e str> {
+    let a: Vec<&str> = at.split('.').collect();
+    let mut segs = element.splitn(a.len() + 1, '.');
+    for p in &a {
+        if !segs.next().is_some_and(|i| segment_matches(p, i)) {
+            return None;
+        }
+    }
+    segs.next()
+}
+
+/// The element path of the extension being walked, from its resource:
+/// unindexed, a choice element by its concrete key (`Patient.deceasedBoolean.extension`),
+/// matched against a profile's `[x]` paths segment by segment.
+fn extension_element(w: &Walk<'_, '_, '_>) -> alloc::string::String {
+    let n = w.ctxs.len();
+    let start = w.ctxs.iter().rposition(|(c, _)| crate::typemap::RESOURCES.binary_search(c).is_ok()).unwrap_or(0);
+    let mut p = alloc::string::String::from(w.ctxs[start].0);
+    for k in start + 1..n {
+        let key = w.ctxs[k].1;
+        p.push('.');
+        p.push_str(key.strip_prefix('_').unwrap_or(key));
+    }
+    p
 }
 
 impl<'v, 'a, 't> Walk<'v, 'a, 't> {
@@ -510,6 +610,19 @@ fn report_base_binding(
     label: alloc::string::String,
     w: &mut Walk<'_, '_, '_>,
 ) {
+    report_base_binding_held(m, b, what, label, false, w)
+}
+
+/// [`report_base_binding`]; `held_code_only` when a provider holding the
+/// set left a code with no system undecided (`engine::not_checked`).
+fn report_base_binding_held(
+    m: crate::terminology::Membership,
+    b: &crate::compiled::Binding,
+    what: &str,
+    label: alloc::string::String,
+    held_code_only: bool,
+    w: &mut Walk<'_, '_, '_>,
+) {
     use crate::validate::IssueType::{CodeInvalid, NotSupported};
     match m {
         crate::terminology::Membership::Member => {}
@@ -525,11 +638,9 @@ fn report_base_binding(
                 )
             },
         )),
-        crate::terminology::Membership::Unknown => w.warnings.push((
-            label,
-            NotSupported,
-            alloc::format!("no bundled terminology for {}; '{what}' not checked", b.value_set),
-        )),
+        crate::terminology::Membership::Unknown => {
+            w.warnings.push((label, NotSupported, crate::engine::not_checked(b.value_set, what, held_code_only)))
+        }
     }
 }
 
@@ -565,7 +676,10 @@ fn base_binding_object<'v, 'a>(v: &'v Value<'a>, ctx: &'static str, w: &mut Walk
     let (m, seen) = crate::engine::membership_of(b, &doc, &w.provider());
     if seen {
         let label = w.label(w.root);
-        report_base_binding(m, b, crate::engine::CODINGS, label, w);
+        let held = m == crate::terminology::Membership::Unknown
+            && ctx == "CodeableConcept"
+            && crate::engine::held_code_only(&w.provider(), b.value_set, &doc.instances("$this.coding"));
+        report_base_binding_held(m, b, crate::engine::CODINGS, label, held, w);
     } else if ctx == "CodeableConcept" {
         // Coding objects exist, but none carries a code. The Coding itself is
         // permitted to be partial; the parent concept still has no member of
@@ -1315,8 +1429,15 @@ fn structure_object<'v, 'a>(
                         ),
                     ));
                 }
-                let reached = w.profiles.last().is_some_and(|ps| ps.iter().any(|p| profile_reaches(p.slicings, base)));
-                if !reached {
+                // the extension is a declared profile's to check only where
+                // one of its slicings covers this very element; anywhere
+                // else in the resource the walk holds it
+                let element = extension_element(w);
+                let covered = w
+                    .profiles
+                    .last()
+                    .is_some_and(|ps| ps.iter().any(|p| profile_covers(p.slicings, "", &element, base, 0)));
+                if !covered {
                     let label = w.label(w.root);
                     w.extensions.push((label, v, p));
                 }
