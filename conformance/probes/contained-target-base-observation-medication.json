@@ -1,0 +1,43 @@
+{
+  "resourceType": "Observation",
+  "id": "base-observation-medication",
+  "status": "final",
+  "category": [
+    {
+      "coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+          "code": "vital-signs"
+        }
+      ]
+    }
+  ],
+  "code": {
+    "coding": [
+      {
+        "system": "http://loinc.org",
+        "code": "8867-4"
+      },
+      {
+        "system": "http://snomed.info/sct",
+        "code": "364075005"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "#m1"
+  },
+  "effectiveDateTime": "2026-09-15T10:00:00Z",
+  "valueQuantity": {
+    "value": 72,
+    "unit": "beats/minute",
+    "system": "http://unitsofmeasure.org",
+    "code": "/min"
+  },
+  "contained": [
+    {
+      "resourceType": "Medication",
+      "id": "m1"
+    }
+  ]
+}

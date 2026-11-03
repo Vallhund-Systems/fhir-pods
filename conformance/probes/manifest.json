@@ -505,13 +505,7 @@
     "file": "resolve-heartrate-contained-bare-patient.json",
     "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate",
     "expect": false,
-    "reason": "A contained target is held to the element's targetProfile by conformance in the oracle: AU Core heart rate's subject is an AU Core Patient, and a contained Patient with nothing but an id is none ('Unable to find a profile match for #p1 among choices: …au-core-patient').",
-    "reviewed": {
-      "sha256": "492e90949d01b9f7124a0e6d69a0bbafc0466d292f5fb15d944edd2f4bc7274f",
-      "oracle": "5f9098c108db501478d9da1b18ee586895561ea8d6f786012041f280adde0546",
-      "local_valid": true,
-      "reason": "Lenient, declared in docs/scope.md (Reference target types): the pod judges a contained reference target by type only, under any profile; the oracle holds it to conformance under every targetProfile that names a profile. Not fixed in 0.29.0; its own task."
-    }
+    "reason": "A contained target is held to the element's targetProfile by conformance: AU Core heart rate's subject is an AU Core Patient, and a contained Patient with nothing but an id is none ('Unable to find a profile match for #p1 among choices: …au-core-patient')."
   },
   {
     "file": "ext-concept-not-member.json",
@@ -611,5 +605,153 @@
     "ig": "fhir.org.nz.ig.base#3.1.0",
     "expect": false,
     "reason": "An information-source valued with a string on _birthDate, where NzPatient slices it: one error at Patient.birthDate.extension[0] (validator_cli 6.10.4), the instance's index, as the pod now locates it (was Patient.birthDate.extension.value[x])."
+  },
+  {
+    "file": "contained-target-au-heartrate-conforming-patient.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate",
+    "expect": true,
+    "reason": "A contained Patient that conforms to AU Core Patient, with no meta.profile: held by conformance, it matches."
+  },
+  {
+    "file": "contained-target-au-heartrate-conforming-patient-declares-au-base.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate",
+    "expect": true,
+    "reason": "A contained Patient that conforms to AU Core Patient and declares only AU Base Patient: held to the targetProfile by conformance, not by what it declares; it matches."
+  },
+  {
+    "file": "contained-target-au-heartrate-bare-patient-declares-au-base.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate",
+    "expect": false,
+    "reason": "A contained Patient with only an id that declares AU Base Patient: it conforms to what it declares, not to the targetProfile (AU Core Patient): 'Unable to find a profile match for #p1'."
+  },
+  {
+    "file": "contained-target-au-heartrate-bare-patient-declares-au-core.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate",
+    "expect": false,
+    "reason": "A contained Patient with only an id that declares AU Core Patient: its declared profile fails at the contained resource, and the subject finds no profile match."
+  },
+  {
+    "file": "contained-target-au-heartrate-base-specimen.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate",
+    "expect": true,
+    "reason": "Observation.specimen's targetProfile names the base Specimen only: a contained Specimen with only an id is held by type, and passes."
+  },
+  {
+    "file": "contained-target-au-heartrate-specimen-wrong-type.json",
+    "profile": "http://hl7.org.au/fhir/core/StructureDefinition/au-core-heartrate",
+    "expect": false,
+    "reason": "A contained Patient where only a Specimen is allowed: the type is wrong ('Invalid Resource target type')."
+  },
+  {
+    "file": "contained-target-base-observation-bare-patient.json",
+    "profile": null,
+    "expect": true,
+    "reason": "An Observation with no meta.profile carrying heart rate's LOINC code, so the base heart rate profile applies to it, whose subject is a contained Patient with only an id: the base heart rate's subject target is the base Patient, held by type, and passes."
+  },
+  {
+    "file": "contained-target-base-observation-medication.json",
+    "profile": null,
+    "expect": false,
+    "reason": "The same Observation (the base heart rate profile applies) whose subject is a contained Medication: 'Invalid Resource target type' twice, once for the base Observation's targets and once for the heart rate profile's."
+  },
+  {
+    "file": "contained-target-nested-bare-patient.json",
+    "profile": null,
+    "expect": false,
+    "reason": "A contained AU Core heart rate whose subject names its sibling, a contained Patient with only an id: held by conformance as at the top level ('Unable to find a profile match for #p1')."
+  },
+  {
+    "file": "contained-target-nested-conforming-patient.json",
+    "profile": null,
+    "expect": true,
+    "reason": "A contained AU Core heart rate whose subject names its sibling, a conforming contained Patient: it matches."
+  },
+  {
+    "file": "contained-target-us-heartrate-bare-patient.json",
+    "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-heart-rate",
+    "expect": false,
+    "reason": "US Core heart rate's subject is a US Core Patient; a contained Patient with only an id is none ('Unable to find a profile match for #p1').",
+    "ig": "hl7.fhir.us.core#6.1.0"
+  },
+  {
+    "file": "contained-target-us-provenance-bare-patient.json",
+    "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance",
+    "expect": false,
+    "reason": "US Core Provenance agent.who: a contained Patient with only an id finds no profile match among the allowed profiles.",
+    "ig": "hl7.fhir.us.core#6.1.0"
+  },
+  {
+    "file": "contained-target-us-provenance-bare-organization.json",
+    "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance",
+    "expect": false,
+    "reason": "US Core Provenance agent.onBehalfOf: a contained Organization with only an id fails org-1 at the contained resource and finds no US Core Organization match.",
+    "ig": "hl7.fhir.us.core#6.1.0"
+  },
+  {
+    "file": "contained-target-us-encounter-second-choice.json",
+    "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-encounter",
+    "expect": true,
+    "reason": "US Core Encounter reasonReference allows two Condition profiles; a contained Condition that conforms to the second (encounter diagnosis), not the first, matches.",
+    "ig": "hl7.fhir.us.core#6.1.0"
+  },
+  {
+    "file": "contained-target-us-encounter-neither-choice.json",
+    "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-encounter",
+    "expect": false,
+    "reason": "The same contained Condition without a category conforms to neither Condition profile: 'Unable to find a profile match for #c1'.",
+    "ig": "hl7.fhir.us.core#6.1.0"
+  },
+  {
+    "file": "contained-target-us-diagnosticreport-sibling-specimen.json",
+    "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-diagnosticreport-lab",
+    "expect": true,
+    "reason": "US Core DiagnosticReport (lab) result #o1: a contained lab Observation whose specimen names its sibling, a contained Specimen. The target is held by conformance as contained in the DiagnosticReport, so its #sp resolves (ref-1 holds) and it matches.",
+    "ig": "hl7.fhir.us.core#6.1.0"
+  },
+  {
+    "file": "contained-target-us-diagnosticreport-sibling-conforming-patient.json",
+    "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-diagnosticreport-lab",
+    "expect": true,
+    "reason": "The same with the Observation's subject naming its sibling, a contained Patient that conforms to US Core Patient: it matches.",
+    "ig": "hl7.fhir.us.core#6.1.0"
+  },
+  {
+    "file": "contained-target-us-diagnosticreport-sibling-bare-patient.json",
+    "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-diagnosticreport-lab",
+    "expect": false,
+    "reason": "The same with the sibling Patient carrying only an id: the Observation is no US Core lab Observation ('Unable to find a profile match for #o1').",
+    "ig": "hl7.fhir.us.core#6.1.0"
+  },
+  {
+    "file": "contained-target-us-encounter-condition-sibling-conforming-patient.json",
+    "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-encounter",
+    "expect": true,
+    "reason": "US Core Encounter reasonReference #c1: a contained encounter-diagnosis Condition whose subject names its sibling, a conforming contained Patient: it matches.",
+    "ig": "hl7.fhir.us.core#6.1.0"
+  },
+  {
+    "file": "contained-target-us-encounter-condition-sibling-bare-patient.json",
+    "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-encounter",
+    "expect": false,
+    "reason": "The same with the sibling Patient carrying only an id: the Condition conforms to neither allowed profile ('Unable to find a profile match for #c1').",
+    "ig": "hl7.fhir.us.core#6.1.0"
+  },
+  {
+    "file": "contained-target-unprofiled-observation-medication.json",
+    "profile": null,
+    "expect": false,
+    "reason": "An Observation no profile applies to (LOINC 2345-7, no meta.profile) whose subject is a contained Medication: held to the base targets by type ('Invalid Resource target type. Found Medication, but expected one of ([Group, Device, Patient, Location])')."
+  },
+  {
+    "file": "contained-target-unprofiled-encounter-location.json",
+    "profile": null,
+    "expect": false,
+    "reason": "An unprofiled Encounter whose subject is a contained Location: 'Invalid Resource target type. Found Location, but expected one of ([Group, Patient])'."
+  },
+  {
+    "file": "contained-target-unprofiled-encounter-bare-patient.json",
+    "profile": null,
+    "expect": true,
+    "reason": "An unprofiled Encounter whose subject is a contained Patient with only an id: the base target is a type, and it passes."
   }
 ]

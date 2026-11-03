@@ -1531,6 +1531,9 @@ mod tests {
     /// reloading move the verdict with them.
     #[test]
     fn a_loaded_questionnaire_holds_lower_and_lift_as_it_holds_validate() {
+        // the Questionnaire registry is process-wide: other tests clear and
+        // reload it under the same lock
+        let _serial = TABLE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         unsafe {
             const Q: &str = "http://hl7.org/fhir/StructureDefinition/Questionnaire";
             const QR: &str = "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse";

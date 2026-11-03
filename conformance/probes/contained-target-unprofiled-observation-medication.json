@@ -1,0 +1,27 @@
+{
+  "resourceType": "Observation",
+  "status": "final",
+  "code": {
+    "coding": [
+      {
+        "system": "http://loinc.org",
+        "code": "2345-7"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "#m1"
+  },
+  "valueQuantity": {
+    "value": 5,
+    "system": "http://unitsofmeasure.org",
+    "code": "mmol/L"
+  },
+  "contained": [
+    {
+      "resourceType": "Medication",
+      "id": "m1"
+    }
+  ],
+  "id": "unprofiled-observation-medication"
+}

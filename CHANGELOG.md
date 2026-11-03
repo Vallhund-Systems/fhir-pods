@@ -2,8 +2,9 @@
 
 ## 0.29.0
 
-**A reference that resolves to nothing is the empty collection, and a host
-can store the resources references name.** ABI 15: one new entrypoint,
+**A reference that resolves to nothing is the empty collection, a host
+can store the resources references name, and a contained reference target
+is held to its `targetProfile` by conformance.** ABI 15: one new entrypoint,
 `fhir_pods_resource_load`.
 
 `resolve()` on a reference no contained resource and no entry of the
@@ -42,15 +43,15 @@ to the oracle for a relative, an absolute and a `urn:uuid:` reference, a
 contained Practitioner passes it and fails `provenance-1` without
 `onBehalfOf`), and each agrees.
 
-The probes found one difference this release does not change, and it is
-general: the oracle holds a `#contained` target to conformance under any
+The probes found one difference, and it is general: the oracle holds a
+`#contained` target to conformance under any
 `targetProfile` that names a profile — AU Core heart rate, US Core heart
 rate and US Core Provenance, each with a contained Patient that has only an
 id, are invalid there ("Unable to find a profile match for #p1 among
 choices: …"), valid in the pod, which judges a contained target by type
-only; a contained Patient that conforms is valid on both sides. Declared in
-`docs/scope.md` (Reference target types) and recorded as the probe lane's
-one reviewed difference, `resolve-heartrate-contained-bare-patient`.
+only; a contained Patient that conforms is valid on both sides. The pod now
+holds a contained target by conformance too (the contained-target paragraph
+below).
 
 **The resource store.** `fhir_pods_resource_load(ptr, len)` takes one
 resource (JSON) or a Bundle — every entry resource, under its `fullUrl` —
@@ -242,6 +243,91 @@ duplicate not-checked warnings gone on each AU Core Patient carrying IHI
 status extensions (now said once, through `Patient.identifier:ihi`'s
 `au-ihi` profile). `base.py` (which builds release) was not run for these
 changes. They add no rule id and do not move the ABI.
+
+**A contained reference target is held to the element's `targetProfile`s
+by conformance**, as a Bundle entry and a stored resource are; until 0.29.0
+it was judged by type only, so a contained target that is no instance of the
+allowed profile passed. Probed first, validator_cli 6.10.4 (`-tx n/a`), one
+JVM per guide, twenty-three new probes
+(`conformance/probes/contained-target-*`; eight of them added after review:
+a target naming its own sibling, an unprofiled resource's contained targets)
+and the one that found it (`resolve-heartrate-contained-bare-patient`): a
+contained Patient with only an id is invalid under AU Core heart rate, US
+Core 6.1.0 heart rate and US Core Provenance (`agent.who`) ("Unable to find
+a profile match for #p1 among choices: …"), and a contained Organization with
+only an id under US Core Provenance's `onBehalfOf` fails org-1 and the
+profile match; a contained Patient that conforms to AU Core Patient is valid
+with no `meta.profile` and with one naming AU Base Patient, while a Patient
+with only an id that declares AU Base Patient still finds no AU Core Patient
+match, and one that declares AU Core Patient fails that profile at the
+contained resource as well; under US Core Encounter's `reasonReference`, which
+allows two Condition profiles, a contained Condition that conforms to the
+second (encounter diagnosis) matches and one that conforms to neither does
+not; a contained AU Core heart rate inside a List whose subject names its
+sibling, a contained Patient with only an id, is invalid, and with a
+conforming sibling valid — a contained resource's own `#local` reference
+names a contained resource of its container, and the target is held the
+same; under US Core DiagnosticReport (lab), a contained lab Observation in
+`result` whose `specimen` names a sibling contained Specimen, or whose
+`subject` names a conforming sibling Patient, is valid, and with a sibling
+Patient that has only an id invalid; the same under US Core Encounter's
+`reasonReference` with a contained encounter-diagnosis Condition; a target
+whose allowed type is a base resource type only is held by type — AU Core
+heart rate's `specimen` (a contained Specimen with only an id passes, a
+contained Patient is "Invalid Resource target type"), an Observation with no
+`meta.profile` that carries heart rate's LOINC code (the base heart rate
+profile applies; a contained Medication `subject` is "Invalid Resource
+target type" twice), and a resource no profile applies to: an unprofiled
+Observation (LOINC 2345-7) with a contained Medication `subject` and an
+unprofiled Encounter with a contained Location `subject` are invalid
+("Invalid Resource target type. Found Medication, but expected one of
+([Group, Device, Patient, Location])", "Found Location, but expected one of
+([Group, Patient])"), with a contained Patient valid. The pod now gives each
+of the twenty-four the oracle's verdict.
+Precedence is unchanged: contained, then the Bundle, then the store; a
+`#local` reference never reaches the store. In the core, a contained
+resource is validated with the resource holding it in scope
+(`Evaluated::contained_in`): its reference-target and slice-discriminator
+checks resolve its `#local` references there, and a contained target is
+checked for conformance the same way — its profile, and its shape with the
+container's contained ids in scope for ref-1 (`Document::shape_ok_in`). An
+unprofiled resource's `#local` references are held to its base target types
+(`check_local_targets_base`), at the top and for each contained resource.
+FHIRPath `resolve()` inside a contained resource's own invariants still
+takes the contained resource as its root, so there a `#local` reference
+does not see its siblings (`docs/scope.md`). The integration tests
+`a_contained_target_is_held_to_the_target_profile` and
+`a_contained_target_names_its_siblings_in_the_container` hold this. `docs/scope.md` (Reference target types) says so; the reviewed probe
+difference is gone, and the probe re-enters the release gate.
+
+Lanes, measured on the final tree (the rest of 0.29.0 merged): probes
+**120/120** agree, none reviewed, oracle fresh; release gate **1,893/1,893**,
+oracle fresh (the twenty-four probes above and the lowered and de-identified
+copies of seven valid ones join it); reasons 0 untriaged on 1,893, 4 triaged
+(the contained Practitioner probe's triaged "Unable to find a profile match
+for #r1" is now the pod's too, so its entry goes); published R4 examples
+**5,155/5,287** unchanged (132 lenient, 0 stricter; `base.py
+--reuse-oracle` with the debug probe in place of the release build); mutation
+lane **21,353/21,371** unchanged (`--reuse-oracle`, its `systemless` class
+judged by the oracle fresh; 18 triaged, 0 untriaged). Pod against pod
+before the merge (`93afc9d` against this change, 31,896 lane inputs): 12
+verdicts moved, all invalid now and invalid in the oracle — the six probes
+whose verdict this changes (`resolve-heartrate-contained-bare-patient`
+and five `contained-target-*`) and their release-corpus copies; 8 more
+outputs differ only by an added "Unable to find a profile match" on files
+invalid on both sides (`resolve-provenance-contained-practitioner`, two new
+probes, two de-identified copies, and their release-corpus copies), each one
+the oracle reports. After review, against the first version of this
+change (31,948 lane inputs): 13 verdicts moved, each to the oracle's — five
+of the eight review probes (the three sibling shapes now valid, the two
+unprofiled contained-target shapes now invalid), their release-corpus
+copies and three lowered copies; 3 more outputs gain only an "Invalid
+Resource target type" from the base targets on files invalid on both sides
+(the heart-rate-coded Observation's contained Medication, where the oracle
+reports it twice, its corpus copy, and the R5 test case
+`measure-report-ihe-r5`, outside every R4 lane). The validator test-case
+lane is unchanged (84 compared, Java 64/84, Firely 14/20). No rule id is
+added and the ABI does not move.
 
 ## 0.28.0
 

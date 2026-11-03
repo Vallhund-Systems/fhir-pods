@@ -158,6 +158,79 @@ fn a_stored_target_is_held_to_the_target_profile() {
     assert!(v.validate(hr.as_bytes()).is_valid(), "Patient/1 is still the Patient");
 }
 
+/// A contained target is held to the element's `targetProfile`s by
+/// conformance, as a Bundle entry and a stored resource are, and so is one
+/// a contained resource names (its sibling): probed against validator_cli
+/// 6.10.4 (`conformance/probes/contained-target-*`).
+#[test]
+fn a_contained_target_is_held_to_the_target_profile() {
+    let bare = r#"{"resourceType":"Patient","id":"p1"}"#;
+    let conforming = common::PATIENT_OK
+        .replacen(r#""resourceType":"Patient","#, r#""resourceType":"Patient","id":"p1","#, 1)
+        .replacen(r#""meta":{"profile":["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"]},"#, "", 1);
+    let contained = |patient: &str| {
+        common::HEARTRATE_OK.replacen(
+            r#""subject":{"reference":"Patient/1"}"#,
+            &format!(r##""subject":{{"reference":"#p1"}},"contained":[{patient}]"##),
+            1,
+        )
+    };
+    let v = Validator::new();
+    let r = v.validate(contained(bare).as_bytes());
+    assert!(!r.is_valid() && has(&r, "Unable to find a profile match for #p1"), "{}", wire::report(&r));
+    let r = v.validate(contained(&conforming).as_bytes());
+    assert!(r.is_valid(), "{}", wire::report(&r));
+    // a contained heart rate naming its sibling: held the same
+    let nested = |patient: &str| {
+        let inner = common::HEARTRATE_OK
+            .replacen(r#""resourceType":"Observation","#, r#""resourceType":"Observation","id":"o1","#, 1)
+            .replacen(r#""reference":"Patient/1""#, r##""reference":"#p1""##, 1);
+        format!(
+            r##"{{"resourceType":"List","status":"current","mode":"working","contained":[{inner},{patient}],"entry":[{{"item":{{"reference":"#o1"}}}}]}}"##
+        )
+    };
+    let r = v.validate(nested(bare).as_bytes());
+    assert!(!r.is_valid() && has(&r, "Unable to find a profile match for #p1"), "{}", wire::report(&r));
+    let r = v.validate(nested(&conforming).as_bytes());
+    assert!(r.is_valid(), "{}", wire::report(&r));
+    // precedence unchanged: a `#local` reference never reaches the store
+    let stored = Validator::new().with_resource(conforming.as_bytes());
+    assert!(!stored.validate(contained(bare).as_bytes()).is_valid());
+}
+
+/// A contained target that names its own sibling (`#sp`, `#p9`) is
+/// judged as contained in the resource holding both: its `#local`
+/// references resolve there, for its shape (ref-1) as for its profile. And
+/// an unprofiled resource's `#local` references are held to its base
+/// target types. Each probed against validator_cli 6.10.4
+/// (`conformance/probes/contained-target-*`).
+#[test]
+fn a_contained_target_names_its_siblings_in_the_container() {
+    let probe = |name: &str| {
+        let path = format!("{}/../../conformance/probes/{name}.json", env!("CARGO_MANIFEST_DIR"));
+        std::fs::read(path).expect("probe fixture")
+    };
+    let v = Validator::new();
+    for (name, valid, needle) in [
+        ("contained-target-us-diagnosticreport-sibling-specimen", true, ""),
+        ("contained-target-us-diagnosticreport-sibling-conforming-patient", true, ""),
+        ("contained-target-us-diagnosticreport-sibling-bare-patient", false, "Unable to find a profile match for #o1"),
+        ("contained-target-us-encounter-condition-sibling-conforming-patient", true, ""),
+        (
+            "contained-target-us-encounter-condition-sibling-bare-patient",
+            false,
+            "Unable to find a profile match for #c1",
+        ),
+        ("contained-target-unprofiled-observation-medication", false, "Invalid Resource target type. Found Medication"),
+        ("contained-target-unprofiled-encounter-location", false, "Invalid Resource target type. Found Location"),
+        ("contained-target-unprofiled-encounter-bare-patient", true, ""),
+    ] {
+        let r = v.validate(&probe(name));
+        assert_eq!(r.is_valid(), valid, "{name}: {}", wire::report(&r));
+        assert!(needle.is_empty() || has(&r, needle), "{name}: {}", wire::report(&r));
+    }
+}
+
 /// Lower and lift validate what they build and read without the store.
 #[test]
 fn lower_and_lift_do_not_read_the_store() {
