@@ -301,9 +301,9 @@ does not see its siblings (`docs/scope.md`). The integration tests
 difference is gone, and the probe re-enters the release gate.
 
 Lanes, measured on the final tree (the rest of 0.29.0 merged): probes
-**112/112** agree, none reviewed, oracle fresh; release gate **1,879/1,879**,
-oracle fresh (the sixteen probes above and the lowered and de-identified
-copies of four valid ones join it); reasons 0 untriaged on 1,879, 4 triaged
+**120/120** agree, none reviewed, oracle fresh; release gate **1,893/1,893**,
+oracle fresh (the twenty-four probes above and the lowered and de-identified
+copies of seven valid ones join it); reasons 0 untriaged on 1,893, 4 triaged
 (the contained Practitioner probe's triaged "Unable to find a profile match
 for #r1" is now the pod's too, so its entry goes); published R4 examples
 **5,155/5,287** unchanged (132 lenient, 0 stricter; `base.py
@@ -317,7 +317,17 @@ and five `contained-target-*`) and their release-corpus copies; 8 more
 outputs differ only by an added "Unable to find a profile match" on files
 invalid on both sides (`resolve-provenance-contained-practitioner`, two new
 probes, two de-identified copies, and their release-corpus copies), each one
-the oracle reports. No rule id is added and the ABI does not move.
+the oracle reports. After review, against the first version of this
+change (31,948 lane inputs): 13 verdicts moved, each to the oracle's — five
+of the eight review probes (the three sibling shapes now valid, the two
+unprofiled contained-target shapes now invalid), their release-corpus
+copies and three lowered copies; 3 more outputs gain only an "Invalid
+Resource target type" from the base targets on files invalid on both sides
+(the heart-rate-coded Observation's contained Medication, where the oracle
+reports it twice, its corpus copy, and the R5 test case
+`measure-report-ihe-r5`, outside every R4 lane). The validator test-case
+lane is unchanged (84 compared, Java 64/84, Firely 14/20). No rule id is
+added and the ABI does not move.
 
 ## 0.28.0
 

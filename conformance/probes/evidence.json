@@ -1,6 +1,6 @@
 {
-  "recorded_at": "2026-11-03T00:32:35.225995+00:00",
-  "source_revision": "d86b0bf90cedf8ba4d2b73a7a33bb44b22813e56",
+  "recorded_at": "2026-11-03T01:43:52.251033+00:00",
+  "source_revision": "63ecace7ee521c5ab9d28bf8e56eea77404959a0",
   "source_dirty": false,
   "oracle_version": "6.10.4",
   "oracle_sha256": "1106b9d58f9e363e47bea7c4fc065841e5fc91fe9d062775c3bfdd212bd653cc",
@@ -26,8 +26,8 @@
   },
   "note": "Terminology service disabled; the oracle may still resolve unknown profile URLs. One oracle run per guide (`ig`). Verdict parity only; a reviewed difference counts only while its input hash, oracle signature and local verdict match the review. Issues retained for inspection.",
   "counts": {
-    "total": 112,
-    "agree": 112,
+    "total": 120,
+    "agree": 120,
     "reviewed": 0,
     "differ": 0
   },
@@ -5894,7 +5894,7 @@
       "file": "contained-target-base-observation-bare-patient.json",
       "profile": null,
       "expect": true,
-      "reason": "An unprofiled Observation whose subject is a contained Patient with only an id: the base targets are types, held by type.",
+      "reason": "An Observation with no meta.profile carrying heart rate's LOINC code, so the base heart rate profile applies to it, whose subject is a contained Patient with only an id: the base heart rate's subject target is the base Patient, held by type, and passes.",
       "ig": "hl7.fhir.au.core#2.0.0",
       "sha256": "01d18ae77b889f295f5a653f8c8a947c5f0b22a12f6938cb5cd93f65be68e7bb",
       "oracle_valid": true,
@@ -5969,7 +5969,7 @@
       "file": "contained-target-base-observation-medication.json",
       "profile": null,
       "expect": false,
-      "reason": "An unprofiled Observation whose subject is a contained Medication: not a type the subject allows.",
+      "reason": "The same Observation (the base heart rate profile applies) whose subject is a contained Medication: 'Invalid Resource target type' twice, once for the base Observation's targets and once for the heart rate profile's.",
       "ig": "hl7.fhir.au.core#2.0.0",
       "sha256": "1e4bcb92e6ced4c5deae6f9206c048141a687440631a3bba15d6e7059507f57d",
       "oracle_valid": false,
@@ -6037,6 +6037,13 @@
         "profile": "Observation Heart Rate Profile",
         "valid": false,
         "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "reference.target-type",
+            "path": "Observation.subject[0]",
+            "message": "Invalid Resource target type. Found Medication, but expected one of ([Device, Group, Location, Patient])"
+          },
           {
             "severity": "error",
             "code": "structure",
@@ -6625,7 +6632,7 @@
         {
           "severity": "information",
           "code": "structure",
-          "text": "Details for #c1 matching against profile http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-encounter-diagnosis|6.1.0",
+          "text": "Details for #c1 matching against profile http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
           "paths": [
             "Encounter.reasonReference[0]"
           ]
@@ -6633,7 +6640,7 @@
         {
           "severity": "information",
           "code": "structure",
-          "text": "Details for #c1 matching against profile http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+          "text": "Details for #c1 matching against profile http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-encounter-diagnosis|6.1.0",
           "paths": [
             "Encounter.reasonReference[0]"
           ]
@@ -6663,6 +6670,578 @@
             "code": "invariant",
             "id": "inv.dom-6",
             "path": "Encounter.contained[0].Condition",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "contained-target-us-diagnosticreport-sibling-specimen.json",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-diagnosticreport-lab",
+      "expect": true,
+      "reason": "US Core DiagnosticReport (lab) result #o1: a contained lab Observation whose specimen names its sibling, a contained Specimen. The target is held by conformance as contained in the DiagnosticReport, so its #sp resolves (ref-1 holds) and it matches.",
+      "ig": "hl7.fhir.us.core#6.1.0",
+      "sha256": "a7f0e518fcb3c4ba7fc7b63884739ec5f8f910c3abfad7c9f6b5c46051630460",
+      "oracle_valid": true,
+      "oracle_signature": "f2e6221bac7112ea123f706c89500b263e72f0f9bc7068fb74bdbaf8c51fbc38",
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "text": "Best Practice Recommendation: In general, all observations should have a performer",
+          "paths": [
+            "DiagnosticReport.contained[0]/*Observation/o1*/"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mmol/L' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "DiagnosticReport.contained[0]/*Observation/o1*/.value.ofType(Quantity)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "DiagnosticReport"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "code-invalid",
+          "text": "Could not confirm that the codes provided are from the extensible value set http://hl7.org/fhir/us/core/ValueSet/us-core-laboratory-test-codes because there is no terminology service",
+          "paths": [
+            "DiagnosticReport.code"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "DiagnosticReport",
+        "profile": "US Core DiagnosticReport Profile for Laboratory Results Reporting",
+        "valid": true,
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "DiagnosticReport",
+            "message": "dom-6: A resource should have narrative for robust management"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "DiagnosticReport.contained[0].Observation",
+            "message": "dom-6: A resource should have narrative for robust management"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "DiagnosticReport.contained[1].Specimen",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "contained-target-us-diagnosticreport-sibling-conforming-patient.json",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-diagnosticreport-lab",
+      "expect": true,
+      "reason": "The same with the Observation's subject naming its sibling, a contained Patient that conforms to US Core Patient: it matches.",
+      "ig": "hl7.fhir.us.core#6.1.0",
+      "sha256": "6908b5fa212e3683c7d8dbea3de747a72ddef630931af78caa55192827c155aa",
+      "oracle_valid": true,
+      "oracle_signature": "f2e6221bac7112ea123f706c89500b263e72f0f9bc7068fb74bdbaf8c51fbc38",
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "text": "Best Practice Recommendation: In general, all observations should have a performer",
+          "paths": [
+            "DiagnosticReport.contained[0]/*Observation/o1*/"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mmol/L' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "DiagnosticReport.contained[0]/*Observation/o1*/.value.ofType(Quantity)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "DiagnosticReport"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "code-invalid",
+          "text": "Could not confirm that the codes provided are from the extensible value set http://hl7.org/fhir/us/core/ValueSet/us-core-laboratory-test-codes because there is no terminology service",
+          "paths": [
+            "DiagnosticReport.code"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "DiagnosticReport",
+        "profile": "US Core DiagnosticReport Profile for Laboratory Results Reporting",
+        "valid": true,
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "DiagnosticReport",
+            "message": "dom-6: A resource should have narrative for robust management"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "DiagnosticReport.contained[0].Observation",
+            "message": "dom-6: A resource should have narrative for robust management"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "DiagnosticReport.contained[1].Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "contained-target-us-diagnosticreport-sibling-bare-patient.json",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-diagnosticreport-lab",
+      "expect": false,
+      "reason": "The same with the sibling Patient carrying only an id: the Observation is no US Core lab Observation ('Unable to find a profile match for #o1').",
+      "ig": "hl7.fhir.us.core#6.1.0",
+      "sha256": "6faf8f643ae8fd605c023a08960a857cbff7b47132e6e4f2c16c0c5bb631e12f",
+      "oracle_valid": false,
+      "oracle_signature": "c218c8fe320eeedb9a7b6f7e091352ba43a2ade44cc8d81663ca1386882118e7",
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "text": "Best Practice Recommendation: In general, all observations should have a performer",
+          "paths": [
+            "DiagnosticReport.contained[0]/*Observation/o1*/"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mmol/L' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "DiagnosticReport.contained[0]/*Observation/o1*/.value.ofType(Quantity)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "DiagnosticReport"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "code-invalid",
+          "text": "Could not confirm that the codes provided are from the extensible value set http://hl7.org/fhir/us/core/ValueSet/us-core-laboratory-test-codes because there is no terminology service",
+          "paths": [
+            "DiagnosticReport.code"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Unable to find a profile match for #o1 among choices: http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-lab",
+          "paths": [
+            "DiagnosticReport.result[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "structure",
+          "text": "Details for #o1 matching against profile http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-lab|6.1.0",
+          "paths": [
+            "DiagnosticReport.result[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "DiagnosticReport",
+        "profile": "US Core DiagnosticReport Profile for Laboratory Results Reporting",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "reference.target-profile",
+            "path": "DiagnosticReport.result[0]",
+            "message": "Unable to find a profile match for #o1 among choices: http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-lab"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "DiagnosticReport",
+            "message": "dom-6: A resource should have narrative for robust management"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "DiagnosticReport.contained[0].Observation",
+            "message": "dom-6: A resource should have narrative for robust management"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "DiagnosticReport.contained[1].Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "contained-target-us-encounter-condition-sibling-conforming-patient.json",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-encounter",
+      "expect": true,
+      "reason": "US Core Encounter reasonReference #c1: a contained encounter-diagnosis Condition whose subject names its sibling, a conforming contained Patient: it matches.",
+      "ig": "hl7.fhir.us.core#6.1.0",
+      "sha256": "4eb1956cd1713f17f188ab8c81f0d8e5006a0db5db84349aa9bf342556385a8b",
+      "oracle_valid": true,
+      "oracle_signature": "f2e6221bac7112ea123f706c89500b263e72f0f9bc7068fb74bdbaf8c51fbc38",
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Encounter"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "text": "No code provided, and a code should be provided from the value set 'US Core Encounter Type' (http://hl7.org/fhir/us/core/ValueSet/us-core-encounter-type|6.1.0)",
+          "paths": [
+            "Encounter.type[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Encounter",
+        "profile": "US Core Encounter Profile",
+        "valid": true,
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "Encounter",
+            "message": "dom-6: A resource should have narrative for robust management"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "Encounter.contained[0].Condition",
+            "message": "dom-6: A resource should have narrative for robust management"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "Encounter.contained[1].Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "contained-target-us-encounter-condition-sibling-bare-patient.json",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-encounter",
+      "expect": false,
+      "reason": "The same with the sibling Patient carrying only an id: the Condition conforms to neither allowed profile ('Unable to find a profile match for #c1').",
+      "ig": "hl7.fhir.us.core#6.1.0",
+      "sha256": "a460a7db1417c9370d29322776e41e36db9e62fe8a643801e419739ddcff7177",
+      "oracle_valid": false,
+      "oracle_signature": "721501b96e7ce122c3d50d1a1adaaf08e565485bc117c010f0fce0827aaca4cf",
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Encounter"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "code-invalid",
+          "text": "No code provided, and a code should be provided from the value set 'US Core Encounter Type' (http://hl7.org/fhir/us/core/ValueSet/us-core-encounter-type|6.1.0)",
+          "paths": [
+            "Encounter.type[0]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Unable to find a profile match for #c1 among choices: http://hl7.org/fhir/StructureDefinition/ImmunizationRecommendation, http://hl7.org/fhir/StructureDefinition/Observation, http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-encounter-diagnosis, http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns, http://hl7.org/fhir/us/core/StructureDefinition/us-core-procedure",
+          "paths": [
+            "Encounter.reasonReference[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "structure",
+          "text": "Details for #c1 matching against profile http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns|6.1.0",
+          "paths": [
+            "Encounter.reasonReference[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "structure",
+          "text": "Details for #c1 matching against profile http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-encounter-diagnosis|6.1.0",
+          "paths": [
+            "Encounter.reasonReference[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Encounter",
+        "profile": "US Core Encounter Profile",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "reference.target-profile",
+            "path": "Encounter.reasonReference[0]",
+            "message": "Unable to find a profile match for #c1 among choices: http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns, http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-encounter-diagnosis"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "Encounter",
+            "message": "dom-6: A resource should have narrative for robust management"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "Encounter.contained[0].Condition",
+            "message": "dom-6: A resource should have narrative for robust management"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "Encounter.contained[1].Patient",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "contained-target-unprofiled-observation-medication.json",
+      "profile": null,
+      "expect": false,
+      "reason": "An Observation no profile applies to (LOINC 2345-7, no meta.profile) whose subject is a contained Medication: held to the base targets by type ('Invalid Resource target type. Found Medication, but expected one of ([Group, Device, Patient, Location])').",
+      "ig": "hl7.fhir.au.core#2.0.0",
+      "sha256": "ef5eff0d80753af51923620e12651c9b1a4cb4ffaa0dec4767aa26c814fc1222",
+      "oracle_valid": false,
+      "oracle_signature": "52c02910115b810048d025792f701f2c8d851e2f3ff75f46703bb165430b68c8",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Invalid Resource target type. Found Medication, but expected one of ([Group, Device, Patient, Location])",
+          "paths": [
+            "Observation.subject"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "business-rule",
+          "text": "Unable to validate code 'mmol/L' in system 'http://unitsofmeasure.org' because the validator is running without terminology services",
+          "paths": [
+            "Observation.value.ofType(Quantity)"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Observation"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "text": "Best Practice Recommendation: In general, all observations should have a performer",
+          "paths": [
+            "Observation"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invalid",
+          "text": "Best Practice Recommendation: In general, all observations should have an effective[x] ()",
+          "paths": [
+            "Observation"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Observation",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "reference.target-type",
+            "path": "Observation.subject[0]",
+            "message": "Invalid Resource target type. Found Medication, but expected one of ([Device, Group, Location, Patient])"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "Observation",
+            "message": "dom-6: A resource should have narrative for robust management"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "Observation.contained[0].Medication",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "contained-target-unprofiled-encounter-location.json",
+      "profile": null,
+      "expect": false,
+      "reason": "An unprofiled Encounter whose subject is a contained Location: 'Invalid Resource target type. Found Location, but expected one of ([Group, Patient])'.",
+      "ig": "hl7.fhir.au.core#2.0.0",
+      "sha256": "c4da00c240ffc768c058d97eae11639f43937be3466ea1c88eefc46cdb25e2f7",
+      "oracle_valid": false,
+      "oracle_signature": "4b8bfaba0bed2904c5e1c8006f464af64c633d2a015707c5f1328790d60b615b",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Invalid Resource target type. Found Location, but expected one of ([Group, Patient])",
+          "paths": [
+            "Encounter.subject"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Encounter"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Encounter",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "reference.target-type",
+            "path": "Encounter.subject[0]",
+            "message": "Invalid Resource target type. Found Location, but expected one of ([Group, Patient])"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "Encounter",
+            "message": "dom-6: A resource should have narrative for robust management"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "Encounter.contained[0].Location",
+            "message": "dom-6: A resource should have narrative for robust management"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "contained-target-unprofiled-encounter-bare-patient.json",
+      "profile": null,
+      "expect": true,
+      "reason": "An unprofiled Encounter whose subject is a contained Patient with only an id: the base target is a type, and it passes.",
+      "ig": "hl7.fhir.au.core#2.0.0",
+      "sha256": "49c64294cd78b68ab9c05be552545793083ca452e3204e6bd70c16183c6c037e",
+      "oracle_valid": true,
+      "oracle_signature": "f2e6221bac7112ea123f706c89500b263e72f0f9bc7068fb74bdbaf8c51fbc38",
+      "oracle_issues": [
+        {
+          "severity": "warning",
+          "code": "invariant",
+          "text": "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+          "paths": [
+            "Encounter"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Encounter",
+        "valid": true,
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "Encounter",
+            "message": "dom-6: A resource should have narrative for robust management"
+          },
+          {
+            "severity": "warning",
+            "code": "invariant",
+            "id": "inv.dom-6",
+            "path": "Encounter.contained[0].Patient",
             "message": "dom-6: A resource should have narrative for robust management"
           }
         ]
