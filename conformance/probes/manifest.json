@@ -512,5 +512,104 @@
       "local_valid": true,
       "reason": "Lenient, declared in docs/scope.md (Reference target types): the pod judges a contained reference target by type only, under any profile; the oracle holds it to conformance under every targetProfile that names a profile. Not fixed in 0.29.0; its own task."
     }
+  },
+  {
+    "file": "ext-concept-not-member.json",
+    "profile": null,
+    "expect": false,
+    "reason": "An extension's CodeableConcept value outside its required set (questionnaireresponse-completionMode): validator_cli 6.10.4 locates it at QuestionnaireResponse.extension[0].value.ofType(CodeableConcept), as the pod now does (was extension[0].Extension.value[x])."
+  },
+  {
+    "file": "ext-value-wrong-type.json",
+    "profile": null,
+    "expect": false,
+    "reason": "A data-absent-reason valued with a string where it allows a code: validator_cli 6.10.4 locates it at the extension, Patient.name[0].extension[0], as the pod now does."
+  },
+  {
+    "file": "ext-code-not-member.json",
+    "profile": null,
+    "expect": false,
+    "reason": "A data-absent-reason code outside its required set: validator_cli 6.10.4 locates it at Patient.name[0].extension[0].value.ofType(code), a primitive by its type code, as the pod now does."
+  },
+  {
+    "file": "ext-nested-wrong-type.json",
+    "profile": null,
+    "expect": false,
+    "reason": "A nested extension (patient-nationality code) valued with a string where its slice allows a CodeableConcept: validator_cli 6.10.4 locates it at the matched instance's value, Patient.extension[0].extension[1].value.ofType(string), as the pod now does (was extension[0].Extension.extension:code.value[x])."
+  },
+  {
+    "file": "ext-nested-concept-not-member.json",
+    "profile": null,
+    "expect": false,
+    "reason": "A nested extension's CodeableConcept value (patient-sexParameterForClinicalUse value) outside its required set: validator_cli 6.10.4 locates it at Patient.extension[0].extension[0].value.ofType(CodeableConcept), as the pod now does."
+  },
+  {
+    "file": "nz-declares-address-profile-too.json",
+    "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+    "ig": "fhir.org.nz.ig.base#3.1.0",
+    "expect": false,
+    "reason": "An NzPatient that also declares NzAddress, with a suburb valued with a code: validator_cli 6.10.4 reports the suburb's type once, at Patient.address[0].extension[0], and refuses the NzAddress declaration on a Patient; the pod reports the suburb once (the declared NzAddress is not applied to a Patient, so it takes nothing from the shape walk) beside profile.wrong-type."
+  },
+  {
+    "file": "nz-domicile-on-contact-address-wrong-type.json",
+    "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+    "ig": "fhir.org.nz.ig.base#3.1.0",
+    "expect": false,
+    "reason": "NzPatient slices Patient.extension:domicile-code; a domicile-code valued with a string on a contact's address (plain Address) is still held to its definition: validator_cli 6.10.4 refuses it at Patient.contact[0].address.extension[0]. The pod had skipped every instance of a url a declared slice named (valid); it now holds this one where it sits."
+  },
+  {
+    "file": "nz-domicile-on-name-wrong-type.json",
+    "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+    "ig": "fhir.org.nz.ig.base#3.1.0",
+    "expect": false,
+    "reason": "A domicile-code valued with a string on Patient.name[0] under NzPatient: validator_cli 6.10.4 reports the context and the type error at Patient.name[0].extension[0]; the pod had reported the context only."
+  },
+  {
+    "file": "nz-domicile-wrong-type.json",
+    "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+    "ig": "fhir.org.nz.ig.base#3.1.0",
+    "expect": false,
+    "reason": "A domicile-code valued with a string where NzPatient's own slice holds it (Patient.extension): one error, located by validator_cli 6.10.4 at the instance, Patient.extension[0], as the pod now locates it (was Patient.extension.value[x])."
+  },
+  {
+    "file": "nz-address-domicile-wrong-type.json",
+    "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+    "ig": "fhir.org.nz.ig.base#3.1.0",
+    "expect": false,
+    "reason": "A domicile-code valued with a string on Patient.address[0], held to NzAddress: one error at Patient.address[0].extension[0] (validator_cli 6.10.4), from the shape walk, as the pod now locates it (was Patient.address[0].extension.value[x])."
+  },
+  {
+    "file": "ext-nested-two-periods-wrong-type.json",
+    "profile": null,
+    "expect": false,
+    "reason": "patient-citizenship with two period sub-extensions valued with strings: validator_cli 6.10.4 reports max 1 at Patient.extension[0] and one type error at each instance, Patient.extension[0].extension[0] and [1] (value.ofType(string)); the pod now reports each instance at its index (was one finding at the slice's label)."
+  },
+  {
+    "file": "nz-deceased-boolean-source-wrong-type.json",
+    "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+    "ig": "fhir.org.nz.ig.base#3.1.0",
+    "expect": false,
+    "reason": "NzPatient slices information-source only beneath its deceased[x]:deceasedDateTime type slice; one valued with an integer on _deceasedBoolean is still held to its definition: validator_cli 6.10.4 refuses it at Patient.deceased.ofType(boolean).extension[0]. The pod had taken the type slice to cover every type of the choice (valid); it now refuses it, once."
+  },
+  {
+    "file": "nz-deceased-datetime-source-wrong-type.json",
+    "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+    "ig": "fhir.org.nz.ig.base#3.1.0",
+    "expect": false,
+    "reason": "Control: the same information-source on _deceasedDateTime, where NzPatient's type slice does hold it: one error at Patient.deceased.ofType(dateTime).extension[0] (validator_cli 6.10.4), as the pod has it."
+  },
+  {
+    "file": "nz-name-and-deceased-source-wrong-type.json",
+    "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+    "ig": "fhir.org.nz.ig.base#3.1.0",
+    "expect": false,
+    "reason": "A bad information-source on name[0] (sliced by NzPatient) and on _deceasedBoolean (not sliced there): validator_cli 6.10.4 reports both; the pod had reported the name's only."
+  },
+  {
+    "file": "nz-birthdate-source-wrong-type.json",
+    "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+    "ig": "fhir.org.nz.ig.base#3.1.0",
+    "expect": false,
+    "reason": "An information-source valued with a string on _birthDate, where NzPatient slices it: one error at Patient.birthDate.extension[0] (validator_cli 6.10.4), the instance's index, as the pod now locates it (was Patient.birthDate.extension.value[x])."
   }
 ]

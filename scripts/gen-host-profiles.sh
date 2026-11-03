@@ -76,6 +76,9 @@ TMP="$WORK/generated"
 mkdir "$TMP"
 python3 "$ROOT/tools/host_profile_sources.py" stage "$WORK/inputs" "${HOSTS[@]}"
 HOST_COUNT=${#HOSTS[@]}
+# the host's own package dirs: what a refusal names (the staged copies are
+# private temporary paths)
+SOURCES=("${HOSTS[@]}")
 HOSTS=()
 for ((i=0; i<HOST_COUNT; i++)); do HOSTS+=("$WORK/inputs/package-$i"); done
 
@@ -85,16 +88,17 @@ for ((i=0; i<HOST_COUNT; i++)); do HOSTS+=("$WORK/inputs/package-$i"); done
 # be a canonical the shipped registry holds; a definition the generator would
 # skip for want of a snapshot is refused by name. Judged before anything is
 # generated (tools/host_profile_sources.py precheck).
-python3 - "$SRC/generated" "$ROOT/tools" "${HOSTS[@]}" <<'PY'
+python3 - "$SRC/generated" "$ROOT/tools" "$HOST_COUNT" "${HOSTS[@]}" "${SOURCES[@]}" <<'PY'
 import re, sys, glob, os
-shipped_dir, tools, hosts = sys.argv[1], sys.argv[2], sys.argv[3:]
+shipped_dir, tools, count = sys.argv[1], sys.argv[2], int(sys.argv[3])
+hosts, sources = sys.argv[4:4 + count], sys.argv[4 + count:]
 sys.path.insert(0, tools)
 import host_profile_sources
 def url_of(path):
     m = re.search(r'^\s+url: "([^"]+)"', open(path).read(), re.M)
     return m[1] if m else None
 shipped = {url_of(p) for p in glob.glob(os.path.join(shipped_dir, "*.rs"))} - {None}
-host_profile_sources.precheck(shipped, hosts)
+host_profile_sources.precheck(shipped, hosts, sources)
 PY
 
 # Generated into the private workspace; installed only after all checks pass.

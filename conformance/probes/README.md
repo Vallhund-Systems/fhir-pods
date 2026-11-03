@@ -1,17 +1,20 @@
 # Adversarial validation probes
 
-These 82 synthetic fixtures cover valid controls, JSON shapes, primitive limits,
+These 97 synthetic fixtures cover valid controls, JSON shapes, primitive limits,
 extensions, contained resources, unknown profiles, offline references, required
 coded content, recursive content-reference validation, the shape a
 de-identified age over 89 goes out as, the datatype profile R4 puts on
-an element (`sq-*`: a `SimpleQuantity` with and without a comparator), and an
+an element (`sq-*`: a `SimpleQuantity` with and without a comparator), an
 IG's own datatype profiles (`nz-*`, `ca-*`, `au-*`: `NzAddress`,
 `NzContactpoint`, CA's `profile-identifier`, `au-address` and the AU
 identifier profiles), and `resolve()` (`resolve-*`: `ctm-1` and US Core
 `provenance-1` on a relative, an absolute, a `urn:uuid:` and a `#missing`
 reference nothing resolves — the empty collection, evaluated — and on a
 contained target that does resolve, among them AU Core heart rate's subject
-as a contained Patient that is no AU Core Patient).
+as a contained Patient that is no AU Core Patient),
+and where a finding of an extension's own profile is
+located (`ext-*`: a value outside its set or of a type the extension does not
+allow, at the top and in a nested extension).
 `manifest.json` records an expected verdict and reason for each fixture. The
 shared corpus builder automatically includes them as `probe-*` cases.
 
@@ -76,6 +79,12 @@ Two expectations are deliberately narrower than a reader might assume:
 - The same two errors where a compiled extension profile, not the base, types
   its `value[x]` `Quantity` with `SimpleQuantity`
   (`medicationdispense-quantityRemaining`): `sq-extension-value-*`.
+- A finding inside an extension is located under the extension's indexed
+  path, its value by type (`extension[0].value.ofType(Quantity)`, a
+  primitive by its type code, `value.ofType(code)`), a nested extension by
+  its index (`extension[0].extension[1].value.ofType(string)`); a top-level
+  value of a type the extension does not allow is located at the extension
+  itself (`ext-*`).
 
 References: [R4 JSON representation](https://hl7.org/fhir/R4/json.html),
 [R4 datatypes](https://hl7.org/fhir/R4/datatypes.html),

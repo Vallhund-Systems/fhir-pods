@@ -1,0 +1,19 @@
+{
+  "resourceType": "Patient",
+  "id": "ext-type",
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Probe</p></div>"
+  },
+  "name": [
+    {
+      "family": "Probe",
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+          "valueString": "unknown"
+        }
+      ]
+    }
+  ]
+}

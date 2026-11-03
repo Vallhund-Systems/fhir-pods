@@ -142,6 +142,107 @@ Node tests and the browser harness (which now check `loadResource`) were not
 run for this entry; the C smoke and abuse harness ran against a debug
 staticlib.
 
+**An extension sliced on one element is held to its definition everywhere
+else.** The shape walk left an extension to a declared profile whenever one
+of its slices named the url, wherever the instance sat, and the profile only
+checks the element its slicing is on. NzPatient slices
+`Patient.extension:domicile-code`, so a domicile-code valued with a string on
+a contact's address was valid here (on main too) and one on a name drew only
+the context error; validator_cli 6.10.4 (`-ig fhir.org.nz.ig.base#3.1.0`)
+refuses both ("The Extension '…/domicile-code' definition allows for the
+types [CodeableConcept] but found type string" at
+`Patient.contact[0].address.extension[0]`, `Patient.name[0].extension[0]`).
+The walk now leaves an instance to a declared profile (compiled for the
+resource's type) only where one of its slicings is on that instance's
+element (`document::profile_covers`, by the element path from the resource;
+through nested slicings and a slice's own profile, a type slice of a choice
+covering only its own type, not through a datatype profile an element is
+held to, whose extension slices are the walk's). NzPatient slices
+information-source only beneath `deceased[x]:deceasedDateTime`, so one of the
+wrong type on `_deceasedBoolean` was valid here and is now refused, as the
+oracle refuses it (`Patient.deceased.ofType(boolean).extension[0]`; probes
+`nz-deceased-*`, `nz-name-and-deceased-source-wrong-type`). That
+also says a suburb of the wrong type once where a Patient declares NzAddress
+beside NzPatient (it was twice; the oracle once, at
+`Patient.address[0].extension[0]`). Probes `nz-domicile-*`,
+`nz-address-domicile-wrong-type`, `nz-declares-address-profile-too`.
+
+**A finding inside an extension is located as the reference validator
+locates it**, wherever the extension is checked from: its own definition
+(the walk), a declared profile's extension slice, or a nested slice of a
+complex extension. Probed first (`conformance/probes/ext-*`,
+`sq-extension-value-comparator`, `nz-*-domicile-*`), the oracle locates a
+value by its type (`extension[0].value.ofType(Quantity)`,
+`value.ofType(CodeableConcept)`, a primitive by its type code,
+`value.ofType(code)`); each instance a slice matched at its own index
+(`Patient.extension[0].extension[0].value.ofType(string)` and
+`…extension[1]…` for two `period`s of patient-citizenship); a top-level value
+of a type the extension does not allow at the extension itself
+(`Patient.name[0].extension[0]`, `Patient.extension[0]`), a nested one at
+its value; and an extension slice's cardinality at the element the
+extensions are on (`Patient.extension[0]`, `Patient.address[0]`). The pod
+had `MedicationDispense.extension[0].Extension.valueQuantity`,
+`Patient.extension.value[x]`, one finding for two instances, and
+`…extension[0].extension`. `Issue.path` now drops the `Extension` segment,
+names the value by its concrete key, and labels each instance an extension
+slicing matched by its index; the slice's own label stays for its
+cardinality. `wire::expression` writes an extension's value as
+`value.ofType(<type>)` and a slice's cardinality at its parent. An extension slicing on an element that does not repeat
+(`Patient.birthDate.extension`) is indexed too (`Patient.birthDate.extension[0]`,
+as the oracle has it), and a primitive choice type in a slice label is
+written by its type code (`deceased.ofType(dateTime)`, was `ofType(DateTime)`).
+Residue, location only, verdict-preserving: an extension slicing beneath a
+repeating element (NzPatient's `Patient.name.extension`) keeps the slice's
+label, since the engine does not carry the parent's index there; the walk's
+context finding is located at `Patient.name.extension` where the oracle says
+`Patient.name[0]`; and the walk names a choice by its concrete key
+(`Patient.deceasedBoolean.extension[0]`, the oracle's
+`Patient.deceased.ofType(boolean).extension[0]`). Same rule
+ids; the only verdicts that move are a domicile-code of the wrong type on a
+contact's address and an information-source of the wrong type on
+`_deceasedBoolean`, both valid before and refused now, as the oracle refuses
+them (the domicile-code on a name was already invalid from its context
+error and gains the type error).
+
+**A held code with no system says why it was not checked.** Under a host's
+terminology table that holds the set, a `CodeableConcept` coding with a code
+and no system is not checked (the table holds members, not the compose that
+would place the code); the warning said "no bundled terminology for … not
+checked" and now says "a code with no system cannot be placed in …: the
+terminology holds its members, not its compose; 'the codings' not checked".
+Rule id `binding.unknown` either way. `docs/scope.md` now names the host
+callbacks (the C ABI's `TxCallback`, the Java provider, the wasm import) as
+behaving the same way: a code-only coding is asked with an empty system, an
+answer of not a member refuses it, a member is not checked, and the warning
+under a callback stays the general one, since the core never asks a callback
+whether it holds a set.
+
+Also: a base datatype profile's invariant (`sqty-1`) is parsed once for all
+instances of an element, and not at all under a `Validator`, which now parses
+`DATATYPE_PROFILES`' invariants with the registry's (a unit test counts the
+parses); the depth-cap `not-supported` branch of an IG datatype profile has a
+test; `scripts/gen-host-profiles.sh` names a host definition without a
+snapshot at the path the host gave, not the staged temporary copy; the
+mutation lane splits a family only partly triaged into its triaged count and
+the untriaged files it lists by name (`conformance/test_mutate_triage.py`).
+
+Lanes for these changes, measured on the tree with the rest of 0.29.0:
+release gate **1,855/1,855** (fifteen more probes than the rest of 0.29.0
+gave it); reasons 0 untriaged, 5 triaged (one more:
+`nz-declares-address-profile-too`, the oracle applying NzAddress to the
+Patient element by element where the pod refuses the declaration once, as
+for `patient-declares-observation-profile`); probes **97**: 96 agree, 1
+reviewed (`resolve-heartrate-contained-bare-patient`); mutation lane
+(`--reuse-oracle`) 21,371 derived, 0 untriaged, 18 triaged. Measured before
+the merge against 0.28.0's pod on the release corpus, one verdict moved
+(`nz-domicile-on-contact-address-wrong-type`, which 0.28.0 accepted and the
+oracle refuses; `nz-deceased-boolean-source-wrong-type`, added after that
+measurement, is the same kind); the rest are locations, and two
+duplicate not-checked warnings gone on each AU Core Patient carrying IHI
+status extensions (now said once, through `Patient.identifier:ihi`'s
+`au-ihi` profile). `base.py` (which builds release) was not run for these
+changes. They add no rule id and do not move the ABI.
+
 ## 0.28.0
 
 **A coding with a code and no system is placed as the reference validator

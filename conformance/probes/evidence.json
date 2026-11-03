@@ -1,7 +1,7 @@
 {
-  "recorded_at": "2026-11-02T23:15:35.293068+00:00",
-  "source_revision": "22e2a46bb4ecc0b94509ea949e4d690c3113051d",
-  "source_dirty": false,
+  "recorded_at": "2026-11-02T23:54:37.152059+00:00",
+  "source_revision": "4aab7897499a3d438a8a103bdcb526a972a12e6d",
+  "source_dirty": true,
   "oracle_version": "6.10.4",
   "oracle_sha256": "1106b9d58f9e363e47bea7c4fc065841e5fc91fe9d062775c3bfdd212bd653cc",
   "oracle_options": [
@@ -26,8 +26,8 @@
   },
   "note": "Terminology service disabled; the oracle may still resolve unknown profile URLs. One oracle run per guide (`ig`). Verdict parity only; a reviewed difference counts only while its input hash, oracle signature and local verdict match the review. Issues retained for inspection.",
   "counts": {
-    "total": 82,
-    "agree": 81,
+    "total": 97,
+    "agree": 96,
     "reviewed": 1,
     "differ": 0
   },
@@ -3227,14 +3227,14 @@
             "severity": "error",
             "code": "structure",
             "id": "structure.max",
-            "path": "MedicationDispense.extension[0].Extension.valueQuantity",
+            "path": "MedicationDispense.extension[0].valueQuantity",
             "message": "Extension.valueQuantity.comparator exceeds max 0 (found 1): Extension.valueQuantity is a SimpleQuantity (http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1), which prohibits Quantity.comparator"
           },
           {
             "severity": "error",
             "code": "invariant",
             "id": "inv.sqty-1",
-            "path": "MedicationDispense.extension[0].Extension.valueQuantity",
+            "path": "MedicationDispense.extension[0].valueQuantity",
             "message": "sqty-1: The comparator is not used on a SimpleQuantity (Extension.valueQuantity is a SimpleQuantity, http://hl7.org/fhir/StructureDefinition/SimpleQuantity|4.0.1)"
           }
         ]
@@ -3779,7 +3779,7 @@
             "severity": "error",
             "code": "structure",
             "id": "structure.choice",
-            "path": "Patient.address[0].extension[0].Extension.value[x]",
+            "path": "Patient.address[0].extension[0]",
             "message": "Extension.value[x] allows the types [string]; found valueCode"
           }
         ]
@@ -4546,6 +4546,733 @@
       "status": "reviewed",
       "agrees": true,
       "note": "Lenient, declared in docs/scope.md (Reference target types): the pod judges a contained reference target by type only, under any profile; the oracle holds it to conformance under every targetProfile that names a profile. Not fixed in 0.29.0; its own task."
+    },
+    {
+      "file": "ext-concept-not-member.json",
+      "profile": null,
+      "expect": false,
+      "reason": "An extension's CodeableConcept value outside its required set (questionnaireresponse-completionMode): validator_cli 6.10.4 locates it at QuestionnaireResponse.extension[0].value.ofType(CodeableConcept), as the pod now does (was extension[0].Extension.value[x]).",
+      "ig": "hl7.fhir.au.core#2.0.0",
+      "sha256": "fe2f9ea7584039fcd4f0a636efbf573beac08f536e8529bdae16bbf67fa6e6ef",
+      "oracle_valid": false,
+      "oracle_signature": "3374a1865c999e402fe8000eca7f5b943d9572160f81e35f27b4d1b9f03c670f",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "text": "None of the codings provided are in the value set 'Questionnaire Response Mode' (http://hl7.org/fhir/ValueSet/questionnaireresponse-mode|5.4.0), and a coding from this value set is required) (codes = http://terminology.hl7.org/CodeSystem/v3-ParticipationMode#PHYSICAL)",
+          "paths": [
+            "QuestionnaireResponse.extension[0].value.ofType(CodeableConcept)"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "required",
+          "text": "No questionnaire is identified, so no validation can be performed against the base questionnaire",
+          "paths": [
+            "QuestionnaireResponse"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "QuestionnaireResponse",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "information",
+            "code": "informational",
+            "id": "questionnaire.unresolved",
+            "path": "QuestionnaireResponse",
+            "message": "No questionnaire is identified, so no validation can be performed against the base questionnaire"
+          },
+          {
+            "severity": "error",
+            "code": "code-invalid",
+            "id": "binding.not-member",
+            "path": "QuestionnaireResponse.extension[0].valueCodeableConcept",
+            "message": "None of the codings provided are in the value set 'http://hl7.org/fhir/ValueSet/questionnaireresponse-mode', and a coding from this value set is required"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "ext-value-wrong-type.json",
+      "profile": null,
+      "expect": false,
+      "reason": "A data-absent-reason valued with a string where it allows a code: validator_cli 6.10.4 locates it at the extension, Patient.name[0].extension[0], as the pod now does.",
+      "ig": "hl7.fhir.au.core#2.0.0",
+      "sha256": "8c2f88e50a4f7cd7570c3bb25e1d0e532234c8fe317bc2838242cf6fbb4662e9",
+      "oracle_valid": false,
+      "oracle_signature": "8a7c0450dcba4ff9ffa53a36b279062fbb89e02ca2b5597ef75828cc0baf4291",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org/fhir/StructureDefinition/data-absent-reason' definition allows for the types [code] but found type string",
+          "paths": [
+            "Patient.name[0].extension[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.name[0].extension[0]",
+            "message": "Extension.value[x] allows the types [code]; found valueString"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "ext-code-not-member.json",
+      "profile": null,
+      "expect": false,
+      "reason": "A data-absent-reason code outside its required set: validator_cli 6.10.4 locates it at Patient.name[0].extension[0].value.ofType(code), a primitive by its type code, as the pod now does.",
+      "ig": "hl7.fhir.au.core#2.0.0",
+      "sha256": "4425517cb5a7afda3ff7627203afc0c44a2ea7108e8f7653957d9db7fbd89a71",
+      "oracle_valid": false,
+      "oracle_signature": "ca6ac42a4e344e8e0ac00d46663fb4b0c3260cafd86a43216d92c2cfb7c992ec",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "not-found",
+          "text": "The System URI could not be determined for the code 'zz-not-a-reason' in the ValueSet 'http://hl7.org/fhir/ValueSet/data-absent-reason|4.0.1'",
+          "paths": [
+            "Patient.name[0].extension[0].value.ofType(code)"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "text": "The value provided ('zz-not-a-reason') was not found in the value set 'DataAbsentReason' (http://hl7.org/fhir/ValueSet/data-absent-reason|4.0.1), and a code is required from this value set  (error message = The System URI could not be determined for the code 'zz-not-a-reason' in the ValueSet 'http://hl7.org/fhir/ValueSet/data-absent-reason|4.0.1'; The provided code '#zz-not-a-reason' was not found in the value set 'http://hl7.org/fhir/ValueSet/data-absent-reason|4.0.1')",
+          "paths": [
+            "Patient.name[0].extension[0].value.ofType(code)"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "code-invalid",
+            "id": "binding.not-member",
+            "path": "Patient.name[0].extension[0].valueCode",
+            "message": "'zz-not-a-reason' is not in the bound value set"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "ext-nested-wrong-type.json",
+      "profile": null,
+      "expect": false,
+      "reason": "A nested extension (patient-nationality code) valued with a string where its slice allows a CodeableConcept: validator_cli 6.10.4 locates it at the matched instance's value, Patient.extension[0].extension[1].value.ofType(string), as the pod now does (was extension[0].Extension.extension:code.value[x]).",
+      "ig": "hl7.fhir.au.core#2.0.0",
+      "sha256": "dfc2b6d3b214386baff3b96957299da9c24e0349246f6f1e8da8aa41a43a42a7",
+      "oracle_valid": false,
+      "oracle_signature": "8335ad9777cec1469c187c33d57c62c9c4e1e691a8419d4b5c1cb19d90210cdf",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Profile 'http://hl7.org/fhir/StructureDefinition/patient-nationality|5.4.0' definition allows for the type CodeableConcept but found type string",
+          "paths": [
+            "Patient.extension[0].extension[1].value.ofType(string)"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.extension[0].extension[1].valueString",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueString"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "ext-nested-concept-not-member.json",
+      "profile": null,
+      "expect": false,
+      "reason": "A nested extension's CodeableConcept value (patient-sexParameterForClinicalUse value) outside its required set: validator_cli 6.10.4 locates it at Patient.extension[0].extension[0].value.ofType(CodeableConcept), as the pod now does.",
+      "ig": "hl7.fhir.au.core#2.0.0",
+      "sha256": "ae6cfb2d108b222bc10d69d19b8e0dddfa76d780f1a4bf6b89c64beea76b1902",
+      "oracle_valid": false,
+      "oracle_signature": "871e12c09a97d2bc0146101c4fedb49958c994597d5e30c80e7f3e24084adb42",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "text": "Unknown code 'zz-not-a-code' in the CodeSystem 'http://terminology.hl7.org/CodeSystem/sex-parameter-for-clinical-use' version '2.0.0'",
+          "paths": [
+            "Patient.extension[0].extension[0].value.ofType(CodeableConcept).coding[0].code"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "code-invalid",
+          "text": "None of the codings provided are in the value set 'Sex Parameter for Clinical Use' (http://terminology.hl7.org/ValueSet/sex-parameter-for-clinical-use|2.0.0), and a coding from this value set is required) (codes = http://terminology.hl7.org/CodeSystem/sex-parameter-for-clinical-use#zz-not-a-code)",
+          "paths": [
+            "Patient.extension[0].extension[0].value.ofType(CodeableConcept)"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "code-invalid",
+            "id": "code.unknown",
+            "path": "Patient.extension.extension.valueCodeableConcept.coding.code",
+            "message": "Unknown code 'zz-not-a-code' in the CodeSystem 'http://terminology.hl7.org/CodeSystem/sex-parameter-for-clinical-use'"
+          },
+          {
+            "severity": "error",
+            "code": "code-invalid",
+            "id": "binding.not-member",
+            "path": "Patient.extension[0].extension[0].valueCodeableConcept",
+            "message": "None of the codings provided are in the value set 'http://terminology.hl7.org/ValueSet/sex-parameter-for-clinical-use', and a coding from this value set is required"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "nz-declares-address-profile-too.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
+      "expect": false,
+      "reason": "An NzPatient that also declares NzAddress, with a suburb valued with a code: validator_cli 6.10.4 reports the suburb's type once, at Patient.address[0].extension[0], and refuses the NzAddress declaration on a Patient; the pod reports the suburb once (the declared NzAddress is not applied to a Patient, so it takes nothing from the shape walk) beside profile.wrong-type.",
+      "sha256": "3150fdbd0fa5f2a074c7c8fd9e3299175c87745d7871ebfd08a09cc5bdda492c",
+      "oracle_valid": false,
+      "oracle_signature": "162ac86fcf034fba73beb6faf06d06bdcae210cfa5dc53038a855b61ecc36460",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/suburb' definition allows for the types [string] but found type code",
+          "paths": [
+            "Patient.address[0].extension[0]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "not-supported",
+          "text": "This element is not allowed by the profile http://hl7.org.nz/fhir/StructureDefinition/NzAddress|1.0.0",
+          "paths": [
+            "Patient.meta"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "not-supported",
+          "text": "This element is not allowed by the profile http://hl7.org.nz/fhir/StructureDefinition/NzAddress|1.0.0",
+          "paths": [
+            "Patient.name[0]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "not-supported",
+          "text": "This element is not allowed by the profile http://hl7.org.nz/fhir/StructureDefinition/NzAddress|1.0.0",
+          "paths": [
+            "Patient.gender"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "not-supported",
+          "text": "This element is not allowed by the profile http://hl7.org.nz/fhir/StructureDefinition/NzAddress|1.0.0",
+          "paths": [
+            "Patient.birthDate"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "not-supported",
+          "text": "This element is not allowed by the profile http://hl7.org.nz/fhir/StructureDefinition/NzAddress|1.0.0",
+          "paths": [
+            "Patient.address[0]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Profile 'http://hl7.org.nz/fhir/StructureDefinition/NzAddress|1.0.0' definition allows for the type string but found type Narrative",
+          "paths": [
+            "Patient.text"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "not-supported",
+          "text": "This element is not allowed by the profile http://hl7.org/fhir/StructureDefinition/string|4.0.1",
+          "paths": [
+            "Patient.text.status"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "not-supported",
+          "text": "This element is not allowed by the profile http://hl7.org/fhir/StructureDefinition/string|4.0.1",
+          "paths": [
+            "Patient.text.div"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "profile.wrong-type",
+            "path": "meta.profile",
+            "message": "declared profile 'http://hl7.org.nz/fhir/StructureDefinition/NzAddress' applies to Address, not to a Patient"
+          },
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.address[0].extension[0]",
+            "message": "Extension.value[x] allows the types [string]; found valueCode"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "nz-domicile-on-contact-address-wrong-type.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
+      "expect": false,
+      "reason": "NzPatient slices Patient.extension:domicile-code; a domicile-code valued with a string on a contact's address (plain Address) is still held to its definition: validator_cli 6.10.4 refuses it at Patient.contact[0].address.extension[0]. The pod had skipped every instance of a url a declared slice named (valid); it now holds this one where it sits.",
+      "sha256": "3c79b5226582eae4690b16f15de034d991dfde0c9c3d271fc745b628ad43ca6b",
+      "oracle_valid": false,
+      "oracle_signature": "e1a377fd64828e18235041b6d9a954d04aa744b62e2cd7b7624e0ecb2b85cf8f",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/domicile-code' definition allows for the types [CodeableConcept] but found type string",
+          "paths": [
+            "Patient.contact[0].address.extension[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.contact[0].address.extension[0]",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueString"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "nz-domicile-on-name-wrong-type.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
+      "expect": false,
+      "reason": "A domicile-code valued with a string on Patient.name[0] under NzPatient: validator_cli 6.10.4 reports the context and the type error at Patient.name[0].extension[0]; the pod had reported the context only.",
+      "sha256": "853abff149748c418eba1bacf9e4416c2f68d3017acd8eae6efbec773995889a",
+      "oracle_valid": false,
+      "oracle_signature": "132778a675512492c667fe92559341d06f72afb737beff602ae16c7441ca4953",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The extension http://hl7.org.nz/fhir/StructureDefinition/domicile-code v0.1.0 is not allowed to be used at this point (this element is [HumanName, Patient.name]; allowed for this version = e:Patient, e:Address)",
+          "paths": [
+            "Patient.name[0]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/domicile-code' definition allows for the types [CodeableConcept] but found type string",
+          "paths": [
+            "Patient.name[0].extension[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org.nz/fhir/StructureDefinition/NzPatient|1.0.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Patient.name[0].extension[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "extension.context",
+            "path": "Patient.name.extension",
+            "message": "The extension http://hl7.org.nz/fhir/StructureDefinition/domicile-code is not allowed to be used at this point (this element is [Element, HumanName, Patient.name]; allowed = [Patient, Address])"
+          },
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.name[0].extension[0]",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueString"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "nz-domicile-wrong-type.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
+      "expect": false,
+      "reason": "A domicile-code valued with a string where NzPatient's own slice holds it (Patient.extension): one error, located by validator_cli 6.10.4 at the instance, Patient.extension[0], as the pod now locates it (was Patient.extension.value[x]).",
+      "sha256": "90100ac5e1cba100952a67da9ece02ec7b6927eea88bc3447b533539c6cbb670",
+      "oracle_valid": false,
+      "oracle_signature": "889cc59a5a7a5d4245c09e40a7f09f72c60ea06048d3f3686c48daa64986045d",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/domicile-code' definition allows for the types [CodeableConcept] but found type string",
+          "paths": [
+            "Patient.extension[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.extension[0]",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueString"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "nz-address-domicile-wrong-type.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
+      "expect": false,
+      "reason": "A domicile-code valued with a string on Patient.address[0], held to NzAddress: one error at Patient.address[0].extension[0] (validator_cli 6.10.4), from the shape walk, as the pod now locates it (was Patient.address[0].extension.value[x]).",
+      "sha256": "8b081debf48026b77a315f3a34c673951e453f2ee7232085acbe9128871e8052",
+      "oracle_valid": false,
+      "oracle_signature": "1fd1ad0302adcd86001d0f722d085bf39c58ff1d4cf1803a40c276c77dfaa151",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/domicile-code' definition allows for the types [CodeableConcept] but found type string",
+          "paths": [
+            "Patient.address[0].extension[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.address[0].extension[0]",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueString"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "ext-nested-two-periods-wrong-type.json",
+      "profile": null,
+      "expect": false,
+      "reason": "patient-citizenship with two period sub-extensions valued with strings: validator_cli 6.10.4 reports max 1 at Patient.extension[0] and one type error at each instance, Patient.extension[0].extension[0] and [1] (value.ofType(string)); the pod now reports each instance at its index (was one finding at the slice's label).",
+      "ig": "hl7.fhir.au.core#2.0.0",
+      "sha256": "1c1af24a4d456e9a59c352edc3ad48c637f33bcb8e91ea02c738f37f7f19443f",
+      "oracle_valid": false,
+      "oracle_signature": "2c727040b39d1ad9c86a17e7b147827e936994257416696bdf0ddd740708327e",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "Extension.extension:period: max allowed = 1, but found 2 (from http://hl7.org/fhir/StructureDefinition/patient-citizenship|5.4.0)",
+          "paths": [
+            "Patient.extension[0]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Profile 'http://hl7.org/fhir/StructureDefinition/patient-citizenship|5.4.0' definition allows for the type Period but found type string",
+          "paths": [
+            "Patient.extension[0].extension[0].value.ofType(string)"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Profile 'http://hl7.org/fhir/StructureDefinition/patient-citizenship|5.4.0' definition allows for the type Period but found type string",
+          "paths": [
+            "Patient.extension[0].extension[1].value.ofType(string)"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.max",
+            "path": "Patient.extension[0].extension:period",
+            "message": "Extension.extension:period exceeds max 1 (found 2)"
+          },
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.extension[0].extension[0].valueString",
+            "message": "Extension.value[x] allows the types [Period]; found valueString"
+          },
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.extension[0].extension[1].valueString",
+            "message": "Extension.value[x] allows the types [Period]; found valueString"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "nz-deceased-boolean-source-wrong-type.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
+      "expect": false,
+      "reason": "NzPatient slices information-source only beneath its deceased[x]:deceasedDateTime type slice; one valued with an integer on _deceasedBoolean is still held to its definition: validator_cli 6.10.4 refuses it at Patient.deceased.ofType(boolean).extension[0]. The pod had taken the type slice to cover every type of the choice (valid); it now refuses it, once.",
+      "sha256": "de89564d22a8337a4b146db6b7e120f1efbfae8883c828dc81183439225ec1e3",
+      "oracle_valid": false,
+      "oracle_signature": "c14d621f04a823c763a6cab18407c764f454bee48cd84290b796e914faeacdc1",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/information-source' definition allows for the types [CodeableConcept] but found type integer",
+          "paths": [
+            "Patient.deceased.ofType(boolean).extension[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org.nz/fhir/StructureDefinition/NzPatient|1.0.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Patient.deceased.ofType(boolean)"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.deceasedBoolean.extension[0]",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueInteger"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "nz-deceased-datetime-source-wrong-type.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
+      "expect": false,
+      "reason": "Control: the same information-source on _deceasedDateTime, where NzPatient's type slice does hold it: one error at Patient.deceased.ofType(dateTime).extension[0] (validator_cli 6.10.4), as the pod has it.",
+      "sha256": "e617239f500b381abe78ebf88561a47a0701cb82e5e0fa6d022b48d8ad8108b2",
+      "oracle_valid": false,
+      "oracle_signature": "dd7de8846f19c81011dfff943dd4473c824ffe66a179a02af208372dbac01662",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/information-source' definition allows for the types [CodeableConcept] but found type integer",
+          "paths": [
+            "Patient.deceased.ofType(dateTime).extension[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.deceased[x]:deceasedDateTime.extension[0]",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueInteger"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "nz-name-and-deceased-source-wrong-type.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
+      "expect": false,
+      "reason": "A bad information-source on name[0] (sliced by NzPatient) and on _deceasedBoolean (not sliced there): validator_cli 6.10.4 reports both; the pod had reported the name's only.",
+      "sha256": "f0e728906aed64e93ef5c0fb6797a26e748171a56833e37b6ab58d1e9da0c79c",
+      "oracle_valid": false,
+      "oracle_signature": "fe364507329d580857aa466d9744b75bb2d7c6e175638285daba36bd58d081b7",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/information-source' definition allows for the types [CodeableConcept] but found type integer",
+          "paths": [
+            "Patient.name[0].extension[0]"
+          ]
+        },
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/information-source' definition allows for the types [CodeableConcept] but found type integer",
+          "paths": [
+            "Patient.deceased.ofType(boolean).extension[0]"
+          ]
+        },
+        {
+          "severity": "information",
+          "code": "informational",
+          "text": "This element does not match any known slice defined in the profile http://hl7.org.nz/fhir/StructureDefinition/NzPatient|1.0.0 (this may not be a problem, but you should check that it's not intended to match a slice)",
+          "paths": [
+            "Patient.deceased.ofType(boolean)"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.name.extension:information-source.value[x]",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueInteger"
+          },
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.deceasedBoolean.extension[0]",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueInteger"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
+    },
+    {
+      "file": "nz-birthdate-source-wrong-type.json",
+      "profile": "http://hl7.org.nz/fhir/StructureDefinition/NzPatient",
+      "ig": "fhir.org.nz.ig.base#3.1.0",
+      "expect": false,
+      "reason": "An information-source valued with a string on _birthDate, where NzPatient slices it: one error at Patient.birthDate.extension[0] (validator_cli 6.10.4), the instance's index, as the pod now locates it (was Patient.birthDate.extension.value[x]).",
+      "sha256": "c29ab46e4498566c2f99223c9f51841bfa0b25c48832e6a999935281a28ec671",
+      "oracle_valid": false,
+      "oracle_signature": "16f5ca5a441342d6521696d6826337591d93cc34ecf115a0e5e5d4df857468e3",
+      "oracle_issues": [
+        {
+          "severity": "error",
+          "code": "structure",
+          "text": "The Extension 'http://hl7.org.nz/fhir/StructureDefinition/information-source' definition allows for the types [CodeableConcept] but found type string",
+          "paths": [
+            "Patient.birthDate.extension[0]"
+          ]
+        }
+      ],
+      "local": {
+        "resourceType": "Patient",
+        "profile": "NZ Patient",
+        "valid": false,
+        "issues": [
+          {
+            "severity": "error",
+            "code": "structure",
+            "id": "structure.choice",
+            "path": "Patient.birthDate.extension[0]",
+            "message": "Extension.value[x] allows the types [CodeableConcept]; found valueString"
+          }
+        ]
+      },
+      "status": "agree",
+      "agrees": true
     }
   ]
 }

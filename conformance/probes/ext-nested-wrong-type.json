@@ -1,0 +1,30 @@
+{
+  "resourceType": "Patient",
+  "id": "ext-nested-type",
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Probe</p></div>"
+  },
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/patient-nationality",
+      "extension": [
+        {
+          "url": "period",
+          "valuePeriod": {
+            "start": "2020-01-01"
+          }
+        },
+        {
+          "url": "code",
+          "valueString": "probe"
+        }
+      ]
+    }
+  ],
+  "name": [
+    {
+      "family": "Probe"
+    }
+  ]
+}
