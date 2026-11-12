@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Build every artifact from a clean state and pack the pods into dist/ with
-# checksums. Local only (this repo has no remote by design): the tarballs are
-# what a host app vendors.
+# checksums. The tarballs in dist/ are what a host app vendors; dist/ is not pushed.
 #
 #   ./scripts/release.sh            # → dist/<version>/
 set -euo pipefail

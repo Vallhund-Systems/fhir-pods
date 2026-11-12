@@ -9,7 +9,7 @@ Pod::Spec.new do |s|
   s.summary        = 'Embeddable FHIR compliance runtime (expo pod) — Rust core over a lean C ABI.'
   s.license        = { :type => 'MIT' }
   s.author         = 'Justin Grosvenor'
-  s.homepage       = 'https://github.com/justinGrosvenor/fhir-pods'
+  s.homepage       = 'https://github.com/Vallhund-Systems/fhir-pods'
   s.platforms      = { :ios => '15.1' }
   s.source         = { :git => '' }
   s.static_framework = true
